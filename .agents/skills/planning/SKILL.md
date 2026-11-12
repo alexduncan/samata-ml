@@ -17,7 +17,7 @@ Turn a requested change into a self-contained contract that a cheaper coding age
 
 ## Workflow
 
-1. **Orient.** Use the "Read when" column in `specification/README.md` to pick the relevant specs, and check its _Known gaps_. Read those specs, then the code, tests and scripts the change touches. Do not re-read `AGENTS.md`; it is already loaded.
+1. **Orient.** Use the "Read when" column in `specification/README.md` to pick the relevant specs, and check its _Known gaps_ and `specification/TODO.md` for open questions the change depends on (cite them by ID). Read those specs, then the code, tests and scripts the change touches. Do not re-read `AGENTS.md`; it is already loaded.
 2. **Define outcome.** State current behaviour (with paths), target behaviour, scope, non-goals and constraints (APIs, types, a11y, browser support, privacy, performance).
 3. **Resolve decisions.** Record integration points, contracts, alternatives and trade-offs. Separate verified facts from assumptions. Prefer existing architecture and dependencies. If a spec is `draft`, or the change hits a _Known gap_, decide it explicitly or list it as a blocking question.
 4. **Web platform research.** For browser-facing work, run the `modern-web-guidance` skill once per capability (use `bunx` instead of `npx`). Record the guide IDs and the decisions you took from them in the plan, so implementers retrieve only those guides and don't search again.
