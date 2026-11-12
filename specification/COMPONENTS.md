@@ -10,16 +10,17 @@ When a spec is ambiguous or seems wrong, the agent MUST stop and list the questi
 
 ## 1. Project decisions
 
-| Decision | Value |
-|---|---|
-| Framework | Lit 3, TypeScript (strict) |
-| State | nanostores; `@nanostores/lit` for binding stores to connected components |
-| i18n | `@nanostores/i18n` |
-| Custom element prefix | Primitive UI: `ui-` e.g. `<ui-modal>`; app views: `app-` e.g. `<app-dashboard>` |
-| Browser support | Evergreen browsers; Baseline "widely available" features only. CSS nesting is permitted. |
-| Accessibility target | WCAG 2.2 level AA |
-| Component acceptance tests | Playwright in Chromium, Firefox and WebKit |
-| Docs | Storybook (`@storybook/web-components-vite`) with the a11y and Vitest addons |
+| Decision                   | Value                                                                                                                                                                                                                                                 |
+| -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Framework                  | Lit 3, TypeScript (strict)                                                                                                                                                                                                                            |
+| State                      | nanostores; `@nanostores/lit` for binding stores to connected components                                                                                                                                                                              |
+| i18n                       | `@nanostores/i18n`                                                                                                                                                                                                                                    |
+| Custom element prefix      | Reusable, feature-agnostic elements: `ui-`, e.g. `<ui-modal>`, `<ui-virtual-table>`. Feature-specific elements: `app-`, e.g. `<app-dashboard>`. The prefix says where an element belongs, not its tier (§2): an `app-` element can be presentational. |
+| Browser support            | Evergreen browsers; Baseline "widely available" features only. CSS nesting is permitted.                                                                                                                                                              |
+| Accessibility target       | WCAG 2.2 level AA                                                                                                                                                                                                                                     |
+| Component acceptance tests | Playwright in Chromium, Firefox and WebKit                                                                                                                                                                                                            |
+| Docs                       | Storybook (`@storybook/web-components-vite`) with the a11y and Vitest addons. **Not installed yet**; see §10.                                                                                                                                         |
+| Decorators                 | TypeScript standard decorators (`experimentalDecorators` is off). See §4 for what this requires.                                                                                                                                                      |
 
 ### Web platform rules
 
@@ -32,7 +33,7 @@ When a spec is ambiguous or seems wrong, the agent MUST stop and list the questi
 
 Every UI building block is exactly one of these. A spec MUST state which tier it is.
 
-1. **Style primitive.** CSS only, applied to a native element that already has the correct semantics and behaviour (`<button>`, `<input>`, `<a>`). No JavaScript, no custom element. This is the default for anything that only needs to *look* different.
+1. **Style primitive.** CSS only, applied to a native element that already has the correct semantics and behaviour (`<button>`, `<input>`, `<a>`). No JavaScript, no custom element. This is the default for anything that only needs to _look_ different.
 2. **Presentational component.** A Lit element. Data in through properties and slots, intent out through events. MUST NOT import stores.
 3. **Connected component.** A Lit element that reads stores and calls actions. It SHOULD contain little markup of its own and compose presentational components.
 
@@ -47,26 +48,61 @@ The public API of a block is everything its spec lists under **Public API**: tag
 - No props for hypothetical futures. No variant enums with values nobody uses.
 - Prefer slots for content and composition over props that carry content.
 - Do not wrap a native element in a custom element just to rename or restyle it.
+- Do not build form-associated custom elements (`static formAssociated = true`, `ElementInternals`) unless a spec requires a custom form control. Use native form controls.
 - When in doubt, less code. Removing an option is better than documenting it.
 - The component spec is the normative source of truth for its API. Generated `custom-elements.json` is a derived documentation artifact and MUST NOT expand or override the API in the spec.
 
 ## 4. Lit practices and component documentation
 
+**Elements and members**
+
 - One element per file. File name matches the tag name (`app-dataset-picker.ts`).
 - Register with `@customElement('app-…')` or `@customElement('ui-…')`, as specified, and augment `HTMLElementTagNameMap`.
 - Public reactive properties use `@property`; internal state uses `@state` and is `private`. Reflect attributes only when CSS needs them.
-- `render()` is pure: no side effects, no store writes, no DOM queries. Side effects go in `updated` / `firstUpdated`; anything set up in `connectedCallback` is torn down in `disconnectedCallback`. Reactive controllers are preferred for this.
-- Never mutate objects received through properties. Emit an event instead.
-- Use native events where they exist (`click`, `input`, `change`). Custom events carry a typed `detail` and use the prefix matching their element family: `ui-<noun>-<verb>` for primitive UI elements and `app-<noun>-<verb>` for app views. Set `bubbles` and `composed` only when the spec says the event must cross a shadow boundary.
-- Read light-DOM children only through slots (`slotchange`, `assignedElements`).
+- Decorated reactive fields MUST use the `accessor` keyword: `@property() accessor label = '';`, `@state() private accessor open = false;`. A plain field (`@property() label = '';`) fails typecheck and throws "Unsupported decorator location: field" at runtime.
+- Overridden Lit members (`render`, `updated`, `willUpdate`, `firstUpdated`, `connectedCallback`, `disconnectedCallback`, `styles`) use `override`.
+- Internal methods and fields use TypeScript `private` (e.g. `private handleClick()`), not `#private` names. Decorators cannot be applied to `#private` names.
+
+**Rendering**
+
+- `render()` is pure: no side effects, no store writes, no DOM queries.
+- Return `nothing` (from `lit`) for an empty branch, not `''`, `null` or `undefined`.
+- A list whose items can be added, removed or reordered uses `repeat(items, (item) => item.id, …)` with a stable ID. Never key by array index.
+- Use `classMap()` for conditional classes and `styleMap()` for inline styles whose values are computed at runtime. Everything else goes in `static styles`.
+- Bind properties with `.prop=${…}`, boolean attributes with `?attr=${…}` and listeners with `@event=${this.handleX}`. Lit calls listeners with `this` set to the host, so do not use `.bind()` or arrow wrappers.
 - Do not use `unsafeHTML` or `unsafeCSS`.
+- Never mutate objects received through properties. Emit an event instead.
+
+**Derived values**
+
+- A value derived from stores is a `computed` store (§5).
+- A value derived from the element's own properties is computed in `willUpdate(changed)` and stored in a `private` field.
+- Never set a reactive property in `updated()`: it triggers a second update.
+
+**Lifecycle**
+
+- Side effects go in `updated()` / `firstUpdated()`, never in `render()`.
+- Anything that needs teardown (listeners on other objects, observers, timers) is set up in `connectedCallback()` and torn down in `disconnectedCallback()`.
+- If the setup needs rendered shadow DOM, do it in `firstUpdated()` for the first connection, and in `connectedCallback()` when `this.hasUpdated` is true for later connections. `firstUpdated()` runs only once, so an element that is removed and re-attached would otherwise lose the resource.
+- Prefer a reactive controller (`hostConnected()` / `hostDisconnected()`) for such setup. A controller used by one element is declared in that element's file. A controller used by several elements is a shared helper and needs the authorisation in §3.
+
+**Events and DOM**
+
+- Use native events where they exist (`click`, `input`, `change`). Custom events carry a typed `detail` and use the prefix of the element that fires them: `ui-<noun>-<verb>` from `ui-` elements and `app-<noun>-<verb>` from `app-` elements. Set `bubbles` and `composed` only when the spec says the event must cross a shadow boundary.
+- Read light-DOM children only through slots (`slotchange`, `assignedElements`).
+- Never query another element's `shadowRoot`.
 - Shadow DOM by default. Use `delegatesFocus: true` when the host should act as the focus target.
+
+**Documentation**
+
 - The project uses `@custom-elements-manifest/analyzer` to generate `custom-elements.json` for Lit component documentation. Document public APIs with JSDoc/CEM tags: `@slot`, `@fires`, `@csspart` and `@cssprop`. The manifest feeds Storybook autodocs; it is generated and is not a substitute for the component spec.
 
 ## 5. State (nanostores)
 
 - Stores live in `src/stores/`, never inside component files.
-- Only connected components import stores, using `StoreController` from `@nanostores/lit`.
+- Only connected components import stores, using `StoreController` from `@nanostores/lit`. Do not hand-write store subscriptions or controllers that call `store.subscribe()`.
+- There is no application-wide state machine. Where the user is comes from the router's store; what the user has done is in persisted stores ([ARCHITECTURE.md](ARCHITECTURE.md), "Hybrid state model").
+- Components never import workers or touch IndexedDB. Large data reaches them through stores or properties.
 - Derived values use `computed`; do not derive in `render()`.
 - Mutations go through exported action functions in the store module. Components call actions; they do not call `store.set()` directly.
 - Components MUST NOT call `history.*` or read `location`. Navigation is an `<a href>` (intercepted by the router) or a router action; the current route is read from the router's store. See [app-state-and-navigation.md §5](app-state-and-navigation.md).
@@ -84,16 +120,18 @@ Styling crosses shadow boundaries in exactly two sanctioned ways.
 
 - Components include it in `static styles = [buttonStyles, css\`…\`]`.
 - `src/styles/global.ts` adopts the same sheets into the document:
-  ```ts
-  document.adoptedStyleSheets = [
-    ...document.adoptedStyleSheets,
-    ...[buttonStyles].map((s) => s.styleSheet!).filter(Boolean),
-  ];
-  ```
+    ```ts
+    document.adoptedStyleSheets = [
+    	...document.adoptedStyleSheets,
+    	...[buttonStyles].map((s) => s.styleSheet!).filter(Boolean)
+    ];
+    ```
 - The rules MUST NOT be duplicated into a `.css` file.
 
 **6.3 Rules for all CSS**
 
+- Component styles live only in `static override styles`, never in a `<style>` element in `render()`.
+- Every component's styles include `:host { display: …; }` (whatever display the host needs) and `:host([hidden]) { display: none; }`.
 - Use logical properties (`padding-inline`, `border-block-end`, `margin-inline-start`) so layouts work in right-to-left locales.
 - All transitions and animations sit inside `@media (prefers-reduced-motion: no-preference)`.
 - Every focusable thing has a `:focus-visible` style using `outline` (not `box-shadow`, which disappears in forced-colours mode), at least 2px, colour from a token.
@@ -133,6 +171,8 @@ Styling crosses shadow boundaries in exactly two sanctioned ways.
 - History, scroll restoration and `<dialog>` behaviour (back/forward, reload, new-tab resume, viewport-width invalidation) are tested in Playwright, never in a simulated DOM. Pure routing/hydration/reconciliation logic is tested with `bun:test` and an in-memory `Storage`.
 
 ## 10. Storybook
+
+**Not installed yet** ([Known gaps](README.md#known-gaps) 5). Until a plan installs it, this section, the story and axe rules in §9 and the story items in §11 do not apply. Plans list them as deferred instead of writing stories or inventing Storybook commands.
 
 - One `*.stories.ts` per block, co-located with its source, including style primitives.
 - Required stories: each variant, each state the spec lists, Long label, RTL. Components also need a story per slot configuration the spec lists.

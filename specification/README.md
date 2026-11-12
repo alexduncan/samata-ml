@@ -42,6 +42,11 @@ Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only wh
 | [virtual-table.md](components/virtual-table.md) | draft  | `ui-virtual-table` (tier disputed, see gaps)        |
 | [sidepanel.md](components/sidepanel.md)         | stub   | —                                                   |
 
+### Backlog
+
+- [TODO.md](TODO.md) — open questions and missing specification, with IDs (`TODO-nn`) that plans can cite.
+- [FUTURE.md](FUTURE.md) — deferred features. Do not plan these until they are moved into a spec.
+
 ### Other directories
 
 - [`mockups/`](mockups/) — static HTML/CSS wireframes referenced by `workflow-steps.md`. Served by `bun run serve:scaffold`. Reference only; don't edit unless a plan says to.
@@ -55,8 +60,8 @@ Known conflicts between specs, and between specs and code, as of 2026-11-12. A p
 2. **HTML template.** The README and `scripts/build-assets.ts` expect `public/index.html`, which does not exist. A root `index.html` exists and references relative `styles.css`/`app.js`, but the build emits `style.css`, and ARCHITECTURE requires root-absolute URLs.
 3. **CSS inlining.** The production build inlines CSS (`scripts/html.ts`, README). ARCHITECTURE says "No Inlining".
 4. **Content location.** The specs say `/content-src/<locale>/`, compiled to `src/content-compiled/`. The code has `content/models/` and `content/pages/`, with no locales and no compile step.
-5. **Component test environment.** testing.md says to use happy-dom for Lit components. COMPONENTS §9 forbids a simulated DOM for components and requires Playwright. happy-dom, Playwright, Storybook and Vitest are not installed.
-6. **Specified but not installed.** `nanostores`, `@nanostores/lit`, `@nanostores/i18n`, Comlink (testing.md) and a service worker.
+5. **Component test environment.** testing.md says to use happy-dom for Lit components. COMPONENTS §9 forbids a simulated DOM for components and requires Playwright. happy-dom and Playwright are now installed; Storybook and Vitest are not (COMPONENTS §10 defers the Storybook rules until they are).
+6. **Specified but not installed.** Comlink (testing.md) and a service worker. (`nanostores`, `@nanostores/lit` and `@nanostores/i18n` were installed on 2026-11-12.)
 7. **Linting.** standards-and-documentation says `eslint-plugin-tsdoc` is enforced in CI. There's no ESLint config, no `lint` script and no CI.
 8. **Virtual table tier.** components/virtual-table.md says Tier 2 presentational; an earlier stub said connected component.
 9. **Column type vocabularies** differ across specs; see the table in [state-and-storage.md §10](state-and-storage.md).

@@ -138,3 +138,25 @@ Spec-vs-code conflicts are tracked separately in [README.md § Known gaps](READM
 ## 7. Process
 
 - **TODO-52** — The five `plans/scaffolding-*.md` plans are `ready`, but they build on specs that are still `draft` (app-state-and-navigation, state-and-storage). They also build on unanswered questions (TODO-13 to TODO-26), and `scaffolding-app-shell.md` builds components that have no spec (TODO-34). Either answer the questions and promote the specs, or record in each plan that it adopts the proposed answers.
+
+## 8. Accessibility (WCAG 2.2 AA)
+
+- **TODO-53 — Mockup styles WCAG 2.2 AA violations** ([mockups/ui-scaffold/css/](mockups/ui-scaffold/css/)):
+  The CSS styles in `specification/mockups/ui-scaffold/` (and mirrored into `css/`) contain several violations of WCAG 2.2 Level AA requirements that require remediation before production release:
+    1. **SC 1.4.3 Contrast (Minimum) — Text**:
+        - `.badge-amber` (`badges.css`): White text (`#ffffff`) on `--amber-500` (`#f59e0b`) background achieves only a 2.15:1 contrast ratio (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-900` (`#332923`) to achieve 10.36:1 contrast (consistent with `chiclet.styles.ts`).
+        - `.btn` default secondary button (`button.css`): Text colour `--stone-600` (`#887b71`) on `--stone-50` (`#fcfbfa`) achieves only 3.97:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (`#6d6056`) for 5.88:1 contrast.
+        - `.card-text` (`card.css`): Text colour `--stone-600` (`#887b71`) on `#fff` achieves only 4.10:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (`#6d6056`, 6.07:1) or `--stone-800` (`#4d413b`, 9.84:1), as implemented in `card.styles.ts`.
+        - `.file-picker-button` (`base.css`): Text colour `--stone-600` (`#887b71`) on `--stone-150` (`#f3f2ef`) achieves 3.66:1, and on hover with `--blue-100` (`#dbeafe`) achieves 3.36:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (5.42:1) or `--stone-800` (8.79:1).
+        - `sidebar footer` (`sidebar.css`): Text colour `--stone-600` (`#887b71`) on `--stone-150` (`#f3f2ef`) achieves only 3.66:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (5.42:1) or `--stone-800` (8.79:1).
+        - `.train-step-pending` (`train-model.css`): Text colour `--stone-500` (`#a6988e`) on `--stone-100` (`#f8f7f5`) achieves only 2.61:1 (minimum 4.5:1 required). _Remediation_: Ensure pending state is conveyed using an accessible badge/icon or `aria-disabled`, rather than low-contrast text alone.
+    2. **SC 1.4.11 Non-text Contrast — Focus Indicators & Boundaries**:
+        - `select:focus-visible` and `select:open` (`base.css`): Focus indicator outline `3px solid var(--blue-300)` (`#93c5fd`) against `--stone-50` achieves only 1.48:1 contrast (minimum 3:1 required for focus indicators). _Remediation_: Use `--blue-700` (`#1d4ed8`, 6.48:1), matching `:has(input:focus-visible) .file-picker-button`.
+        - Form input borders (`base.css`): Borders on `input` and `select` use `1.5px solid var(--stone-300)` (`#e3d9d1`) against `--stone-100` (`#f8f7f5`), yielding a contrast ratio of 1.33:1 (minimum 3:1 required if border is the sole visual indicator of the control's boundary).
+    3. **SC 2.4.7 Focus Visible**:
+        - Interactive elements (`button.css`, `sidebar.css`, `steps.css`): `.btn`, `.btn-icon`, `.step-link`, `.step-model-link`, and `.project-settings` define `:hover` states but omit explicit `:focus-visible` outlines. `COMPONENTS.md §6.3` requires an outline of at least 2px using a token colour.
+    4. **SC 2.3.3 Animation from Interactions & SC 2.2.2 Pause, Stop, Hide**:
+        - Infinite animations (`dot.css`): The continuous pulsing animations (`pulse-core` and `pulse-ring`) run unconditionally without being enclosed in `@media (prefers-reduced-motion: no-preference)`.
+        - Sidebar transitions (`sidebar.css`): `.project-settings` transition is declared outside a `prefers-reduced-motion` media query.
+    5. **SC 1.4.1 Use of Colour**:
+        - Status dot (`dot.css`, `steps.css`): The pulsing `.dot` conveys state (e.g. training active) via colour/pulsing alone; must always be accompanied by accessible text (e.g. `.visually-hidden`).

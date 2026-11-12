@@ -21,12 +21,13 @@ Implement the **approved plan**, not a new design. Be economical with context: i
 2. **Select task.** Default to **one task per invocation**: the requested `Tn`, or the first unchecked task with satisfied dependencies. If explicitly asked to implement the whole plan, execute tasks sequentially with separate gates after each; stop on the first blocker. Parallel work requires explicit approval and a plan marking tasks independent.
 3. **Preflight.** Run, from repository root, if available:
 
-   ```sh
-   python3 .agents/skills/implementation/scripts/task_gate.py specification/plans/<name>.md --task T1
-   ```
+    ```sh
+    python3 .agents/skills/implementation/scripts/task_gate.py specification/plans/<name>.md --task T1
+    ```
 
-   Omit `--task` for automatic next-task selection. If Python is unavailable, check manually. This script validates *recorded* status, task IDs, dependencies and progress, not actual code correctness. Do not ignore a failed gate.
-4. **Orient narrowly.** Read the plan's Goal, Scope, `## Required reading`, Codebase context, Technical decisions and Risks, then the selected task's fields. Read the specifications listed under *Required reading* and nothing else from `specification/`. If those are not enough to proceed, that is a blocker: record it rather than reading widely. For web-platform features, retrieve only the guide IDs the plan lists. Inspect the task's likely files; check for blocking conflicts or overlapping worktree changes. Do not guess unknown contracts.
+    Omit `--task` for automatic next-task selection. If Python is unavailable, check manually. This script validates _recorded_ status, task IDs, dependencies and progress, not actual code correctness. Do not ignore a failed gate.
+
+4. **Orient narrowly.** Read the plan's Goal, Scope, `## Required reading`, Codebase context, Technical decisions and Risks, then the selected task's fields. Read the specifications listed under _Required reading_ and nothing else from `specification/`. If those are not enough to proceed, that is a blocker: record it rather than reading widely. For web-platform features, retrieve only the guide IDs the plan lists. If the task touches Lit components, reactive controllers, store bindings, component styles or component tests (the plan's _Codebase context_ names these tasks), follow the `lit-implementer` skill as well. Inspect the task's likely files; check for blocking conflicts or overlapping worktree changes. Do not guess unknown contracts.
 5. **Implement minimally.** Change only the files necessary for the task, including specified tests and directly related integration fixes. Never edit anything listed under the task's **Must not touch**. Reuse current project patterns. Avoid unrelated refactors and do not start another task by default. Run `bun run format <changed files>` on the files you touched.
 6. **Verify.** Check each criterion, including negative and boundary cases. Run the task's verification command and `bun run check`. Compare `bun run check` failures with the baseline in the plan's Codebase context or `AGENTS.md`: pre-existing failures are not yours to fix, but new ones are. Record exact commands and **PASS / FAIL / NOT RUN (reason)**. If an in-scope fix fails verification, repair and rerun; after two substantive failed attempts, stop and escalate rather than looping.
 7. **Review diff.** Look for scope drift, missing tests, security/privacy regressions, accidental changes and conflicts with the approved plan.
@@ -38,6 +39,7 @@ Preserve the original H1, task IDs, design decisions and metadata format:
 
 ```markdown
 # <Plan title>
+
 **Status:** ready | **Updated:** YYYY-MM-DDTHH:MM:SSZ
 ```
 

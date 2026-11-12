@@ -37,6 +37,7 @@ Facts the planner verified, so the implementer need not re-check them.
 - **Relevant implementation:** `<path>` — <current responsibility>
 - **Tests and commands:** `<path>` / `<command>` — <what they validate; baseline result before this plan>
 - **Web guidance:** None / `<guide-id>` — <decision taken from it>
+- **Lit skills:** None / implementers use `lit-implementer` for <task IDs>
 - **Known gaps decided:** None / <gap number from specification/README.md and the decision>
 - **Assumptions requiring verification:** None / <clearly identified assumption>
 
