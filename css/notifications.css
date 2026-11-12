@@ -1,0 +1,26 @@
+.notification {
+	display: flex;
+	align-items: center;
+	margin-bottom: 1rem;
+	border-radius: 0.25rem;
+	padding: 0.5rem;
+}
+
+.notification .icon {
+	margin-right: 0.5rem;
+}
+
+.notification-alert {
+	border: 1px solid var(--amber-700);
+	background-color: var(--amber-100);
+	color: var(--amber-700);
+}
+
+.notification-info {
+	background-color: #e5f1ff;
+	color: #0050b3;
+}
+
+.notification-text {
+	margin: 0;
+}

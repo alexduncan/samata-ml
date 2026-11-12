@@ -1,6 +1,6 @@
 # Scaffolding: Foundation, Tooling and Baseline Cleanup
 
-**Status:** ready | **Updated:** 2026-11-12T11:52:57Z
+**Status:** implemented | **Updated:** 2026-11-12T12:31:28Z
 
 ## Goal
 
@@ -89,12 +89,12 @@ if (!hasExtension && !filePathExists(url.pathname)) {
     - Add script `"test:e2e": "playwright test"`.
     - Run `bun install` to update `bun.lock`.
 - **Acceptance criteria:**
-    - [ ] `package.json` contains no `"grey-matter"` typo.
-    - [ ] `nanostores`, `@nanostores/lit`, `@nanostores/i18n` are present in `dependencies`.
-    - [ ] `happy-dom`, `@playwright/test`, `@custom-elements-manifest/analyzer` are present in `devDependencies`.
-    - [ ] `bun.lock` is cleanly updated.
+    - [x] `package.json` contains no `"grey-matter"` typo.
+    - [x] `nanostores`, `@nanostores/lit`, `@nanostores/i18n` are present in `dependencies`.
+    - [x] `happy-dom`, `@playwright/test`, `@custom-elements-manifest/analyzer` are present in `devDependencies`.
+    - [x] `bun.lock` is cleanly updated.
 - **Verification:** `bun pm ls`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T2 — Fix asset paths and server SPA routing
 
@@ -107,12 +107,12 @@ if (!hasExtension && !filePathExists(url.pathname)) {
     - In `scripts/static-server.ts`, ensure requests for routes without file extensions fall back to `/index.html` instead of 404, while missing files with extensions return 404.
     - In `scripts/serve-ui-scaffold.ts` line 686 and `tests/serve-ui-scaffold.test.ts` line 115, fix the generic `Server` type annotation to `Server<any>` or import `ServerWebSocket` properly so `tsc --noEmit` does not report TS2314.
 - **Acceptance criteria:**
-    - [ ] `index.html` references `/styles.css` and `/app.js`.
-    - [ ] Extension-less requests (e.g. `/models/1`) serve `index.html`.
-    - [ ] Requests for non-existent `.js` or `.css` return 404.
-    - [ ] Neither `scripts/serve-ui-scaffold.ts` nor `tests/serve-ui-scaffold.test.ts` emits TS2314.
+    - [x] `index.html` references `/styles.css` and `/app.js`.
+    - [x] Extension-less requests (e.g. `/models/1`) serve `index.html`.
+    - [x] Requests for non-existent `.js` or `.css` return 404.
+    - [x] Neither `scripts/serve-ui-scaffold.ts` nor `tests/serve-ui-scaffold.test.ts` emits TS2314.
 - **Verification:** `bun x tsc scripts/serve-ui-scaffold.ts tests/serve-ui-scaffold.test.ts --noEmit`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T3 — Retire obsolete Mithril files and clean src entry
 
@@ -126,11 +126,11 @@ if (!hasExtension && !filePathExists(url.pathname)) {
     - Update `src/app.ts` to be a minimal Lit root render without any legacy imports.
     - Run `bun run typecheck` to confirm zero errors in `src/`.
 - **Acceptance criteria:**
-    - [ ] Directory `src/views/` is removed.
-    - [ ] Directory `src/partials/` is removed.
-    - [ ] `bun run typecheck` passes with zero errors.
+    - [x] Directory `src/views/` is removed.
+    - [x] Directory `src/partials/` is removed.
+    - [x] `bun run typecheck` passes with zero errors.
 - **Verification:** `bun run typecheck`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T4 — Create feature directory layout and test harness
 
@@ -145,20 +145,20 @@ if (!hasExtension && !filePathExists(url.pathname)) {
     - Create `playwright.config.ts` configuring Chromium, Firefox, and WebKit test projects targeting `http://localhost:3000`.
     - Create `tests/foundation.test.ts` verifying Happy-DOM and Nanostores work in `bun:test`.
 - **Acceptance criteria:**
-    - [ ] Target feature directories exist in `src/`.
-    - [ ] `bun test tests/foundation.test.ts` executes and passes.
-    - [ ] `playwright.config.ts` is valid.
-    - [ ] `bun run check` passes completely.
+    - [x] Target feature directories exist in `src/`.
+    - [x] `bun test tests/foundation.test.ts` executes and passes.
+    - [x] `playwright.config.ts` is valid.
+    - [x] `bun run check` passes completely.
 - **Verification:** `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ## Verification and definition of done
 
-- [ ] All task acceptance criteria met.
-- [ ] `bun run check` passes with 0 type errors (recovering from baseline of 20 errors).
-- [ ] `bun run test` runs cleanly.
-- [ ] `index.html` loads root-absolute assets.
-- [ ] No unintended changes outside the tasks' likely files.
+- [x] All task acceptance criteria met.
+- [x] `bun run check` passes with 0 type errors (recovering from baseline of 20 errors).
+- [x] `bun run test` runs cleanly.
+- [x] `index.html` loads root-absolute assets.
+- [x] No unintended changes outside the tasks' likely files.
 
 ## Risks and open questions
 
@@ -167,9 +167,13 @@ if (!hasExtension && !filePathExists(url.pathname)) {
 
 ## Implementation and verification log
 
-| When (UTC)           | Task | Outcome / commands / evidence                                                         |
-| -------------------- | ---- | ------------------------------------------------------------------------------------- |
-| 2026-11-12T11:52:57Z | T1   | BLOCKED: preflight failed (plan status is draft; only ready plans may be implemented) |
+| When (UTC)           | Task | Outcome / commands / evidence                                                                                                                                                                                                           |
+| -------------------- | ---- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-12T11:52:57Z | T1   | BLOCKED: preflight failed (plan status is draft; only ready plans may be implemented)                                                                                                                                                   |
+| 2026-11-12T12:19:41Z | T1   | Complete. Changed: package.json, bun.lock. Verified: bun pm ls (PASS), bun run check (20 pre-existing TS errors in Mithril files / scaffold, 0 new), bun test (1 pre-existing CSS test failure, 0 new).                                 |
+| 2026-11-12T12:27:55Z | T2   | Complete. Changed: index.html, scripts/static-server.ts, scripts/serve-ui-scaffold.ts, tests/serve-ui-scaffold.test.ts. Verified: tsc --noEmit --ignoreConfig (PASS), bun run check (TS errors dropped from 20 to 18, TS2314 resolved). |
+| 2026-11-12T12:28:37Z | T3   | Complete. Removed: src/views/, src/partials/. Verified: bun run typecheck (PASS with 0 errors).                                                                                                                                         |
+| 2026-11-12T12:30:56Z | T4   | Complete. Created: src/{features,common,router,stores,styles}/.gitkeep, tests/setup.ts, bunfig.toml, playwright.config.ts, tests/foundation.test.ts. Verified: bun run check (PASS with 0 type errors, 13 passed tests).                |
 
 ## Change log
 

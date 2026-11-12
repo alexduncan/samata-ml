@@ -1,6 +1,6 @@
 # Scaffolding: Application State and Persistence Layer
 
-**Status:** ready | **Updated:** 2026-11-12T11:37:44Z
+**Status:** implemented | **Updated:** 2026-11-12T12:51:37Z
 
 ## Goal
 
@@ -95,11 +95,11 @@ export const INITIAL_APP_STATE: PersistedAppState = {
     - Export constants `STATE_STORAGE_KEY = 'samata-ml:state'`, `SCROLL_STORAGE_KEY = 'samata-ml:scroll'`, `STORAGE_VERSION = 1`.
     - Add TSDoc documentation for all exported types.
 - **Acceptance criteria:**
-    - [ ] `src/types/state.ts` exports all types matching `state-and-storage.md §3`.
-    - [ ] `ColumnType` matches `'numeric' | 'categorical' | 'boolean' | 'text'`.
-    - [ ] `bun run typecheck` passes with no errors.
+    - [x] `src/types/state.ts` exports all types matching `state-and-storage.md §3`.
+    - [x] `ColumnType` matches `'numeric' | 'categorical' | 'boolean' | 'text'`.
+    - [x] `bun run typecheck` passes with no errors.
 - **Verification:** `bun run typecheck`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T2 — Implement Nanostores atoms, computed predicates and actions
 
@@ -122,11 +122,11 @@ export const INITIAL_APP_STATE: PersistedAppState = {
         - `$canCompare`: boolean (trainedModels.length >= 2)
     - Ensure all actions are guarded (return false on invalid state; no mutations in place).
 - **Acceptance criteria:**
-    - [ ] `$appState` and `$scrollState` are initialized.
-    - [ ] All actions listed in `app-state-and-navigation.md §10` are implemented.
-    - [ ] `$canCompare` evaluates to true only when at least 2 models have `status: 'trained'`.
+    - [x] `$appState` and `$scrollState` are initialized.
+    - [x] All actions listed in `app-state-and-navigation.md §10` are implemented.
+    - [x] `$canCompare` evaluates to true only when at least 2 models have `status: 'trained'`.
 - **Verification:** `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T3 — Implement storage persister module
 
@@ -144,11 +144,11 @@ export const INITIAL_APP_STATE: PersistedAppState = {
     - Export `flushNow()` for lifecycle hooks (`visibilitychange`, `pagehide`).
     - Catch `QuotaExceededError`: drop scroll snapshots first, retry once, and notify without throwing.
 - **Acceptance criteria:**
-    - [ ] Synchronous changes write to `localStorage` immediately.
-    - [ ] Scroll snapshot writes are debounced.
-    - [ ] `QuotaExceededError` is handled gracefully without crashing.
+    - [x] Synchronous changes write to `localStorage` immediately.
+    - [x] Scroll snapshot writes are debounced.
+    - [x] `QuotaExceededError` is handled gracefully without crashing.
 - **Verification:** `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T4 — Implement startup reconciler and Web Lock recovery
 
@@ -168,11 +168,11 @@ export const INITIAL_APP_STATE: PersistedAppState = {
         7. Interrupted training: request Web Lock `samata-ml:training:{num}` with `{ ifAvailable: true }`. If lock acquired, set `recoverInterrupted`; if lock held, leave as training in another tab.
     - Persist repaired state immediately.
 - **Acceptance criteria:**
-    - [ ] Reconciler executes all 7 checks in specified order.
-    - [ ] Interrupted training without lock converts to `draft` with `TRAINING_INTERRUPTED_BY_RELOAD`.
-    - [ ] Corrupt storage data cleanly recovers to initial defaults.
+    - [x] Reconciler executes all 7 checks in specified order.
+    - [x] Interrupted training without lock converts to `draft` with `TRAINING_INTERRUPTED_BY_RELOAD`.
+    - [x] Corrupt storage data cleanly recovers to initial defaults.
 - **Verification:** `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T5 — State and persistence unit test suite
 
@@ -190,16 +190,16 @@ export const INITIAL_APP_STATE: PersistedAppState = {
         - `NAV-AC-9`: Interrupted training recovery on hydrate.
         - `NAV-AC-10`: Corrupt JSON, wrong shape, and unsupported version handling.
 - **Acceptance criteria:**
-    - [ ] All test cases `NAV-AC-3` through `NAV-AC-10` pass in `bun:test`.
+    - [x] All test cases `NAV-AC-3` through `NAV-AC-10` pass in `bun:test`.
 - **Verification:** `bun test tests/state-and-storage.test.ts`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ## Verification and definition of done
 
-- [ ] All task acceptance criteria met.
-- [ ] `bun test tests/state-and-storage.test.ts` passes with zero failures.
-- [ ] `bun run check` passes with zero type errors.
-- [ ] No product code changes outside `src/types/state.ts` and `src/stores/*`.
+- [x] All task acceptance criteria met.
+- [x] `bun test tests/state-and-storage.test.ts` passes with zero failures.
+- [x] `bun run check` passes with zero type errors.
+- [x] No product code changes outside `src/types/state.ts` and `src/stores/*`.
 
 ## Risks and open questions
 
@@ -208,9 +208,13 @@ export const INITIAL_APP_STATE: PersistedAppState = {
 
 ## Implementation and verification log
 
-| When (UTC) | Task | Outcome / commands / evidence |
-| ---------- | ---- | ----------------------------- |
-| —          | —    | Not started                   |
+| When (UTC)           | Task | Outcome / commands / evidence                                                                                                                                        |
+| -------------------- | ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-12T12:40:50Z | T1   | Complete. Created: src/types/state.ts with full state schema and constants. Verified: bun run typecheck (PASS 0 errors).                                             |
+| 2026-11-12T12:42:44Z | T2   | Complete. Created: src/stores/{app.store,scroll.store,predicates}.ts with all actions and predicates. Verified: bun run check (PASS with 0 errors, 19 tests passed). |
+| 2026-11-12T12:43:51Z | T3   | Complete. Created: src/stores/persister.ts with debounced write scheduling and quota recovery. Verified: bun run check (PASS with 0 errors, 19 tests passed).        |
+| 2026-11-12T12:48:14Z | T4   | Complete. Created: src/stores/reconciler.ts with 7-step startup reconciler & Web Lock recovery. Verified: bun run check (PASS with 0 errors, 19 tests passed). |
+| 2026-11-12T12:51:37Z | T5   | Complete. Implemented: tests/state-and-storage.test.ts covering NAV-AC-3 to NAV-AC-10. Verified: bun run check (PASS with 0 errors, 33 tests passed).          |
 
 ## Change log
 

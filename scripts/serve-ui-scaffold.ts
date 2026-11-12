@@ -683,7 +683,7 @@ export function parseCliArgs(argv: string[]): ServerCliOptions {
  */
 export async function startScaffoldServer(
 	customOptions?: Partial<ServerCliOptions> & { enableWatcher?: boolean }
-): Promise<Server> {
+): Promise<Server<any>> {
 	const parsed = parseCliArgs(process.argv.slice(2));
 	const options: ServerCliOptions = {
 		port: customOptions?.port ?? parsed.port,

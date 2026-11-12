@@ -7,6 +7,7 @@
 		"server": "bun run scripts/server.ts",
 		"serve:scaffold": "bun run scripts/serve-ui-scaffold.ts",
 		"test": "bun test",
+		"test:e2e": "playwright test",
 		"typecheck": "tsc --noEmit",
 		"check": "bun run typecheck && bun test",
 		"format": "prettier --write",
@@ -14,18 +15,24 @@
 		"plans:check": "python3 .agents/skills/planning/scripts/validate_plan.py"
 	},
 	"devDependencies": {
+		"@custom-elements-manifest/analyzer": "^0.10.4",
+		"@playwright/test": "^1.50.0",
 		"@types/bun": "latest",
 		"@types/marked": "^6.0.0",
 		"eslint-plugin-tsdoc": "^0.5.4",
 		"gray-matter": "^4.0.3",
+		"happy-dom": "^17.1.6",
 		"marked": "^18.1.1",
 		"prettier": "3.8.3",
 		"prettier-plugin-css-order": "^2.2.0",
 		"typescript": "^7.0.2"
 	},
 	"dependencies": {
+		"@nanostores/i18n": "^0.10.0",
+		"@nanostores/lit": "^0.2.3",
 		"idb": "^8.0.4",
 		"lit": "^3.3.3",
+		"nanostores": "^0.11.4",
 		"papaparse": "^5.7.0",
 		"web-ml": "file:../web-ml"
 	}

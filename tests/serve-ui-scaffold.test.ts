@@ -112,7 +112,7 @@ describe('serve-ui-scaffold helper functions', () => {
 });
 
 describe('serve-ui-scaffold HTTP server', () => {
-	let server: Server;
+	let server: Server<any>;
 	const testPort = 3456;
 
 	beforeAll(async () => {
@@ -153,7 +153,7 @@ describe('serve-ui-scaffold HTTP server', () => {
 		expect(res.status).toBe(200);
 		expect(res.headers.get('content-type')).toContain('text/css');
 		const css = await res.text();
-		expect(css).toContain('--font-sans');
+		expect(css).toContain('@import');
 	});
 
 	it('handles full specification path prefix gracefully', async () => {

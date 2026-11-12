@@ -1,8 +1,9 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
-import { CSS_DIR, DEV_DIR, DIST_DIR, PUBLIC_DIR, SRC_DIR } from "./config";
-import { copyDirContents, resetDir, writeRevvedFile } from "./filesystem";
-import { transformIndexHtml } from "./html";
+import { existsSync } from 'node:fs';
+import { copyFile, readFile } from 'node:fs/promises';
+import path from 'node:path';
+import { CSS_DIR, DEV_DIR, DIST_DIR, PUBLIC_DIR, ROOT_DIR, SRC_DIR } from './config';
+import { copyDirContents, resetDir, writeRevvedFile } from './filesystem';
+import { transformIndexHtml } from './html';
 
 type BuildArtifact = Awaited<ReturnType<typeof Bun.build>>;
 
@@ -29,57 +30,61 @@ function assertBuild(result: BuildArtifact, label: string): void {
 async function buildBrowserAssets(options: {
 	outdir: string;
 	minify: boolean;
-	sourcemap: "linked" | "none";
+	sourcemap: 'linked' | 'none';
 	debug: boolean;
 }): Promise<void> {
 	// JavaScript and CSS are built separately because Bun treats them as
 	// separate browser entrypoints for this app.
+	const entrypoints = [path.join(SRC_DIR, 'app.ts')];
+	const storageWorkerPath = path.join(SRC_DIR, 'models/storage/storageWorker.ts');
+	if (existsSync(storageWorkerPath)) {
+		entrypoints.push(storageWorkerPath);
+	}
+
 	const jsResult = await Bun.build({
-		entrypoints: [
-			path.join(SRC_DIR, "app.ts"),
-			path.join(SRC_DIR, "models/storage/storageWorker.ts")
-		],
+		entrypoints,
 		outdir: options.outdir,
-		target: "browser",
-		format: "esm",
+		target: 'browser',
+		format: 'esm',
 		minify: options.minify,
 		sourcemap: options.sourcemap,
 		splitting: true,
 		define: {
-			DEBUG: options.debug ? "true" : "false",
-		},
+			DEBUG: options.debug ? 'true' : 'false'
+		}
 	});
-	assertBuild(jsResult, "JavaScript");
+	assertBuild(jsResult, 'JavaScript');
 
 	const cssResult = await Bun.build({
-		entrypoints: [path.join(CSS_DIR, "style.css")],
+		entrypoints: [path.join(CSS_DIR, 'style.css')],
 		outdir: options.outdir,
-		target: "browser",
+		target: 'browser',
 		minify: options.minify,
-		sourcemap: options.sourcemap,
+		sourcemap: options.sourcemap
 	});
-	assertBuild(cssResult, "CSS");
+	assertBuild(cssResult, 'CSS');
 }
 
 /**
  * Builds the development bundle into the dev directory with source maps and readable output.
  */
 export async function buildDevBundle(): Promise<void> {
-	const devHtml = path.join(DEV_DIR, "index.html");
+	const devHtml = path.join(DEV_DIR, 'index.html');
 
 	// Dev builds are disposable. Recreate the directory so deleted source files disappear.
 	await resetDir(DEV_DIR);
 	await copyDirContents(PUBLIC_DIR, DEV_DIR);
+	await copyFile(path.join(ROOT_DIR, 'index.html'), devHtml);
 	await buildBrowserAssets({
 		outdir: DEV_DIR,
 		minify: false,
-		sourcemap: "linked",
-		debug: true,
+		sourcemap: 'linked',
+		debug: true
 	});
 
-	await transformIndexHtml(devHtml, "development", {
-		cssHref: "style.css",
-		jsSrc: "app.js",
+	await transformIndexHtml(devHtml, 'development', {
+		cssHref: '/style.css',
+		jsSrc: '/app.js'
 	});
 }
 
@@ -87,32 +92,33 @@ export async function buildDevBundle(): Promise<void> {
  * Builds the production bundle into the dist directory with minified and content-hashed assets.
  */
 export async function buildProductionBundle(): Promise<ProductionBuildResult> {
-	const outJs = path.join(DIST_DIR, "app.js");
-	const outCss = path.join(DIST_DIR, "style.css");
-	const outHtml = path.join(DIST_DIR, "index.html");
+	const outJs = path.join(DIST_DIR, 'app.js');
+	const outCss = path.join(DIST_DIR, 'style.css');
+	const outHtml = path.join(DIST_DIR, 'index.html');
 
 	// Production builds are also recreated from scratch so old revved assets do not linger.
 	await resetDir(DIST_DIR);
 	await copyDirContents(PUBLIC_DIR, DIST_DIR);
+	await copyFile(path.join(ROOT_DIR, 'index.html'), outHtml);
 	await buildBrowserAssets({
 		outdir: DIST_DIR,
 		minify: true,
-		sourcemap: "none",
-		debug: false,
+		sourcemap: 'none',
+		debug: false
 	});
 
 	const revJs = await writeRevvedFile(outJs);
 	const revCss = await writeRevvedFile(outCss);
-	const inlineCssText = await readFile(path.join(DIST_DIR, revCss), "utf8");
+	const inlineCssText = await readFile(path.join(DIST_DIR, revCss), 'utf8');
 
-	await transformIndexHtml(outHtml, "production", {
-		cssHref: revCss,
-		jsSrc: revJs,
-		inlineCssText,
+	await transformIndexHtml(outHtml, 'production', {
+		cssHref: `/${revCss}`,
+		jsSrc: `/${revJs}`,
+		inlineCssText
 	});
 
 	return {
 		jsFile: revJs,
-		cssFile: revCss,
+		cssFile: revCss
 	};
 }

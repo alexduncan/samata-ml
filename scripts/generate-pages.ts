@@ -44,16 +44,16 @@ async function getMarkdownFiles(dir: string): Promise<string[]> {
  */
 export async function generateStaticPages(): Promise<void> {
 	console.log('Generating static pages from Markdown...');
-	
+
 	await mkdir(GENERATED_DIR, { recursive: true });
 	await mkdir(PAGES_DIR, { recursive: true });
 
 	const pagesDir = path.join(CONTENT_DIR, 'pages');
 	const modelsDir = path.join(CONTENT_DIR, 'models');
-	
+
 	const pageFiles = await getMarkdownFiles(pagesDir);
 	const modelFiles = await getMarkdownFiles(modelsDir);
-	
+
 	const allFiles = [...pageFiles, ...modelFiles];
 	const routesMapping: Record<string, string> = {}; // URL to local module path
 	let pageCount = 0;
@@ -62,15 +62,15 @@ export async function generateStaticPages(): Promise<void> {
 		const fileContent = await readFile(filePath, 'utf-8');
 		const parsed = matter(fileContent);
 		const html = await marked.parse(parsed.content);
-		
+
 		// Calculate URL and paths based on file path relative to content dir
 		const relativePath = path.relative(CONTENT_DIR, filePath);
 		const parsedPath = path.parse(relativePath);
-		
+
 		// Map 'pages/about' -> 'about', 'models/linear' -> 'model/linear'
 		let url = '';
 		let moduleName = '';
-		
+
 		if (parsedPath.dir === 'pages') {
 			url = `/${parsedPath.name}`;
 			moduleName = parsedPath.name;
@@ -95,38 +95,27 @@ export async function generateStaticPages(): Promise<void> {
 
 		// 1. Generate the individual page TS file
 		const pageFileContent = `// THIS FILE IS AUTO-GENERATED. DO NOT EDIT MANUALLY.
-import m from 'mithril';
-import { Layout } from '../../views/layout';
-import { StaticPageView } from '../../views/staticPage';
+export const pageData = ${JSON.stringify(pageData, null, '\t')};
 
-const pageData = ${JSON.stringify(pageData, null, '\t')};
-
-export default {
-	view: () => [
-		m(Layout({ view: () => m('section') })),
-		m(StaticPageView, { pageData })
-	]
-};
+export default pageData;
 `;
-		
+
 		const outputFilePath = path.join(PAGES_DIR, `${moduleName}.ts`);
 		await writeFile(outputFilePath, pageFileContent, 'utf-8');
-		
+
 		// Record the route mapping for routes.ts
 		routesMapping[url] = `./pages/${moduleName}`;
 		pageCount++;
 	}
 
 	// 2. Generate routes.ts
-	let routesFileContent = `// THIS FILE IS AUTO-GENERATED. DO NOT EDIT MANUALLY.\nimport m from 'mithril';\n\n`;
-	routesFileContent += `export const dynamicRoutes: m.RouteDefs = {\n`;
-	
+	let routesFileContent = `// THIS FILE IS AUTO-GENERATED. DO NOT EDIT MANUALLY.\n\n`;
+	routesFileContent += `export const staticPages: Record<string, () => Promise<{ default: unknown }>> = {\n`;
+
 	for (const [url, modulePath] of Object.entries(routesMapping)) {
-		routesFileContent += `\t"${url}": {\n`;
-		routesFileContent += `\t\tonmatch: () => import('${modulePath}').then(module => module.default)\n`;
-		routesFileContent += `\t},\n`;
+		routesFileContent += `\t"${url}": () => import('${modulePath}').then(m => ({ default: m.default })),\n`;
 	}
-	
+
 	routesFileContent += `};\n`;
 
 	await writeFile(ROUTES_FILE, routesFileContent, 'utf-8');

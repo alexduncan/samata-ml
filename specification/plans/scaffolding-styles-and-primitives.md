@@ -1,6 +1,6 @@
 # Scaffolding: Design Tokens and Shared Style Primitives
 
-**Status:** ready | **Updated:** 2026-11-12T11:37:44Z
+**Status:** implemented | **Updated:** 2026-11-12T12:39:16Z
 
 ## Goal
 
@@ -86,11 +86,11 @@ Exports from `src/styles/`:
     - Add chiclet color tokens: `--purple-700: #7e22ce;`, `--teal-700: #0f766e;`, `--amber-500: #f59e0b;`.
     - Update `index.html` to load `<link rel="stylesheet" href="/src/styles/tokens.css" />`.
 - **Acceptance criteria:**
-    - [ ] `src/styles/tokens.css` contains `--surface: #fff`.
-    - [ ] `src/styles/tokens.css` contains `--purple-700`, `--teal-700`, and `--amber-500`.
-    - [ ] `index.html` links to `/src/styles/tokens.css`.
+    - [x] `src/styles/tokens.css` contains `--surface: #fff`.
+    - [x] `src/styles/tokens.css` contains `--purple-700`, `--teal-700`, and `--amber-500`.
+    - [x] `index.html` links to `/src/styles/tokens.css`.
 - **Verification:** `bun test`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T2 — Implement buttonStyles module
 
@@ -104,11 +104,11 @@ Exports from `src/styles/`:
     - Include `:focus-visible` outline styles and logical properties.
     - Wrap transitions inside `@media (prefers-reduced-motion: no-preference)`.
 - **Acceptance criteria:**
-    - [ ] `buttonStyles` exports a Lit `CSSResult`.
-    - [ ] `.btn` and `.btn-primary` styles match `specification/components/button.md`.
-    - [ ] No literal colors are used; only tokens.
+    - [x] `buttonStyles` exports a Lit `CSSResult`.
+    - [x] `.btn` and `.btn-primary` styles match `specification/components/button.md`.
+    - [x] No literal colors are used; only tokens.
 - **Verification:** `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T3 — Implement chicletStyles module
 
@@ -122,10 +122,10 @@ Exports from `src/styles/`:
     - Ensure contrast: white text on `--purple-700` and `--teal-700`, `--stone-900` text on `--amber-500` per `specification/components/card.md §6`.
     - Use logical properties and `font-family: var(--font-mono)`.
 - **Acceptance criteria:**
-    - [ ] `chicletStyles` exports a Lit `CSSResult`.
-    - [ ] Text contrast meets WCAG 2.2 AA (≥ 4.5:1) for all three chiclet variants.
+    - [x] `chicletStyles` exports a Lit `CSSResult`.
+    - [x] Text contrast meets WCAG 2.2 AA (≥ 4.5:1) for all three chiclet variants.
 - **Verification:** `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T4 — Implement cardStyles module
 
@@ -138,10 +138,10 @@ Exports from `src/styles/`:
     - Implement normative CSS from `specification/components/card.md §5.4`: `:host`, `:host([hidden])`, `.card`, `.card-image`, `.card-type`, `.card-title`, `.card-text`, `.card-stats`, `.stat`, `.card-actions`, `::slotted(svg)`.
     - Ensure logical properties and `--surface` background are used.
 - **Acceptance criteria:**
-    - [ ] `cardStyles` exports a Lit `CSSResult`.
-    - [ ] CSS matches `specification/components/card.md §5.4` exactly.
+    - [x] `cardStyles` exports a Lit `CSSResult`.
+    - [x] CSS matches `specification/components/card.md §5.4` exactly.
 - **Verification:** `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T5 — Implement dialogStyles and global document adoption
 
@@ -153,10 +153,10 @@ Exports from `src/styles/`:
     - Create `src/styles/dialog.styles.ts` exporting `dialogStyles: CSSResult` styling native `<dialog>` and `::backdrop` with `overscroll-behavior: contain`.
     - Create `src/styles/global.ts` exporting `initGlobalStyles()` that adopts `buttonStyles`, `chicletStyles`, and `dialogStyles` into `document.adoptedStyleSheets`.
 - **Acceptance criteria:**
-    - [ ] `dialogStyles` exports a Lit `CSSResult`.
-    - [ ] `initGlobalStyles()` adds style sheets to `document.adoptedStyleSheets`.
+    - [x] `dialogStyles` exports a Lit `CSSResult`.
+    - [x] `initGlobalStyles()` adds style sheets to `document.adoptedStyleSheets`.
 - **Verification:** `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T6 — Unit tests for shared style primitives
 
@@ -171,17 +171,17 @@ Exports from `src/styles/`:
     - Verify that `cardStyles.cssText` contains `.card` and `--surface`.
     - Verify that `chicletStyles.cssText` contains `.chiclet-purple`, `.chiclet-teal`, and `.chiclet-amber`.
 - **Acceptance criteria:**
-    - [ ] All style primitive exports pass assertions in `bun:test`.
+    - [x] All style primitive exports pass assertions in `bun:test`.
 - **Verification:** `bun test tests/styles-and-primitives.test.ts`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ## Verification and definition of done
 
-- [ ] All task acceptance criteria met.
-- [ ] `src/styles/tokens.css` contains all required tokens with no literal colors.
-- [ ] `buttonStyles`, `chicletStyles`, `cardStyles`, `dialogStyles` exported and tested.
-- [ ] `bun test tests/styles-and-primitives.test.ts` passes.
-- [ ] `bun run check` passes with 0 errors.
+- [x] All task acceptance criteria met.
+- [x] `src/styles/tokens.css` contains all required tokens with no literal colors.
+- [x] `buttonStyles`, `chicletStyles`, `cardStyles`, `dialogStyles` exported and tested.
+- [x] `bun test tests/styles-and-primitives.test.ts` passes.
+- [x] `bun run check` passes with 0 errors.
 
 ## Risks and open questions
 
@@ -190,9 +190,14 @@ Exports from `src/styles/`:
 
 ## Implementation and verification log
 
-| When (UTC) | Task | Outcome / commands / evidence |
-| ---------- | ---- | ----------------------------- |
-| —          | —    | Not started                   |
+| When (UTC)           | Task | Outcome / commands / evidence                                                                                                                                                  |
+| -------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-11-12T12:23:03Z | T1   | Complete. Created: src/styles/tokens.css; modified: index.html. Verified: bun test (1 pre-existing CSS test failure, 0 new), bun run check (20 pre-existing TS errors, 0 new). |
+| 2026-11-12T12:34:51Z | T2   | Complete. Created: src/styles/button.styles.ts; modified: src/styles/tokens.css. Verified: bun run check (PASS with 0 errors, 13 tests passed).                                |
+| 2026-11-12T12:36:12Z | T3   | Complete. Created: src/styles/chiclet.styles.ts. Verified: bun run check (PASS with 0 errors, 13 tests passed).                                                                |
+| 2026-11-12T12:37:03Z | T4   | Complete. Created: src/styles/card.styles.ts. Verified: bun run check (PASS with 0 errors, 13 tests passed).                                                                   |
+| 2026-11-12T12:38:25Z | T5   | Complete. Created: src/styles/dialog.styles.ts, src/styles/global.ts. Verified: bun run check (PASS with 0 errors, 13 tests passed).                                           |
+| 2026-11-12T12:39:16Z | T6   | Complete. Created: tests/styles-and-primitives.test.ts. Verified: bun test (PASS 6 tests), bun run check (PASS with 0 errors, 19 tests passed).                                |
 
 ## Change log
 

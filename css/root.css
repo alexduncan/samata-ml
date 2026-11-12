@@ -3,8 +3,12 @@
 		-apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue,
 		Adwaita Sans, Cantarell, Ubuntu, roboto, noto, helvetica, arial, sans-serif;
 	--font-mono: Menlo, Consolas, Monaco, Adwaita Mono, Liberation Mono, Lucida Console, monospace;
+	color: var(--stone-900);
+	font-family: var(--font-sans);
 
 	--sidebar-width: 25rem;
+
+	color-scheme: light;
 
 	/* Blue */
 	--blue-50: #eff6ff;
@@ -105,34 +109,7 @@
 	--stone-700: #6d6056;
 	--stone-800: #4d413b;
 	--stone-900: #332923;
-}
 
-html,
-body {
-	margin: 0;
-	background-color: var(--background-color);
-	overscroll-behavior-y: none;
-	color: var(--text-color);
-	font-family: var(--font-sans);
-}
-
-#app {
-	display: flex;
-	flex-direction: column;
-	width: 100dvw;
-	height: 100dvh;
-}
-
-main {
-	margin-left: var(--sidebar-width);
-	background-color: var(--stone-50);
-	padding: 2rem;
-
-	overflow-y: scroll;
-
-	h2 {
-		margin: 0 0 1.5rem 0;
-		font-weight: 300;
-		font-size: 1.25rem;
-	}
+	/* Deep Shadow */
+	--shadow-deep: 0 0 0.25rem rgb(30 25 22 / 0.25), 0 1rem 2rem rgb(30 25 22 / 0.3);
 }

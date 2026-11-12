@@ -1,6 +1,6 @@
 # Scaffolding: App Shell, Sidebar and Modals
 
-**Status:** ready | **Updated:** 2026-11-12T11:37:44Z
+**Status:** implemented | **Updated:** 2026-11-12T13:16:00Z
 
 ## Goal
 
@@ -97,12 +97,12 @@ Sidebar step items:
     - Render footer links to `/about`, `/privacy`, `/help`.
     - Highlight active step using `aria-current="step"`.
 - **Acceptance criteria:**
-    - [ ] `app-sidebar` custom element is registered and renders the 4 workflow steps.
-    - [ ] Completed steps display summary info.
-    - [ ] Step 3 displays model links when models exist.
-    - [ ] All links use real `<a href>` elements.
+    - [x] `app-sidebar` custom element is registered and renders the 4 workflow steps.
+    - [x] Completed steps display summary info.
+    - [x] Step 3 displays model links when models exist.
+    - [x] All links use real `<a href>` elements.
 - **Verification:** `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T2 — Implement app-welcome-modal component
 
@@ -118,10 +118,10 @@ Sidebar step items:
     - Provide explanation text and a "Get Started" `.btn.btn-primary` button.
     - Clicking "Get Started" calls `dismissWelcome()`, closing the dialog.
 - **Acceptance criteria:**
-    - [ ] Dialog opens automatically on first load when `welcomeDismissed` is false.
-    - [ ] Clicking "Get Started" calls `dismissWelcome()` and closes the dialog.
+    - [x] Dialog opens automatically on first load when `welcomeDismissed` is false.
+    - [x] Clicking "Get Started" calls `dismissWelcome()` and closes the dialog.
 - **Verification:** `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T3 — Implement app-content-modal component
 
@@ -138,10 +138,10 @@ Sidebar step items:
     - Listen to dialog `close` event and trigger `closeReserved()`.
     - Render static content corresponding to `/about`, `/privacy`, or `/help`.
 - **Acceptance criteria:**
-    - [ ] Navigating to `/about`, `/privacy`, `/help` opens the content modal.
-    - [ ] Closing the modal via Esc, close button, or backdrop triggers `closeReserved()`.
+    - [x] Navigating to `/about`, `/privacy`, `/help` opens the content modal.
+    - [x] Closing the modal via Esc, close button, or backdrop triggers `closeReserved()`.
 - **Verification:** `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T4 — Assemble root shell and view outlet in src/app.ts
 
@@ -156,11 +156,11 @@ Sidebar step items:
     - When route changes via user action, focus `.page-header h1` with `{ preventScroll: true }`.
     - Trigger `restoreScroll()` after view settles.
 - **Acceptance criteria:**
-    - [ ] `src/app.ts` renders sidebar, main outlet, and modals.
-    - [ ] Switching routes dynamically updates `<main>` without full page reload.
-    - [ ] Focus moves to the page heading after route change.
+    - [x] `src/app.ts` renders sidebar, main outlet, and modals.
+    - [x] Switching routes dynamically updates `<main>` without full page reload.
+    - [x] Focus moves to the page heading after route change.
 - **Verification:** `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T5 — Playwright browser tests for shell and navigation
 
@@ -175,17 +175,17 @@ Sidebar step items:
     - Implement `NAV-E2E-3`: opening `/about` pushes entry; closing it leaves exactly one entry removed and underlay intact.
     - Implement `NAV-E2E-9`: deep link `/models/1` loads cleanly with correct root-absolute assets.
 - **Acceptance criteria:**
-    - [ ] All Playwright E2E tests in `tests/app-shell.test.ts` pass across Chromium, Firefox, WebKit.
+    - [x] All Playwright E2E tests in `tests/app-shell.test.ts` pass across Chromium, Firefox, WebKit.
 - **Verification:** `bunx playwright test tests/app-shell.test.ts`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ## Verification and definition of done
 
-- [ ] All task acceptance criteria met.
-- [ ] `<app-sidebar>`, `<app-welcome-modal>`, `<app-content-modal>` implemented and connected.
-- [ ] `bun run check` passes with 0 errors.
-- [ ] `bunx playwright test tests/app-shell.test.ts` passes.
-- [ ] No unintended modifications outside task files.
+- [x] All task acceptance criteria met.
+- [x] `<app-sidebar>`, `<app-welcome-modal>`, `<app-content-modal>` implemented and connected.
+- [x] `bun run check` passes with 0 errors.
+- [x] `bunx playwright test tests/app-shell.test.ts` passes.
+- [x] No unintended modifications outside task files.
 
 ## Risks and open questions
 
@@ -194,9 +194,13 @@ Sidebar step items:
 
 ## Implementation and verification log
 
-| When (UTC) | Task | Outcome / commands / evidence |
-| ---------- | ---- | ----------------------------- |
-| —          | —    | Not started                   |
+| When (UTC)           | Task | Outcome / commands / evidence                                                                                         |
+| -------------------- | ---- | --------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-12T12:57:39Z | T1   | Complete. Created: src/features/navigation/app-sidebar.ts (<app-sidebar>). Verified: bun run check (48 tests pass).   |
+| 2026-11-12T12:58:20Z | T2   | Complete. Created: src/features/onboarding/app-welcome-modal.ts (<app-welcome-modal>). Verified: bun run check.       |
+| 2026-11-12T12:58:55Z | T3   | Complete. Created: src/features/navigation/app-content-modal.ts (<app-content-modal>). Verified: bun run check.       |
+| 2026-11-12T13:00:06Z | T4   | Complete. Created: src/app.ts root shell, dynamic view mounting & focus handling. Verified: bun run check.            |
+| 2026-11-12T13:16:00Z | T5   | Complete. Created: tests/app-shell.test.ts. Verified: bunx playwright test (4 passed), bun run check (48 pass, 0 TS). |
 
 ## Change log
 
