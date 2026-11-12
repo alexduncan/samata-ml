@@ -1,0 +1,33 @@
+@import url("./css/root.css");
+@import url("./css/base.css");
+@import url("./css/button.css");
+@import url("./css/sidebar.css");
+@import url("./css/steps.css");
+@import url("./css/card.css");
+@import url("./css/badges.css");
+@import url("./css/dropzone.css");
+@import url("./css/modal.css");
+@import url("./css/notifications.css");
+@import url("./css/table.css");
+@import url("./css/train-model.css");
+
+.icon {
+	display: block;
+	width: 1.5rem;
+	height: 1.5rem;
+	color: currentColor;
+}
+
+.columns {
+	display: flex;
+	gap: 1rem;
+}
+
+.column {
+	flex: 1 1 0;
+	border: 1.5px solid var(--stone-200);
+	border-bottom-width: 3px;
+	border-radius: 1.5rem;
+	padding: 1rem;
+	min-width: 0;
+}

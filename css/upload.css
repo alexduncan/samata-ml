@@ -1,0 +1,42 @@
+#upload {
+	max-width: 48rem;
+	margin: 0 auto;
+	border: 4px dashed oklch(var(--primary-color));
+	padding: 2rem;
+	border-radius: 1rem;
+	background-color: oklch(var(--primary-color) / 0.25);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 1rem;
+}
+
+.file-button {
+	
+}
+
+#fileInput {
+	all: unset;
+	width: 30rem;
+	font-size: 1rem;
+	padding: 0.5rem;
+	border-radius: 0.25rem;
+	border: 2px solid rgb(0 0 0 / 0.25);
+	background-color: #fff;
+	cursor: pointer;
+}
+
+#fileURL {
+	all: unset;
+	width: 30rem;
+	font-size: 1rem;
+	padding: 0.5rem;
+	border-radius: 0.25rem;
+	border: 2px solid rgb(0 0 0 / 0.25);
+	background-color: #fff;
+}
+
+#fileURL:focus {
+	border-color: oklch(var(--primary-color));
+	outline: 4px solid oklch(var(--primary-color) / 0.25);
+}

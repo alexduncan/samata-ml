@@ -1,0 +1,24 @@
+.table {
+	border-collapse: collapse;
+	width: 100%;
+
+	thead {
+		background-color: var(--stone-200);
+	}
+
+	th,
+	td {
+		border: 1px solid var(--stone-300);
+		padding: 0.5rem 0.75rem;
+		text-align: left;
+	}
+
+	th {
+		background-color: var(--stone-100);
+		font-weight: 600;
+	}
+
+	tr:nth-child(even) {
+		background-color: var(--stone-100);
+	}
+}

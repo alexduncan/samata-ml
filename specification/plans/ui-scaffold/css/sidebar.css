@@ -1,0 +1,79 @@
+.sidebar {
+	display: flex;
+	position: fixed;
+	flex-direction: column;
+	z-index: 100;
+	inset: 0 auto 0 0;
+	box-shadow:
+		-0.2rem 0 0.25rem 0.2rem rgb(73 57 47 / 0.15),
+		-0.5rem 0 0.75rem 0.5rem rgb(73 57 47 / 0.2);
+	background-color: var(--stone-150);
+	width: var(--sidebar-width);
+	min-height: 100dvh;
+	overflow-y: auto;
+
+	h1 {
+		margin: 1.25rem 1.25rem 0 1.25rem;
+		color: var(--stone-900);
+		font-weight: 600;
+		font-size: 1.75rem;
+	}
+
+	.tagline {
+		margin: 0 1.25rem 1.25rem 1.25rem;
+		color: var(--stone-800);
+		font-weight: 300;
+		font-size: 0.875rem;
+		line-height: 1rem;
+	}
+
+	.project {
+		display: grid;
+		grid-template-columns: 1fr 2.5rem;
+		grid-template-areas:
+			"title   button"
+			"id      button";
+		margin: 0 1.25rem;
+		border: 1px solid var(--stone-400);
+		border-radius: 0.5rem;
+		background-color: var(--stone-200);
+		padding: 0.5rem 0.5rem 0.5rem 0.75rem;
+
+		h4 {
+			grid-area: title;
+			margin: 0;
+			color: var(--stone-900);
+		}
+
+		.project-name {
+			grid-area: id;
+			margin: 0;
+			overflow: hidden;
+			color: var(--stone-900);
+			text-overflow: ellipsis;
+			white-space: nowrap;
+		}
+
+		.project-settings {
+			grid-area: button;
+			align-self: center;
+			justify-self: center;
+			transition: background-color 500ms ease;
+			cursor: pointer;
+		}
+		.project-settings:hover {
+			background-color: var(--stone-300);
+		}
+	}
+
+	footer {
+		margin-top: auto;
+		border-top: 1px solid var(--stone-250);
+		padding: 1rem 1.25rem;
+		color: var(--stone-600);
+
+		a {
+			color: var(--stone-800);
+		}
+	}
+}

@@ -1,0 +1,157 @@
+# Engineering Conventions for Components
+
+Applies to every component, style primitive and store in this repository. Agents MUST read this file before implementing any spec in `specification/components/`.
+
+The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in RFC 2119. A component spec overrides a rule here only when it says so explicitly ("Overrides §n because …"). Silence in a component spec means this file applies.
+
+When a spec is ambiguous or seems wrong, the agent MUST stop and list the question rather than choose an answer. Inventing API, tokens, strings or design decisions is a defect even if the result works.
+
+## 1. Project decisions
+
+| Decision | Value |
+|---|---|
+| Framework | Lit 3, TypeScript (strict) |
+| State | nanostores; `@nanostores/lit` for binding stores to connected components |
+| i18n | `@nanostores/i18n` |
+| Custom element prefix | Primitive UI: `ui-` e.g. `<ui-modal>`; app views: `app-` e.g. `<app-dashboard>` |
+| Browser support | Evergreen browsers; Baseline "widely available" features only. CSS nesting is permitted. |
+| Accessibility target | WCAG 2.2 level AA |
+| Component acceptance tests | Playwright in Chromium, Firefox and WebKit |
+| Docs | Storybook (`@storybook/web-components-vite`) with the a11y and Vitest addons |
+
+## 2. Choose the lowest tier that works
+
+Every UI building block is exactly one of these. A spec MUST state which tier it is.
+
+1. **Style primitive.** CSS only, applied to a native element that already has the correct semantics and behaviour (`<button>`, `<input>`, `<a>`). No JavaScript, no custom element. This is the default for anything that only needs to *look* different.
+2. **Presentational component.** A Lit element. Data in through properties and slots, intent out through events. MUST NOT import stores.
+3. **Connected component.** A Lit element that reads stores and calls actions. It SHOULD contain little markup of its own and compose presentational components.
+
+A block is promoted to a higher tier only when a spec requires behaviour the lower tier cannot provide. Promotion requires a revised spec, not an agent's judgement.
+
+## 3. Public API is closed
+
+The public API of a block is everything its spec lists under **Public API**: tag name, classes, properties and attributes, slots, events, methods, CSS parts, CSS custom properties, and exported symbols. Anything not listed MUST NOT be public.
+
+- Agents MUST NOT add properties, variants, options, slots, parts or exports beyond the spec. If one seems necessary, note it under "Proposed changes" in the PR description instead.
+- No base classes, mixins, shared helpers or "generic" components until three concrete, spec'd call sites need the same thing, and a spec authorises the extraction.
+- No props for hypothetical futures. No variant enums with values nobody uses.
+- Prefer slots for content and composition over props that carry content.
+- Do not wrap a native element in a custom element just to rename or restyle it.
+- When in doubt, less code. Removing an option is better than documenting it.
+- The component spec is the normative source of truth for its API. Generated `custom-elements.json` is a derived documentation artifact and MUST NOT expand or override the API in the spec.
+
+## 4. Lit practices and component documentation
+
+- One element per file. File name matches the tag name (`app-dataset-picker.ts`).
+- Register with `@customElement('app-…')` or `@customElement('ui-…')`, as specified, and augment `HTMLElementTagNameMap`.
+- Public reactive properties use `@property`; internal state uses `@state` and is `private`. Reflect attributes only when CSS needs them.
+- `render()` is pure: no side effects, no store writes, no DOM queries. Side effects go in `updated` / `firstUpdated`; anything set up in `connectedCallback` is torn down in `disconnectedCallback`. Reactive controllers are preferred for this.
+- Never mutate objects received through properties. Emit an event instead.
+- Use native events where they exist (`click`, `input`, `change`). Custom events carry a typed `detail` and use the prefix matching their element family: `ui-<noun>-<verb>` for primitive UI elements and `app-<noun>-<verb>` for app views. Set `bubbles` and `composed` only when the spec says the event must cross a shadow boundary.
+- Read light-DOM children only through slots (`slotchange`, `assignedElements`).
+- Do not use `unsafeHTML` or `unsafeCSS`.
+- Shadow DOM by default. Use `delegatesFocus: true` when the host should act as the focus target.
+- The project uses `@custom-elements-manifest/analyzer` to generate `custom-elements.json` for Lit component documentation. Document public APIs with JSDoc/CEM tags: `@slot`, `@fires`, `@csspart` and `@cssprop`. The manifest feeds Storybook autodocs; it is generated and is not a substitute for the component spec.
+
+## 5. State (nanostores)
+
+- Stores live in `src/stores/`, never inside component files.
+- Only connected components import stores, using `StoreController` from `@nanostores/lit`.
+- Derived values use `computed`; do not derive in `render()`.
+- Mutations go through exported action functions in the store module. Components call actions; they do not call `store.set()` directly.
+- Components MUST NOT call `history.*` or read `location`. Navigation is an `<a href>` (intercepted by the router) or a router action; the current route is read from the router's store. See [finite-state-machine.md §5](plans/finite-state-machine.md).
+- Any user-controlled UI state that is not a transient overlay and must survive a reload (selected column, step completion, chosen options, etc.) lives in a store with an action, not in a component's private `@state`. Presentational components receive it as a property and emit an event; the connected component calls the action. See [store-pipline-state.md §5](plans/store-pipline-state.md).
+- Modal overlays use a native `<dialog>` opened with `showModal()`. Do not add `role="dialog"`, `aria-modal`, a focus trap or an `Esc` handler. Do not lock page scroll with `overflow: hidden` / `position: fixed` on `html` or `body` (it disturbs remembered scroll positions); use `overscroll-behavior: contain` on `dialog:modal` and `overflow: hidden; overscroll-behavior: contain` on `dialog::backdrop`. Modals that represent a URL (`/about`, `/privacy`, `/help`) close through the router (every dismissal path calls `closeReserved()`).
+- A route view exposes `whenSettled(): Promise<void>`, resolved once its layout height is stable, so the router can restore scroll position.
+
+## 6. Styles and design tokens
+
+Styling crosses shadow boundaries in exactly two sanctioned ways.
+
+**6.1 Tokens.** `src/styles/tokens.css` defines custom properties on `:root` and is loaded once by `index.html`. Custom properties inherit into shadow roots, so every component sees them without imports. Components MUST use tokens for colour, and MUST NOT use literal colours (`#fff`, `white`, `rgb()`).
+
+**6.2 Shared style modules.** Rules that must apply both in the document and inside shadow roots (e.g. style primitives) live in `src/styles/<name>.styles.ts` and export a Lit `CSSResult`. That single export is the only source of the rules:
+
+- Components include it in `static styles = [buttonStyles, css\`…\`]`.
+- `src/styles/global.ts` adopts the same sheets into the document:
+  ```ts
+  document.adoptedStyleSheets = [
+    ...document.adoptedStyleSheets,
+    ...[buttonStyles].map((s) => s.styleSheet!).filter(Boolean),
+  ];
+  ```
+- The rules MUST NOT be duplicated into a `.css` file.
+
+**6.3 Rules for all CSS**
+
+- Use logical properties (`padding-inline`, `border-block-end`, `margin-inline-start`) so layouts work in right-to-left locales.
+- All transitions and animations sit inside `@media (prefers-reduced-motion: no-preference)`.
+- Every focusable thing has a `:focus-visible` style using `outline` (not `box-shadow`, which disappears in forced-colours mode), at least 2px, colour from a token.
+- Form controls set `font-family: inherit` (browsers do not inherit fonts into controls).
+- CSS parts and component-level custom properties are public API (§3) and exist only when a spec lists them.
+
+## 7. Accessibility (WCAG 2.2 AA)
+
+- Native elements first. ARIA only when no native element provides the semantics, and never to override correct native semantics.
+- Everything operable by pointer is operable by keyboard. No positive `tabindex`.
+- Every control has an accessible name. A spec for anything that can be icon-only MUST say how the name is supplied.
+- Contrast: text at least 4.5:1 (3:1 for large text); boundaries and focus indicators at least 3:1 where they are needed to identify the control or its state.
+- Pointer targets at least 24×24 CSS px.
+- Information is never conveyed by colour alone.
+- Must work at 200% zoom and 320px viewport width, with reduced motion, and in forced-colours mode.
+- Automated checks are necessary, not sufficient: each spec lists its manual checks.
+
+## 8. Internationalisation (`@nanostores/i18n`)
+
+- No user-visible string literal in component code, including `aria-label`, `title` and `alt` text.
+- `src/i18n.ts` creates the single i18n instance. Each component declares its own base-locale messages with `i18n('<tag-name>', { … })` in its own file and subscribes to them with `StoreController`.
+- Interpolation and plurals use the library's `params` and `count` helpers. Never concatenate strings to build a sentence.
+- Numbers, dates and lists are formatted with the i18n formatter, never by hand.
+- The locale store drives `lang` and `dir` on `<html>`.
+- Layouts MUST tolerate labels roughly 40% longer than English and right-to-left direction: no fixed widths on text, no clipping, logical properties only.
+- A block that renders only consumer-supplied text owns no strings and its spec MUST say so.
+
+## 9. Testing
+
+- Every acceptance criterion has an ID (e.g. `BTN-AC-3`). Every ID has at least one test whose name starts with that ID. A criterion without a test is not done.
+- Component acceptance criteria MUST run in real browsers through Playwright; do not use jsdom or a lightweight DOM simulator for component behavior. Use `bun:test` for unit tests of non-DOM logic such as store actions and pure utilities.
+- Test observable behaviour (rendered output, computed styles, events, accessibility tree). Do not assert private state or snapshot shadow DOM markup.
+- Stories are smoke tests: every story runs with an axe scan, and axe violations fail the run. Use the Storybook Vitest addon for story smoke and axe checks; it does not replace Playwright tests for acceptance criteria or browser emulation. Put interactions in `play` functions where possible, so fixtures are not duplicated. Criteria that need browser emulation (reduced motion, forced colours) go in a Playwright `*.test.ts` file.
+- Every block is tested with `dir="rtl"` and with a long label.
+- History, scroll restoration and `<dialog>` behaviour (back/forward, reload, new-tab resume, viewport-width invalidation) are tested in Playwright, never in a simulated DOM. Pure routing/hydration/reconciliation logic is tested with `bun:test` and an in-memory `Storage`.
+
+## 10. Storybook
+
+- One `*.stories.ts` per block, co-located with its source, including style primitives.
+- Required stories: each variant, each state the spec lists, Long label, RTL. Components also need a story per slot configuration the spec lists.
+- Autodocs come from the Custom Elements Manifest for Lit components or the story's `parameters.docs` description for style primitives.
+- CEM-generated properties and events supply component API controls. Agents MUST NOT hand-write component `argTypes` or property controls that duplicate the manifest; story-specific controls may be declared when required by the story.
+- The docs page includes the spec's usage rules as Do / Don't.
+
+## 11. Definition of done
+
+- [ ] Only the spec's public API exists (§3).
+- [ ] Every acceptance criterion has a passing test named with its ID.
+- [ ] All stories pass axe with zero violations.
+- [ ] Manual a11y checks in the spec done and noted in the PR.
+- [ ] No string literals, no literal colours, no physical-direction CSS.
+- [ ] Stories cover variants, states, Long label and RTL.
+- [ ] Open questions in the spec are either answered by a human or still listed.
+
+## 12. Component spec template
+
+Each spec in `specification/components/` uses these sections, in this order:
+
+1. **Summary**: one paragraph; what it is and the tier (§2).
+2. **Decision and rationale**: why this tier and shape; rejected alternatives.
+3. **Public API (closed)**: exhaustive.
+4. **Usage**: canonical code examples and usage rules.
+5. **Visual specification**: tokens, states, normative CSS if it is a style primitive.
+6. **Accessibility**: requirements beyond §7, plus manual checks.
+7. **Internationalisation**: strings owned, layout constraints.
+8. **Acceptance criteria**: numbered, testable, with IDs.
+9. **Stories**.
+10. **Files**: what is created or modified.
+11. **Non-goals**: what not to build, explicitly.
+12. **Open questions**: for a human to answer; agents must not resolve these.

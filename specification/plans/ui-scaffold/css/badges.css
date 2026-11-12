@@ -1,0 +1,27 @@
+.badge {
+	border-radius: 0.25rem;
+	background-color: var(--blue-700);
+	padding: 0.125rem 0.25rem 0.125rem 0.375rem;
+	color: white;
+	font-weight: 500;
+	font-size: 0.75rem;
+	letter-spacing: 0.125rem;
+	text-transform: uppercase;
+}
+
+.badge-purple {
+	background-color: var(--purple-700);
+}
+
+.badge-amber {
+	background-color: var(--amber-500);
+}
+
+.chiclet {
+	border: 1px solid var(--stone-600);
+	border-radius: 0.25rem;
+	padding: 0.125rem 0.25rem;
+	color: var(--stone-800);
+	font-weight: 500;
+	font-size: 0.75rem;
+}

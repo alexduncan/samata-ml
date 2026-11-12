@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="stylesheet" href="./style.css" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>samatā.ml | Select Data</title>
+	</head>
+	<body>
+		<svg style="display: none" aria-hidden="true" focusable="false">
+			<symbol
+				id="settings"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<path
+					d="M12 21.5c2 0 .8-2.3 2.7-3 1.8-.8 2.6 1.6 4 .2s-1-2.2-.2-4c.7-1.9 3-.7 3-2.7s-2.3-.8-3-2.7c-.8-1.8 1.6-2.6.2-4s-2.2 1-4 .2c-1.9-.7-.7-3-2.7-3s-.8 2.3-2.7 3c-1.8.8-2.6-1.6-4-.2s1 2.2.2 4c-.7 1.9-3 .7-3 2.7s2.3.8 3 2.7c.8 1.8-1.6 2.6-.2 4s2.2-1 4-.3c1.9.8.7 3.1 2.7 3.1Z" />
+				<circle cx="12" cy="12" r="3.5" />
+			</symbol>
+
+			<symbol
+				id="close"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<line x1="18" y1="6" x2="6" y2="18" />
+				<line x1="6" y1="6" x2="18" y2="18" />
+			</symbol>
+
+			<symbol id="check" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m5.73 5.29a1 1 0 0 0-1.41 0L10 14.6l-2.31-2.32a1 1 0 1 0-1.42 1.42l3.02 3.02a1 1 0 0 0 1.42 0l7.02-7.03a1 1 0 0 0 0-1.41" />
+			</symbol>
+
+			<symbol id="question" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m0 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2m0-10.2A3 3 0 0 0 8.8 9a.8.8 0 0 0 1.4 0q.2-1.6 1.8-1.7T13.8 9q0 .6-.8 1.5l-.3.3-1 1.2a4 4 0 0 0-.4 2 .7.7 0 1 0 1.4 0q0-1.2 1.1-2.2l.3-.3q1.2-1.2 1.2-2.5c0-2-1.4-3.2-3.3-3.2" />
+			</symbol>
+		</svg>
+
+		<div class="sidebar">
+			<h1>samat&amacr;.ml</h1>
+			<p class="tagline">Machine Learning in Your Browser</p>
+			<section class="project">
+				<h4>Project</h4>
+				<span class="project-name">New Project</span>
+				<button class="btn-icon project-settings" aria-label="Project settings">
+					<svg class="icon" aria-hidden="true" focusable="false">
+						<use href="#settings"></use>
+					</svg>
+				</button>
+			</section>
+			<nav class="workflow" aria-label="Workflow">
+				<ol class="steps">
+					<li class="step" aria-current="step">
+						<div class="step-link">
+							<span class="step-num">1</span>
+							<span class="step-label">Load Data</span>
+						</div>
+					</li>
+					<li class="step">
+						<a href="/target" class="step-link">
+							<span class="step-num">2</span>
+							<span class="step-label">Select Target</span>
+						</a>
+					</li>
+					<li class="step">
+						<a href="/models" class="step-link">
+							<span class="step-num">3</span>
+							<span class="step-label">Train Models</span>
+						</a>
+					</li>
+					<li class="step">
+						<a href="/results" class="step-link">
+							<span class="step-num">4</span>
+							<span class="step-label">Compare Results</span>
+						</a>
+					</li>
+				</ol>
+			</nav>
+			<footer>
+				<a href="/about">about</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/privacy">privacy</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/help">help</a>
+			</footer>
+		</div>
+
+		<main>
+			<header class="page-header">
+				<h1>Select Data</h1>
+				<p>
+					Training an AI model needs data. Get started by choosing one of the sample
+					datasets below or uploading your own custom dataset.
+				</p>
+				<button class="btn btn-primary" disabled>Upload Dataset</button>
+			</header>
+			<section class="cards">
+				<article class="card">
+					<h3 class="card-title">Folktables</h3>
+					<p class="card-text">
+						Based on US Census data, useful for predicting income, employment, health,
+						transportation, and housing.
+					</p>
+					<p class="card-stats">
+						<span class="stat">21 columns</span>
+						<span class="stat">1.6M rows</span>
+					</p>
+					<div class="card-actions">
+						<button class="btn">Datasheet</button>
+						<button class="btn btn-primary">Load Dataset</button>
+					</div>
+				</article>
+
+				<!-- Dataset .card -->
+				<article class="card">
+					<h3 class="card-title">{dataset_name: string}</h3>
+					<p class="card-text">{dataset_description: string}</p>
+					<p class="card-stats">
+						<span class="stat">{dataset_columns: int} columns</span>
+						<span class="stat">{dataset_rows: int} rows</span>
+					</p>
+					<div class="card-actions">
+						<button class="btn">Datasheet</button>
+						<button class="btn btn-primary">Load Dataset</button>
+					</div>
+				</article>
+
+				<!-- Dataset .card -->
+				<article class="card">
+					<h3 class="card-title">{dataset_name: string}</h3>
+					<p class="card-text">{dataset_description: string}</p>
+					<p class="card-stats">
+						<span class="stat">{dataset_columns: int} columns</span>
+						<span class="stat">{dataset_rows: int} rows</span>
+					</p>
+					<div class="card-actions">
+						<button class="btn">Datasheet</button>
+						<button class="btn btn-primary">Load Dataset</button>
+					</div>
+				</article>
+
+				<!-- Dataset .card -->
+				<article class="card">
+					<h3 class="card-title">{dataset_name: string}</h3>
+					<p class="card-text">{dataset_description: string}</p>
+					<p class="card-stats">
+						<span class="stat">{dataset_columns: int} columns</span>
+						<span class="stat">{dataset_rows: int} rows</span>
+					</p>
+					<div class="card-actions">
+						<button class="btn">Datasheet</button>
+						<button class="btn btn-primary">Load Dataset</button>
+					</div>
+				</article>
+
+				<!-- Dataset .card -->
+				<article class="card">
+					<h3 class="card-title">{dataset_name: string}</h3>
+					<p class="card-text">{dataset_description: string}</p>
+					<p class="card-stats">
+						<span class="stat">{dataset_columns: int} columns</span>
+						<span class="stat">{dataset_rows: int} rows</span>
+					</p>
+					<div class="card-actions">
+						<button class="btn">Datasheet</button>
+						<button class="btn btn-primary">Load Dataset</button>
+					</div>
+				</article>
+			</section>
+		</main>
+
+		<dialog class="modal" aria-modal="true" id="dataset-card-modal">
+			<header class="modal-header">
+				<span>Dataset Card</span>
+				<h1>{dataset_name: string}</h1>
+				<button aria-label="Close modal">
+					<svg class="icon" aria-hidden="true" focusable="false">
+						<use href="#close"></use>
+					</svg>
+				</button>
+			</header>
+			<section class="modal-content">
+				<p>{dataset_description: string}</p>
+				<p class="card-stats">
+					<span class="stat">{dataset_columns: int} columns</span>
+					<span class="stat">{dataset_rows: int} rows</span>
+				</p>
+			</section>
+		</dialog>
+
+		<script>
+			const modal = document.getElementById("dataset-card-modal");
+			modal.showModal();
+		</script>
+	</body>
+</html>

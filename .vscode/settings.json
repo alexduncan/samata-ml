@@ -1,0 +1,24 @@
+{
+	"editor.insertSpaces": false,
+	"editor.tabSize": 4,
+
+	"editor.defaultFormatter": "esbenp.prettier-vscode",
+	"editor.formatOnSave": true,
+
+	"editor.codeActionsOnSave": {
+		"source.organizeImports": "explicit"
+	},
+
+	"js/ts.preferences.importModuleSpecifier": "relative",
+	"js/ts.updateImportsOnFileMove.enabled": "always",
+
+	"files.exclude": {
+		"**/.bun": true
+	},
+
+	"search.exclude": {
+		"**/.bun": true,
+		"**/dist": true,
+		"**/bun.lock": true
+	}
+}
