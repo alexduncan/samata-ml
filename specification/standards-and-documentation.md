@@ -1,5 +1,7 @@
 # Code Standards & Documentation
 
+**Status:** partial — TSDoc required; no ESLint config or CI exists yet
+
 ## Documentation Standards (TSDoc)
 
 - **Strict Inline Documentation:** This project strictly uses standard TSDoc for all inline code documentation. Every exported function, class, component, and type MUST include a TSDoc comment block.

@@ -1,5 +1,7 @@
 # Uploaded Dataset Preview Design
 
+**Status:** target
+
 ## Goal
 
 After a successful upload, the Select Data step should immediately switch from upload controls to a scrollable table preview of the uploaded dataset. That preview must also survive page reloads until the user moves on to model selection.

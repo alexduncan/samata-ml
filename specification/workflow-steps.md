@@ -1,10 +1,12 @@
 # Steps
 
+**Status:** target — wins over every other spec on user-facing behaviour
+
 This web application has four sections.
 
 When the script loads it will check localStorage for saved app state.
 
-If no saved state is found in localStorage, the user will be shown a welcome modal as shown in [00_first-load.html](./ui-scaffold/00_first-load.html).
+If no saved state is found in localStorage, the user will be shown a welcome modal as shown in [00_first-load.html](mockups/ui-scaffold/00_first-load.html).
 
 
 ## 1. Load Data
@@ -15,14 +17,14 @@ This is the first page the user sees when the app loads.
 
 ### Sample Datasets
 
-The page shows cards for each dataset in `./src/config/datasets.ts`. Each card contains the `title`, `description`, `num_records`, `num_columns` and buttons for "Datasheet" and "Load Dataset". This is shown in [01-1_select-data.html](./ui-scaffold/01-1_select-data.html).
+The page shows cards for each dataset in `./src/config/datasets.ts`. Each card contains the `title`, `description`, `num_records`, `num_columns` and buttons for "Datasheet" and "Load Dataset". This is shown in [01-1_select-data.html](mockups/ui-scaffold/01-1_select-data.html).
 
-Clicking the "Datasheet" button on a model card will display a modal containing detailed information about the sample dataset as shown in [01-2_dataset-card.html](./ui-scaffold/01-2_dataset-card.html).
+Clicking the "Datasheet" button on a model card will display a modal containing detailed information about the sample dataset as shown in [01-2_dataset-card.html](mockups/ui-scaffold/01-2_dataset-card.html).
 
 
 ### Custom Dataset Upload
 
-The `.page-header` contains a button "Upload Dataset". Clicking the button displays a modal as shown in [01-3_upload-dataset.html](./ui-scaffold/01-3_upload-dataset.html).
+The `.page-header` contains a button "Upload Dataset". Clicking the button displays a modal as shown in [01-3_upload-dataset.html](mockups/ui-scaffold/01-3_upload-dataset.html).
 
 When the following events fire, the app will attempt to load and parse the CSV file using `Papa.parse`.
 
@@ -57,7 +59,7 @@ The dataset preview shows a virtual table which loads rows from IndexedDB using 
 
 **url:** `/target`
 
-The user sees a table with a row for each column in the dataset as shown in [02-1_set-target.html](./ui-scaffold/02-1_set-target.html). The table has columns for:
+The user sees a table with a row for each column in the dataset as shown in [02-1_set-target.html](mockups/ui-scaffold/02-1_set-target.html). The table has columns for:
 	- Dataset Column Name
 	- Column Type (numeric|categorical|boolean)
 	- Notes (e.g. if the column is text and cannot currently be used as a target or feature)

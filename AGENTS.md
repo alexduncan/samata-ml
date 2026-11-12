@@ -1,44 +1,34 @@
-# AI Agent Operating Instructions for samata-ml
+# samata-ml — agent guide
 
-## Repository purpose and mandatory specification reading
+Browser app (Lit 3, strict TypeScript, Nanostores) for training machine learning models locally, for education. All training is done by the sister library `web-ml` (`../web-ml`, read-only from here). This repo never implements training algorithms.
 
-**samata-ml** is the frontend app for training machine learning models inside a web browser. These
-instructions apply to coding agents working in this repository.
+## Roles
 
-At the beginning of **every task**, before planning or modifying code, you **must** read [`specification/README.md`](specification/README.md) to find the documents relevant to the task. Before implementing, refactoring, testing, or reviewing affected functionality, read every applicable specification and follow its links to related requirements. Revisit those documents whenever requirements or implementation decisions change.
+- **Planning** → `planning` skill. Reads specs, makes the decisions, writes `specification/plans/<slug>.md`. Never edits product code.
+- **Implementation** → `implementation` skill. Executes tasks of a `ready` plan. Reads the plan's _Required reading_, not the whole spec set; the plan has already distilled the specs.
+- **No plan:** only trivial fixes (typo, one-file bug fix, no public API, dependency, schema or architecture change). Anything larger needs a plan; ask for one.
 
-## Modern Web Development
+## Commands
 
-This project's Baseline target is Baseline Widely available.
+Bun only: never npm, yarn, pnpm or `npx` (use `bunx`, including for commands in vendored skills).
 
-### Web Platform Guidance
+- `bun run check` — typecheck + tests. Run it before reporting a task as done.
+- `bun test <path>` — one test file.
+- `bun run format <files>` — Prettier on the files you changed (don't reformat untouched files).
+- `bun run plans:check [plan.md]` — validate plan structure.
+- `bun run build` · `bun run server` (https://localhost:3000) · `bun run serve:scaffold` (mockups).
 
-- Use the installed `modern-web-guidance` skill when
-  designing, implementing, refactoring or reviewing
-  browser-facing functionality.
-- Search and retrieve relevant Modern Web Guidance
-  guides before implementing unfamiliar web features.
-- Prefer native semantic HTML, CSS and browser APIs
-  over custom JavaScript implementations where suitable.
-- Verify compatibility with Chrome, Firefox, Safari
-  and Edge.
-- Use progressive enhancement when newer features are
-  not supported across the project's target browsers.
-- Avoid experimental browser APIs unless explicitly
-  approved and provided with appropriate fallbacks.
+**Baseline failures:** `bun run check` already fails (20 type errors, mostly from the pre-Lit Mithril views in `src/views/` and `src/partials/`, plus 1 failing test in `tests/serve-ui-scaffold.test.ts`), and `bun run build` fails (missing `src/models/storage/storageWorker.ts`). Don't fix these unless your task says to. Do not add new failures, and report the before/after counts.
 
-### Accessibility
+## Map
 
-- Prefer native HTML semantics over unnecessary ARIA.
-- Ensure keyboard and assistive technology accessibility.
-- Maintain visible focus indicators.
-- Respect reduced motion and user text-size preferences.
-- Verify accessible names, roles and states for
-  interactive components.
+`src/` app code · `css/` styles · `content/` Markdown pages · `public/` static assets · `scripts/` build and dev servers · `tests/` tests · `specification/` specs (index: [`specification/README.md`](specification/README.md)) · `specification/plans/` plans · `specification/mockups/` wireframes
 
-### Verification
+## Rules
 
-- Test functionality and browser compatibility.
-- Run relevant automated tests and accessibility checks.
-- Do not treat the guidance as a substitute for testing.
-- Document intentional departures from these standards.
+- **Specs:** pick specs from the index's "Read when" column. Specs marked `target` describe intended design, not current code. Check the index's _Known gaps_ first. If you find a new conflict, record it in the plan's Risks section; never silently pick a side.
+- **Don't edit** `node_modules/`, `../web-ml`, `specification/mockups/`, vendored skills (`.agents/skills/modern-web-guidance/`), or `bun.lock` except through `bun add`/`bun remove` when a plan allows it.
+- **Git:** never commit, push or switch branches unless the user asks. When asked, use one commit per task with the message `<plan-slug> Tn: <summary>`.
+- **Style:** British English in prose, docs and UI strings. Prettier settings: tabs, single quotes, width 100. Exported TypeScript needs TSDoc ([standards](specification/standards-and-documentation.md)).
+- **Web platform:** Baseline Widely available; WCAG 2.2 AA. Rules are in [`COMPONENTS.md`](specification/COMPONENTS.md) §1 and §7. Use the `modern-web-guidance` skill before using an unfamiliar platform feature.
+- **Reporting:** state the exact commands you ran and their results; say what you did not verify (e.g. browsers you could not test). Never claim a check passed if it did not run.

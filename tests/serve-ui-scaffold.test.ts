@@ -159,7 +159,7 @@ describe('serve-ui-scaffold HTTP server', () => {
 	it('handles full specification path prefix gracefully', async () => {
 		const res = await server.fetch(
 			new Request(
-				`http://127.0.0.1:${testPort}/specification/plans/ui-scaffold/00_first-load.html`
+				`http://127.0.0.1:${testPort}/specification/mockups/ui-scaffold/00_first-load.html`
 			)
 		);
 		expect(res.status).toBe(200);

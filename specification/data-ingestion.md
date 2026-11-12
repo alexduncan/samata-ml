@@ -1,5 +1,7 @@
 # Specification: Data Ingestion & Storage Pipeline
 
+**Status:** target
+
 ## 1. Summary
 
 This specification defines the architecture and implementation requirements for the data ingestion, statistical analysis, and storage layer of the browser-based machine learning application. The pipeline is responsible for fetching CSV files (via local upload or URL), streaming the parsing process, calculating column statistics via a two-pass algorithm, storing the raw records in IndexedDB, and exposing the data to the ML engine via the `IndexedDBDatasetProvider`.

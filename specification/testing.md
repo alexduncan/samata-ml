@@ -1,5 +1,7 @@
 # Testing Strategy
 
+**Status:** partial — `bun:test` is in use; happy-dom and Playwright are not installed
+
 All functionality must be created alongside a comprehensive test setup. Code submitted without tests will be rejected.
 
 ## Unit and Component Testing

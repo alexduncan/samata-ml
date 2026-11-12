@@ -1,6 +1,8 @@
 # System Architecture
 
-This document defines the implemented system shape and the architectural invariants that changes must preserve.
+**Status:** partial — tooling and delivery rules apply now; the directory structure, router, stores and service worker are target design not yet in `src/` (see [Known gaps](README.md#known-gaps))
+
+This document defines the target system shape and the architectural invariants that changes must preserve.
 
 This repository MUST NOT contain actual training algorithms. The only responsibility of this app is to construct the configuration payload and call the `web-ml` library API to run training of machine learning models.
 
@@ -20,7 +22,7 @@ The repository strictly adheres to a domain-driven, feature-based directory stru
 - `/src/common/`: Highly reusable UI building blocks and shared utilities. Component tiers and implementation rules are defined in [COMPONENTS.md](COMPONENTS.md).
 - `/src/features/`: Domain-specific modules representing the four workflow sections (e.g., `/src/features/data/`, `/src/features/target/`, `/src/features/models/`, `/src/features/results/`). Feature-specific UI and worker code stays co-located; component rules are defined in [COMPONENTS.md](COMPONENTS.md), and state rules in [state-and-storage.md](state-and-storage.md).
 - `/src/router/`: History-API router, route table, scroll memory and reserved-route (modal) handling. Framework-free.
-- `/src/stores/`: Nanostores, actions, the persister and hydration/reconciliation ([COMPONENTS.md §5](COMPONENTS.md), [store-pipline-state.md](plans/store-pipline-state.md)).
+- `/src/stores/`: Nanostores, actions, the persister and hydration/reconciliation ([COMPONENTS.md §5](COMPONENTS.md), [state-and-storage.md](state-and-storage.md)).
 - `/src/config/`: Static configuration: `datasets.ts` and per-model chart configuration (`models/{model-name}.ts`), per [workflow-steps.md](workflow-steps.md).
 - `/content-src/`: Raw Markdown documentation organized by locale.
 - `/tests/`: `bun:test` specifications and Playwright E2E tests.
@@ -35,7 +37,7 @@ The repository strictly adheres to a domain-driven, feature-based directory stru
 
 ## Routing, Flow Control, and Code Splitting
 
-The workflow is specified in [workflow-steps.md](workflow-steps.md); routing, state and scroll behaviour are specified in [plans/finite-state-machine.md](plans/finite-state-machine.md) (hybrid router + store), and persistence in [plans/store-pipline-state.md](plans/store-pipline-state.md).
+The workflow is specified in [workflow-steps.md](workflow-steps.md); routing, state and scroll behaviour are specified in [app-state-and-navigation.md](app-state-and-navigation.md) (hybrid router + store), and persistence in [state-and-storage.md](state-and-storage.md).
 
 - **Hybrid state model:** *Where the user is* is the URL (`/data`, `/target`, `/models`, `/models/{num}`, `/results`), driven by the History API. *What the user has done* is in persisted Nanostores. There is no single application-wide finite state machine. A small model-lifecycle machine (`draft → training → trained`) covers the one genuinely sequential flow.
 - **History router (framework-free):** `src/router/` is the only code that calls `history.pushState`, `history.replaceState` or reads `location`. Components render `<a href>`; the router intercepts same-origin clicks (never modified clicks). It sets `history.scrollRestoration = 'manual'` and owns per-step scroll memory (ignored when the viewport width has changed).

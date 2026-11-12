@@ -1,38 +1,52 @@
-# dependencies (bun install)
-node_modules
+# Dependencies
+node_modules/
 
-# output
-out
-dev
-dist
+# Build output (anchored to the repo root so folders like src/**/dev/ are not ignored)
+/dev/
+/dist/
+/out/
+/src/generated/
 *.tgz
 
-# code coverage
-coverage
+# Tests and coverage
+coverage/
 *.lcov
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+storybook-static/
 
-# logs
-logs
-_.log
-report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+# Logs
+logs/
+*.log
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# dotenv environment variable files
+# Environment and secrets
 .env
-.env.development.local
-.env.test.local
-.env.production.local
-.env.local
+.env.*
+!.env.example
+.dev.vars*
+.cert/
 
-# local ssl certs
-.cert
+# Cloudflare Wrangler local state
+.wrangler/
 
-# caches
+# Caches
+.cache/
 .eslintcache
-.cache
 *.tsbuildinfo
+__pycache__/
+*.pyc
 
-# VS Code workspace settings
-.code-workspace
+# Editors (shared .vscode/ settings stay tracked)
+*.code-workspace
 
-# Finder (MacOS) folder config
+# Personal agent settings (shared skills stay tracked)
+.claude/settings.local.json
+.claude/worktrees/
+CLAUDE.local.md
+
+# OS files
 .DS_Store
+Thumbs.db

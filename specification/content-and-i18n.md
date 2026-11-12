@@ -1,5 +1,7 @@
 # Content & Internationalization (i18n)
 
+**Status:** target — not implemented
+
 ## Localization Store
 
 - All UI text must be routed through `@nanostores/i18n`.

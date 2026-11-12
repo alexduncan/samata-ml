@@ -1,24 +1,19 @@
 # Implementation plans
 
-Every substantive proposed change has a durable Markdown plan in this directory. Plans are produced by the `planning` agent skill, are approved before implementation, and remain as a record of decisions and verification.
+Each substantive change has one plan here. The `planning` skill writes plans and the `implementation` skill executes them; the rules live in those skills, not here. Only files that follow the planning template belong in this directory. Specs live one level up ([index](../README.md)); mockups are in `../mockups/`.
 
 | Plan | Status | Description |
-| --- | --- | --- |
-| _None yet_ | — | Add a link whenever a plan is created. |
+| ---- | ------ | ----------- |
+| [scaffolding-foundation.md](scaffolding-foundation.md) | draft | Foundation setup: dependencies cleanup, asset URL fixes, retirement of legacy Mithril views, and test harness setup. |
+| [scaffolding-styles-and-primitives.md](scaffolding-styles-and-primitives.md) | draft | Design tokens, button, chiclet, card, and dialog style primitives. |
+| [scaffolding-state-and-storage.md](scaffolding-state-and-storage.md) | draft | Nanostores application state, persistence persister, and startup reconciler. |
+| [scaffolding-router-and-navigation.md](scaffolding-router-and-navigation.md) | draft | Vanilla TS router, history management, and document scroll memory. |
+| [scaffolding-app-shell.md](scaffolding-app-shell.md) | draft | App shell, sidebar navigation, welcome and content modals, and main view outlet. |
 
 ## Lifecycle
 
 - **draft** — proposed or materially revised; not authorised for implementation.
-- **ready** — explicitly approved with blocking questions resolved; implementation may begin.
-- **implemented** — all acceptance criteria satisfied and verification evidence recorded.
+- **ready** — the user has approved it and no blocking questions remain; implementation may begin.
+- **implemented** — all acceptance criteria are met and the verification evidence is recorded.
 
-Each plan has a visible status/timestamp line immediately under its H1 title. Timestamps are ISO-8601 in UTC and update whenever the file changes. Plans must use lowercase kebab-case filenames. Update the table when plan status changes; retain implemented plans for traceability.
-
-## Conventions
-
-- Prefer one plan per cohesive outcome. Revise an existing plan instead of duplicating it.
-- Use stable task IDs, task-level acceptance criteria, verifiable commands and a task progress record.
-- A substantive approved-plan change returns the status to `draft` for re-approval.
-- Implementation agents may make routine local decisions, but must escalate changes to architecture, scope or public interfaces.
-- Planning must not modify product code; implementation must not quietly rewrite approved architectural choices.
-- Plans complement, rather than replace, authoritative specifications in `specification/`.
+Run `bun run plans:check` to validate every plan and this index.

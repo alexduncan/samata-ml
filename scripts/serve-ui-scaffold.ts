@@ -535,7 +535,7 @@ export function renderIndexHtml(files: ScaffoldFileInfo[]): string {
 				</span>
 			</div>
 			<p class="subtitle">
-				Serving mockups and wireframes from <code class="scaffold-path">specification/plans/ui-scaffold</code>.
+				Serving mockups and wireframes from <code class="scaffold-path">specification/mockups/ui-scaffold</code>.
 			</p>
 		</header>
 
@@ -546,7 +546,7 @@ export function renderIndexHtml(files: ScaffoldFileInfo[]): string {
 		</main>
 
 		<footer>
-			samata-ml · Changes to files in <code>specification/plans/ui-scaffold</code> will reload automatically.
+			samata-ml · Changes to files in <code>specification/mockups/ui-scaffold</code> will reload automatically.
 		</footer>
 	</div>
 
@@ -709,8 +709,8 @@ export async function startScaffoldServer(
 			let reqPath = url.pathname;
 
 			// Support requests prefixed by full spec path
-			if (reqPath.startsWith('/specification/plans/ui-scaffold')) {
-				reqPath = reqPath.replace(/^\/specification\/plans\/ui-scaffold/, '') || '/';
+			if (reqPath.startsWith('/specification/mockups/ui-scaffold')) {
+				reqPath = reqPath.replace(/^\/specification\/mockups\/ui-scaffold/, '') || '/';
 			}
 
 			// Dashboard / Index route

@@ -5,54 +5,44 @@ description: Create or revise implementation-ready technical plans for repositor
 
 # Planning
 
-Turn a requested change into a durable, implementation-ready contract that another coding agent can execute with minimal architectural reasoning.
+Turn a requested change into a self-contained contract that a cheaper coding agent, possibly from a different vendor, can execute without re-reading the specs or making architectural choices.
 
 ## Boundaries
 
-- This is a **planning-only** skill: inspect and research, but do not make product-code changes. You may create or update plan files and their index.
-- Every invocation must **save or update** a Markdown plan in `specification/plans/` before finishing. Do not stop at an answer in chat.
-- Use the template in [assets/plan-template.md](assets/plan-template.md). Preserve its heading structure and visible metadata line.
-- If an existing plan covers the same change, revise that file rather than creating a duplicate. Never overwrite an unrelated plan.
-- The approved plan is authoritative for implementation. Resolve consequential choices here; do not delegate architecture to the implementation agent.
+- **Planning only:** inspect and research, but never change product code. You may create or update plan files, `specification/plans/README.md`, and the _Known gaps_ list in `specification/README.md`.
+- Every invocation must **save or update** a plan in `specification/plans/` before finishing. Never stop at an answer in chat.
+- Use [assets/plan-template.md](assets/plan-template.md). Keep its headings, task fields and the metadata line.
+- If an existing plan covers the same change, revise it rather than creating a duplicate. Never overwrite an unrelated plan.
+- Resolve consequential choices here. The implementation agent ([`implementation` skill](../implementation/SKILL.md)) may only make routine local decisions.
 
 ## Workflow
 
-1. **Orient.** Read `AGENTS.md`, `GEMINI.md` if present, `specification/README.md`, relevant specifications, implementation code, tests and package/build scripts. Read only files relevant to the requested change. Identify any existing plan in `specification/plans/`.
-2. **Define outcome.** Describe current behaviour, desired observable behaviour, explicit scope and non-goals. Record all constraints: APIs, types, accessibility, browser support, compatibility, security/privacy, performance and repository conventions where relevant.
-3. **Resolve technical decisions.** Identify integration points, affected paths, data flows, important contracts, alternatives and trade-offs. Distinguish verified facts from assumptions. Prefer existing architecture and dependencies unless there is a clear reason not to. Record any unresolved blocking decision explicitly.
-4. **Decompose.** Make small, ordered tasks with stable IDs (`T1`, `T2`, ...), prerequisites, exact likely files, specific implementation actions, independent acceptance criteria and test commands. Avoid tasks such as “implement feature” or “add tests” without describing the required behaviour. Prefer tasks one agent can complete and verify in one focused session. Mark parallel-safe tasks only when they genuinely do not overlap.
-5. **Establish verification.** Include success and failure/edge cases; appropriate unit/integration/UI and accessibility checks; runnable commands already supported by the repository; and a final definition of done. Do not invent commands or file paths—if unknown, label them as needing verification.
-6. **Write the plan.** Use a lower-case kebab-case filename, e.g. `specification/plans/add-stratified-cross-validation.md`. Start with `# <Title>` followed immediately by the single visible line `**Status:** draft | **Updated:** <ISO-8601 UTC timestamp>`. Get the current timestamp from `date -u '+%Y-%m-%dT%H:%M:%SZ'` (or an equivalent clock) **at write time**. Refresh it every time the file is changed, not merely read. Use `draft` for new and materially revised plans.
-7. **Index and validate.** Add or update the plan link and status in `specification/plans/README.md` and any existing specification index that conventionally lists plans. Run `python3 .agents/skills/planning/scripts/validate_plan.py specification/plans/<file>.md` if Python is available. Inspect the saved file before reporting completion.
-8. **Hand off.** Reply with the saved relative path, status, a compact summary of decisions, the recommended first task and any blockers. Never imply a plan was written unless it exists on disk.
+1. **Orient.** Use the "Read when" column in `specification/README.md` to pick the relevant specs, and check its _Known gaps_. Read those specs, then the code, tests and scripts the change touches. Do not re-read `AGENTS.md`; it is already loaded.
+2. **Define outcome.** State current behaviour (with paths), target behaviour, scope, non-goals and constraints (APIs, types, a11y, browser support, privacy, performance).
+3. **Resolve decisions.** Record integration points, contracts, alternatives and trade-offs. Separate verified facts from assumptions. Prefer existing architecture and dependencies. If a spec is `draft`, or the change hits a _Known gap_, decide it explicitly or list it as a blocking question.
+4. **Web platform research.** For browser-facing work, run the `modern-web-guidance` skill once per capability (use `bunx` instead of `npx`). Record the guide IDs and the decisions you took from them in the plan, so implementers retrieve only those guides and don't search again.
+5. **Distil required reading.** List under `## Required reading` the minimum the implementer must read: exact paths, sections (e.g. `specification/COMPONENTS.md §3, §7`) or line ranges. Copy short normative rules into the task instead of linking a long document. Anything not listed is optional for the implementer.
+6. **Decompose.** Write small, ordered tasks with stable IDs (`T1`, `T2`, …). Each task has every field in the template: dependencies, exact likely files, **Must not touch** (nearby files or APIs that are out of scope), concrete actions, independently testable acceptance criteria, and a verification command. Each task should fit one focused session. Mark tasks parallel-safe only when their files don't overlap. Set **Risk** to `needs care` where a weaker model is likely to go wrong, so the user can route that task to a stronger agent.
+7. **Verification.** Use only commands that exist: `bun run check`, `bun test <path>`, `bun run build`, `bun run plans:check`. Note the baseline failures listed in `AGENTS.md`, so implementers compare before and after counts instead of trying to fix unrelated failures. If a needed tool isn't installed (e.g. Playwright), either add an installation task or record the check as manual. Never invent commands.
+8. **Write the plan.** Use a lower-case kebab-case filename. The H1 is followed (after one blank line) by `**Status:** draft | **Updated:** <UTC>`, with the time from `date -u '+%Y-%m-%dT%H:%M:%SZ'` at write time. Refresh it on every change. Use British English. Link sources by path; don't paste large code or duplicate specs.
+9. **Index and validate.** Add or update the row in `specification/plans/README.md` (the status must match the plan's). Run `bun run plans:check specification/plans/<file>.md` and fix every error. Read the saved file before reporting.
+10. **Hand off.** Reply with: the path, status, key decisions, blockers, and the handoff line `Use the implementation skill to implement T1 of specification/plans/<file>.md.` Never claim a plan exists unless it is on disk.
 
 ## Status transitions
 
-- `draft`: still under review, contains unresolved blocking questions, or has been materially changed after approval.
-- `ready`: the user explicitly approves the plan (or has already clearly authorised this exact plan), all blocking questions are resolved, and the readiness checklist passes. Do not self-approve a new plan.
-- `implemented`: implementation is complete, checks have passed, and outcomes have been verified against the acceptance criteria. An implementation or verification agent may set this status only after recording evidence; writing code alone is not sufficient.
-- A substantive change to a `ready` plan returns it to `draft` for re-approval. Progress against existing tasks does not by itself invalidate approval.
+- `draft`: under review, has blocking questions, or was materially changed after approval.
+- `ready`: only after the user explicitly approves, no blocking questions remain, and the readiness gate passes. Never self-approve.
+- `implemented`: set by the implementation agent, only after all tasks and final checks pass with evidence recorded.
+- A substantive change to a `ready` plan returns it to `draft`. Task progress alone does not.
 
 ## Readiness gate
 
-A plan can be marked `ready` only when:
+- Scope, exclusions and behaviour are unambiguous.
+- Decisions are explicit, justified and compatible with the code. Every relevant _Known gap_ is decided.
+- _Required reading_ is complete: an implementer who reads only it plus the task's likely files has everything they need.
+- Every task has concrete actions, must-not-touch boundaries, testable acceptance criteria and a real verification command.
+- `bun run plans:check` passes, no blocking questions remain, and the user has approved.
 
-- Scope, exclusions and required behaviour are unambiguous.
-- Key architectural decisions are explicit, justified and compatible with the codebase.
-- Each task has concrete actions, affected components, dependencies and testable acceptance criteria.
-- Tasks are ordered and scoped to minimise overlapping edits and unintended changes.
-- Validation commands and manual checks are concrete; unknowns are non-blocking or resolved.
-- No blocking questions remain, and the user has approved the plan.
+## Reviewing an implemented task
 
-## Hand-off rules for cheaper implementation agents
-
-- Complete tasks in order (or follow explicitly recorded dependency/parallelism rules).
-- Follow recorded design decisions; choose only routine local implementation details using existing code patterns.
-- Do not silently add dependencies, alter public contracts, expand scope or re-architect the solution.
-- If the plan conflicts with actual code or a blocking requirement is ambiguous, stop that task, record the precise blocker and evidence in the plan, and request a planning decision. Do not guess.
-- After each task, check its acceptance criteria, run relevant available checks, record results and tick it off. Keep the existing plan path, status line and task IDs stable.
-- Mark the plan `implemented` only after all tasks and final checks pass and the results are recorded.
-
-## Quality standard
-
-Optimise for **decision completeness**, not document length. Be explicit where a cheaper agent might make the wrong design choice, terse where the repository already establishes an unambiguous pattern. Do not paste large code files or duplicate specifications. Link relevant sources by repository path. Use British English for prose.
+When asked to review an implementer's work, check the diff (`git diff` or the task's commit) against the task's acceptance criteria and must-not-touch list. Read only the changed files. Record the outcome in the plan's log. Send a correction back as a new or amended task rather than editing product code yourself.

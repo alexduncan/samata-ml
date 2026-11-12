@@ -1,12 +1,17 @@
 {
-	"name": "web-ml-app",
-	"module": "index.ts",
+	"name": "samata-ml",
 	"type": "module",
 	"private": true,
 	"scripts": {
 		"build": "bun run scripts/build.ts",
 		"server": "bun run scripts/server.ts",
-		"serve:scaffold": "bun run scripts/serve-ui-scaffold.ts"
+		"serve:scaffold": "bun run scripts/serve-ui-scaffold.ts",
+		"test": "bun test",
+		"typecheck": "tsc --noEmit",
+		"check": "bun run typecheck && bun test",
+		"format": "prettier --write",
+		"format:check": "prettier --check",
+		"plans:check": "python3 .agents/skills/planning/scripts/validate_plan.py"
 	},
 	"devDependencies": {
 		"@types/bun": "latest",
@@ -15,16 +20,13 @@
 		"gray-matter": "^4.0.3",
 		"marked": "^18.1.1",
 		"prettier": "3.8.3",
-		"prettier-plugin-css-order": "^2.2.0"
-	},
-	"peerDependencies": {
+		"prettier-plugin-css-order": "^2.2.0",
 		"typescript": "^7.0.2"
 	},
 	"dependencies": {
 		"idb": "^8.0.4",
 		"lit": "^3.3.3",
 		"papaparse": "^5.7.0",
-		"grey-matter": "0.0.0",
 		"web-ml": "file:../web-ml"
 	}
 }

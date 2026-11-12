@@ -1,16 +1,18 @@
 # Architecture Specification: Application State & Navigation (Hybrid Router + Store)
 
-> **Status:** Replaces the previous five-step, single-FSM design. The file name is kept so existing links keep working; renaming it to `app-state-and-navigation.md` is proposed in [§12 Open Questions](#12-open-questions).
+**Status:** draft — target design; open questions in §12
+
+> **History:** Replaces the previous five-step, single-FSM design (formerly `plans/finite-state-machine.md`; moved and renamed 2026-11-12).
 >
-> **Source of truth:** [workflow-steps.md](../workflow-steps.md) defines the user-facing workflow. If this document disagrees with it, `workflow-steps.md` wins and this document must be corrected.
+> **Source of truth:** [workflow-steps.md](workflow-steps.md) defines the user-facing workflow. If this document disagrees with it, `workflow-steps.md` wins and this document must be corrected.
 >
-> **Companion document:** [store-pipline-state.md](./store-pipline-state.md) owns *persistence mechanics* (storage keys, the persisted schema, write scheduling, IndexedDB reconciliation, multi-tab behaviour). This document owns *navigation, routing, step behaviour, scroll memory and state transitions*. Do not duplicate content between them; link instead.
+> **Companion document:** [state-and-storage.md](state-and-storage.md) owns *persistence mechanics* (storage keys, the persisted schema, write scheduling, IndexedDB reconciliation, multi-tab behaviour). This document owns *navigation, routing, step behaviour, scroll memory and state transitions*. Do not duplicate content between them; link instead.
 
 ---
 
 ## 1. Overview & Architectural Goals
 
-The application is a browser-based machine learning workflow with four top-level sections (Load Data, Set Target, Train Models, Compare Results). Training happens in the browser through the `web-ml` library; this repository only builds the configuration payload (see [ARCHITECTURE.md](../ARCHITECTURE.md)).
+The application is a browser-based machine learning workflow with four top-level sections (Load Data, Set Target, Train Models, Compare Results). Training happens in the browser through the `web-ml` library; this repository only builds the configuration payload (see [ARCHITECTURE.md](ARCHITECTURE.md)).
 
 ### 1.1 The hybrid model
 
@@ -19,7 +21,7 @@ Application state is split by what it answers:
 | Question | Source of truth | Mechanism |
 | :--- | :--- | :--- |
 | *Where is the user?* (which step, which model) | The URL | History API (`pushState` / `replaceState` / `popstate`) |
-| *What has the user done and chosen?* (dataset, target, models, step progress, UI selections, scroll positions) | The persisted store | Nanostores + `localStorage` / IndexedDB (see [store-pipline-state.md](./store-pipline-state.md)) |
+| *What has the user done and chosen?* (dataset, target, models, step progress, UI selections, scroll positions) | The persisted store | Nanostores + `localStorage` / IndexedDB (see [state-and-storage.md](state-and-storage.md)) |
 | *What overlay is showing?* (About, Privacy, Help) | The URL, but **never persisted** | History API with a reserved-route entry on top of the workflow entry |
 | *Where is training up to?* | Two small state machines (model lifecycle §7, training run) | Pure reducers in the store module |
 
@@ -81,12 +83,12 @@ The layout has three regions plus overlays. There is **no `<app-root>` wrapper**
     transient modals      datasheet, upload, model description (no URL, not persisted)
 ```
 
-- **`<app-sidebar>`** (connected component): application title, `<nav aria-label="Workflow"><ol>` with the four steps, the list of models under step 3 (one link to `/models/{num}` per model, as in `ui-scaffold/03-2`), and the footer links to the reserved routes. Each step shows a summary of its choice once made (dataset name and size, target name and type) as in the scaffold.
+- **`<app-sidebar>`** (connected component): application title, `<nav aria-label="Workflow"><ol>` with the four steps, the list of models under step 3 (one link to `/models/{num}` per model, as in `mockups/ui-scaffold/03-2`), and the footer links to the reserved routes. Each step shows a summary of its choice once made (dataset name and size, target name and type) as in the scaffold.
 - **`<main>`** (native element): the router mounts the active route view here. Views are dynamically imported (ARCHITECTURE.md → code splitting).
 - **`<app-welcome-modal>`** (connected): shown when `onboarding.welcomeDismissed === false` and the current route is a workflow route. "Get Started" closes it and persists the flag. It has no URL and creates no history entry.
 - **`<app-content-modal>`** (connected): renders static Markdown content for a reserved route (§5.4).
 
-Component names above are proposals that follow the `app-` prefix rule in [COMPONENTS.md §1](../COMPONENTS.md); each still needs its own component spec under `specification/components/` before implementation (COMPONENTS.md §3, §12).
+Component names above are proposals that follow the `app-` prefix rule in [COMPONENTS.md §1](COMPONENTS.md); each still needs its own component spec under `specification/components/` before implementation (COMPONENTS.md §3, §12).
 
 ---
 
@@ -110,7 +112,7 @@ Rules:
 - Matching is on `location.pathname` only. Query strings and hashes are ignored, not generated and not persisted. A trailing slash is normalised away by `replaceState`.
 - A `/models/{segment}` where `segment` is not a positive integer is an **unknown path** (it does not name a page) and is redirected like any other. A positive integer with no matching model is a valid page URL whose content is the "model not found" notification (§4.3); it is not redirected.
 - Reserved paths are exactly `/about`, `/privacy`, `/help`. Reserved paths MUST NOT be used for anything else in future.
-- Each reserved path maps to one Markdown file compiled by the content pipeline (see [content-and-i18n.md](../content-and-i18n.md)). The mapping lives in the router configuration, not in the content.
+- Each reserved path maps to one Markdown file compiled by the content pipeline (see [content-and-i18n.md](content-and-i18n.md)). The mapping lives in the router configuration, not in the content.
 
 ### 3.1 Types
 
@@ -279,7 +281,7 @@ Corresponds to workflow-steps §1.
 - On successful ingestion (`loadDatasetSucceeded`) the store sets `dataset`, `data.mode = 'preview'`, `data.selectedColumn = null`.
 - `data.selectedColumn` (the column whose `<aside>` is open) is persisted. Column statistics themselves are read from the IndexedDB `metadata` store, never from `localStorage`.
 - The virtual table's own scroll offset is persisted as a scroll *region* (§8.3).
-- Transient and **not** persisted: the Datasheet modal, the Upload modal, in-flight parsing progress, validation errors from a failed upload. A reload during ingestion lands on `'select'` (the previous dataset, if any, is untouched until the new one completes; see [store-pipline-state.md §6](./store-pipline-state.md#6-indexeddb-reconciliation)).
+- Transient and **not** persisted: the Datasheet modal, the Upload modal, in-flight parsing progress, validation errors from a failed upload. A reload during ingestion lands on `'select'` (the previous dataset, if any, is untouched until the new one completes; see [state-and-storage.md §6](state-and-storage.md#6-indexeddb-reconciliation)).
 - **Change Dataset.** workflow-steps does not say how a user returns from the preview to the cards. **[Proposed]** a header action sets `data.mode = 'select'` without removing the loaded dataset. Confirm in §12.
 
 **Dataset change reconciliation** (`loadDatasetSucceeded` when a dataset already exists):
@@ -320,7 +322,7 @@ Model-level rules:
 - **Eligible models** are filtered by the target type: classifiers for `boolean`/`categorical`, regressors for `numeric` (workflow-steps §3.1).
 - **Features**: all columns are listed; the target is shown but not selectable; ineligible (`text`) columns are not selectable. The target can never be in `features`.
 - **Multiclass strategy** (`native | one-vs-rest | one-vs-one`) is required only when the target is categorical with more than two categories *and* the `web-ml` model supports the choice. It is part of section 3.
-- **Training setup** (section 4) is a placeholder: workflow-steps marks it "TODO". Until specified, the shape is the `ValidationMethodology` union in [store-pipline-state.md](./store-pipline-state.md#3-persisted-schema), defaulting to nested cross-validation.
+- **Training setup** (section 4) is a placeholder: workflow-steps marks it "TODO". Until specified, the shape is the `ValidationMethodology` union in [state-and-storage.md](state-and-storage.md#3-persisted-schema), defaulting to nested cross-validation.
 - **Editing earlier sections** *(proposed; not stated in workflow-steps, see §12)*: while `status === 'draft'`, a completed section can be re-opened and edited. If the edit **changes** its value, completion of all *later* sections is removed (their values are kept where still valid and the user re-confirms with Continue). Re-selecting the same model, or re-confirming unchanged values, invalidates nothing. Selecting a **different** model resets `modelOptions`, `hyperparameters` and `multiclass` to the new model's defaults and un-completes sections 2 and 3; `features` and `trainingSetup` are kept.
 - **Frozen configuration.** Once a model leaves `draft` (training starts), sections 1–4 are read-only so the configuration shown in `/models` and `/results` is exactly what was trained. To try different settings the user creates a new model.
 
@@ -338,7 +340,7 @@ The previous design locked the target once any round was trained. With several i
 Corresponds to workflow-steps §4, which is still marked TODO. This document defines only what the state layer must guarantee:
 
 - Inputs are `models.filter(status === 'trained')` and their stored results.
-- Any user-controlled UI state on the page (selected metric, compared models, tab) follows the general rule in [store-pipline-state.md §5](./store-pipline-state.md#5-ui-state-persistence-rule) and is persisted under `ui.results`; its shape is defined when the section 4 and section 6 specs are completed.
+- Any user-controlled UI state on the page (selected metric, compared models, tab) follows the general rule in [state-and-storage.md §5](state-and-storage.md#5-ui-state-persistence-rule) and is persisted under `ui.results`; its shape is defined when the section 4 and section 6 specs are completed.
 
 ---
 
@@ -385,7 +387,7 @@ export interface TrainingProgress {
 
 ### 7.1 Training lock
 
-While a model trains, the tab that owns the `web-ml` worker holds a [Web Lock](https://developer.mozilla.org/docs/Web/API/Web_Locks_API) named `samata-ml:training:{num}` for the run's duration. The browser releases it automatically if the tab closes or crashes. This lets a freshly loaded tab distinguish "training in another tab" (lock held) from "training was interrupted" (lock free). Details in [store-pipline-state.md §7](./store-pipline-state.md#7-multi-tab-behaviour). *(Confirm the API against the project's Baseline target with `modern-web-guidance` before implementing.)*
+While a model trains, the tab that owns the `web-ml` worker holds a [Web Lock](https://developer.mozilla.org/docs/Web/API/Web_Locks_API) named `samata-ml:training:{num}` for the run's duration. The browser releases it automatically if the tab closes or crashes. This lets a freshly loaded tab distinguish "training in another tab" (lock held) from "training was interrupted" (lock free). Details in [state-and-storage.md §7](state-and-storage.md#7-multi-tab-behaviour). *(Confirm the API against the project's Baseline target with `modern-web-guidance` before implementing.)*
 
 ---
 
@@ -429,7 +431,7 @@ export interface ScrollSnapshot {
 - **Viewport-width rule.** A snapshot is used only if `snapshot.viewportWidth === window.innerWidth` at restore time. Otherwise it is ignored (treated as "no snapshot": scroll to top, regions to origin). `innerWidth` is used rather than `clientWidth` because it includes the scrollbar and so does not change when a page becomes tall enough to gain a scrollbar; it does change under browser zoom, which also invalidates layout and should discard the position.
 - Mismatched snapshots are not deleted when the viewport changes, only ignored, so returning to the original width (e.g. rotating a tablet back) makes them valid again. They are overwritten the next time that key is saved.
 - Viewport **height** is deliberately not part of the rule (mobile browser chrome changes it constantly).
-- Persistence format and storage key: [store-pipline-state.md §3](./store-pipline-state.md#3-persisted-schema).
+- Persistence format and storage key: [state-and-storage.md §3](state-and-storage.md#3-persisted-schema).
 
 ### 8.4 Saving and restoring
 
@@ -460,7 +462,7 @@ export interface ScrollSnapshot {
 ### 9.1 Startup sequence
 
 1. Read persisted state (storage reads are wrapped in `try/catch`; absent, corrupt, wrong-shape or unsupported-version data yields fresh defaults and is never partially applied).
-2. Reconcile with IndexedDB and apply integrity checks and interrupted-training recovery ([store-pipline-state.md §6](./store-pipline-state.md#6-indexeddb-reconciliation)).
+2. Reconcile with IndexedDB and apply integrity checks and interrupted-training recovery ([state-and-storage.md §6](state-and-storage.md#6-indexeddb-reconciliation)).
 3. Initialise stores, **then** the router (hydrate-before-routing is retained from the previous design).
 4. Set `history.scrollRestoration = 'manual'`.
 5. Resolve the initial route (§9.2).
@@ -489,7 +491,7 @@ Everything the user can see or has chosen is covered by exactly one of these, so
 - **Location:** URL (workflow page, model number).
 - **Content:** dataset summary, target, models and their per-section data, results.
 - **Progress presentation:** `completedSteps`, `status`, and error state per model.
-- **UI selections:** `data.mode`, `data.selectedColumn`, and any further user-controlled UI state registered under [store-pipline-state.md §5](./store-pipline-state.md#5-ui-state-persistence-rule).
+- **UI selections:** `data.mode`, `data.selectedColumn`, and any further user-controlled UI state registered under [state-and-storage.md §5](state-and-storage.md#5-ui-state-persistence-rule).
 - **Scroll:** per-key window and region offsets (§8).
 - **Onboarding:** `welcomeDismissed`.
 
@@ -518,7 +520,7 @@ All actions are guarded: an action that is invalid for the current state (for ex
 
 ## 11. Verification Requirements
 
-Pure logic runs under `bun:test` with an in-memory `Storage`. Anything that depends on real history, layout or `<dialog>` MUST run in Playwright (Chromium, Firefox, WebKit) per [COMPONENTS.md §9](../COMPONENTS.md); `happy-dom` has no layout and does not implement session history faithfully enough for these checks.
+Pure logic runs under `bun:test` with an in-memory `Storage`. Anything that depends on real history, layout or `<dialog>` MUST run in Playwright (Chromium, Firefox, WebKit) per [COMPONENTS.md §9](COMPONENTS.md); `happy-dom` has no layout and does not implement session history faithfully enough for these checks.
 
 **Unit (`bun:test`)**
 
@@ -568,5 +570,5 @@ For a human to answer; implementers must not resolve these silently.
 3. **Transient dialogs on reload:** should an open Datasheet / Model Description dialog be restored? (Currently not; "exact same UI" could be read to include them.)
 4. **Scroll semantics** (§8.4): latest-per-step is proposed rather than per-history-entry. Acceptable?
 5. **Reserved content mapping:** `content/pages/privacy-policy.md` serves `/privacy`; there is no `help` content and `terms-and-conditions.md` has no route. Create `help.md`? Add a reserved route for terms?
-6. **File rename** to `app-state-and-navigation.md` (and updating inbound links in `specification/README.md`).
+6. ~~**File rename** to `app-state-and-navigation.md`~~ — done 2026-11-12.
 7. **Training setup** (section 4) and **results** (sections 6 and 4) remain TODO in workflow-steps.md; the persisted shapes for them are placeholders.

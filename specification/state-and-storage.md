@@ -1,12 +1,14 @@
 # Application State Persistence
 
-> **Source of truth:** [workflow-steps.md](../workflow-steps.md). Navigation, routing, step behaviour and scroll memory are specified in [finite-state-machine.md](./finite-state-machine.md) (now the hybrid router + store design). This document specifies **how state is stored**: keys, schema, write scheduling, IndexedDB reconciliation, multi-tab behaviour, versioning.
+**Status:** draft — target design; open questions in §11
+
+> **Source of truth:** [workflow-steps.md](workflow-steps.md). Navigation, routing, step behaviour and scroll memory are specified in [app-state-and-navigation.md](app-state-and-navigation.md) (now the hybrid router + store design). This document specifies **how state is stored**: keys, schema, write scheduling, IndexedDB reconciliation, multi-tab behaviour, versioning.
 >
-> The README links a `state-and-storage.md` that does not exist yet. Once this document is approved it should be promoted to `specification/state-and-storage.md` (see [§11](#11-open-questions)).
+> Formerly `plans/store-pipline-state.md`; moved here 2026-11-12. Still a draft until the open questions in [§11](#11-open-questions) are answered.
 
 ## 1. Purpose
 
-Persisted state exists so that **reloading the tab, or opening the base URL in a new tab, shows exactly the UI the user last saw** (finite-state-machine.md goal G3), without keeping dataset rows in reactive application memory.
+Persisted state exists so that **reloading the tab, or opening the base URL in a new tab, shows exactly the UI the user last saw** (app-state-and-navigation.md goal G3), without keeping dataset rows in reactive application memory.
 
 It stores *what the user has done and chosen*. *Where the user is* comes from the URL; the one exception is `resumePath`, which is what `/` resolves to.
 
@@ -16,7 +18,7 @@ It stores *what the user has done and chosen*. *Where the user is* comes from th
 | :--- | :--- | :--- |
 | Workflow state, UI selections, model records, headline metrics | `localStorage` key `samata-ml:state` | Small, needed synchronously at startup before first render and before routing |
 | Scroll snapshots | `localStorage` key `samata-ml:scroll` | Written far more often than the rest; separate key keeps writes small and lets multi-tab sync ignore it |
-| Dataset rows | IndexedDB `samata-db` → `raw_records` | Large, streamed in slices ([data-ingestion-and-storage-pipeline.md](./data-ingestion-and-storage-pipeline.md)) |
+| Dataset rows | IndexedDB `samata-db` → `raw_records` | Large, streamed in slices ([data-ingestion.md](data-ingestion.md)) |
 | Column statistics (histograms, category counts, median) | IndexedDB `samata-db` → `metadata` | Unbounded (up to 100 bins × columns, arbitrary category counts) |
 | Detailed training results (confusion matrices, curves, predictions, feature importances) | IndexedDB `samata-db` → `model_results`, key `[datasetId, modelNum]` | Large and only needed on the results screens |
 
@@ -191,7 +193,7 @@ A single **persister** subscribes to the stores and is the only code that touche
 
 ### 4.2 Rules
 
-- Reducers/actions are pure and produce new object references; the persister serialises the resulting snapshot. In-place mutation is forbidden (COMPONENTS.md §5, finite-state-machine.md §1.3).
+- Reducers/actions are pure and produce new object references; the persister serialises the resulting snapshot. In-place mutation is forbidden (COMPONENTS.md §5, app-state-and-navigation.md §1.3).
 - Writes go through an injectable `Storage` interface (browser: `localStorage`; tests: in-memory mock).
 - Every write serialises `{ version, …, updatedAt: Date.now() }`.
 
@@ -231,7 +233,7 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 3. **Target valid.** `target` must name an eligible column in `dataset.columns` (type ≠ `text`); otherwise `target = null` and `models = []`.
 4. **Models valid.** For each model: `features ⊆ dataset.columns` (eligible, ≠ target); drop unknown features and un-complete `select-features` onward if any were dropped. A `trained` model whose `model_results` entry is missing reverts to `draft` with a `TRAINING_FAILED` error whose message explains the stored results were lost.
 5. **Counters.** `nextModelNum = max(nextModelNum, max(models.num) + 1)`.
-6. **Selections valid.** `data.selectedColumn` must exist in `dataset.columns`. `resumePath` is **not** corrected when it names a page that cannot currently display (for example `/models/3` after model 3 was discarded): `/` resumes there and the page shows its notification, because state never blocks navigation (finite-state-machine.md §4).
+6. **Selections valid.** `data.selectedColumn` must exist in `dataset.columns`. `resumePath` is **not** corrected when it names a page that cannot currently display (for example `/models/3` after model 3 was discarded): `/` resumes there and the page shows its notification, because state never blocks navigation (app-state-and-navigation.md §4).
 7. **Interrupted training.** For each model with `status === 'training'`, try `navigator.locks.request('samata-ml:training:{num}', { ifAvailable: true }, …)`. Lock acquired ⇒ nobody is training it ⇒ `recoverInterrupted` (status `draft`, `progress = null`, `TRAINING_INTERRUPTED_BY_RELOAD`). Lock unavailable ⇒ another tab is training it; leave it `training` and treat it as read-only. If the Web Locks API is missing, fall back to treating it as interrupted.
 8. Persist the repaired state immediately.
 
@@ -241,7 +243,7 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 
 - **Shared:** `localStorage`, IndexedDB, and (by design) `resumePath`. Opening `/` in a second tab resumes whichever workflow page was last visited in any tab.
 - **Per tab:** the URL, mounted view, scroll in progress, in-flight ingestion and the training worker.
-- **`storage` event on `samata-ml:state`:** other tabs re-hydrate domain state (dataset, target, models, data settings) into their stores and re-run reconciliation steps 3–6. They MUST NOT navigate because of it. If the page on screen can no longer display (the dataset changed or the model on screen was removed) it re-renders in place into the matching `.notification` of finite-state-machine.md §4.3. `resumePath` changes from other tabs are ignored by the receiving tab's router. `samata-ml:scroll` events are ignored.
+- **`storage` event on `samata-ml:state`:** other tabs re-hydrate domain state (dataset, target, models, data settings) into their stores and re-run reconciliation steps 3–6. They MUST NOT navigate because of it. If the page on screen can no longer display (the dataset changed or the model on screen was removed) it re-renders in place into the matching `.notification` of app-state-and-navigation.md §4.3. `resumePath` changes from other tabs are ignored by the receiving tab's router. `samata-ml:scroll` events are ignored.
 - **Training:** a tab that starts training holds the Web Lock `samata-ml:training:{num}` for the run (§6, check 7), so a second tab loading during training does not mark it interrupted. A model training in another tab is displayed read-only with "Training in another tab".
 - **Dataset replacement** in one tab invalidates the other tab's models through the `storage` event; no cross-tab locking of data is attempted.
 - Last writer wins for everything else.
@@ -272,18 +274,18 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 | # | Where | Inconsistency | Resolution |
 | :--- | :--- | :--- | :--- |
 | 1 | Old store plan | Persisted `currentStep`, global `modelType`/`hyperparameters`/`selectedFeatures` | URL replaces `currentStep`; per-model `ModelRecord` replaces globals (workflow-steps §3) |
-| 2 | Old store plan | Route guards **redirect** a reloaded session to the first step | Navigation is never blocked or redirected by state; pages that cannot display show a `.notification` (finite-state-machine.md §4) |
+| 2 | Old store plan | Route guards **redirect** a reloaded session to the first step | Navigation is never blocked or redirected by state; pages that cannot display show a `.notification` (app-state-and-navigation.md §4) |
 | 3 | Old store plan | `trainingStatus`, `resultsId` not persisted | Status is persisted so interruption is detectable; results are persisted in IndexedDB |
 | 4 | Column type vocabularies | workflow-steps: `numeric\|categorical\|boolean`; old FSM: `+datetime\|text`; data-ingestion: `numeric\|categorical\|text\|unknown`; preview-dataset: `text\|integer\|float\|boolean`; `datasets.ts`: `string\|number\|boolean` | Canonical UI/state type is `numeric \| categorical \| boolean \| text`. The ingestion layer's finer types (integer/float, unknown) map onto it at the boundary; `datetime` is deferred and maps to `text`. data-ingestion and preview-dataset need aligning. |
 | 5 | preview-dataset vs data-ingestion | Single active dataset, stores `dataset`/`metadata`, key `dataset_stats`, clear-on-upload **vs** `samata-db`, `metadata`/`raw_records`, compound `[datasetId,rowIndex]` | data-ingestion is canonical; "one *active* dataset" is a policy enforced after a successful upload (§6) |
 | 6 | Old store plan | `Pipeline.initialize()` singleton with `Proxy` state | Nanostores + actions + persister (§9) |
 | 7 | Old FSM plan | URL-paste dataset source | Removed; workflow-steps has samples + upload only. (Sample datasets are still fetched by URL internally.) |
 | 8 | preview-dataset | Preview shown when `datasetId !== null && modelType === null` | `data.mode` (§9) |
-| 9 | README / COMPONENTS | `state-and-storage.md` is referenced but does not exist | See §11 |
+| 9 | README / COMPONENTS | `state-and-storage.md` was referenced but did not exist | Resolved 2026-11-12: this file moved here |
 
 ## 11. Open Questions
 
-1. Promote this file to `specification/state-and-storage.md` (and fix the README link)? Rename `finite-state-machine.md` to `app-state-and-navigation.md`?
+1. ~~Promote this file and rename the navigation spec~~ — done 2026-11-12.
 2. Detailed results storage: is a `model_results` store in `samata-db` acceptable, or should results be a separate database?
 3. Should upload content be identified by a content hash so re-uploading the same file keeps downstream state? (Currently each upload gets a new `id`, so it counts as a different dataset.)
 4. `datasets.ts` has no stable `id`/slug and uses `name`/`shape`, while workflow-steps refers to `title`/`num_records`/`num_columns`. Which is canonical?

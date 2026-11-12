@@ -1,5 +1,7 @@
 # Project Vision and Architectural Principles
 
+**Status:** reference (product intent; not an implementation contract)
+
 ## Why web-ml-app exists
 
 `web-ml-app` is a browser based app for training machine learning models primarily for the purpose of education. All model training is provided by the sister repository `web-ml`. This library provides a user interface to upload or select datasets, choose hyperparameters, run training and display results in a clear and user-friendly interface.

@@ -13,4 +13,4 @@ export const DIST_DIR = path.join(ROOT_DIR, 'dist');
 /**
  * Directory containing UI scaffold wireframes and preview templates.
  */
-export const UI_SCAFFOLD_DIR = path.join(ROOT_DIR, 'specification', 'plans', 'ui-scaffold');
+export const UI_SCAFFOLD_DIR = path.join(ROOT_DIR, 'specification', 'mockups', 'ui-scaffold');

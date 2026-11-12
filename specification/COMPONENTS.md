@@ -1,5 +1,7 @@
 # Engineering Conventions for Components
 
+**Status:** target — applies to all new components; existing `src/views/` and `src/partials/` code predates it
+
 Applies to every component, style primitive and store in this repository. Agents MUST read this file before implementing any spec in `specification/components/`.
 
 The key words MUST, MUST NOT, SHOULD, SHOULD NOT and MAY are used as in RFC 2119. A component spec overrides a rule here only when it says so explicitly ("Overrides §n because …"). Silence in a component spec means this file applies.
@@ -18,6 +20,13 @@ When a spec is ambiguous or seems wrong, the agent MUST stop and list the questi
 | Accessibility target | WCAG 2.2 level AA |
 | Component acceptance tests | Playwright in Chromium, Firefox and WebKit |
 | Docs | Storybook (`@storybook/web-components-vite`) with the a11y and Vitest addons |
+
+### Web platform rules
+
+- Prefer native semantic HTML, CSS and browser APIs over custom JavaScript (e.g. `<dialog>`, `popover`, form validation).
+- Use progressive enhancement for anything not yet Baseline Widely available; experimental APIs need explicit human approval and a fallback.
+- Before using an unfamiliar platform feature, look it up with the `modern-web-guidance` skill. Planners record the guide IDs in the plan so implementers do not search again.
+- Record any intentional departure from these rules in the spec or plan, with the reason.
 
 ## 2. Choose the lowest tier that works
 
@@ -60,8 +69,8 @@ The public API of a block is everything its spec lists under **Public API**: tag
 - Only connected components import stores, using `StoreController` from `@nanostores/lit`.
 - Derived values use `computed`; do not derive in `render()`.
 - Mutations go through exported action functions in the store module. Components call actions; they do not call `store.set()` directly.
-- Components MUST NOT call `history.*` or read `location`. Navigation is an `<a href>` (intercepted by the router) or a router action; the current route is read from the router's store. See [finite-state-machine.md §5](plans/finite-state-machine.md).
-- Any user-controlled UI state that is not a transient overlay and must survive a reload (selected column, step completion, chosen options, etc.) lives in a store with an action, not in a component's private `@state`. Presentational components receive it as a property and emit an event; the connected component calls the action. See [store-pipline-state.md §5](plans/store-pipline-state.md).
+- Components MUST NOT call `history.*` or read `location`. Navigation is an `<a href>` (intercepted by the router) or a router action; the current route is read from the router's store. See [app-state-and-navigation.md §5](app-state-and-navigation.md).
+- Any user-controlled UI state that is not a transient overlay and must survive a reload (selected column, step completion, chosen options, etc.) lives in a store with an action, not in a component's private `@state`. Presentational components receive it as a property and emit an event; the connected component calls the action. See [state-and-storage.md §5](state-and-storage.md).
 - Modal overlays use a native `<dialog>` opened with `showModal()`. Do not add `role="dialog"`, `aria-modal`, a focus trap or an `Esc` handler. Do not lock page scroll with `overflow: hidden` / `position: fixed` on `html` or `body` (it disturbs remembered scroll positions); use `overscroll-behavior: contain` on `dialog:modal` and `overflow: hidden; overscroll-behavior: contain` on `dialog::backdrop`. Modals that represent a URL (`/about`, `/privacy`, `/help`) close through the router (every dismissal path calls `closeReserved()`).
 - A route view exposes `whenSettled(): Promise<void>`, resolved once its layout height is stable, so the router can restore scroll position.
 
@@ -100,6 +109,8 @@ Styling crosses shadow boundaries in exactly two sanctioned ways.
 - Pointer targets at least 24×24 CSS px.
 - Information is never conveyed by colour alone.
 - Must work at 200% zoom and 320px viewport width, with reduced motion, and in forced-colours mode.
+- Focus indicators are always visible (`:focus-visible`); never remove an outline without an equivalent replacement.
+- Respect user text size: font sizes and text containers use `rem`/`em`, never fixed `px` heights that clip text. Motion and animation respect `prefers-reduced-motion`.
 - Automated checks are necessary, not sufficient: each spec lists its manual checks.
 
 ## 8. Internationalisation (`@nanostores/i18n`)
