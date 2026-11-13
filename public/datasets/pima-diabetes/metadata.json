@@ -1,0 +1,230 @@
+{
+  "id": "pima-diabetes",
+  "name": "Pima Indians Diabetes Diagnostic",
+  "tagline": "Predict diabetes onset while handling disguised zero-sentinel physiological missingness.",
+  "description": "Compiled by the US National Institute of Diabetes and Digestive and Kidney Diseases (NIDDK) from longitudinal epidemiological studies of Akimel O'odham (Gila River Indian Community) women aged 21 and older near Phoenix, Arizona, and introduced to machine learning by Smith et al. (1988), this 768-patient dataset predicts World Health Organization (WHO) 2-hour oral glucose tolerance test positivity.\n\nPima Diabetes is the canonical benchmark in machine learning education for disguised missing data: although the raw CSV contains zero explicit empty or 'NA' cells, five physiological variables—plasma glucose (5), diastolic blood pressure (35), triceps skinfold thickness (227), 2-hour serum insulin (374), and BMI (11)—encode unrecorded lab measurements as biologically impossible 0s, whereas 0 in 'preg' is a valid count of zero pregnancies. Equally important, its single-sex, single-community sampling frame provides an essential case study in external validity limits and Indigenous Data Sovereignty.",
+  "domain": "healthcare",
+  "difficulty": "intermediate",
+  "tags": [
+    "binary",
+    "implicit-missingness",
+    "sentinel-zeros",
+    "indigenous-data-ethics",
+    "endocrinology"
+  ],
+  "files": {
+    "csv": "data.csv",
+    "datasheetMarkdown": "datasheet.md",
+    "datasheetHtml": "datasheet.html"
+  },
+  "parsing": {
+    "delimiter": ",",
+    "hasHeader": true,
+    "missingValueTokens": [
+      "",
+      "NA",
+      "NaN"
+    ]
+  },
+  "stats": {
+    "rowCount": 768,
+    "columnCount": 9,
+    "fileSizeBytes": 33824,
+    "hasMissingValues": false,
+    "defaultTargetDistribution": {
+      "tested_negative": 500,
+      "tested_positive": 268
+    }
+  },
+  "modeling": {
+    "defaultTarget": "class",
+    "targetCandidates": [
+      {
+        "column": "class",
+        "taskType": "binary-classification",
+        "positiveClass": "tested_positive",
+        "description": "Predict WHO-criteria diabetes mellitus status ('tested_positive' vs. 'tested_negative').",
+        "leakyColumns": []
+      }
+    ]
+  },
+  "columns": [
+    {
+      "name": "preg",
+      "displayName": "Pregnancies",
+      "description": "Number of times pregnant (note: 0 is a valid clinical count for nulliparous patients, NOT a missing value).",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "plas",
+      "displayName": "Plasma Glucose (2-hr OGTT)",
+      "description": "Plasma glucose concentration at 2 hours in an oral glucose tolerance test; 0 in 5 rows represents unrecorded lab values.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "mg/dL",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "implicitMissingValues": [
+        0
+      ]
+    },
+    {
+      "name": "pres",
+      "displayName": "Diastolic Blood Pressure",
+      "description": "Resting diastolic arterial blood pressure; 0 in 35 rows is physiologically impossible in living patients and denotes missingness.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "mm Hg",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "implicitMissingValues": [
+        0
+      ]
+    },
+    {
+      "name": "skin",
+      "displayName": "Triceps Skinfold Thickness",
+      "description": "Triceps skinfold thickness measured via caliper; 0 in 227 rows (29.6%) denotes unmeasured values.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "mm",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "implicitMissingValues": [
+        0
+      ]
+    },
+    {
+      "name": "insu",
+      "displayName": "2-Hour Serum Insulin",
+      "description": "2-hour post-load serum insulin concentration; 0 in 374 rows (48.7%) denotes unmeasured assays.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "mu U/mL",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "implicitMissingValues": [
+        0
+      ]
+    },
+    {
+      "name": "mass",
+      "displayName": "Body Mass Index (BMI)",
+      "description": "Body mass index (weight in kg divided by height in m squared); 0 in 11 rows denotes missing height/weight.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "kg/m^2",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "implicitMissingValues": [
+        0
+      ]
+    },
+    {
+      "name": "pedi",
+      "displayName": "Diabetes Pedigree Function",
+      "description": "Composite genetic-family history risk score synthesizing diabetes incidence and age of onset across relatives.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "age",
+      "displayName": "Age",
+      "description": "Patient age in years (sample restricted to women aged 21 and older; diabetes prevalence is 21.2% under age 30 vs. 49.5% aged 30+).",
+      "dataType": "numeric",
+      "semanticRole": "sensitive",
+      "unit": "years",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "class",
+      "displayName": "Diabetes Diagnosis",
+      "description": "Diagnostic indicator of WHO-criteria diabetes mellitus (2-hour post-load plasma glucose >= 200 mg/dL).",
+      "dataType": "categorical",
+      "semanticRole": "target",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "valueLabels": {
+        "tested_negative": "Negative (No WHO diabetes signs)",
+        "tested_positive": "Positive (WHO diabetes criteria met)"
+      }
+    }
+  ],
+  "provenance": {
+    "homepageUrl": "https://www.openml.org/d/37",
+    "sourceRepositoryUrl": "https://www.openml.org/data/get_csv/37/dataset_37_diabetes.arff",
+    "license": "Public Domain / CC BY 4.0 (OpenML Archive)",
+    "yearPublished": 1990,
+    "creators": [
+      "National Institute of Diabetes and Digestive and Kidney Diseases (NIDDK)",
+      "Vincent Sigillito",
+      "Jack W. Smith"
+    ]
+  },
+  "references": [
+    {
+      "title": "Using the ADAP Learning Algorithm to Forecast the Onset of Diabetes Mellitus",
+      "authors": [
+        "Jack W. Smith",
+        "J. E. Everhart",
+        "W. C. Dickson",
+        "W. C. Knowler",
+        "R. S. Johannes"
+      ],
+      "year": 1988,
+      "type": "seminal-paper",
+      "url": "https://pmc.ncbi.nlm.nih.gov/articles/PMC2245318/",
+      "citation": "Smith, J. W., Everhart, J. E., Dickson, W. C., Knowler, W. C., & Johannes, R. S. (1988). Using the ADAP learning algorithm to forecast the onset of diabetes mellitus. Proceedings of the Annual Symposium on Computer Application in Medical Care, 261-265."
+    },
+    {
+      "title": "'Digital Natives': How Medical and Indigenous Histories Matter for Big Data",
+      "authors": [
+        "Joanna Radin"
+      ],
+      "year": 2017,
+      "type": "fairness-audit",
+      "url": "https://www.jstor.org/stable/26562765",
+      "citation": "Radin, J. (2017). 'Digital natives': How medical and Indigenous histories matter for big data. Osiris, 32(1), 43-64. https://doi.org/10.1086/693853"
+    },
+    {
+      "title": "Bias Begins with Data: The FairGround Corpus for Robust and Reproducible Research on Algorithmic Fairness",
+      "authors": [
+        "Jan Simson",
+        "Alessandro Fabris",
+        "Cosima Froehner",
+        "Frauke Kreuter",
+        "Christoph Kern"
+      ],
+      "year": 2025,
+      "type": "fairness-audit",
+      "url": "https://arxiv.org/abs/2510.22363",
+      "citation": "Simson, J., Fabris, A., Froehner, C., Kreuter, F., & Kern, C. (2025). Bias begins with data: The FairGround corpus for robust and reproducible research on algorithmic fairness. arXiv preprint arXiv:2510.22363."
+    },
+    {
+      "title": "OpenML Dataset Card: diabetes (ID 37)",
+      "authors": [
+        "Vincent Sigillito",
+        "OpenML Contributors"
+      ],
+      "year": 2014,
+      "type": "documentation",
+      "url": "https://www.openml.org/d/37",
+      "citation": "Sigillito, V. (1990). Pima Indians Diabetes Database (OpenML ID 37) [Dataset]. OpenML. https://www.openml.org/d/37"
+    }
+  ],
+  "ethics": {
+    "sensitiveColumns": [
+      "age"
+    ],
+    "warnings": [
+      "Sampled exclusively from Akimel O'odham (Pima) women aged >= 21; models trained on this cohort lack external validity for men, youth, or broader demographic populations.",
+      "Historian Joanna Radin (2017) documents how mid-20th-century biomedical data from the Gila River Indian Community became a decontextualized ML benchmark without ongoing community governance—an essential teaching case for Indigenous Data Sovereignty and the CARE Principles."
+    ]
+  }
+}

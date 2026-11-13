@@ -1,0 +1,289 @@
+{
+  "id": "titanic",
+  "name": "Titanic Passenger Survival",
+  "tagline": "Predict passenger survival on the RMS Titanic from demographic and ticket records.",
+  "description": "Historical passenger manifest records from the April 1912 sinking of the RMS Titanic, curated from Encyclopedia Titanica sources by Thomas Cason and Frank E. Harrell Jr. and packaged in the canonical 891-passenger training subset popularized by Kaggle and seaborn.\n\nWidely used as an introductory binary classification benchmark, Titanic combines mixed numeric, boolean, and categorical features, explicit missing values across age (177), cabin deck (688), and embarkation port (2), derived duplicate columns that teach target leakage hygiene ('alive', 'class'), and stark demographic survival disparities shaped by 'women and children first' evacuation norms and third-class structural barriers.",
+  "domain": "social-science",
+  "difficulty": "beginner",
+  "tags": [
+    "mixed-types",
+    "missing-values",
+    "leakage-hygiene",
+    "historical-bias",
+    "classic"
+  ],
+  "files": {
+    "csv": "data.csv",
+    "datasheetMarkdown": "datasheet.md",
+    "datasheetHtml": "datasheet.html"
+  },
+  "parsing": {
+    "delimiter": ",",
+    "hasHeader": true,
+    "missingValueTokens": [
+      "",
+      "NA",
+      "NaN"
+    ]
+  },
+  "stats": {
+    "rowCount": 891,
+    "columnCount": 15,
+    "fileSizeBytes": 57018,
+    "hasMissingValues": true,
+    "defaultTargetDistribution": {
+      "0": 549,
+      "1": 342
+    }
+  },
+  "modeling": {
+    "defaultTarget": "survived",
+    "targetCandidates": [
+      {
+        "column": "survived",
+        "taskType": "binary-classification",
+        "positiveClass": 1,
+        "description": "Predict whether the passenger survived the sinking (1 = Survived, 0 = Did not survive).",
+        "leakyColumns": [
+          "alive"
+        ]
+      },
+      {
+        "column": "pclass",
+        "taskType": "multiclass-classification",
+        "description": "Predict passenger ticket class (1st, 2nd, or 3rd) from fare, family size, and demographics.",
+        "leakyColumns": [
+          "class",
+          "survived",
+          "alive"
+        ]
+      }
+    ]
+  },
+  "columns": [
+    {
+      "name": "survived",
+      "displayName": "Survived",
+      "description": "Survival outcome of the passenger in the 1912 sinking.",
+      "dataType": "boolean",
+      "semanticRole": "target",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "valueLabels": {
+        "0": "Did not survive",
+        "1": "Survived"
+      }
+    },
+    {
+      "name": "pclass",
+      "displayName": "Ticket Class",
+      "description": "Proxy for socioeconomic status and shipboard deck location based on ticket tier.",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "1": "1st Class (Upper)",
+        "2": "2nd Class (Middle)",
+        "3": "3rd Class (Lower)"
+      }
+    },
+    {
+      "name": "sex",
+      "displayName": "Sex",
+      "description": "Recorded biological sex of the passenger.",
+      "dataType": "categorical",
+      "semanticRole": "sensitive",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "female": "Female",
+        "male": "Male"
+      }
+    },
+    {
+      "name": "age",
+      "displayName": "Age",
+      "description": "Passenger age in years (fractional if infant under 1 year; missing for 177 passengers).",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "years",
+      "defaultSelected": true,
+      "missingCount": 177
+    },
+    {
+      "name": "sibsp",
+      "displayName": "Siblings / Spouses Aboard",
+      "description": "Number of siblings or spouses traveling aboard the Titanic with the passenger.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "parch",
+      "displayName": "Parents / Children Aboard",
+      "description": "Number of parents or children traveling aboard the Titanic with the passenger.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "fare",
+      "displayName": "Passenger Fare",
+      "description": "Ticket fare paid in 1912 British pounds sterling (often shared across multi-person group tickets; 0.0 indicates complimentary or employee passage).",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "GBP",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "implicitMissingValues": [
+        0
+      ]
+    },
+    {
+      "name": "embarked",
+      "displayName": "Port of Embarkation",
+      "description": "Port where the passenger boarded the RMS Titanic.",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 2,
+      "valueLabels": {
+        "C": "Cherbourg, France",
+        "Q": "Queenstown (Cobh), Ireland",
+        "S": "Southampton, England"
+      }
+    },
+    {
+      "name": "class",
+      "displayName": "Ticket Class (String)",
+      "description": "Text duplicate of the integer-coded 'pclass' column added in seaborn's export.",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": false,
+      "exclusionReason": "Exact string duplicate of 'pclass' (unchecked by default and auto-disabled when predicting 'pclass').",
+      "missingCount": 0
+    },
+    {
+      "name": "who",
+      "displayName": "Demographic Category",
+      "description": "Derived grouping ('man', 'woman', 'child') constructed from 'sex' and 'age'.",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": false,
+      "exclusionReason": "Derived composite of 'sex' and 'age' (optional engineered feature unchecked by default to avoid redundancy).",
+      "missingCount": 0
+    },
+    {
+      "name": "adult_male",
+      "displayName": "Adult Male",
+      "description": "Boolean indicator equal to True when passenger is male and age >= 16 (or age unknown).",
+      "dataType": "boolean",
+      "semanticRole": "feature",
+      "defaultSelected": false,
+      "exclusionReason": "Derived indicator from 'sex' and 'age' unchecked by default to keep primary features unconfounded.",
+      "missingCount": 0
+    },
+    {
+      "name": "deck",
+      "displayName": "Cabin Deck",
+      "description": "Ship deck letter (A through G) extracted from cabin number; missing for 688 of 891 passengers.",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": false,
+      "exclusionReason": "Missing in 77.2% of records (primarily 3rd-class passengers without recorded cabin numbers).",
+      "missingCount": 688
+    },
+    {
+      "name": "embark_town",
+      "displayName": "Embarkation Town (String)",
+      "description": "Full town name duplicate of the single-letter 'embarked' port column.",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": false,
+      "exclusionReason": "Exact string duplicate of the 'embarked' column.",
+      "missingCount": 2
+    },
+    {
+      "name": "alive",
+      "displayName": "Alive (String)",
+      "description": "Text duplicate ('yes'/'no') of the binary 'survived' target column.",
+      "dataType": "boolean",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "exclusionReason": "Exact string duplicate of the 'survived' target column.",
+      "missingCount": 0,
+      "valueLabels": {
+        "no": "Did not survive",
+        "yes": "Survived"
+      }
+    },
+    {
+      "name": "alone",
+      "displayName": "Traveling Alone",
+      "description": "Derived boolean indicator equal to True when both 'sibsp' and 'parch' equal 0.",
+      "dataType": "boolean",
+      "semanticRole": "feature",
+      "defaultSelected": false,
+      "exclusionReason": "Derived indicator from 'sibsp' and 'parch' unchecked by default to avoid feature redundancy.",
+      "missingCount": 0
+    }
+  ],
+  "provenance": {
+    "homepageUrl": "https://www.openml.org/d/40945",
+    "sourceRepositoryUrl": "https://raw.githubusercontent.com/mwaskom/seaborn-data/master/titanic.csv",
+    "license": "Public Domain / CC0",
+    "yearPublished": 1999,
+    "creators": [
+      "Thomas Cason",
+      "Frank E. Harrell Jr."
+    ]
+  },
+  "references": [
+    {
+      "title": "The 'Unusual Episode' Data Revisited",
+      "authors": [
+        "Robert J. MacG. Dawson"
+      ],
+      "year": 1995,
+      "type": "seminal-paper",
+      "url": "https://www.tandfonline.com/doi/abs/10.1080/10691898.1995.11910499",
+      "citation": "Dawson, R. J. M. (1995). The 'unusual episode' data revisited. Journal of Statistics Education, 3(3). https://doi.org/10.1080/10691898.1995.11910499"
+    },
+    {
+      "title": "Regression Modeling Strategies: With Applications to Linear Models, Logistic and Ordinal Regression, and Survival Analysis",
+      "authors": [
+        "Frank E. Harrell Jr."
+      ],
+      "year": 2015,
+      "type": "seminal-paper",
+      "url": "https://link.springer.com/book/10.1007/978-3-319-19425-7",
+      "citation": "Harrell, F. E., Jr. (2015). Regression modeling strategies (2nd ed.). Springer. https://doi.org/10.1007/978-3-319-19425-7"
+    },
+    {
+      "title": "A Comprehensive Review and Benchmarking of Fairness-Aware Variants of Machine Learning Models",
+      "authors": [
+        "George Raftopoulos",
+        "Nikos Fazakis",
+        "Gregory Davrazos",
+        "Sotiris Kotsiantis"
+      ],
+      "year": 2025,
+      "type": "fairness-audit",
+      "url": "https://doi.org/10.3390/a18070435",
+      "citation": "Raftopoulos, G., Fazakis, N., Davrazos, G., & Kotsiantis, S. (2025). A comprehensive review and benchmarking of fairness-aware variants of machine learning models. Algorithms, 18(7), 435. https://doi.org/10.3390/a18070435"
+    }
+  ],
+  "ethics": {
+    "sensitiveColumns": [
+      "sex",
+      "age"
+    ],
+    "warnings": [
+      "Historical rescue protocols ('women and children first') and shipboard class segregation produce extreme survival disparities (74.2% female vs. 18.9% male; 63.0% 1st class vs. 24.2% 3rd class), illustrating how social norms and structural privilege become encoded in historical data.",
+      "Missingness in 'deck' (77.2%) and 'age' (19.9%) is not missing completely at random (MCAR): 3rd-class passengers were disproportionately less likely to have recorded cabin numbers or ages."
+    ]
+  }
+}

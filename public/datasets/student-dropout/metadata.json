@@ -1,0 +1,590 @@
+{
+  "id": "student-dropout",
+  "name": "Higher Education Student Dropout & Success",
+  "tagline": "Predict 3-class undergraduate outcomes across demographic and socioeconomic attributes.",
+  "description": "Compiled at the Polytechnic Institute of Portalegre, Portugal (supported by the SATDAP public administration modernization grant) and published by Realinho, Machado, Baptista, and Martins (2022), this dataset tracks 4,424 undergraduates across 17 degree programs from enrollment through the end of their second semester. Each student is classified into three mutually exclusive outcomes at normal degree completion time: 'Graduate' (2,209), 'Dropout' (1,421), or 'Enrolled' (794).\n\nAddressing the scarcity of human-centered multiclass benchmarks in algorithmic fairness research (Pagano et al., 2023), this dataset combines integer-coded administrative categories, disguised 'Unknown'/'(blank)' parental codes (34 and 99), macroeconomic context, and rich equity attributes—including gender, age, scholarship status, tuition debt, displacement, and educational special needs (disability status)—alongside a temporal distinction between enrollment-time features and 1st/2nd-semester grades.",
+  "domain": "social-science",
+  "difficulty": "intermediate",
+  "tags": [
+    "multiclass",
+    "education",
+    "coded-categoricals",
+    "socioeconomic-fairness",
+    "disability-inclusion"
+  ],
+  "files": {
+    "csv": "data.csv",
+    "datasheetMarkdown": "datasheet.md",
+    "datasheetHtml": "datasheet.html"
+  },
+  "parsing": {
+    "delimiter": ",",
+    "hasHeader": true,
+    "missingValueTokens": [
+      "",
+      "NA",
+      "NaN"
+    ]
+  },
+  "stats": {
+    "rowCount": 4424,
+    "columnCount": 37,
+    "fileSizeBytes": 495639,
+    "hasMissingValues": false,
+    "defaultTargetDistribution": {
+      "Dropout": 1421,
+      "Enrolled": 794,
+      "Graduate": 2209
+    }
+  },
+  "modeling": {
+    "defaultTarget": "Target",
+    "targetCandidates": [
+      {
+        "column": "Target",
+        "taskType": "multiclass-classification",
+        "description": "Predict student academic outcome at normal program duration ('Dropout', 'Enrolled', or 'Graduate').",
+        "leakyColumns": []
+      },
+      {
+        "column": "Scholarship holder",
+        "taskType": "binary-classification",
+        "positiveClass": 1,
+        "description": "Predict whether a student holds a need/merit scholarship (1 = Yes, 0 = No) from demographic and academic profile.",
+        "leakyColumns": []
+      }
+    ]
+  },
+  "columns": [
+    {
+      "name": "Marital Status",
+      "displayName": "Marital Status",
+      "description": "Legal civil marital status of the student at enrollment.",
+      "dataType": "categorical",
+      "semanticRole": "sensitive",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "1": "Single",
+        "2": "Married",
+        "3": "Widower",
+        "4": "Divorced",
+        "5": "De facto union",
+        "6": "Legally separated"
+      }
+    },
+    {
+      "name": "Application mode",
+      "displayName": "Application Mode",
+      "description": "Portuguese national higher-education admission contingent or special entry pathway code.",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "1": "1st phase - general contingent",
+        "2": "Ordinance No. 612/93",
+        "5": "1st phase - special contingent (Azores)",
+        "7": "Holders of other higher courses",
+        "10": "Ordinance No. 854-B/99",
+        "15": "International student (bachelor)",
+        "16": "1st phase - special contingent (Madeira)",
+        "17": "2nd phase - general contingent",
+        "18": "3rd phase - general contingent",
+        "26": "Ordinance No. 533-A/99 (Different Plan)",
+        "27": "Ordinance No. 533-A/99 (Other Institution)",
+        "39": "Over 23 years old entry",
+        "42": "Institution transfer",
+        "43": "Course change",
+        "44": "Technological specialization diploma",
+        "51": "Change of institution/course",
+        "53": "Short-cycle diploma holders",
+        "57": "Change of institution/course (International)"
+      }
+    },
+    {
+      "name": "Application order",
+      "displayName": "Application Preference Order",
+      "description": "Student's ranked preference order for the degree program (0 = 1st choice through 9 = last choice).",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Course",
+      "displayName": "Degree Program",
+      "description": "Official institutional code for the undergraduate degree program.",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "33": "Biofuel Production Technologies",
+        "171": "Animation and Multimedia Design",
+        "8014": "Social Service (Evening)",
+        "9003": "Agronomy",
+        "9070": "Communication Design",
+        "9085": "Veterinary Nursing",
+        "9119": "Informatics Engineering",
+        "9130": "Equiniculture",
+        "9147": "Management",
+        "9238": "Social Service",
+        "9254": "Tourism",
+        "9500": "Nursing",
+        "9556": "Oral Hygiene",
+        "9670": "Advertising and Marketing Management",
+        "9773": "Journalism and Communication",
+        "9853": "Basic Education",
+        "9991": "Management (Evening)"
+      }
+    },
+    {
+      "name": "Daytime/evening attendance",
+      "displayName": "Attendance Schedule",
+      "description": "Whether classes are attended during daytime or evening working-student hours.",
+      "dataType": "boolean",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "0": "Evening attendance",
+        "1": "Daytime attendance"
+      }
+    },
+    {
+      "name": "Previous qualification",
+      "displayName": "Previous Qualification",
+      "description": "Highest educational qualification completed prior to higher-education enrollment (coded per national education scale).",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Previous qualification (grade)",
+      "displayName": "Previous Qualification Grade",
+      "description": "Prior secondary or post-secondary qualification grade on the Portuguese 0-200 admission scale.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "points (0-200)",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Nacionality",
+      "displayName": "Nationality",
+      "description": "Student citizenship code (spelled 'Nacionality' in upstream UCI schema; 1 = Portuguese [97.5%], other codes denote Lusophone, EU, and Latin American nationalities).",
+      "dataType": "categorical",
+      "semanticRole": "sensitive",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "1": "Portuguese",
+        "2": "German",
+        "6": "Spanish",
+        "11": "Italian",
+        "13": "Dutch",
+        "14": "English",
+        "17": "Lithuanian",
+        "21": "Angolan",
+        "22": "Cape Verdean",
+        "24": "Guinean",
+        "25": "Mozambican",
+        "26": "Santomean",
+        "32": "Turkish",
+        "41": "Brazilian",
+        "62": "Romanian",
+        "100": "Moldovan",
+        "101": "Mexican",
+        "103": "Ukrainian",
+        "105": "Russian",
+        "108": "Cuban",
+        "109": "Colombian"
+      }
+    },
+    {
+      "name": "Mother's qualification",
+      "displayName": "Mother's Qualification",
+      "description": "Mother's highest completed education code (code 34 denotes 'Unknown' in 130 rows).",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "implicitMissingValues": [
+        34
+      ]
+    },
+    {
+      "name": "Father's qualification",
+      "displayName": "Father's Qualification",
+      "description": "Father's highest completed education code (code 34 denotes 'Unknown' in 112 rows).",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "implicitMissingValues": [
+        34
+      ]
+    },
+    {
+      "name": "Mother's occupation",
+      "displayName": "Mother's Occupation",
+      "description": "Mother's ISCO occupational category code (code 99 denotes blank/unrecorded in 17 rows).",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "implicitMissingValues": [
+        99
+      ]
+    },
+    {
+      "name": "Father's occupation",
+      "displayName": "Father's Occupation",
+      "description": "Father's ISCO occupational category code (code 99 denotes blank/unrecorded in 19 rows).",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "implicitMissingValues": [
+        99
+      ]
+    },
+    {
+      "name": "Admission grade",
+      "displayName": "Admission Grade",
+      "description": "Weighted entrance score combining secondary GPA and national exam scores (0 to 200 scale).",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "points (0-200)",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Displaced",
+      "displayName": "Displaced Student",
+      "description": "Whether the student had to relocate away from their permanent family residence to attend the institution.",
+      "dataType": "boolean",
+      "semanticRole": "sensitive",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "0": "No",
+        "1": "Yes (Relocated from home region)"
+      }
+    },
+    {
+      "name": "Educational special needs",
+      "displayName": "Educational Special Needs",
+      "description": "Indicator of registered disability or special educational accommodation status (only 51 students [1.15%], illustrating small-subgroup fairness auditing challenges).",
+      "dataType": "boolean",
+      "semanticRole": "sensitive",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "0": "No",
+        "1": "Yes (Special educational needs)"
+      }
+    },
+    {
+      "name": "Debtor",
+      "displayName": "Tuition Debtor",
+      "description": "Socioeconomic vulnerability indicator of unpaid institutional debt (dropout rate is 62.0% among debtors vs. 28.3% among non-debtors).",
+      "dataType": "boolean",
+      "semanticRole": "sensitive",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "0": "No",
+        "1": "Yes"
+      }
+    },
+    {
+      "name": "Tuition fees up to date",
+      "displayName": "Tuition Fees Up to Date",
+      "description": "Whether the student's current semester tuition payments are up to date.",
+      "dataType": "boolean",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "0": "No (In arrears)",
+        "1": "Yes (Up to date)"
+      }
+    },
+    {
+      "name": "Gender",
+      "displayName": "Gender",
+      "description": "Administrative binary gender record (graduation rate is 57.9% for women [0] vs. 35.2% for men [1]).",
+      "dataType": "boolean",
+      "semanticRole": "sensitive",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "0": "Female",
+        "1": "Male"
+      }
+    },
+    {
+      "name": "Scholarship holder",
+      "displayName": "Scholarship Holder",
+      "description": "Whether the student receives social-action financial aid (SAS scholarship; graduation rate is 76.0% for holders vs. 41.3% for non-holders).",
+      "dataType": "boolean",
+      "semanticRole": "sensitive",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "0": "No",
+        "1": "Yes"
+      }
+    },
+    {
+      "name": "Age at enrollment",
+      "displayName": "Age at Enrollment",
+      "description": "Student age in years upon initial program enrollment.",
+      "dataType": "numeric",
+      "semanticRole": "sensitive",
+      "unit": "years",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "International",
+      "displayName": "International Student",
+      "description": "Whether the student enrolled under international student status.",
+      "dataType": "boolean",
+      "semanticRole": "sensitive",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "0": "Domestic",
+        "1": "International"
+      }
+    },
+    {
+      "name": "Curricular units 1st sem (credited)",
+      "displayName": "1st Sem Units Credited",
+      "description": "Number of course units credited via prior learning recognition in the 1st semester.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Curricular units 1st sem (enrolled)",
+      "displayName": "1st Sem Units Enrolled",
+      "description": "Number of course units enrolled in during the 1st semester.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Curricular units 1st sem (evaluations)",
+      "displayName": "1st Sem Evaluations",
+      "description": "Number of exam/assessment evaluations attempted in the 1st semester.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Curricular units 1st sem (approved)",
+      "displayName": "1st Sem Units Approved",
+      "description": "Number of course units passed in the 1st semester.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Curricular units 1st sem (grade)",
+      "displayName": "1st Sem Grade Average",
+      "description": "Mean grade across passed 1st-semester units (0-20 scale; 0 when zero units were passed).",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "points (0-20)",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Curricular units 1st sem (without evaluations)",
+      "displayName": "1st Sem Units Without Evaluation",
+      "description": "Number of enrolled 1st-semester units where the student did not sit for assessment.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Curricular units 2nd sem (credited)",
+      "displayName": "2nd Sem Units Credited",
+      "description": "Number of course units credited in the 2nd semester.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Curricular units 2nd sem (enrolled)",
+      "displayName": "2nd Sem Units Enrolled",
+      "description": "Number of course units enrolled in during the 2nd semester.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Curricular units 2nd sem (evaluations)",
+      "displayName": "2nd Sem Evaluations",
+      "description": "Number of exam/assessment evaluations attempted in the 2nd semester.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Curricular units 2nd sem (approved)",
+      "displayName": "2nd Sem Units Approved",
+      "description": "Number of course units passed in the 2nd semester (strongest post-year-1 predictor of graduation).",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Curricular units 2nd sem (grade)",
+      "displayName": "2nd Sem Grade Average",
+      "description": "Mean grade across passed 2nd-semester units (0-20 scale).",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "points (0-20)",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Curricular units 2nd sem (without evaluations)",
+      "displayName": "2nd Sem Units Without Evaluation",
+      "description": "Number of enrolled 2nd-semester units where the student did not sit for assessment.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Unemployment rate",
+      "displayName": "National Unemployment Rate",
+      "description": "Portuguese national unemployment rate during the enrollment academic year.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "%",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Inflation rate",
+      "displayName": "Annual Inflation Rate",
+      "description": "Portuguese consumer price inflation rate during the enrollment academic year.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "%",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "GDP",
+      "displayName": "Real GDP Growth",
+      "description": "Real national gross domestic product growth indicator during the enrollment academic year.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "unit": "%",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "Target",
+      "displayName": "Academic Outcome",
+      "description": "Three-class student status recorded at the end of normal degree program duration.",
+      "dataType": "categorical",
+      "semanticRole": "target",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "valueLabels": {
+        "Dropout": "Dropped out prior to completion",
+        "Enrolled": "Still enrolled beyond normal duration",
+        "Graduate": "Graduated within normal duration"
+      }
+    }
+  ],
+  "provenance": {
+    "homepageUrl": "https://archive.ics.uci.edu/dataset/697/predict+students+dropout+and+academic+success",
+    "sourceRepositoryUrl": "https://archive.ics.uci.edu/static/public/697/data.csv",
+    "license": "CC BY 4.0",
+    "yearPublished": 2021,
+    "creators": [
+      "Valentim Realinho",
+      "Monica Vieira Martins",
+      "Jorge Machado",
+      "Luis M. T. Baptista"
+    ]
+  },
+  "references": [
+    {
+      "title": "Predicting Student Dropout and Academic Success",
+      "authors": [
+        "Valentim Realinho",
+        "Jorge Machado",
+        "Luis Baptista",
+        "Monica V. Martins"
+      ],
+      "year": 2022,
+      "type": "seminal-paper",
+      "url": "https://www.mdpi.com/2306-5729/7/11/146",
+      "citation": "Realinho, V., Machado, J., Baptista, L., & Martins, M. V. (2022). Predicting student dropout and academic success. Data, 7(11), 146. https://doi.org/10.3390/data7110146"
+    },
+    {
+      "title": "Bias and Unfairness in Machine Learning Models: A Systematic Review on Datasets, Tools, Fairness Metrics, and Identification and Mitigation Methods",
+      "authors": [
+        "Tiago P. Pagano",
+        "Rafael B. Loureiro",
+        "Fernanda V. N. Lisboa",
+        "Erick G. S. Nascimento"
+      ],
+      "year": 2023,
+      "type": "fairness-audit",
+      "url": "https://doi.org/10.3390/bdcc7010015",
+      "citation": "Pagano, T. P., et al. (2023). Bias and unfairness in machine learning models: A systematic review on datasets, tools, fairness metrics, and identification and mitigation methods. Big Data and Cognitive Computing, 7(1), 15. https://doi.org/10.3390/bdcc7010015"
+    },
+    {
+      "title": "UCI Machine Learning Repository: Predict Students' Dropout and Academic Success",
+      "authors": [
+        "Valentim Realinho",
+        "Monica Vieira Martins",
+        "Jorge Machado",
+        "Luis Baptista"
+      ],
+      "year": 2021,
+      "type": "documentation",
+      "url": "https://archive.ics.uci.edu/dataset/697/predict+students+dropout+and+academic+success",
+      "citation": "Realinho, V., Vieira Martins, M., Machado, J., & Baptista, L. (2021). Predict Students' Dropout and Academic Success [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5MC89"
+    }
+  ],
+  "ethics": {
+    "sensitiveColumns": [
+      "Gender",
+      "Age at enrollment",
+      "Educational special needs",
+      "Debtor",
+      "Scholarship holder",
+      "Displaced",
+      "Nacionality",
+      "International",
+      "Marital Status"
+    ],
+    "warnings": [
+      "Deploying dropout-risk models punitively (e.g., for admissions screening or financial-aid withdrawal) creates self-fulfilling prophecies against low-income debtors and male or older working students; ethical deployment is strictly limited to supportive tutoring outreach.",
+      "Students with 'Educational special needs' represent only 1.15% of records (n = 51), demonstrating why aggregate accuracy masks high-variance error rates on disabled minorities (Simson et al., 2024)."
+    ]
+  }
+}

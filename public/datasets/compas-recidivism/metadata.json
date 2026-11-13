@@ -1,0 +1,735 @@
+{
+  "id": "compas-recidivism",
+  "name": "ProPublica COMPAS Two-Year Recidivism",
+  "tagline": "Audit criminal recidivism prediction, error-rate disparities, and leakage traps.",
+  "description": "Assembled via Florida public-records requests by ProPublica journalists Julia Angwin, Jeff Larson, Surya Mattu, and Lauren Kirchner (2016) from Broward County Sheriff's Office, Clerk of Courts, and Department of Corrections records (2013-2014), this 7,214-defendant dataset catalyzed the modern discipline of algorithmic fairness. ProPublica revealed that Northpointe's proprietary COMPAS risk score misclassified Black non-recidivists as Medium/High risk at nearly twice the rate of White non-recidivists (44.8% vs. 23.5%), whereas White recidivists were misclassified as Low risk far more often than Black recidivists (47.7% vs. 28.0%).\n\nTechnologically and pedagogically, raw COMPAS is the ultimate testbed for responsible tabular ML pipelines: out of 53 columns, 17 are PII strings, case numbers, dates, or SQLite join duplicates ('id', 'name', 'first', 'last', 'priors_count_dup') that freeze browser encoders if left checked, and 24 are proprietary COMPAS scores ('decile_score', 'score_text') or post-screening rearrest records ('is_recid', 'r_case_number', 'end', 'event') that cause catastrophic target leakage if not auto-disabled.",
+  "domain": "criminal-justice",
+  "difficulty": "advanced",
+  "tags": [
+    "binary",
+    "fairness-impossibility",
+    "pii-exclusion",
+    "target-leakage",
+    "recidivism"
+  ],
+  "files": {
+    "csv": "data.csv",
+    "datasheetMarkdown": "datasheet.md",
+    "datasheetHtml": "datasheet.html"
+  },
+  "parsing": {
+    "delimiter": ",",
+    "hasHeader": true,
+    "missingValueTokens": [
+      "",
+      "NA",
+      "NaN",
+      "None"
+    ]
+  },
+  "stats": {
+    "rowCount": 7214,
+    "columnCount": 53,
+    "fileSizeBytes": 2539282,
+    "hasMissingValues": true,
+    "defaultTargetDistribution": {
+      "0": 3963,
+      "1": 3251
+    }
+  },
+  "modeling": {
+    "defaultTarget": "two_year_recid",
+    "targetCandidates": [
+      {
+        "column": "two_year_recid",
+        "taskType": "binary-classification",
+        "positiveClass": 1,
+        "description": "Predict whether a defendant is rearrested within two years of COMPAS screening (1 = Rearrested, 0 = Not rearrested) using pre-screening criminal history and demographics.",
+        "leakyColumns": [
+          "decile_score",
+          "is_recid",
+          "r_case_number",
+          "r_charge_degree",
+          "r_days_from_arrest",
+          "r_offense_date",
+          "r_charge_desc",
+          "r_jail_in",
+          "r_jail_out",
+          "violent_recid",
+          "is_violent_recid",
+          "vr_case_number",
+          "vr_charge_degree",
+          "vr_offense_date",
+          "vr_charge_desc",
+          "decile_score_dup",
+          "score_text",
+          "v_decile_score",
+          "v_score_text",
+          "in_custody",
+          "out_custody",
+          "start",
+          "end",
+          "event"
+        ]
+      },
+      {
+        "column": "score_text",
+        "taskType": "multiclass-classification",
+        "description": "Surrogate black-box audit: predict COMPAS's assigned risk tier ('Low', 'Medium', or 'High') from defendant demographics and prior counts to inspect how COMPAS weights race and age.",
+        "leakyColumns": [
+          "decile_score",
+          "decile_score_dup",
+          "v_decile_score",
+          "v_score_text",
+          "is_recid",
+          "r_case_number",
+          "r_charge_degree",
+          "r_days_from_arrest",
+          "r_offense_date",
+          "r_charge_desc",
+          "r_jail_in",
+          "r_jail_out",
+          "violent_recid",
+          "is_violent_recid",
+          "vr_case_number",
+          "vr_charge_degree",
+          "vr_offense_date",
+          "vr_charge_desc",
+          "in_custody",
+          "out_custody",
+          "start",
+          "end",
+          "event",
+          "two_year_recid"
+        ]
+      }
+    ]
+  },
+  "columns": [
+    {
+      "name": "id",
+      "displayName": "Defendant Row ID",
+      "description": "Internal ProPublica SQLite defendant record identifier.",
+      "dataType": "text",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Unique row identifier; causes overfitting and freezes one-hot encoders."
+    },
+    {
+      "name": "name",
+      "displayName": "Full Name",
+      "description": "Defendant full name from public Broward County court records.",
+      "dataType": "text",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Direct personal identifier (PII) with 7,158 unique strings; must never be used in training."
+    },
+    {
+      "name": "first",
+      "displayName": "First Name",
+      "description": "Defendant given first name.",
+      "dataType": "text",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Direct personal identifier (PII) and demographic proxy with 2,800 unique strings."
+    },
+    {
+      "name": "last",
+      "displayName": "Last Name",
+      "description": "Defendant surname.",
+      "dataType": "text",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Direct personal identifier (PII) and ethnic proxy with 3,950 unique strings."
+    },
+    {
+      "name": "compas_screening_date",
+      "displayName": "COMPAS Screening Date",
+      "description": "Date on which the pretrial COMPAS risk assessment was administered.",
+      "dataType": "datetime",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Administrative timestamp string (690 unique dates); excluded to prevent UI-blocking high-cardinality encoding."
+    },
+    {
+      "name": "sex",
+      "displayName": "Sex",
+      "description": "Recorded binary sex of the defendant (80.6% Male, 19.4% Female).",
+      "dataType": "categorical",
+      "semanticRole": "sensitive",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "dob",
+      "displayName": "Date of Birth",
+      "description": "Defendant date of birth (YYYY-MM-DD).",
+      "dataType": "datetime",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Direct personal identifier (5,452 unique dates); age is already captured quantitatively in 'age'."
+    },
+    {
+      "name": "age",
+      "displayName": "Age",
+      "description": "Defendant age in years at COMPAS screening.",
+      "dataType": "numeric",
+      "semanticRole": "sensitive",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "unit": "years"
+    },
+    {
+      "name": "age_cat",
+      "displayName": "Age Category",
+      "description": "Discretized age tier used in ProPublica's fairness regression ('Less than 25', '25 - 45', 'Greater than 45').",
+      "dataType": "categorical",
+      "semanticRole": "sensitive",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "race",
+      "displayName": "Race",
+      "description": "Sheriff's Office racial/ethnic classification ('African-American', 'Caucasian', 'Hispanic', 'Asian', 'Native American', 'Other').",
+      "dataType": "categorical",
+      "semanticRole": "sensitive",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "juv_fel_count",
+      "displayName": "Juvenile Felony Count",
+      "description": "Number of prior juvenile felony offenses on record.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "decile_score",
+      "displayName": "COMPAS Recidivism Decile (1-10)",
+      "description": "Northpointe's proprietary 1-to-10 general recidivism risk decile output.",
+      "dataType": "numeric",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Proprietary COMPAS model output score; must be excluded when training an independent recidivism classifier."
+    },
+    {
+      "name": "juv_misd_count",
+      "displayName": "Juvenile Misdemeanor Count",
+      "description": "Number of prior juvenile misdemeanor offenses on record.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "juv_other_count",
+      "displayName": "Juvenile Other Count",
+      "description": "Number of prior non-felony/non-misdemeanor juvenile infractions.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "priors_count",
+      "displayName": "Prior Adult Offenses Count",
+      "description": "Total count of prior adult criminal offenses prior to COMPAS screening.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0
+    },
+    {
+      "name": "days_b_screening_arrest",
+      "displayName": "Days Between Screening & Arrest",
+      "description": "Signed day offset between COMPAS screening and index arrest (ProPublica filtered to [-30, 30] in their 6,172-row subset).",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": false,
+      "missingCount": 307,
+      "unit": "days",
+      "exclusionReason": "Administrative record-linkage timing offset (307 missing values) rather than defendant risk attribute."
+    },
+    {
+      "name": "c_jail_in",
+      "displayName": "Index Custody Booking Time",
+      "description": "Timestamp when defendant entered Broward County jail for the index offense.",
+      "dataType": "datetime",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 307,
+      "exclusionReason": "High-cardinality booking timestamp (6,907 unique values)."
+    },
+    {
+      "name": "c_jail_out",
+      "displayName": "Index Custody Release Time",
+      "description": "Timestamp when defendant exited Broward County jail for the index offense.",
+      "dataType": "datetime",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 307,
+      "exclusionReason": "High-cardinality release timestamp (6,880 unique values)."
+    },
+    {
+      "name": "c_case_number",
+      "displayName": "Index Case Number",
+      "description": "Broward County Clerk court docket number for the index charge.",
+      "dataType": "text",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 22,
+      "exclusionReason": "Unique court docket identifier (7,192 unique values)."
+    },
+    {
+      "name": "c_offense_date",
+      "displayName": "Index Offense Date",
+      "description": "Recorded date of the index alleged offense.",
+      "dataType": "datetime",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 1159,
+      "exclusionReason": "Administrative date string with 1,159 missing values."
+    },
+    {
+      "name": "c_arrest_date",
+      "displayName": "Index Arrest Date",
+      "description": "Recorded arrest date when no offense date was filed (missing in 6,077 rows).",
+      "dataType": "datetime",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 6077,
+      "exclusionReason": "Sparse administrative date string (84.2% missing)."
+    },
+    {
+      "name": "c_days_from_compas",
+      "displayName": "Days From Index Offense to COMPAS",
+      "description": "Unsigned days elapsed between index offense/arrest and COMPAS screening.",
+      "dataType": "numeric",
+      "semanticRole": "feature",
+      "defaultSelected": false,
+      "missingCount": 22,
+      "unit": "days",
+      "exclusionReason": "Administrative record-matching interval unchecked by default."
+    },
+    {
+      "name": "c_charge_degree",
+      "displayName": "Index Charge Degree",
+      "description": "Severity class of the current arrest charge ('F' = Felony, 'M' = Misdemeanor).",
+      "dataType": "categorical",
+      "semanticRole": "feature",
+      "defaultSelected": true,
+      "missingCount": 0,
+      "valueLabels": {
+        "F": "Felony",
+        "M": "Misdemeanor"
+      }
+    },
+    {
+      "name": "c_charge_desc",
+      "displayName": "Index Charge Description",
+      "description": "Free-text statutory description of the index charge (437 distinct strings).",
+      "dataType": "text",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 29,
+      "exclusionReason": "High-cardinality statutory text (437 unique strings) that causes sparse one-hot bloat in browser models."
+    },
+    {
+      "name": "is_recid",
+      "displayName": "Any Recidivism Flag (Leaky)",
+      "description": "Post-screening indicator of any subsequent rearrest regardless of the 2-year window.",
+      "dataType": "boolean",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Post-outcome recidivism indicator recorded after screening; directly leaks 'two_year_recid'.",
+      "valueLabels": {
+        "0": "No rearrest recorded",
+        "1": "Rearrested"
+      }
+    },
+    {
+      "name": "r_case_number",
+      "displayName": "Recidivism Case Number",
+      "description": "Court docket number of the post-screening recidivism arrest (null if none).",
+      "dataType": "text",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 3743,
+      "exclusionReason": "Post-outcome rearrest docket number: non-null only when defendant reoffended."
+    },
+    {
+      "name": "r_charge_degree",
+      "displayName": "Recidivism Charge Degree",
+      "description": "Statutory severity of the subsequent rearrest offense.",
+      "dataType": "categorical",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 3743,
+      "exclusionReason": "Post-outcome rearrest attribute known only after recidivism occurs."
+    },
+    {
+      "name": "r_days_from_arrest",
+      "displayName": "Recidivism Jail Lag Days",
+      "description": "Days between recidivism arrest and booking.",
+      "dataType": "numeric",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 4898,
+      "unit": "days",
+      "exclusionReason": "Post-outcome rearrest timing variable."
+    },
+    {
+      "name": "r_offense_date",
+      "displayName": "Recidivism Offense Date",
+      "description": "Date of subsequent rearrest offense.",
+      "dataType": "datetime",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 3743,
+      "exclusionReason": "Post-outcome rearrest date."
+    },
+    {
+      "name": "r_charge_desc",
+      "displayName": "Recidivism Charge Description",
+      "description": "Statutory description of the subsequent rearrest charge.",
+      "dataType": "text",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 3801,
+      "exclusionReason": "Post-outcome rearrest description."
+    },
+    {
+      "name": "r_jail_in",
+      "displayName": "Recidivism Jail In Date",
+      "description": "Jail booking date for the subsequent rearrest.",
+      "dataType": "datetime",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 4898,
+      "exclusionReason": "Post-outcome rearrest booking date."
+    },
+    {
+      "name": "r_jail_out",
+      "displayName": "Recidivism Jail Out Date",
+      "description": "Jail release date for the subsequent rearrest.",
+      "dataType": "datetime",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 4898,
+      "exclusionReason": "Post-outcome rearrest release date."
+    },
+    {
+      "name": "violent_recid",
+      "displayName": "Legacy Empty Violent Recidivism",
+      "description": "Deprecated column left completely empty (100% null across all 7,214 rows) in ProPublica's export.",
+      "dataType": "numeric",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 7214,
+      "exclusionReason": "100% empty legacy column in ProPublica's SQLite export (all 7,214 values missing)."
+    },
+    {
+      "name": "is_violent_recid",
+      "displayName": "Violent Recidivism Flag (Leaky)",
+      "description": "Post-screening binary indicator of subsequent violent offense arrest.",
+      "dataType": "boolean",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Post-outcome violent rearrest indicator that directly implies general recidivism.",
+      "valueLabels": {
+        "0": "No violent rearrest",
+        "1": "Violent rearrest"
+      }
+    },
+    {
+      "name": "vr_case_number",
+      "displayName": "Violent Recidivism Case Number",
+      "description": "Court docket number for post-screening violent offense.",
+      "dataType": "text",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 6395,
+      "exclusionReason": "Post-outcome violent rearrest identifier."
+    },
+    {
+      "name": "vr_charge_degree",
+      "displayName": "Violent Recidivism Charge Degree",
+      "description": "Severity tier of post-screening violent rearrest.",
+      "dataType": "categorical",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 6395,
+      "exclusionReason": "Post-outcome violent rearrest charge degree."
+    },
+    {
+      "name": "vr_offense_date",
+      "displayName": "Violent Recidivism Offense Date",
+      "description": "Date of post-screening violent offense.",
+      "dataType": "datetime",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 6395,
+      "exclusionReason": "Post-outcome violent rearrest date."
+    },
+    {
+      "name": "vr_charge_desc",
+      "displayName": "Violent Recidivism Charge Description",
+      "description": "Statutory description of post-screening violent offense.",
+      "dataType": "text",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 6395,
+      "exclusionReason": "Post-outcome violent rearrest text."
+    },
+    {
+      "name": "type_of_assessment",
+      "displayName": "COMPAS Assessment Type",
+      "description": "Constant string ('Risk of Recidivism') across all 7,214 rows.",
+      "dataType": "categorical",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Zero-variance constant metadata column ('Risk of Recidivism')."
+    },
+    {
+      "name": "decile_score_dup",
+      "displayName": "COMPAS Recidivism Decile (Join Copy)",
+      "description": "Duplicate of 'decile_score' produced by ProPublica's SQLite table join (disambiguated from duplicate header).",
+      "dataType": "numeric",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Duplicate proprietary COMPAS decile score."
+    },
+    {
+      "name": "score_text",
+      "displayName": "COMPAS Risk Tier ('Low'/'Medium'/'High')",
+      "description": "Coarsened COMPAS risk tier ('Low' = deciles 1-4, 'Medium' = 5-7, 'High' = 8-10); exhibits 44.8% FPR on Black non-recidivists vs. 23.5% on White non-recidivists.",
+      "dataType": "categorical",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Proprietary COMPAS categorical risk output (excluded when predicting 'two_year_recid', or usable as a surrogate-audit target)."
+    },
+    {
+      "name": "screening_date",
+      "displayName": "Screening Date (Join Copy)",
+      "description": "Duplicate screening date column from ProPublica's SQLite join.",
+      "dataType": "datetime",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Duplicate administrative timestamp string."
+    },
+    {
+      "name": "v_type_of_assessment",
+      "displayName": "Violent Assessment Type",
+      "description": "Constant string ('Risk of Violence') across all 7,214 rows.",
+      "dataType": "categorical",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Zero-variance constant metadata column ('Risk of Violence')."
+    },
+    {
+      "name": "v_decile_score",
+      "displayName": "COMPAS Violence Decile (1-10)",
+      "description": "Northpointe's proprietary 1-to-10 violent recidivism risk decile.",
+      "dataType": "numeric",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Proprietary COMPAS violent risk score."
+    },
+    {
+      "name": "v_score_text",
+      "displayName": "COMPAS Violence Risk Tier",
+      "description": "Coarsened COMPAS violent risk category ('Low', 'Medium', 'High').",
+      "dataType": "categorical",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Proprietary COMPAS violent risk tier."
+    },
+    {
+      "name": "v_screening_date",
+      "displayName": "Violence Screening Date",
+      "description": "Date of COMPAS violent risk screening.",
+      "dataType": "datetime",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Administrative timestamp string."
+    },
+    {
+      "name": "in_custody",
+      "displayName": "Subsequent Custody Start",
+      "description": "Custody start date used in ProPublica's Cox survival table.",
+      "dataType": "datetime",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 236,
+      "exclusionReason": "Post-screening custody tracking date."
+    },
+    {
+      "name": "out_custody",
+      "displayName": "Subsequent Custody End",
+      "description": "Custody release date used in ProPublica's Cox survival table.",
+      "dataType": "datetime",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 236,
+      "exclusionReason": "Post-screening custody tracking date."
+    },
+    {
+      "name": "priors_count_dup",
+      "displayName": "Prior Offenses Count (Join Copy)",
+      "description": "Exact duplicate of 'priors_count' from ProPublica's SQLite join (disambiguated from duplicate header).",
+      "dataType": "numeric",
+      "semanticRole": "identifier",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Exact SQLite-join duplicate of 'priors_count'."
+    },
+    {
+      "name": "start",
+      "displayName": "Survival Interval Start",
+      "description": "Start day of Cox proportional-hazards follow-up interval.",
+      "dataType": "numeric",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "unit": "days",
+      "exclusionReason": "Post-screening survival-analysis interval boundary."
+    },
+    {
+      "name": "end",
+      "displayName": "Survival Interval End",
+      "description": "End day of follow-up (time until rearrest or 2016-04-01 censoring); directly reveals recidivism.",
+      "dataType": "numeric",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "unit": "days",
+      "exclusionReason": "Post-outcome follow-up duration until rearrest or censoring; leaks 'two_year_recid'."
+    },
+    {
+      "name": "event",
+      "displayName": "Survival Rearrest Event (Leaky)",
+      "description": "Cox survival event indicator closely tracking post-release rearrest.",
+      "dataType": "boolean",
+      "semanticRole": "leaky",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "exclusionReason": "Post-outcome survival event indicator leaking 'two_year_recid'.",
+      "valueLabels": {
+        "0": "Censored",
+        "1": "Rearrest event"
+      }
+    },
+    {
+      "name": "two_year_recid",
+      "displayName": "Two-Year Recidivism",
+      "description": "Whether the defendant was rearrested for a new offense within two years of COMPAS screening.",
+      "dataType": "boolean",
+      "semanticRole": "target",
+      "defaultSelected": false,
+      "missingCount": 0,
+      "valueLabels": {
+        "0": "Not rearrested within 2 years",
+        "1": "Rearrested within 2 years"
+      }
+    }
+  ],
+  "provenance": {
+    "homepageUrl": "https://www.propublica.org/article/how-we-analyzed-the-compas-recidivism-algorithm",
+    "sourceRepositoryUrl": "https://github.com/propublica/compas-analysis/blob/master/compas-scores-two-years.csv",
+    "license": "Public Domain (Florida Public Records) / ProPublica Open Data",
+    "yearPublished": 2016,
+    "creators": [
+      "Julia Angwin",
+      "Jeff Larson",
+      "Surya Mattu",
+      "Lauren Kirchner"
+    ]
+  },
+  "references": [
+    {
+      "title": "Machine Bias: There's Software Used Across the Country to Predict Future Criminals. And It's Biased Against Blacks.",
+      "authors": [
+        "Julia Angwin",
+        "Jeff Larson",
+        "Surya Mattu",
+        "Lauren Kirchner"
+      ],
+      "year": 2016,
+      "type": "fairness-audit",
+      "url": "https://www.propublica.org/article/machine-bias-risk-assessments-in-criminal-sentencing",
+      "citation": "Angwin, J., Larson, J., Mattu, S., & Kirchner, L. (2016, May 23). Machine bias. ProPublica. https://www.propublica.org/article/machine-bias-risk-assessments-in-criminal-sentencing"
+    },
+    {
+      "title": "Fair Prediction with Disparate Impact: A Study of Bias in Recidivism Prediction Instruments",
+      "authors": [
+        "Alexandra Chouldechova"
+      ],
+      "year": 2017,
+      "type": "seminal-paper",
+      "url": "https://journals.sagepub.com/doi/full/10.1089/big.2016.0047",
+      "citation": "Chouldechova, A. (2017). Fair prediction with disparate impact: A study of bias in recidivism prediction instruments. Big Data, 5(2), 153-163. https://doi.org/10.1089/big.2016.0047"
+    },
+    {
+      "title": "Inherent Trade-Offs in the Fair Determination of Risk Scores",
+      "authors": [
+        "Jon Kleinberg",
+        "Sendhil Mullainathan",
+        "Manish Raghavan"
+      ],
+      "year": 2017,
+      "type": "seminal-paper",
+      "url": "https://drops.dagstuhl.de/entities/document/10.4230/LIPIcs.ITCS.2017.43",
+      "citation": "Kleinberg, J., Mullainathan, S., & Raghavan, M. (2017). Inherent trade-offs in the fair determination of risk scores. Proceedings of Innovations in Theoretical Computer Science (ITCS 2017), 43:1-43:23. https://doi.org/10.4230/LIPIcs.ITCS.2017.43"
+    },
+    {
+      "title": "It's COMPASlicated: The Messy Relationship between RAI Datasets and Algorithmic Fairness Benchmarks",
+      "authors": [
+        "Michelle Bao",
+        "Angela Zhou",
+        "Samantha Zottola",
+        "Brian Brubach",
+        "Sarah Desmarais",
+        "Aaron Horowitz",
+        "Kristian Lum",
+        "Suresh Venkatasubramanian"
+      ],
+      "year": 2021,
+      "type": "fairness-audit",
+      "url": "https://arxiv.org/abs/2106.05498",
+      "citation": "Bao, M., Zhou, A., Zottola, S., Brubach, B., Desmarais, S., Horowitz, A., Lum, K., & Venkatasubramanian, S. (2021). It's COMPASlicated: The messy relationship between RAI datasets and algorithmic fairness benchmarks. NeurIPS 2021 Datasets and Benchmarks Track. https://arxiv.org/abs/2106.05498"
+    }
+  ],
+  "ethics": {
+    "sensitiveColumns": [
+      "sex",
+      "age",
+      "age_cat",
+      "race"
+    ],
+    "warnings": [
+      "Construct Validity Warning (Bao et al., 2021): 'two_year_recid' measures rearrest rather than reoffending; differential policing intensity across Broward County neighborhoods conflates law-enforcement surveillance disparities with individual behavior.",
+      "Fairness Impossibility Theorem (Chouldechova, 2017; Kleinberg et al., 2017): Because observed rearrest base rates differ across groups (51.4% African-American vs. 39.4% Caucasian), no imperfect classifier can simultaneously satisfy Predictive Parity (calibration) and Equalized Odds (equal FPR and FNR).",
+      "Contains real public-record defendant names ('name', 'first', 'last', 'dob'); these PII columns are disabled by default and must never be used as model features."
+    ]
+  }
+}
