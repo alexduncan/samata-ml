@@ -1,10 +1,10 @@
 # Data Ingestion & Storage Pipeline
 
-**Status:** draft | **Updated:** 2026-11-13T08:53:21Z
+**Status:** draft | **Updated:** 2026-11-13T11:17:32Z
 
 ## Goal
 
-**Current behaviour:** No dataset can be loaded. There is no worker, CSV parser integration or row storage. `scripts/build-assets.ts:38-42` adds `src/models/storage/storageWorker.ts` as a build entrypoint only if it exists (it does not). `src/stores/reconciler.ts:31-104` (`createDefaultIndexedDBAdapter`) opens `samata-db` v1 with **out-of-line** stores (no key paths), which do not match [data-ingestion §4](../data-ingestion.md). `src/app.ts` calls `reconcileStartupState()` with no IndexedDB adapter, so reconciliation checks 1, 2 and 4 never run in the browser. `src/config/datasets.ts` has wrong shapes (Iris's URL sits in `description`, a trailing `{}` entry, Penguins claims 5 columns but has 9) and points at third-party gists that the production CSP (`connect-src 'self'` in `public/_headers`) would block. Two unstructured notes, [sample-dataset-specification.md](sample-dataset-specification.md) and [data-type-inference.md](data-type-inference.md), propose a dataset descriptor schema and type-inference rules. Neither follows the plan template, so `bun run plans:check` currently fails on both.
+**Current behaviour:** No dataset can be loaded. There is no worker, CSV parser integration or row storage. `scripts/build-assets.ts:38-42` adds `src/models/storage/storageWorker.ts` as a build entrypoint only if it exists (it does not). `src/stores/reconciler.ts:31-104` (`createDefaultIndexedDBAdapter`) opens `samata-db` v1 with **out-of-line** stores (no key paths), which do not match [data-ingestion §4](../data-ingestion.md). `src/app.ts` calls `reconcileStartupState()` with no IndexedDB adapter, so reconciliation checks 1, 2 and 4 never run in the browser. `src/config/datasets.ts` has wrong shapes (Iris's URL sits in `description`, a trailing `{}` entry, Penguins claims 5 columns but has 9) and points at third-party gists that the production CSP (`connect-src 'self'` in `public/_headers`) would block. Two unstructured notes, [sample-dataset-specification.md](../notes/sample-dataset-specification.md) and [data-type-inference.md](../notes/data-type-inference.md), propose a dataset descriptor schema and type-inference rules. Both are in the notes inbox, `specification/notes/`.
 
 **Target behaviour:**
 
@@ -115,7 +115,7 @@ Facts the planner verified, so the implementer need not re-check them.
 
 ### Review of the input notes
 
-What I changed when folding [sample-dataset-specification.md](sample-dataset-specification.md) and [data-type-inference.md](data-type-inference.md) into this plan, and why. T13 writes the result up as `specification/sample-datasets.md` and `data-ingestion.md` §5, and removes both notes from `plans/` (they are not plans and break `bun run plans:check`).
+What I changed when folding [sample-dataset-specification.md](../notes/sample-dataset-specification.md) and [data-type-inference.md](../notes/data-type-inference.md) into this plan, and why. T13 writes the result up as `specification/sample-datasets.md` and `data-ingestion.md` §5, and deletes both notes from `specification/notes/`.
 
 | #   | Note                                                                                                                | Problem                                                                                                                                                                                                                   | Change adopted                                                                                                                                                                                                                                                                                                                                          |
 | --- | ------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -402,7 +402,7 @@ T13 applies these and ticks each one.
 - [ ] `specification/workflow-steps.md` §1 — dataset cards come from the sample-dataset manifest and show `name`, `tagline`, `stats.rowCount` and `stats.columnCount`
 - [ ] `specification/ARCHITECTURE.md` — the `/src/config/` line no longer lists datasets; `content/datasets/` is described
 - [ ] `specification/TODO.md` — TODO-12 (datasheet part), TODO-23, TODO-24, TODO-47 and TODO-49 removed; TODO-09 reworded to its UI parts; TODO-42 points at `sample-datasets.md`
-- [ ] `specification/README.md` — `sample-datasets.md` row added; `data-ingestion.md` row says implemented; `plans/sample-dataset-specification.md` and `plans/data-type-inference.md` deleted
+- [ ] `specification/README.md` — `sample-datasets.md` row added; `data-ingestion.md` row says implemented; `notes/sample-dataset-specification.md` and `notes/data-type-inference.md` deleted
 - [ ] Known gap 4 — narrowed to the Markdown pages only (datasets decided)
 - [ ] Known gap 6 — removed or narrowed, per what remains specified but not installed
 - [ ] Known gap 9 — resolved (one canonical `ColumnType`)
@@ -611,7 +611,7 @@ T13 applies these and ticks each one.
 
 - **Depends on:** T1–T12
 - **Risk:** routine
-- **Likely files:** `specification/data-ingestion.md`, `specification/sample-datasets.md` (new), `specification/plans/sample-dataset-specification.md` (delete), `specification/plans/data-type-inference.md` (delete), `specification/state-and-storage.md`, `specification/workflow-steps.md`, `specification/ARCHITECTURE.md`, `specification/TODO.md`, `specification/README.md`
+- **Likely files:** `specification/data-ingestion.md`, `specification/sample-datasets.md` (new), `specification/notes/sample-dataset-specification.md` (delete), `specification/notes/data-type-inference.md` (delete), `specification/state-and-storage.md`, `specification/workflow-steps.md`, `specification/ARCHITECTURE.md`, `specification/TODO.md`, `specification/README.md`
 - **Must not touch:** `specification/preview-dataset.md` (TODO-48); `specification/mockups/`; `AGENTS.md`; other plans.
 - **Implementation:**
     - **`data-ingestion.md`:** status `implemented`. §3 links `src/types/dataset.ts`. §4 = D14. §5 = D2–D7, D11 and the full type-inference rules from _Interfaces_ (this absorbs `data-type-inference.md`, including the R9–R17 changes). §6 = D15. Keep DATA-AC-1–5.
@@ -673,3 +673,4 @@ T13 applies these and ticks each one.
 | 2026-11-12T15:35:52Z | Initial draft                                                                                                                                                                                                                                                                                                                 | User request: turn the `data-ingestion-and-storage` stub into a draft plan |
 | 2026-11-13T08:09:39Z | Major revision: whole-file type inference with the notes' rules (D2–D4, R9–R17); histograms for floats and nice bins (D6); bounded-memory exact medians; 200 MB limit and quota check (D11); typed sample-dataset descriptors and build-time catalogue (D10, R1–R8); `datetime` in `ColumnType` (D17); tasks re-cut to T1–T13 | User review of D4, D6, D10, D11 and the two notes files                    |
 | 2026-11-13T08:53:21Z | Added _Specification changes_, distilled from T13; T13 renamed to the `Sync specification` task                                                                                                                                                                                                                               | New spec-sync rule in the planning and implementation skills               |
+| 2026-11-13T11:17:32Z | The two input notes moved from `plans/` to `specification/notes/`; paths updated                                                                                                                                                                                                                                              | Notes inbox created so `plans:check` only sees plans                       |

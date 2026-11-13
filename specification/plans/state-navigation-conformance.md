@@ -1,6 +1,6 @@
 # State and navigation conformance
 
-**Status:** draft | **Updated:** 2026-11-13T09:31:48Z
+**Status:** ready | **Updated:** 2026-11-13T10:35:55Z
 
 ## Goal
 
@@ -126,7 +126,7 @@ Facts the planner verified, so the implementer need not re-check them.
 - **Web guidance:** None. No new platform feature is used: `aria-current`, `focus({ preventScroll })`, the History API and passive `scroll` listeners are already in use.
 - **Visual reference:** `specification/mockups/ui-scaffold/01-1_select-data.html` — `css/steps.css` `.step[aria-current]`, `.step-num`. T8 changes which element carries `aria-current` (the link, per SEM-03), not how anything looks. The sidebar's parity entries in `tests/visual-parity/map.ts` remain `knownDrift: 'scaffolding-visual-remediation'`. Deviations: SEM-03 (applied here).
 - **Lit skills:** implementers use `lit-implementer` for T8.
-- **Known gaps decided:** 14 (every bullet except the IndexedDB adapter and stored-results deletion, which stay) and 15 (see _Technical decisions_; its open questions are blocking below).
+- **Known gaps decided:** 14 (every bullet except the IndexedDB adapter and stored-results deletion, which stay) and 15 (see _Technical decisions_; its open questions were answered by the user on 2026-11-13, recorded under _Risks and open questions_).
 - **Assumptions requiring verification:** None.
 
 ## Technical decisions
@@ -140,7 +140,7 @@ Facts the planner verified, so the implementer need not re-check them.
 | D5 Blocked reasons              | `/models/{num}`: `null` if the model exists, else `MODEL_NOT_FOUND`. `/results`: `TWO_TRAINED_MODELS_REQUIRED` unless at least two models are trained. Exactly the §4.3 matrix.                                                                                                                                                                                                                                                                                                                                             | Keep the dataset and target checks first: the spec's messages are chosen per page. With no target, models are cleared anyway, so model-not-found is the true state. |
 | D6 Scroll invalidation          | A private helper in `app.store.ts` computes the matching keys from `$scrollState` and calls `clearScroll(keys)` **after** `updateState` succeeds. Dataset change clears every key not starting with `data:`. Discard clears `models`, `models/*` and `results`.                                                                                                                                                                                                                                                             | A prefix option on `clearScroll`: changes the §10 public action.                                                                                                    |
 | D7 Unchanged edits              | Each model action compares the new value with the old one using a private structural-equality helper for JSON values. If they are equal, it returns `true` without setting the store. If they differ, it un-completes every section **after** the section that owns the field: `select-features` owns `features`; `configure-model` owns `modelOptions`, `hyperparameters` and `multiclass`; `configure-training` owns `trainingSetup`. `updateState` skips `$appState.set` when the transform returns the same reference.  | Always invalidate: contradicts §6.3 and NAV-AC-8.                                                                                                                   |
-| D8 Training sections (gap 15)   | `startTraining` requires `choose-model`, `select-features` and `configure-model`, plus a non-null `trainingSetup`. It adds `configure-training` to `completedSteps`, because **Train Model** is section 4's completion trigger (§6.3). `trainingFailed`, `cancelTraining`, `recoverInterrupted` and reconciler check 7 remove `configure-training`, `training` and `results`, so section 4 is active again with the error beside **Train Model** (§7 note). **Needs your confirmation; see Risks.**                         | Require section 4 complete first: then the Train Model button can never complete section 4.                                                                         |
+| D8 Training sections (gap 15)   | `startTraining` requires `choose-model`, `select-features` and `configure-model`, plus a non-null `trainingSetup`. It adds `configure-training` to `completedSteps`, because **Train Model** is section 4's completion trigger (§6.3). `trainingFailed`, `cancelTraining`, `recoverInterrupted` and reconciler check 7 remove `configure-training`, `training` and `results`, so section 4 is active again with the error beside **Train Model** (§7 note). Confirmed by the user on 2026-11-13.                            | Require section 4 complete first: then the Train Model button can never complete section 4.                                                                         |
 | D9 Focus (gap 14)               | The router owns the decision; the shell performs it. A router-private flag is set by user-initiated workflow navigation (`navigate`, and a `popstate` whose previous route was a workflow route). It is not set by `initRouter`, by closing a modal (`closeReserved`, or a `popstate` from a reserved route) or by opening one. `takeFocusRequest()` returns the flag and clears it. `renderAppShell` focuses `#content h1` synchronously after `render()` only if it returns `true`. The router no longer queries the DOM. | The router focuses after a microtask: races with Lit's render, and it duplicated the shell's focus.                                                                 |
 | D10 Underlay                    | The `reserved` variant of `ParsedRoute` gains `underlayPath?: WorkflowPath`. The router sets it whenever it sets a reserved route: from the entry it writes (`openReserved`, `initRouter`) or from `history.state.underlayPath` falling back to `resumePath` (`popstate`). `getActiveWorkflowRoute` uses `route.underlayPath ?? resumePath`. `parseRoute` is unchanged.                                                                                                                                                     | The shell reads `history.state`: breaks §5.1.                                                                                                                       |
 | D11 Flush before history writes | Every `pushState`/`replaceState` in `router.ts` is preceded by `flushNow()` (§8.4 saving rule 2).                                                                                                                                                                                                                                                                                                                                                                                                                           | Rely on the 150 ms debounce: loses the outgoing position on a fast reload.                                                                                          |
@@ -286,9 +286,9 @@ T9 applies these and ticks each one.
 - [ ] `specification/state-and-storage.md` §4, §4.1, §8 — the persister is the only code that reads or writes `localStorage`, including during reconciliation. Feature, multiclass, hyperparameter-mode and training-setup-type changes are written synchronously. Progress writes are throttled to one per second. §8 rules are implemented as D2 and D3. The status line drops "§8 read-only mode" from the target list and keeps migrations and §7 as target.
 - [ ] `specification/app-state-and-navigation.md` §4.3, §4.4, §5.3, §5.6, §6.1, §6.3, §6.4, §8.4, §10 — move to the status line's implemented list: blocked reasons, sidebar `aria-current`, focus rules, `underlayPath`, scroll saving and invalidation, unchanged-edit rule and action validation.
 - [ ] `specification/app-state-and-navigation.md` §6.5 — `ui.results` becomes `results.ui` (D15).
-- [ ] `specification/app-state-and-navigation.md` §7 — the `startTraining` guard is "sections 1–3 complete and a training setup chosen". `trainingFailed`, `cancelTraining` and `recoverInterrupted` un-complete `configure-training`, `training` and `results` (D8). `cancelTraining` loses "(proposed)" if Q1c is accepted.
+- [ ] `specification/app-state-and-navigation.md` §7 — the `startTraining` guard is "sections 1–3 complete and a training setup chosen". `trainingFailed`, `cancelTraining` and `recoverInterrupted` un-complete `configure-training`, `training` and `results` (D8). `cancelTraining` loses "(proposed)" (Q1c accepted).
 - [ ] `specification/app-state-and-navigation.md` §11 NAV-AC-10 — "unknown future version yields defaults in memory and leaves the stored blob unchanged".
-- [ ] `specification/app-state-and-navigation.md` §12 — Q1b, Q1c, Q2 and Q4 are recorded as answered with your decisions; the §6.3, §6.4, §7 and §8.4 "proposed" labels are removed or kept to match.
+- [ ] `specification/app-state-and-navigation.md` §12 — Q1b, Q1c, Q2 and Q4 are recorded as answered: keep `reopenSection`, keep `cancelTraining`, confirm-and-discard on target or dataset change, and latest-per-step scroll memory. The "proposed" labels in §6.3, §6.4, §7 and §8.4 are removed, and those sections state the rules as decided.
 - [ ] `specification/state-and-storage.md` §6 check 7 — recovery un-completes `configure-training` as well (D8).
 - [ ] `specification/visual-design.md` — the status line and §5 SEM-03 row say SEM-03 is applied.
 - [ ] Known gap 13 — SEM-03 removed from the list of entries not yet applied.
@@ -495,12 +495,12 @@ Parallel-safe groups (no shared files):
 
 ## Risks and open questions
 
-- **Blocking:** these need your decisions before this plan can be `ready`. The code already behaves as the recommendation; app-state-and-navigation §12 says implementers must not decide them.
-    - **§12 Q1b — re-opening completed model sections before training** (`reopenSection`). Recommendation: keep.
-    - **§12 Q1c — a Cancel training action** (`cancelTraining`). Recommendation: keep. Long in-browser runs need it.
-    - **§12 Q2 — confirm-and-discard** when the target or dataset changes with models present (`setTarget` rejects, then `confirmDiscardModels`). The alternatives are a hard lock or read-only archived models. Recommendation: keep confirm-and-discard.
-    - **§12 Q4 — scroll semantics:** remember each step's latest position rather than per history entry. Recommendation: keep latest-per-step.
-    - **D8 — training sections:** Train Model completes section 4, and a failed, cancelled or interrupted run re-opens section 4. Recommendation: accept. It is the only reading of §6.3 and §7 that is self-consistent.
+- **Blocking:** none. The user answered these on 2026-11-13, accepting every recommendation. The code already behaves this way; T9 records the answers in app-state-and-navigation §12.
+    - **§12 Q1b — re-opening completed model sections before training** (`reopenSection`): keep.
+    - **§12 Q1c — a Cancel training action** (`cancelTraining`): keep. Long in-browser runs need it.
+    - **§12 Q2 — target or dataset change with models present:** confirm-and-discard (`setTarget` rejects, then `confirmDiscardModels`), not a hard lock or read-only archived models.
+    - **§12 Q4 — scroll semantics:** each step remembers its latest position, not one per history entry.
+    - **D8 — training sections:** Train Model completes section 4, and a failed, cancelled or interrupted run re-opens section 4. It is the only reading of §6.3 and §7 that is self-consistent.
 - **Non-blocking:**
     - **Focus on reserved-route close by Back.** A `popstate` from `/about` to the underlay never requests focus, matching §5.6. When the modal was closed by Back rather than `Esc`, the dialog still returns focus to its invoker, because the shell closes it. Owner: T8 verifies in SNC-14.
     - **Progress throttle.** Throttling is per persister, not per model. With one training run at a time (§7.1) that is enough.
@@ -517,6 +517,7 @@ Parallel-safe groups (no shared files):
 
 ## Change log
 
-| When (UTC)           | Change        | Reason                                                |
-| -------------------- | ------------- | ----------------------------------------------------- |
-| 2026-11-13T09:31:48Z | Initial draft | User request: plan the fixes for Known gaps 14 and 15 |
+| When (UTC)           | Change                                                                | Reason                                                       |
+| -------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ |
+| 2026-11-13T09:31:48Z | Initial draft                                                         | User request: plan the fixes for Known gaps 14 and 15        |
+| 2026-11-13T10:35:55Z | Status draft → ready; §12 Q1b, Q1c, Q2, Q4 and D8 recorded as decided | User accepted all five recommendations and approved the plan |

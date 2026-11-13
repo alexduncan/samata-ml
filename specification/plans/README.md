@@ -1,6 +1,6 @@
 # Implementation plans
 
-Each substantive change has one plan here. The `planning` skill writes plans and the `implementation` skill executes them; the rules live in those skills, not here. Only files that follow the planning template belong in this directory. Specs live one level up ([index](../README.md)); mockups are in `../mockups/`.
+Each substantive change has one plan here. The `planning` skill writes plans and the `implementation` skill executes them; the rules live in those skills, not here. Only files that follow the planning template belong in this directory; rough notes go in [`../notes/`](../notes/README.md). Specs live one level up ([index](../README.md)); mockups are in `../mockups/`.
 
 | Plan                                                                                   | Status      | Description                                                                                                                   |
 | -------------------------------------------------------------------------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
@@ -11,10 +11,11 @@ Each substantive change has one plan here. The `planning` skill writes plans and
 | [scaffolding-app-shell.md](scaffolding-app-shell.md)                                   | implemented | App shell, sidebar navigation, welcome and content modals, and main view outlet.                                              |
 | [mockup-visual-fidelity.md](mockup-visual-fidelity.md)                                 | implemented | Make the mockups normative for appearance: visual spec, agent instruction changes, token guard, parity and WCAG tests.        |
 | [data-ingestion-and-storage.md](data-ingestion-and-storage.md)                         | draft       | Storage worker: whole-file type inference, typed IndexedDB rows, exact statistics; build-time sample-dataset catalogue.       |
-| [state-navigation-conformance.md](state-navigation-conformance.md)                     | draft       | Make stores, persister, router, scroll memory and sidebar match the state and navigation specs (Known gaps 14, 15).           |
-| [step-1-load-data-and-preview.md](step-1-load-data-and-preview.md)                     | stub        | Sample dataset cards, Datasheet modal, Upload Custom Dataset modal, virtual table preview, and column inspector.              |
-| [step-2-set-target.md](step-2-set-target.md)                                           | stub        | Target variable selection table, type tags, empty-state notifications, and model reset warning.                               |
-| [step-3-train-models-overview-and-setup.md](step-3-train-models-overview-and-setup.md) | stub        | Models hub table, empty-state guard, and 6-step model builder wizard with Step 1 (Choose Model) and Step 2 (Select Features). |
+| [state-navigation-conformance.md](state-navigation-conformance.md)                     | ready       | Make stores, persister, router, scroll memory and sidebar match the state and navigation specs (Known gaps 14, 15).           |
+| [step-1-load-data-and-preview.md](step-1-load-data-and-preview.md)                     | draft       | Step 1 dataset selection, local CSV upload, preview and column inspector; depends on storage and component contracts.         |
+| [step-2-set-target.md](step-2-set-target.md)                                           | draft       | Target variable selection table, type tags, empty-state notifications, and model reset warning.                               |
+| [step-3-train-models-overview-and-setup.md](step-3-train-models-overview-and-setup.md) | draft       | Models hub table, empty-state guard, and 6-step model builder wizard with Step 1 (Choose Model) and Step 2 (Select Features). |
+| [virtual-table-component.md](virtual-table-component.md)                               | draft       | Resolve the reusable virtual table's contract, then implement and verify its accessible bounded row rendering.                |
 
 ## Lifecycle
 
