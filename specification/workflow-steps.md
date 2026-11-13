@@ -16,7 +16,7 @@ This is the first page the user sees when the app loads.
 
 ### Sample Datasets
 
-The page shows cards for each dataset in `./src/config/datasets.ts`. Each card contains the `title`, `description`, `num_records`, `num_columns` and buttons for "Datasheet" and "Load Dataset". This is shown in [01-1_select-data.html](mockups/ui-scaffold/01-1_select-data.html).
+The page shows a card for each sample dataset in the generated catalogue at `/datasets/index.json` ([sample-datasets.md](sample-datasets.md)). Each card shows `name`, `tagline`, `stats.rowCount` and `stats.columnCount`, with buttons for "Datasheet" and "Load Dataset". This is shown in [01-1_select-data.html](mockups/ui-scaffold/01-1_select-data.html).
 
 Clicking the "Datasheet" button on a dataset card will display a modal containing detailed information about the sample dataset as shown in [01-2_dataset-card.html](mockups/ui-scaffold/01-2_dataset-card.html).
 

@@ -1,118 +1,84 @@
-# Specification: Data Ingestion & Storage Pipeline
+# Data Ingestion & Storage Pipeline
 
-**Status:** target — not implemented. `src/stores/reconciler.ts` already creates `samata-db` with out-of-line keys that differ from §4 ([Known gap](README.md#known-gaps) 14).
+**Status:** implemented
 
 ## 1. Summary
 
-This specification defines the architecture and implementation requirements for the data ingestion, statistical analysis, and storage layer of the browser-based machine learning application. The pipeline is responsible for fetching CSV files (via local upload or URL), streaming the parsing process, calculating column statistics via a two-pass algorithm, storing the raw records in IndexedDB, and exposing the data to the ML engine via the `IndexedDBDatasetProvider`.
+The data pipeline reads an uploaded CSV or a sample from the catalogue, profiles every kept row, stores the original cell strings in IndexedDB, then elects and applies column types. It computes statistics without holding the whole dataset in memory and exposes paged rows and metadata to the application and `IndexedDBDatasetProvider`.
 
-## 2. Engineering Standards & Constraints
+## 2. Runtime and constraints
 
-- **Language & Runtime:** Vanilla TypeScript (strict mode). No front-end frameworks (e.g., React) may be imported into the worker or storage layers.
-- **Documentation:** All exported types, interfaces, and functions MUST include strict TSDoc inline documentation.
-- **Execution Context:** All heavy I/O (fetching, parsing) and computations (type inference, statistical passes) MUST execute within a Dedicated WebWorker to prevent main-thread blocking.
-- **Dependencies:**
-- `idb` (by Jake Archibald) for Promise-based IndexedDB interactions.
-- `papaparse` for robust, chunked CSV parsing.
+- CSV fetching, parsing, profiling and storage run in a dedicated module worker. The worker and storage modules do not import Lit.
+- PapaParse parses UTF-8 input in chunks. The default missing tokens are `""`, `null`, `nan`, `na`, `n/a`, `none`, `nil`, `-` and `?` (case-insensitive after trimming); sample descriptors may replace the tokens, while empty cells remain missing.
+- The input limit is 200 MiB and the header limit is 200 columns. Before ingestion, the pipeline estimates storage at three times the input size and rejects the input if available IndexedDB quota is insufficient. It does not request persistent storage.
+- Fetches retry network failures and HTTP 5xx responses up to three attempts with exponential backoff; 4xx responses fail immediately. Cancellation is checked between chunks and batches and every 1,000 cursor rows. An unsuccessful or cancelled ingest removes its partial dataset where possible.
 
-## 3. Data Structures & Interfaces
+## 3. Data structures
 
-The coding agent MUST implement the following core interfaces to ensure explicit type safety across the worker boundary.
+The canonical column vocabulary and lightweight persisted dataset summary are defined in [`src/types/state.ts`](../src/types/state.ts). Ingestion records and full statistics are defined in [`src/types/dataset.ts`](../src/types/dataset.ts); these types are the contract for the worker, IndexedDB and provider.
 
-```typescript
-type ColumnType = 'numeric' | 'categorical' | 'text' | 'unknown';
+`CellValue` is `number | boolean | string | null`. `RawRecord` stores `{ datasetId, rowIndex, values }`. `DatasetMetadata` stores the dataset id and name, source (`sample` or `upload`), nullable `sampleId`, row and byte counts, creation time, detected delimiter, ordered column statistics, padded-row count and skipped-row count with up to 10 row numbers.
 
-interface BaseColumnStats {
-	name: string;
-	type: ColumnType;
-	missingCount: number;
-}
+Every column records its name, canonical `ColumnType`, missing-token counts, invalid-cell count and up to five distinct invalid examples. Numeric statistics include count, range, mean, exact median, integer and identifier hints, display format and histogram. Categorical statistics include the distinct count and category counts; booleans include true/false counts and their observed lexicon; datetimes include epoch-millisecond range and detected format; text includes a bounded distinct count and identifier hint. Invalid values are stored as `null`. `toDatasetSummary` omits full statistics and reports `missingCount + invalidCount`, because both are null in the stored rows; it carries `sampleId` when present.
 
-interface NumericColumnStats extends BaseColumnStats {
-	type: 'numeric';
-	min: number;
-	max: number;
-	mean: number;
-	median: number;
-	/** Array of length up to 100 representing histogram bin counts */
-	histogram: number[];
-}
+## 4. IndexedDB schema (D14)
 
-interface CategoricalColumnStats extends BaseColumnStats {
-	type: 'categorical';
-	/** Map of unique string categories to their occurrence counts */
-	categoryCounts: Record<string, number>;
-}
+The `idb` database is `samata-db`, version 2. An upgrade deletes and recreates the legacy stores to establish the v2 key paths. Its schema is:
 
-type ColumnStats = NumericColumnStats | CategoricalColumnStats | BaseColumnStats;
+| Store           | Key                     | Indexes | Contents                                                               |
+| --------------- | ----------------------- | ------- | ---------------------------------------------------------------------- |
+| `metadata`      | `id`                    | —       | One `DatasetMetadata` per ingested dataset                             |
+| `raw_records`   | `[datasetId, rowIndex]` | —       | One `RawRecord` per kept row; compound-key ranges page rows by dataset |
+| `model_results` | `[datasetId, modelNum]` | —       | Stored model results                                                   |
 
-interface DatasetMetadata {
-	id: string;
-	rowCount: number;
-	columns: ColumnStats[];
-}
-```
+Rows use zero-based indexes within each dataset. The database adapter exposes bounded row ranges, metadata reads and writes, per-dataset deletion, deletion of all datasets except a selected id, and a check for stored model results. Database connections are opened for each operation rather than cached at module scope. The worker serialises ingestion with the `samata-ml:ingestion` Web Lock when Web Locks are available.
 
-## 4. IndexedDB Schema
+## 5. Parsing, profiling and type inference (D2–D7, D11)
 
-The worker MUST initialize an IndexedDB database using the `idb` library with the following structure:
+### CSV parsing and row handling
 
-- **Database Name:** `samata-db`
-- **Object Store 1:** `metadata`
-- **Key Path:** `id` (string UUID)
-- **Purpose:** Stores the `DatasetMetadata` object for each ingested dataset.
+PapaParse streams 1 MiB chunks and detects a delimiter from comma, tab, semicolon and pipe using the initial non-empty lines, with quoting handled by PapaParse. UTF-8 decoding removes an initial BOM. Normalised headers have a BOM removed, are trimmed, receive `column_{index}` when blank and are deduplicated with the smallest available `_N` suffix that does not collide with another header. A sample's resulting header must exactly match its descriptor.
 
-- **Object Store 2:** `raw_records`
-- **Key Path:** `[datasetId, rowIndex]` (Compound key)
-- **Purpose:** Stores the individual parsed rows.
+Empty rows are ignored. A short row is padded with missing cells and increments `paddedRowCount`. A row longer than its header is skipped and recorded; malformed-quote rows are passed to profiling. No row is truncated. Stored row numbers are one-based in diagnostics.
 
-## 5. Procedural Pipeline Requirements
+### Whole-file inference
 
-The ingestion pipeline MUST follow a strictly procedural, two-pass execution model to minimize memory overhead.
+Pass 1 stores untyped, lossless cell strings and profiles all kept rows. No conversion is committed during this pass, so a late value cannot destroy an earlier value needed after type election. For each column the profiler counts missing values, invalid candidates, type matches, ranges, distinct values and identifier patterns. Distinct values are tracked up to 500; on overflow the map is cleared and the column is permanently ineligible to be categorical. Datetime checks stop at row 1,000 or a 50,000-row checkpoint if their mismatch rate exceeds 2%.
 
-### Pass 1: Streaming Ingestion & Basic Stats
+Election uses the most specific valid type, with at least 98% match coverage for primitive types:
 
-1. **Source Resolution:**
+1. **Boolean:** case-insensitive pairs `true/false`, `t/f`, `yes/no`, `y/n` or `1/0`; values from different pairs are not mixed. For `1/0`, both values must occur or there must be at least 20 non-missing cells.
+2. **Datetime:** a timestamp candidate is checked only when the header suggests time. The header is split at camel-case boundaries and on spaces, `_`, `.`, and `-`; a word must be `time`, `timestamp`, `ts`, `epoch`, `created`, `updated`, `date` or `datetime`, or the trimmed name must end in `_at`. Epoch values are unsigned 10-, 13- or 16-digit integers without leading zeroes and must fall in 1980-01-01 through (exclusive) 2050-01-01 UTC. The digit length determines seconds, milliseconds or microseconds.
+3. **Date strings:** only these explicit patterns are accepted; permissive `Date.parse`, `new Date(string)` and Temporal parsing are not used:
 
-- If the source is a URL, fetch the file using a silent exponential backoff retry wrapper (up to 3 attempts) for 5xx/network errors. Abort immediately on 4xx errors.
-- If the source is a `File` object, read directly.
+    ```text
+    ISO        ^(\d{4})-(\d{2})-(\d{2})(?:[T ](\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?(Z|[+-]\d{2}(?::?\d{2})?)?)?$
+    NUM_YMD    ^(\d{4})([/-])(\d{1,2})\2(\d{1,2})(?:[T ](\d{1,2}):(\d{2})(?::(\d{2}))?)?$
+    NUM_XXY    ^(\d{1,2})([/-])(\d{1,2})\2(\d{4}|\d{2})(?:[T ](\d{1,2}):(\d{2})(?::(\d{2}))?)?$
+    NAMED_DMY  ^(\d{1,2})(?:st|nd|rd|th)?\s+([a-z]{3,9})\.?,?\s+(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$
+    NAMED_MDY  ^([a-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})(?:,?\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$
+    ```
 
-2. **Chunked Parsing:** Stream the file through PapaParse in chunks (e.g., 5MB blocks).
-3. **Error Handling:** Configure PapaParse to gracefully skip malformed rows, incrementing a skipped-row counter rather than aborting the stream.
-4. **On-the-Fly Aggregation:** As chunks are processed:
+    The patterns accept one consistent `/` or `-` separator for numeric dates, English month names and abbreviations, and optional times. Four-digit years are 1000–9999; two-digit year-last dates pivot at 50 (`00–49` → 2000–2049, `50–99` → 1950–1999). Hours are 0–23, minutes and seconds 0–59, offsets at most ±14:59, and dates must round-trip through the Gregorian calendar. ISO fractional seconds use the first three digits, padded on the right. Ambiguous year-last dates default to DMY with `orderAssumed: true`; a day or month above 12 determines the order. A date without a zone is stored as UTC; explicit offsets are converted to UTC. Epoch seconds, milliseconds and microseconds must be within 1980-01-01 inclusive to 2050-01-01 exclusive.
 
-- Write valid row objects to the `raw_records` IndexedDB store in transactional batches.
-- Infer column types based on the first 1,000 non-null values.
-- Accumulate `missingCount`.
-- For numeric columns, track running `min`, `max`, and a rolling `mean`.
-- For categorical columns, track running totals in a `Map` or dictionary.
+4. **Numeric:** the parser accepts a signed integer, decimal or scientific number with an optional currency prefix and percent suffix. It allows at most one sign, requires at least one digit, accepts commas only in groups matching `\d{1,3}(,\d{3})+`, and rejects an integer part with leading zeroes unless a decimal point is present. One dominant non-empty `(prefix, suffix)` signature is selected; cells with no affix are also valid, but a different non-empty signature is invalid. `45%` is stored as `45` with `%` retained as display format. European decimal commas and accounting negatives are not supported.
+5. **Categorical:** after primitive types, a column is categorical when there is no distinct-value overflow, mean unique-value length is at most 64, and either `U ≤ 50` and `U ≤ V/2`, or `U ≤ 250` and `U/V ≤ 0.05`. Here `U` is the distinct non-missing count and `V` the non-missing count. The first bound prevents small files with many unique values from becoming categorical.
+6. **Text:** fallback type, including columns with no non-missing values. Text columns receive an identifier hint when distinctness exceeds 98% and tracked values contain no whitespace.
 
-### Pass 2: Complex Stats (Median & Histogram)
+Boolean, datetime and numeric types require at least 98% matching non-missing cells. Numeric columns use the dominant non-empty affix signature; un-affixed values remain valid. Numeric columns also receive an identifier hint when all values are distinct integers in a strictly increasing sequence by one. Hints do not automatically exclude uploaded columns. A sample descriptor may override an elected `numeric` or `boolean` type to `categorical` when all values are valid, or any type to `text`; otherwise it must match the elected type. Values that do not fit an override are counted invalid and stored as null.
 
-Because true medians and bounded histograms cannot be calculated accurately on a single streaming pass without keeping all data in memory, a second pass is required.
+### Statistics and bounded memory
 
-1. Once Pass 1 completes and all records are flushed to IndexedDB, query the DB for the final `min` and `max` established for each numeric column.
-2. Calculate the boundaries for up to 100 uniform histogram bins per numeric column.
-3. Open a read-only IndexedDB cursor on the `raw_records` store for the target dataset.
-4. Iterate over the dataset via the cursor:
+Pass 2 rereads stored raw rows, coerces values to the elected type and rewrites them in batches, replacing invalid cells with null. It computes final counts, means, ranges and category counts. Exact medians use order statistics without retaining every numeric value: a 2,048-bin fine histogram locates ranks `floor((n - 1) / 2)` and `floor(n / 2)`; unresolved bins are repeatedly refined, collecting and sorting values only when a bin contains at most 1,000,000 values. The two selected values are averaged for an even-sized column. Numeric display histograms use at most 100 bins based on the final range. Constant columns use one bin. Passes report phase, bytes and rows at most every 100 ms, as well as on phase changes.
 
-- Allocate numeric values into their respective histogram bins.
-- Push numeric values into a temporary array (or sort them procedurally in batches) to determine the exact `median`.
+## 6. Dataset provider (D15)
 
-5. Write the finalized `DatasetMetadata` object to the `metadata` store.
+`IndexedDBDatasetProvider` implements the `web-ml` dataset-provider contract. It pages records from IndexedDB and writes row-major values directly into the caller-provided `Float64Array` view. It does not allocate a `Float64Array` for each batch. Its preprocessing steps support mean imputation and one-hot encoding; imputation is applied before one-hot encoding. `create()` validates column eligibility and preprocessing requirements and prepares the write plan before `load()` writes any values.
 
-## 6. DatasetProvider Implementation
+## 7. Acceptance criteria
 
-The agent MUST implement `IndexedDBDatasetProvider` to satisfy the unified dataset abstraction required by the ML orchestrator. This provider acts as the bridge between the IndexedDB storage layer and the math compute layer.
-
-- **Buffer Mapping:** It MUST NOT allocate intermediate `Float64Array` buffers for every batch. It MUST accept an externally allocated `Float64Array` view (backed by a `SharedArrayBuffer` from the Orchestrator) and populate it directly via `datasetProvider.load(features, targets)`.
-- **Preprocessing:** It MUST accept a `preprocessing` pipeline array in its constructor (e.g., imputing missing means, applying one-hot encoding). These transformations MUST be applied in real-time as records are streamed out of IndexedDB, prior to setting the numerical values into the `Float64Array`.
-- **Cursor Streaming:** Data MUST be pulled from IndexedDB using cursors or paginated `getAll` bounds to prevent main-thread out-of-memory errors when hydrating large buffers.
-
-## 7. Acceptance Criteria (DoD)
-
-- **DATA-AC-1:** The WebWorker successfully fetches a CSV from a URL, automatically retrying on transient network failures, and streams the parsing using PapaParse.
-- **DATA-AC-2:** Malformed rows are skipped and logged to a skipped-counter without crashing the parser or terminating the ingestion.
-- **DATA-AC-3:** Column types are correctly inferred, and Pass 1 successfully writes all valid records to the `raw_records` IndexedDB store in batches.
-- **DATA-AC-4:** Pass 2 successfully calculates a 100-bin histogram and median for numeric columns using a cursor-based iteration of IndexedDB, writing the final result to the `metadata` store.
-- **DATA-AC-5:** `IndexedDBDatasetProvider` implements the `DatasetProvider` interface, successfully streaming records from IDB, applying requested preprocessing rules, and writing the final numeric matrices directly into the provided `Float64Array` view without intermediate allocations.
+- **DATA-AC-1:** The Web Worker successfully fetches a sample CSV, automatically retrying transient network failures, and streams parsing with PapaParse. Uploads are read from their `File` object.
+- **DATA-AC-2:** Malformed and overlong rows are skipped and counted without terminating ingestion; short rows are padded and counted.
+- **DATA-AC-3:** Column types are inferred over the whole file, and Pass 1 writes all kept raw records to IndexedDB in batches.
+- **DATA-AC-4:** Later passes calculate numeric histograms and exact medians using bounded-memory, cursor-based IndexedDB iteration, then write final metadata.
+- **DATA-AC-5:** `IndexedDBDatasetProvider` streams stored records, applies requested preprocessing and writes into the supplied `Float64Array` without intermediate batch arrays.

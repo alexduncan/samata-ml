@@ -539,8 +539,9 @@ Still open:
 - **Q10.** Discrepancy to resolve: `specification/steps/step-one.md` describes the dataset card
   buttons as "info" and "select", and says the card shows "the tasks the dataset can be used for".
   The supplied HTML has _Datasheet_ and _Select Dataset_ and no tasks field, although
-  `src/config/datasets.ts` has `tasks`. This spec follows the supplied HTML. Should `step-one.md`
-  be updated, or should the card gain a `tasks` display (requires a revised spec)?
+  the generated sample-dataset catalogue provides `taskTypes`. This spec follows the supplied
+  HTML. Should the card gain a `taskTypes` display, or should the catalogue remain available only
+  to filtering and selection logic?
 - **Q11.** Confirm the `aria-describedby` approach in §6 for repeated button names, or choose another
   (for example an `aria-label` with an interpolated message, which adds strings).
 - **Q12.** Confirm that importing the i18n message store is the accepted exception to "presentational

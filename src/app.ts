@@ -7,7 +7,7 @@ import { $route, initRouter } from './router/router';
 import { getScrollKeyForRoute, initScrollRestorer, restoreScroll } from './router/scroll-restorer';
 import { $appState } from './stores/app.store';
 import { initPersister } from './stores/persister';
-import { reconcileStartupState } from './stores/reconciler';
+import { createDefaultIndexedDBAdapter, reconcileStartupState } from './stores/reconciler';
 import { initGlobalStyles } from './styles/global';
 import type { ParsedRoute, WorkflowPath } from './types/routes';
 
@@ -166,7 +166,7 @@ export async function bootstrapApp(): Promise<void> {
 	initGlobalStyles();
 
 	// 1. Reconcile storage and IndexedDB
-	await reconcileStartupState();
+	await reconcileStartupState(undefined, createDefaultIndexedDBAdapter());
 
 	// 2. Initialize persistence persister
 	initPersister();

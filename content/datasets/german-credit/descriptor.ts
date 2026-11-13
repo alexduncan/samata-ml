@@ -1,0 +1,295 @@
+import type { AuthoredDatasetDescriptor } from '../../../src/types/sample-dataset';
+
+export default {
+	id: 'german-credit',
+	name: 'German Credit Risk',
+	tagline: 'Assess consumer loan creditworthiness while auditing age bias and coding debt.',
+	description:
+		"Donated to the UCI Machine Learning Repository in 1994 by Prof. Hans Hofmann (Universitaet Hamburg) for the European StatLog project from 1973-1975 Southern German bank records, German Credit is one of the three most widely cited benchmarks in algorithmic fairness alongside Adult Census and COMPAS. It comprises 1,000 consumer loan applications (700 'good' and 300 'bad' credit risks, stratified with bad credits oversampled) across 20 financial, employment, and demographic attributes.\n\nThis clean, un-dummified 21-column version avoids the 62-column pre-encoded dummy bloat of R/caret exports while surfacing two vitalResponsible-AI lessons: (1) asymmetric error costs (Hofmann's 5:1 cost matrix penalizing false-good approvals five times more than false-bad denials) alongside age- and foreign-worker disparities, and (2) Ulrike Groemping's (2019) landmark discovery of corrupted sex/marital-status labels in 'personal_status'—a textbook case of 'documentation debt' in ML benchmarks (Fabris et al., 2022).",
+	domain: 'finance',
+	difficulty: 'intermediate',
+	tags: ['binary', 'credit-scoring', 'cost-sensitive', 'documentation-debt', 'fairness-classic'],
+	missingValueTokens: ['NA', 'NaN'],
+	modeling: {
+		defaultTarget: 'class',
+		targetCandidates: [
+			{
+				column: 'class',
+				taskType: 'binary-classification',
+				positiveClass: 'good',
+				description:
+					"Predict whether a loan applicant represents a 'good' (creditworthy, positive class) or 'bad' (default risk) credit risk.",
+				leakyColumns: []
+			},
+			{
+				column: 'housing',
+				taskType: 'multiclass-classification',
+				description:
+					"Predict applicant housing tenure ('own', 'rent', or 'for free') from financial and demographic attributes.",
+				leakyColumns: []
+			}
+		]
+	},
+	columns: [
+		{
+			name: 'checking_status',
+			displayName: 'Checking Account Status',
+			description:
+				"Balance tier of the applicant's existing checking account with the bank in Deutsche Mark (DM).",
+			dataType: 'categorical',
+			role: 'feature',
+			valueLabels: {
+				'<0': 'Negative balance (< 0 DM)',
+				'0<=X<200': 'Modest balance (0 to < 200 DM)',
+				'>=200': 'High balance (>= 200 DM or salary assignment)',
+				'no checking': 'No checking account with bank'
+			}
+		},
+		{
+			name: 'duration',
+			displayName: 'Loan Duration',
+			description: 'Contractual repayment duration of the requested credit in months.',
+			dataType: 'numeric',
+			role: 'feature',
+			unit: 'months'
+		},
+		{
+			name: 'credit_history',
+			displayName: 'Credit History',
+			description: "Applicant's prior credit repayment compliance record.",
+			dataType: 'categorical',
+			role: 'feature'
+		},
+		{
+			name: 'purpose',
+			displayName: 'Loan Purpose',
+			description: 'Stated consumer or business purpose for the credit application.',
+			dataType: 'categorical',
+			role: 'feature'
+		},
+		{
+			name: 'credit_amount',
+			displayName: 'Credit Amount',
+			description: 'Principal loan amount requested in 1973-1975 Deutsche Mark (DM).',
+			dataType: 'numeric',
+			role: 'feature',
+			unit: 'DM'
+		},
+		{
+			name: 'savings_status',
+			displayName: 'Savings Account / Bonds',
+			description: 'Balance tier in savings accounts or bonds in Deutsche Mark (DM).',
+			dataType: 'categorical',
+			role: 'feature'
+		},
+		{
+			name: 'employment',
+			displayName: 'Employment Tenure',
+			description: 'Duration of current continuous employment in years.',
+			dataType: 'categorical',
+			role: 'feature'
+		},
+		{
+			name: 'installment_commitment',
+			displayName: 'Installment Rate Tier',
+			description:
+				'Loan installment burden coded in four ordinal tiers of disposable income percentage (1 = highest percentage tier to 4 = lowest, per Groemping, 2019).',
+			dataType: 'categorical',
+			role: 'feature',
+			valueLabels: {
+				'1': 'Tier 1 (>= 35% of disposable income)',
+				'2': 'Tier 2 (25% to < 35% of disposable income)',
+				'3': 'Tier 3 (20% to < 25% of disposable income)',
+				'4': 'Tier 4 (< 20% of disposable income)'
+			}
+		},
+		{
+			name: 'personal_status',
+			displayName: 'Personal Status & Sex (Legacy)',
+			description:
+				"Joint marital status and sex attribute; Groemping (2019) proved that legacy StatLog labels misassigned sex across codes (e.g., 'female div/dep/mar' actually mixed non-single women with single men).",
+			dataType: 'categorical',
+			role: 'feature',
+			sensitive: true
+		},
+		{
+			name: 'other_parties',
+			displayName: 'Other Debtors / Guarantors',
+			description: 'Presence of a co-applicant or loan guarantor.',
+			dataType: 'categorical',
+			role: 'feature'
+		},
+		{
+			name: 'residence_since',
+			displayName: 'Residence Tenure',
+			description: 'Ordinal tier (1 to 4) indicating years lived at the present address.',
+			dataType: 'categorical',
+			role: 'feature',
+			valueLabels: {
+				'1': '< 1 year',
+				'2': '1 to < 4 years',
+				'3': '4 to < 7 years',
+				'4': '>= 7 years'
+			}
+		},
+		{
+			name: 'property_magnitude',
+			displayName: 'Highest-Value Property',
+			description: 'Most valuable collateral asset owned by the applicant.',
+			dataType: 'categorical',
+			role: 'feature'
+		},
+		{
+			name: 'age',
+			displayName: 'Age',
+			description:
+				'Applicant age in years (primary reliable protected attribute; good-credit rate is 57.9% for age <= 25 vs. 72.8% for age > 25).',
+			dataType: 'numeric',
+			role: 'feature',
+			unit: 'years',
+			sensitive: true
+		},
+		{
+			name: 'other_payment_plans',
+			displayName: 'Other Installment Plans',
+			description:
+				'Concurrent installment credit obligations with other banks or retail stores.',
+			dataType: 'categorical',
+			role: 'feature'
+		},
+		{
+			name: 'housing',
+			displayName: 'Housing Tenure',
+			description: "Current residential housing arrangement ('own', 'rent', or 'for free').",
+			dataType: 'categorical',
+			role: 'feature'
+		},
+		{
+			name: 'existing_credits',
+			displayName: 'Existing Credits at Bank',
+			description: 'Ordinal count tier (1 to 4) of existing loans held at this bank.',
+			dataType: 'numeric',
+			role: 'feature'
+		},
+		{
+			name: 'job',
+			displayName: 'Employment Qualification',
+			description: 'Occupational skill and residency category.',
+			dataType: 'categorical',
+			role: 'feature'
+		},
+		{
+			name: 'num_dependents',
+			displayName: 'Number of Dependents',
+			description:
+				'Tiered count (1 or 2) of dependents for whom the applicant provides financial maintenance.',
+			dataType: 'categorical',
+			role: 'feature',
+			valueLabels: {
+				'1': '0 to 2 dependents',
+				'2': '3 or more dependents'
+			}
+		},
+		{
+			name: 'own_telephone',
+			displayName: 'Registered Telephone',
+			description:
+				"Whether a landline telephone is registered in the customer's name (a 1970s wealth/stability proxy).",
+			dataType: 'categorical',
+			role: 'feature',
+			valueLabels: {
+				none: 'No registered telephone',
+				yes: 'Yes (registered under customer name)'
+			}
+		},
+		{
+			name: 'foreign_worker',
+			displayName: 'Foreign Worker Status',
+			description:
+				"Whether the applicant was classified as a foreign guest worker ('Gastarbeiter') in 1970s West Germany (note: legacy StatLog documentation inverted the yes/no coding relative to original South German records; see Groemping, 2019).",
+			dataType: 'boolean',
+			role: 'feature',
+			valueLabels: {
+				no: 'No',
+				yes: 'Yes'
+			},
+			sensitive: true
+		},
+		{
+			name: 'class',
+			displayName: 'Credit Risk Classification',
+			description:
+				"Historical credit contract outcome ('good' = compliant repayment, 'bad' = defaulted/problematic loan).",
+			dataType: 'categorical',
+			role: 'feature',
+			valueLabels: {
+				bad: 'Bad credit risk (Default / non-compliant)',
+				good: 'Good credit risk (Creditworthy)'
+			}
+		}
+	],
+	provenance: {
+		homepageUrl: 'https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data',
+		sourceRepositoryUrl: 'https://www.openml.org/d/31',
+		license: 'CC-BY-4.0',
+		licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
+		yearPublished: 1994,
+		creators: ['Hans Hofmann'],
+		attribution:
+			'Data by Hans Hofmann, sourced from https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data.',
+		retrievedAt: '2026-11-13',
+		transformations: []
+	},
+	references: [
+		{
+			title: 'South German Credit Data: Correcting a Widely Used Data Set',
+			authors: ['Ulrike Groemping'],
+			year: 2019,
+			type: 'fairness-audit',
+			url: 'https://www1.beuth-hochschule.de/FB_II/reports/Report-2019-004.pdf',
+			citation:
+				'Groemping, U. (2019). South German credit data: Correcting a widely used data set (Report 4/2019). Department II, Beuth University of Applied Sciences Berlin. https://doi.org/10.24432/C5X89F'
+		},
+		{
+			title: 'Algorithmic Fairness Datasets: The Story So Far',
+			authors: [
+				'Alessandro Fabris',
+				'Stefano Messina',
+				'Gianmaria Silvello',
+				'Gian Antonio Susto'
+			],
+			year: 2022,
+			type: 'fairness-audit',
+			url: 'https://doi.org/10.1007/s10618-022-00854-z',
+			citation:
+				'Fabris, A., Messina, S., Silvello, G., & Susto, G. A. (2022). Algorithmic fairness datasets: The story so far. Data Mining and Knowledge Discovery, 36(6), 2074-2152. https://doi.org/10.1007/s10618-022-00854-z'
+		},
+		{
+			title: 'Towards Fair AI: Mitigating Bias in Credit Decisions—A Systematic Literature Review',
+			authors: [
+				'Jose Romulo de Castro Vieira',
+				'Flavio Barboza',
+				'Daniel Cajueiro',
+				'Herbert Kimura'
+			],
+			year: 2025,
+			type: 'fairness-audit',
+			url: 'https://doi.org/10.3390/jrfm18050228',
+			citation:
+				'de Castro Vieira, J. R., Barboza, F., Cajueiro, D., & Kimura, H. (2025). Towards fair AI: Mitigating bias in credit decisions—A systematic literature review. Journal of Risk and Financial Management, 18(5), 228. https://doi.org/10.3390/jrfm18050228'
+		},
+		{
+			title: 'OpenML Dataset Card: credit-g (ID 31)',
+			authors: ['Hans Hofmann', 'OpenML Contributors'],
+			year: 2014,
+			type: 'documentation',
+			url: 'https://www.openml.org/d/31',
+			citation:
+				'Hofmann, H. (1994). Statlog (German Credit Data) [Dataset]. UCI Machine Learning Repository / OpenML ID 31. https://doi.org/10.24432/C5NC77'
+		}
+	],
+	ethicsWarnings: [
+		"Critical Documentation-Debt Warning (Groemping, 2019; Fabris et al., 2022): Do NOT rely on 'personal_status' alone as a ground-truth binary sex indicator—the 1994 StatLog English translation mislabelled combined marital/sex categories from the 1973-1975 German codebook. Prefer 'age' (<=25 vs. >25) for methodologically valid fairness audits.",
+		"In 1973-1975 West Germany, married women often required spousal consent to open bank accounts, and 'bad' loans were artificially oversampled to 30% (vs. ~5% real bank default rates)."
+	]
+} satisfies AuthoredDatasetDescriptor;

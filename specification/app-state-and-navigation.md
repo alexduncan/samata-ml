@@ -112,7 +112,7 @@ Rules:
 - Matching is on `location.pathname` only. Query strings and hashes are ignored, not generated and not persisted. A trailing slash is normalised away by `replaceState`.
 - A `/models/{segment}` where `segment` is not a positive integer is an **unknown path** (it does not name a page) and is redirected like any other. A positive integer with no matching model is a valid page URL whose content is the "model not found" notification (§4.3); it is not redirected.
 - Reserved paths are exactly `/about`, `/privacy`, `/help`. Reserved paths MUST NOT be used for anything else in future.
-- Each reserved path maps to one Markdown file compiled by the content pipeline (see [content-and-i18n.md](content-and-i18n.md)). The mapping lives in the router configuration, not in the content.
+- Each reserved path maps to one page id via `RESERVED_CONTENT` in `src/router/reserved-content.ts` (`/about` → `about`, `/privacy` → `privacy-policy`, `/help` → `help`), compiled by the content pipeline (see [content-and-i18n.md](content-and-i18n.md)). The mapping lives in router configuration, not in content front matter.
 
 ### 3.1 Types
 
@@ -235,7 +235,7 @@ Notes:
 ### 5.4 Reserved routes as modals
 
 - Content is rendered in a native `<dialog>` opened with `showModal()` (not `show()` or the `open` attribute). Invoker commands (`command="show-modal"`) are _not_ Baseline Widely available, so they are not used; the router opens the dialog from script. No `role="dialog"`, `aria-modal`, focus trap or `Esc` handler is added; the platform provides them.
-- The dialog is named with `aria-labelledby` pointing at its heading and contains a visible, natively labelled close button.
+- The dialog is named with `aria-labelledby` pointing at its heading (`<h1>`, carrying the entry's `lang` and `dir` once loaded) and contains a visible, natively labelled close button. If the page fails to load, the dialog body displays an alert (`role="alert"`) while keeping the close button working.
 - Dismissal: `Esc` and the mobile back gesture (modal default) and the close button. Light-dismiss (`closedby="any"`) is permitted as progressive enhancement only (Safari lacks it).
 - Every dismissal path funnels into the dialog's `close` event, which calls `closeReserved()` per §5.2. This matters for the back gesture on Android, where the browser closes the dialog _instead of_ navigating: without the router calling `history.back()` the stale `/about` entry would be left on the stack.
 - The page underneath is **not** scroll-locked with `overflow: hidden` / `position: fixed` on `html` or `body` (that would reset or jump the scroll position this spec is trying to preserve). Use `overscroll-behavior: contain` on `dialog:modal` and `overflow: hidden; overscroll-behavior: contain` on `dialog::backdrop`.
@@ -271,7 +271,7 @@ Because step URLs are real paths, deep links and reloads request e.g. `/models/3
 Corresponds to workflow-steps §1.
 
 - **Sub-view** is `data.mode` (`'select' | 'preview'`), a persisted value (not derived), so the exact view survives reloads:
-    - `'select'`: sample dataset cards (from `src/config/datasets.ts`) and the **Upload Dataset** header button.
+    - `'select'`: sample dataset cards from the generated sample-dataset catalogue ([sample-datasets.md](sample-datasets.md)) and the **Upload Dataset** header button.
     - `'preview'`: dataset header, virtual table, and the column-details `<aside>`.
 - On successful ingestion (`loadDatasetSucceeded`) the store sets `dataset`, `data.mode = 'preview'`, `data.selectedColumn = null`.
 - `data.selectedColumn` (the column whose `<aside>` is open) is persisted. Column statistics themselves are read from the IndexedDB `metadata` store, never from `localStorage`.

@@ -12,7 +12,9 @@
 		"check": "bun run typecheck && bun test",
 		"format": "prettier --write",
 		"format:check": "prettier --check",
-		"plans:check": "python3 .agents/skills/planning/scripts/validate_plan.py"
+		"plans:check": "python3 .agents/skills/planning/scripts/validate_plan.py",
+		"plans:task": "python3 .agents/skills/implementation/scripts/task_gate.py",
+		"now": "date -u +%Y-%m-%dT%H:%M:%SZ"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.14.0",
@@ -20,7 +22,9 @@
 		"@playwright/test": "^1.50.0",
 		"@types/bun": "latest",
 		"@types/marked": "^6.0.0",
+		"@types/papaparse": "^5.5.2",
 		"eslint-plugin-tsdoc": "^0.5.4",
+		"fake-indexeddb": "6.2.6",
 		"gray-matter": "^4.0.3",
 		"happy-dom": "^17.1.6",
 		"marked": "^18.1.1",

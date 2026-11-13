@@ -8,6 +8,8 @@ export function contentTypeFromPath(filePath: string): string {
 	if (filePath.endsWith('.html')) return 'text/html; charset=utf-8';
 	if (filePath.endsWith('.css')) return 'text/css; charset=utf-8';
 	if (filePath.endsWith('.js')) return 'application/javascript; charset=utf-8';
+	if (filePath.endsWith('.json')) return 'application/json; charset=utf-8';
+	if (filePath.endsWith('.csv')) return 'text/csv; charset=utf-8';
 	if (filePath.endsWith('.map')) return 'application/json; charset=utf-8';
 	if (filePath.endsWith('.svg')) return 'image/svg+xml';
 	if (filePath.endsWith('.png')) return 'image/png';

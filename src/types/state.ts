@@ -13,7 +13,20 @@ export const SCROLL_STORAGE_KEY = 'samata-ml:scroll';
 export const STORAGE_VERSION = 1;
 
 /** Canonical column type vocabulary across UI, worker, and state. */
-export type ColumnType = 'numeric' | 'categorical' | 'boolean' | 'text';
+export type ColumnType = 'numeric' | 'categorical' | 'boolean' | 'datetime' | 'text';
+
+/** Column types that can be used as a model target or feature. */
+export const MODEL_ELIGIBLE_COLUMN_TYPES = ['numeric', 'categorical', 'boolean'] as const;
+
+/**
+ * Checks whether a column type can be used as a model target or feature.
+ *
+ * @param type - Canonical column type to check.
+ * @returns Whether the column type is supported by the current modelling workflow.
+ */
+export function isModelEligibleColumnType(type: ColumnType): boolean {
+	return (MODEL_ELIGIBLE_COLUMN_TYPES as readonly ColumnType[]).includes(type);
+}
 
 /** Summary metadata for a single column. */
 export interface ColumnSummary {
@@ -33,6 +46,8 @@ export interface DatasetSummary {
 	name: string;
 	/** Origin of dataset: built-in sample or user upload. */
 	source: 'sample' | 'upload';
+	/** Sample catalogue ID; absent for uploaded datasets and older persisted state. */
+	sampleId?: string;
 	/** Total number of rows. */
 	rowCount: number;
 	/** Column summaries. */

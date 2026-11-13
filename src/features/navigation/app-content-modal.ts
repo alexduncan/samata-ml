@@ -1,10 +1,20 @@
 import { StoreController } from '@nanostores/lit';
-import { css, html, LitElement } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { css, html, LitElement, nothing } from 'lit';
+import { customElement, state } from 'lit/decorators.js';
+import { loadContentEntry } from '../../common/content/content-loader';
+import { BASE_LOCALE, LOCALES } from '../../config/locales';
+import { RESERVED_CONTENT } from '../../router/reserved-content';
 import { $route, closeReserved, getIsSyncingFromHistory } from '../../router/router';
 import { buttonStyles } from '../../styles/button.styles';
 import { dialogStyles } from '../../styles/dialog.styles';
+import type { PageEntry } from '../../types/content';
 import type { ReservedPath } from '../../types/routes';
+
+const FALLBACK_TITLES: Record<ReservedPath, string> = {
+	'/about': 'About',
+	'/privacy': 'Privacy',
+	'/help': 'Help'
+};
 
 /**
  * Connected modal component for reserved static content routes (/about, /privacy, /help).
@@ -13,6 +23,14 @@ import type { ReservedPath } from '../../types/routes';
 @customElement('app-content-modal')
 export class AppContentModal extends LitElement {
 	private readonly route = new StoreController(this, $route);
+
+	@state() private accessor status: 'idle' | 'loading' | 'loaded' | 'error' = 'idle';
+	@state() private accessor entry: PageEntry | undefined = undefined;
+	@state() private accessor body: DocumentFragment | undefined = undefined;
+
+	private activePath: ReservedPath | undefined = undefined;
+	private abortController: AbortController | undefined = undefined;
+	private requestSeq = 0;
 
 	private get dialogElement(): HTMLDialogElement | null {
 		return this.renderRoot?.querySelector('dialog') ?? null;
@@ -37,7 +55,7 @@ export class AppContentModal extends LitElement {
 				padding-bottom: var(--space-3, 0.75rem);
 			}
 
-			h2 {
+			h1 {
 				margin: 0;
 				color: var(--color-primary, #0f172a);
 				font-size: var(--text-xl, 1.25rem);
@@ -70,6 +88,13 @@ export class AppContentModal extends LitElement {
 		`
 	];
 
+	override disconnectedCallback(): void {
+		super.disconnectedCallback();
+		this.abortController?.abort();
+		this.abortController = undefined;
+		this.activePath = undefined;
+	}
+
 	override updated(): void {
 		const route = this.route.value;
 		const isReserved = route.kind === 'reserved';
@@ -85,6 +110,50 @@ export class AppContentModal extends LitElement {
 				this.dialogElement.close();
 			}
 		}
+
+		if (route.kind === 'reserved') {
+			if (this.activePath !== route.path) {
+				this.startLoad(route.path);
+			}
+		} else if (this.activePath !== undefined) {
+			this.abortController?.abort();
+			this.abortController = undefined;
+			this.activePath = undefined;
+			this.requestSeq++;
+		}
+	}
+
+	private startLoad(path: ReservedPath): void {
+		this.abortController?.abort();
+		const controller = new AbortController();
+		this.abortController = controller;
+		this.activePath = path;
+		const seq = ++this.requestSeq;
+
+		this.status = 'loading';
+		this.entry = undefined;
+		this.body = undefined;
+
+		void loadContentEntry('pages', RESERVED_CONTENT[path], {
+			locale: BASE_LOCALE,
+			signal: controller.signal
+		})
+			.then(({ entry, content }) => {
+				if (controller.signal.aborted || seq !== this.requestSeq) {
+					return;
+				}
+				this.entry = entry;
+				this.body = content;
+				this.status = 'loaded';
+			})
+			.catch(() => {
+				if (controller.signal.aborted || seq !== this.requestSeq) {
+					return;
+				}
+				this.entry = undefined;
+				this.body = undefined;
+				this.status = 'error';
+			});
 	}
 
 	private handleDialogClose(): void {
@@ -97,99 +166,60 @@ export class AppContentModal extends LitElement {
 		closeReserved();
 	}
 
-	private renderContent(path: ReservedPath) {
-		switch (path) {
-			case '/about':
-				return html`
-					<div class="modal-header">
-						<h2 id="content-modal-title">About samatā.ml</h2>
-						<button
-							class="close-btn"
-							type="button"
-							aria-label="Close"
-							@click=${this.handleCloseButtonClick}>
-							✕
-						</button>
-					</div>
-					<div class="modal-body">
-						<p>
-							<strong>samatā.ml</strong> is an educational browser application for
-							training and evaluating machine learning models locally on your device.
-						</p>
-						<p>
-							All computation is powered by the <code>web-ml</code> library, executing
-							standard classification algorithms without external backend services or
-							telemetry.
-						</p>
-					</div>
-				`;
-			case '/privacy':
-				return html`
-					<div class="modal-header">
-						<h2 id="content-modal-title">Privacy Notice</h2>
-						<button
-							class="close-btn"
-							type="button"
-							aria-label="Close"
-							@click=${this.handleCloseButtonClick}>
-							✕
-						</button>
-					</div>
-					<div class="modal-body">
-						<p>
-							Your privacy is completely protected by design: all datasets, training
-							routines, and results remain strictly within your local browser sandbox.
-						</p>
-						<p>
-							No cookies, tracking scripts, or analytics are used. Local storage is
-							used solely to persist your session state across page reloads.
-						</p>
-					</div>
-				`;
-			case '/help':
-				return html`
-					<div class="modal-header">
-						<h2 id="content-modal-title">Help & Guide</h2>
-						<button
-							class="close-btn"
-							type="button"
-							aria-label="Close"
-							@click=${this.handleCloseButtonClick}>
-							✕
-						</button>
-					</div>
-					<div class="modal-body">
-						<p>Follow the standard 4-step workflow:</p>
-						<ol>
-							<li>
-								<strong>Load Data:</strong> Select a sample dataset or upload a CSV
-								file.
-							</li>
-							<li>
-								<strong>Set Target:</strong> Choose the column you want your models
-								to predict.
-							</li>
-							<li>
-								<strong>Train Models:</strong> Configure features, algorithms, and
-								hyperparameters.
-							</li>
-							<li>
-								<strong>Compare Results:</strong> Evaluate and compare accuracy,
-								F1-score, and curves across models.
-							</li>
-						</ol>
-					</div>
-				`;
+	private renderBody() {
+		if (this.status === 'loaded' && this.entry && this.body) {
+			return html`
+				<div class="modal-body" lang=${this.entry.lang} dir=${LOCALES[this.entry.lang].dir}>
+					${this.body}
+				</div>
+			`;
 		}
+
+		if (this.status === 'error') {
+			return html`
+				<div class="modal-body">
+					<p role="alert">
+						This content could not be loaded. Check your connection, then close this
+						dialog and try again.
+					</p>
+				</div>
+			`;
+		}
+
+		return html`<div class="modal-body">${nothing}</div>`;
 	}
 
 	override render() {
 		const route = this.route.value;
-		const reservedPath: ReservedPath = route.kind === 'reserved' ? route.path : '/about';
+		const reservedPath: ReservedPath | undefined =
+			route.kind === 'reserved' ? route.path : undefined;
+		const isLoaded = this.status === 'loaded' && this.entry !== undefined;
+		const title = isLoaded
+			? this.entry!.title
+			: reservedPath
+				? FALLBACK_TITLES[reservedPath]
+				: '';
 
 		return html`
 			<dialog aria-labelledby="content-modal-title" @close=${this.handleDialogClose}>
-				${this.renderContent(reservedPath)}
+				<div class="modal-header">
+					${isLoaded
+						? html`<h1
+								id="content-modal-title"
+								lang=${this.entry!.lang}
+								dir=${LOCALES[this.entry!.lang].dir}>
+								${title}
+							</h1>`
+						: html`<h1 id="content-modal-title">${title}</h1>`}
+					<button
+						class="close-btn"
+						type="button"
+						aria-label="Close"
+						@click=${this.handleCloseButtonClick}>
+						✕
+					</button>
+				</div>
+				${this.renderBody()}
 			</dialog>
 		`;
 	}

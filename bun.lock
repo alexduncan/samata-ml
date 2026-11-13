@@ -19,7 +19,9 @@
         "@playwright/test": "^1.50.0",
         "@types/bun": "latest",
         "@types/marked": "^6.0.0",
+        "@types/papaparse": "^5.5.2",
         "eslint-plugin-tsdoc": "^0.5.4",
+        "fake-indexeddb": "6.2.6",
         "gray-matter": "^4.0.3",
         "happy-dom": "^17.1.6",
         "marked": "^18.1.1",
@@ -117,6 +119,8 @@
     "@types/marked": ["@types/marked@6.0.0", "", { "dependencies": { "marked": "*" } }, "sha512-jmjpa4BwUsmhxcfsgUit/7A9KbrC48Q0q8KvnY107ogcjGgTFDlIL3RpihNpx2Mu1hM4mdFQjoVc4O6JoGKHsA=="],
 
     "@types/node": ["@types/node@26.6.5", "", { "dependencies": { "undici-types": "~8.9.0" } }, "sha512-uMzsv9stDdofIZBx4UGh4Z9ZgXnGC9seRDscilBcTHAeOFk67MZg/k9bWVfO+bk4qZmG+l52hRnLwUiH2LnJTg=="],
+
+    "@types/papaparse": ["@types/papaparse@5.5.2", "", { "dependencies": { "@types/node": "*" } }, "sha512-gFnFp/JMzLHCwRf7tQHrNnfhN4eYBVYYI897CGX4MY1tzY9l2aLkVyx2IlKZ/SAqDbB3I1AOZW5gTMGGsqWliA=="],
 
     "@types/trusted-types": ["@types/trusted-types@2.0.7", "", {}, "sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw=="],
 

@@ -74,7 +74,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 
 		const modal = page.locator('app-content-modal dialog');
 		await expect(modal).toBeVisible();
-		await expect(modal.locator('h2')).toHaveText('About samatā.ml');
+		await expect(modal.locator('h1')).toHaveText('About samatā.ml');
 
 		// Underlay content is still mounted underneath
 		await expect(page.locator('#content h1')).toHaveText('Train Models');

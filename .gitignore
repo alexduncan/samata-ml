@@ -5,7 +5,6 @@ node_modules/
 /dev/
 /dist/
 /out/
-/src/generated/
 *.tgz
 
 # Tests and coverage

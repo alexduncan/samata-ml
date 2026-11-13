@@ -2,141 +2,98 @@
 
 **Updated:** 2026-11-13
 
-Everything in `specification/` that only a human can do before agents can plan or implement the remaining features: approving plans, answering open questions, writing missing specs and styling mockups. Each item links to where the full detail lives. Agents must not resolve these themselves ([TODO.md](TODO.md), [spec index § Status](README.md#status)).
-
-`TODO-nn` IDs refer to [TODO.md](TODO.md); _Known gap n_ refers to [README.md § Known gaps](README.md#known-gaps). When you answer an item, update the source spec (or ask an agent to) and delete the item here and in TODO.md.
+This is the human's work queue: decisions, plan review, missing content and mockup styling. Detail lives in the linked plan/spec. TODO IDs refer to [TODO.md](TODO.md); Known gaps refer to [the index](README.md#known-gaps).
 
 ## How this file is maintained
 
-This is the human's work queue. Every agent keeps it current ([AGENTS.md](../AGENTS.md)). The detail always lives in the linked source (a plan's _Risks and open questions_, TODO.md, a spec's open questions); this file only points to it.
-
-- **Add an item** whenever your work leaves the human something to do: a plan waiting for approval, a blocking question, an escalation, an unclaimed note in [notes/](notes/README.md), a draft mockup to style ([visual-design §1.1](visual-design.md#11-draft-mockups)), or a stale entry in TODO.md or Known gaps.
-- **Remove an item** as soon as it is resolved, and remove items the human has ticked. Don't leave answered items behind.
-- **Format:** `- [ ] **<short title> (<TODO-nn or plan slug>):** <one sentence: what to decide or do>. <Blocks <plan or task>, or Non-blocking.> Recommended: <your proposed answer, if you have one>. → [link](path#heading-anchor)`. Put it under the section that fits, in dependency order.
-- **Links:** use paths relative to this file and GitHub heading anchors. Point to the heading nearest the detail. Check that every path and anchor exists.
-- **Recommend:** wherever you can, give a recommended answer, so the human can reply "accept". If waiting is costly, say what you will assume.
-- Refresh the **Updated:** date when you change the file.
+- Add one item whenever work leaves a human decision, review, escalation, unclaimed note or draft to style. Remove resolved/ticked items; never re-ask an answered question.
+- Format: `- [ ] **Short title (TODO-nn or plan slug):** What to decide/do. Blocks plan/task, or Non-blocking. Recommended: proposed answer. → [detail](relative-path#heading-anchor)`.
+- Use relative paths and existing heading anchors; refresh Updated on change. Under the current workflow the human approves ready plans. The proposed four-skill workflow changes ownership/approval only when implemented.
+- Planning records accepted answers in the plan and its future specification-sync list. Do not promote product specs or claim implementation while only plans changed.
 
 ## Suggested order
 
-1. Start implementing the one `ready` plan (§1).
-2. Approve [data-ingestion-and-storage](plans/data-ingestion-and-storage.md): Steps 1–3 all depend on it (§2).
-3. Settle the virtual table and Step 1 decisions, then Steps 2 and 3 (§2).
-4. Write the machine-learning orchestrator spec and the Steps 3.3–4 specs: nothing after "Select Features" can be planned without them (§4). Missing mockups no longer block: planners write unstyled drafts for you to style (§6).
+1. Review the revised workflow bootstrap plan. The grouped Step 1–3 defaults and text-entry fallback are now accepted.
+2. Bootstrap workflow-gates under renewed current-workflow approval, then submit review-complete drafts using its new tools. No agent may fabricate a reviewer/approval stamp.
+3. Execute foundations before dependent UI tasks: state-navigation; virtual table/reference helpers; Step 1; Step 2; Step 3. Tasks name exact prerequisites.
+4. Commission later training/results specifications separately. Draft styling is non-blocking.
 
-## 1. Unblock work that is ready now
+## 1. Workflow and plan review
 
-- [ ] **Start `state-navigation-conformance`.** It is the only `ready` plan and has no blocking questions (you answered them on 2026-11-13). Ask an implementation agent to run it. → [plan](plans/state-navigation-conformance.md#risks-and-open-questions)
-- [ ] **Ask a planner to refresh the Step 1–3 plans** against answers you have already given. They still list TODO-14, TODO-15, TODO-17 and TODO-19 as open, and step-1 calls `state-navigation-conformance` a draft. → [step-1](plans/step-1-load-data-and-preview.md#risks-and-open-questions), [step-2](plans/step-2-set-target.md#risks-and-open-questions), [step-3](plans/step-3-train-models-overview-and-setup.md#risks-and-open-questions), [answers](plans/state-navigation-conformance.md#risks-and-open-questions)
-- [ ] **Let planners run `modern-web-guidance` online.** The Step 1–3 plans could not run its searches (dialog, forms, responsive table, dropzone) because the sandbox had no network, and must do so before they can be `ready`. → [step-1](plans/step-1-load-data-and-preview.md#risks-and-open-questions), [step-2](plans/step-2-set-target.md#risks-and-open-questions), [step-3](plans/step-3-train-models-overview-and-setup.md#risks-and-open-questions)
+Seven active plans were reviewed on 2026-11-13. All retain valid `draft` metadata: the current validator does not support `ready-for-review`. The two formerly ready plans had substantive corrections, so their previous approvals remain history only. Product answers already given remain accepted.
 
-## 2. Review and approve draft plans
+- [ ] **Review renewed workflow bootstrap (agent-workflow-gates):** Approve the revised gate/closure/migration contract under the current workflow so its tooling can be implemented. Blocks workflow T1 and formal ready-for-review submission. Recommended: review the legacy Sync specification exclusion, escalation triage, dirty-tree preservation and stale-approval safeguards, then approve this revision. → [plan](plans/agent-workflow-gates.md#risks-and-open-questions)
+- [ ] **Review amended navigation contract (state-navigation-conformance):** Review the added composed-path shadow-link fix and preserved datetime/sampleId contracts; earlier reopen/cancel/discard/scroll answers need no new decision. Blocks implementation until approval. Recommended: accept the amendments and send for independent verification once workflow-gates exists. → [plan](plans/state-navigation-conformance.md#technical-decisions)
+- [ ] **Review table contract (virtual-table-component):** Review the settled presentational/text-cell API and segmented 10,000-row rail, reaching up to 10,000,000 preview rows without an enormous CSS spacer. Blocks implementation until approval; styling is non-blocking. Recommended: accept the contract; keep the useful component spec and replace its conflicting examples during sync. → [plan](plans/virtual-table-component.md#interfaces-and-behaviour)
+- [ ] **Review reference regression suite (reference-dataset-regression-tests):** Review the refreshed implemented pipeline/protocol seams and corrected startup-database assumption. No product blockers. Recommended: approve after independent review; all ingestion prerequisites are implemented. → [plan](plans/reference-dataset-regression-tests.md#risks-and-open-questions)
 
-A plan becomes `ready` only when you approve it and no blocking questions remain ([lifecycle](plans/README.md#lifecycle)).
+The earlier request to refresh Steps 1–3, add journey stages and run online web guidance is complete. Guidance retrieval worked with the existing command permission; no global sandbox/network configuration change is required. The baseline is now 144 tests/22 files, not 52 or 105; workflow-gates D19 replaces the stale hard-coded rule. Broad permission-grant changes are not needed for this review.
 
-### [data-ingestion-and-storage](plans/data-ingestion-and-storage.md) — no blockers, needs your sign-off
+## 2. Step 1–3 decisions
 
-- [ ] **Check six decisions, then approve.** `datetime` added to `ColumnType` but not model-eligible (D17); ambiguous dates default to DMY, not your MDY (R12); stricter small-file categorical rule (R13); `none`/`nil`/`-` kept as missing-value tokens, with counts shown (R14); column roles cut to `feature`/`identifier` plus `sensitive`, with leakage per target (R4/R5); long rows skipped, not truncated (D3). Approving also answers TODO-12 (datasheets), TODO-23, TODO-24, TODO-47, TODO-49 and the ingestion half of TODO-09. → [risks](plans/data-ingestion-and-storage.md#risks-and-open-questions), [input-note review R1–R18](plans/data-ingestion-and-storage.md#review-of-the-input-notes)
-- [ ] **Decide what to do with `sample_dataset_specification.md`.** This newer dataset note (underscored name, 2026-11-13 11:41) arrived after the plan's last revision (08:53), and the plan does not cover it. Either ask the planner to fold it in before you approve, or delete it if the hyphenated note still stands. → [new note](notes/sample_dataset_specification.md), [folded note](notes/sample-dataset-specification.md)
+No unanswered product decisions remain in these three plans. The user accepted the Step 1–2 defaults, supervised Step 3 scope and plain text entries for missing artwork, and chose review-complete drafts under current tooling. Those answers are recorded in each plan's contract, risks and change log. Specification wording is updated during the plans' final sync tasks; the source TODOs must not be re-asked.
 
-### [virtual-table-component](plans/virtual-table-component.md)
+- [ ] **Review load/preview plan (step-1-load-data-and-preview):** Review the complete contract with accepted upload/progress/cancel/errors, transient safe datasheets and stored-stat panel. No product blockers; awaits plan review/approval, not another defaults decision. Recommended: review-complete draft for independent verification after workflow migration. → [plan](plans/step-1-load-data-and-preview.md#risks-and-open-questions)
+- [ ] **Review target plan (step-2-set-target):** Review accepted eligibility/notes, shared blocked notification and confirmation for any existing model. No product blockers; awaits plan review/approval. Recommended: review-complete draft for independent verification after migration. → [plan](plans/step-2-set-target.md#risks-and-open-questions)
+- [ ] **Review model setup plan (step-3-train-models-overview-and-setup):** Review accepted supervised scope, feature defaults, missing-description fallback and the exact Logistic Regression/native-text entry split. No product blockers; awaits plan review/approval. Recommended: review-complete draft for independent verification after migration. → [plan](plans/step-3-train-models-overview-and-setup.md#risks-and-open-questions)
 
-- [ ] **Cell rendering (TODO-31):** plain-text cells, or a `renderCell` template per column? → [risks](plans/virtual-table-component.md#risks-and-open-questions), [TODO.md §2](TODO.md#2-open-questions-in-existing-specs)
-- [ ] **Tier (TODO-32, Known gap 8):** presentational (current spec) or connected (old stub)? → [component spec](components/virtual-table.md#2-decision-and-rationale), [Known gaps](README.md#known-gaps)
-- [ ] **Virtual-table mockup:** none exists. No longer blocking: ask the planner to write an unstyled draft, then style it when you are ready. → [risks](plans/virtual-table-component.md#risks-and-open-questions), [draft mockups](visual-design.md#11-draft-mockups)
-- [ ] **Semantics and keyboard model:** native `<table>` or an ARIA table, and how keyboard navigation works. → [risks](plans/virtual-table-component.md#risks-and-open-questions)
-- [ ] **Size limit:** document a maximum dataset size or scroll-height strategy? → [risks](plans/virtual-table-component.md#risks-and-open-questions)
+Already answered and incorporated: dataset-id/model-id identity convention; app prefix; compact card counts; wrapping title/text/stats; required model image; CSS capitalisation; Load Dataset copy; deferred repeated-card aria-describedby; i18n-only presentational exception; Change Dataset with confirmation/removal; confirm-and-discard; reopen/cancel training; latest-per-step scroll. Do not ask these again. Their plan sync tasks update the still-stale source questions after implementation.
 
-### [step-1-load-data-and-preview](plans/step-1-load-data-and-preview.md)
+## 3. Remaining draft-spec questions
 
-All items are in its [Risks and open questions](plans/step-1-load-data-and-preview.md#risks-and-open-questions).
+- [ ] **Navigation overlays/routes (TODO-18, TODO-20):** Reconcile stale questions with the existing transient-dialog policy and implemented help/terms pages; promote only agreed sections, keeping unresolved behaviour explicit. Non-blocking for the scoped UI plans, which retain transient dialogs. Recommended: retain no dialog restoration on reload and the existing reserved-route mapping. → [navigation questions](app-state-and-navigation.md#12-open-questions), [content rules](content-and-i18n.md#static-content)
+- [ ] **Upload identity (TODO-22):** Decide whether identical uploaded bytes preserve downstream work. Non-blocking; current behaviour uses a new ID per upload. Recommended: keep current identity until a separate content-hash plan defines it. → [storage questions](state-and-storage.md#11-open-questions)
+- [ ] **Button questions (TODO-26, TODO-27):** Settle remaining disabled/hover/wrapping/pressed/touch/primary-button policy and correct the stale contrast claim. Non-blocking for plans reusing existing buttonStyles. Recommended: keep the existing approved A11Y-01 text colour; Change Dataset needs no new danger variant. → [questions](components/button.md#12-open-questions-human-to-answer-agents-must-not-resolve)
+- [ ] **Promote agreed draft specs:** After outstanding decisions are resolved, review statuses rather than treating all old draft questions as blockers. Non-blocking for explicitly settled plan contracts. → [status rules](README.md#status)
 
-- [ ] **Dataset card identity:** add `sampleId` to `<app-dataset-card>` (which `card.md` currently forbids), or look up a `data-sample-id` attribute? → [card.md § 3](components/card.md#3-public-api-closed)
-- [ ] **Dataset card copy (TODO-29, TODO-30):** answer card.md Q4–Q12. See §3 below.
-- [ ] **How the user leaves the preview (TODO-13, TODO-28):** Change Dataset, Delete Dataset, or both. If you keep the red button, approve a danger variant for `.btn`. → [app-state-and-navigation § 6.1](app-state-and-navigation.md#61-section-1--load-data-data), [button.md § 11](components/button.md#11-non-goals)
-- [ ] **Column details `<aside>` (TODO-10):** its tier, public API, how the histogram is drawn, how high-cardinality categorical columns are truncated, and what text columns show. Write `components/sidepanel.md` (currently a stub). Mockup `01-5_preview-dataset-aside.html` now shows a panel. → [workflow-steps § Preview Dataset](workflow-steps.md#preview-dataset), [sidepanel.md](components/sidepanel.md)
-- [ ] **Datasheet dialog (TODO-12, TODO-34, TODO-18):** its layout, and how descriptor metadata and the compiled datasheet HTML combine without `unsafeHTML`.
-- [ ] **Upload UI (TODO-09 UI parts):** progress and cancel UI, error messages for each `IngestionError.code`, and how padded rows, skipped rows, missing-value tokens and invalid counts are reported. → [workflow-steps § Custom Dataset Upload](workflow-steps.md#custom-dataset-upload)
-- [ ] **i18n prerequisite:** approve creating `src/i18n.ts` (`@nanostores/i18n`) in a prerequisite plan before T1. Steps 2 and 3 need it too. See §5.
+## 4. Missing later specifications and content
 
-### [step-2-set-target](plans/step-2-set-target.md)
+- [ ] **Orchestrator (TODO-33):** Specify library API, workers/protocol, progress/cancellation/errors, result shapes and SharedArrayBuffer ownership. Blocks training work. → [stub](machine-learning-orchestrator.md), [TODO detail](TODO.md#2-open-questions-in-existing-specs)
+- [ ] **Configure Model (TODO-05):** Specify hyperparameter controls/tuning and multiclass discovery. Blocks section 3 implementation. → [workflow](workflow-steps.md#3-configure-model)
+- [ ] **Configure Training (TODO-01):** Specify validation/folds/defaults and enforced dataset separation. Blocks section 4 implementation. → [workflow](workflow-steps.md#4-configure-training)
+- [ ] **Training (TODO-04):** Specify timing/progress/failures and settle Train Model/Continue copy. Blocks section 5 implementation. → [workflow](workflow-steps.md#5-training)
+- [ ] **Results (TODO-02, TODO-03, TODO-21):** Specify metrics/charts/comparisons and storage. Blocks result implementation. → [single-model results](workflow-steps.md#6-single-model-results), [comparison](workflow-steps.md#4-compare-results)
+- [ ] **Author remaining model articles (TODO-12):** Add locale content for models beyond Logistic Regression. Non-blocking: the Step 3 missing-description fallback is accepted. → [content layout](content-and-i18n.md#static-content)
+- [ ] **Component documentation (TODO-34, TODO-35):** Remaining shell/notification/dropzone/table/stepper/status/progress component specs need reconciliation. Non-blocking where these reviewed plans provide closed contracts and explicit sync owners; later components still need a specification. → [template](COMPONENTS.md#12-component-spec-template)
 
-All items are in its [Risks and open questions](plans/step-2-set-target.md#risks-and-open-questions).
+The obsolete preview spec (TODO-48/Gap 16) is owned by Step 1 T7. The remaining sample-dataset note has been reviewed and claimed by that plan; no new commission is needed. Its sync task retains durable/deferred ideas, updates the inbox and deletes the note.
 
-- [ ] **Target rules and Notes column (TODO-11):** why mockups `02-1`/`02-2` have no Notes column; the exact Notes text for text, ID-like, constant, high-cardinality and mostly empty columns; and whether ineligible rows show a disabled button or an empty cell. → [workflow-steps § 2](workflow-steps.md#2-set-target)
-- [ ] **Blocked state (TODO-16):** use the shared `.notification` with a link to `/data` instead of a separate warning bar? → [app-state-and-navigation § 4.3](app-state-and-navigation.md#43-blocked-state-matrix)
-- [ ] **Which models a target change resets:** confirm-and-discard is decided (TODO-17). It remains open whether it applies only to trained models (as `02-2` says) or to any draft model (as the code does). → [app-state-and-navigation § 6.4](app-state-and-navigation.md#64-changing-the-dataset-or-target-while-models-exist)
-- [ ] **Mockup gaps:** type shown as `<code>` or a chiclet badge; style for the active target row; where "learn more…" links go; stale links in `02-2`; literal colours and contrast in `.notification-info` and `.notification-alert`.
+## 5. Follow-up plans
 
-### [step-3-train-models-overview-and-setup](plans/step-3-train-models-overview-and-setup.md)
-
-All items are in its [Risks and open questions](plans/step-3-train-models-overview-and-setup.md#risks-and-open-questions).
-
-- [ ] **Mockup of the populated `/models` hub:** `03-1` shows only the blocked state. No longer blocking: ask the planner to write an unstyled draft, then style it. → [draft mockups](visual-design.md#11-draft-mockups)
-- [ ] **Select Features (TODO-06):** how the target row's checkbox looks, the minimum number of features, model-specific options or automatic preprocessing, and whether constant or empty columns are eligible. → [workflow-steps § 3.2](workflow-steps.md#2-select-features)
-- [ ] **Choose Model (TODO-07):** whether clustering (k-means) and dimensionality reduction (PCA) are offered, where card copy and SVGs come from, and card order. → [workflow-steps § 3.1](workflow-steps.md#1-choose-model)
-- [ ] **Models table (TODO-08):** model naming and renaming, what the Features, Configuration, Training Setup and Duration columns show, the zero-models empty state, and delete or duplicate actions. → [workflow-steps § 3](workflow-steps.md#3-train-models)
-- [ ] **Model description content and dialog (TODO-12, TODO-34):** only `content/models/logistic-regression.md` exists.
-- [ ] **Re-opening completed sections (TODO-14):** the control and confirmation UX (keeping the action is already decided).
-- [ ] **Model card (TODO-29, TODO-30):** card identity without breaking COMPONENTS §4, badge placement, amber contrast (A11Y-04) and i18n keys.
-- [ ] **Shared stylesheets (TODO-35):** which shared style modules to create, and how to reconcile `css/train-model.css` with the mockup copy.
-- [ ] **Mockup `03-3` accessibility bugs:** missing checkbox labels, invalid `aria-selected` on rows, no `<form>`. Record the fixes as deviations. → [visual-design § 5.2](visual-design.md#52-sem-register-mockup-semantic-defects)
-
-## 3. Answer open questions in draft specs
-
-`app-state-and-navigation.md`, `state-and-storage.md`, `button.md` and `card.md` are `draft`: agents may not plan against them until these are answered and you promote them ([status rules](README.md#status)).
-
-- [ ] **Navigation spec §12 (TODO-18, TODO-20):** restore an open Datasheet or Model Description dialog on reload? Create `content/pages/help.md`, and give terms and conditions a route? Q1b, Q1c, Q2 and Q4 are answered; check that the conformance plan's sync task records them. → [app-state-and-navigation § 12](app-state-and-navigation.md#12-open-questions)
-- [ ] **Storage spec §11 (TODO-21, TODO-22):** store results in `samata-db` or a separate database? Identify uploads by content hash? Q4 and Q5 are covered by the data-ingestion plan. → [state-and-storage § 11](state-and-storage.md#11-open-questions)
-- [ ] **Button (TODO-26, TODO-27, TODO-28):** answer Q3–Q8 (disabled colours, hover transition, wrapping, pressed style, hover on touch, how many primary buttons). Recheck the `--stone-600` on `--stone-50` contrast claim (3.97:1). Decide on a danger variant. Q1 and Q2 are answered, so TODO-25 can be closed. → [button.md § 12](components/button.md#12-open-questions-human-to-answer-agents-must-not-resolve)
-- [ ] **Card (TODO-29, TODO-30):** answer Q4–Q12: `app-` prefix, compact numbers ("61K"), long-string wrapping, empty image slot, wrapping stats, capitalisation, `aria-describedby`, the i18n import exception, and Select vs Load Dataset / showing `tasks`. → [card.md § 12](components/card.md#12-open-questions-human-to-answer-agents-must-not-resolve)
-- [ ] **Promote the draft specs** to `target` or `partial` once their questions are answered. → [spec index](README.md#specs)
-
-## 4. Write the missing specs
-
-- [ ] **Machine-learning orchestrator (TODO-33):** the `web-ml` API surface used, worker topology and messaging (Comlink or not), progress and cancellation events, errors, the results shape, and who owns the `SharedArrayBuffer`. This blocks every training feature. → [machine-learning-orchestrator.md](machine-learning-orchestrator.md), [TODO.md §2](TODO.md#2-open-questions-in-existing-specs)
-- [ ] **Configure Model (TODO-05):** where hyperparameter definitions come from, the tuning UI and metric, and how multiclass strategies are discovered. → [workflow-steps § 3.3](workflow-steps.md#3-configure-model)
-- [ ] **Configure Training (TODO-01):** split, fold and validation procedures with defaults, and how the UI enforces separate training, validation and test data. → [workflow-steps § 3.4](workflow-steps.md#4-configure-training), [VISION § 10](VISION.md#10-enforced-methodological-rigour)
-- [ ] **Training (TODO-04):** progress and timing events, the per-step timing table, failure handling, and the button label ("Train Model" or "Continue"). → [workflow-steps § 3.5](workflow-steps.md#5-training)
-- [ ] **Single Model Results (TODO-02):** common metrics, charts per model, and the format of `src/config/models/{model-name}.ts`. → [workflow-steps § 3.6](workflow-steps.md#6-single-model-results)
-- [ ] **Compare Results (TODO-03):** which metrics, which models can be compared, and the layout. → [workflow-steps § 4](workflow-steps.md#4-compare-results)
-- [ ] **Component specs (TODO-34, TODO-35):** sidebar, welcome modal, content modal and transient dialogs; and the patterns with no spec (notification, chiclet, dropzone, modal, step list, data tables, `.train-step`, status dot, progress bar, histogram). COMPONENTS §12 requires a spec before a component is built. → [TODO.md §3](TODO.md#3-components-with-no-spec), [spec template](COMPONENTS.md#12-component-spec-template)
-- [ ] **Modal content (TODO-12):** welcome modal text, datasheet fields and copy, and a description for each model. → [TODO.md §1](TODO.md#1-workflow-steps-that-need-specifying)
-- [ ] **Rewrite or retire `preview-dataset.md` (TODO-48, Known gap 16):** it describes a removed prototype. → [preview-dataset.md](preview-dataset.md), [TODO.md §6](TODO.md#6-inconsistencies-between-specs)
-
-## 5. Commission plans that don't exist yet
-
-- [ ] **`scaffolding-visual-remediation` (Known gap 13, TODO-53):** bring the scaffold shell onto `css/root.css` tokens and the mockups, and apply A11Y-01, A11Y-02, A11Y-09 and SEM-01–03. → [Known gaps](README.md#known-gaps), [TODO.md §8](TODO.md#8-accessibility-wcag-22-aa), [visual-design § 5](visual-design.md#5-deviation-registers)
-- [ ] **Static content notes (Known gap 4):** no plan has claimed `build-static-content.md` or `static-content-indexes.md` yet. Ask a planner to fold them into a plan, together with the i18n item below. Non-blocking. → [build-static-content](notes/build-static-content.md), [static-content-indexes](notes/static-content-indexes.md)
-- [ ] **i18n foundation (TODO-46, Known gap 4):** `src/i18n.ts`, which locales ship, the language switcher, the translation workflow and where content lives. Steps 1–3 depend on it. → [content-and-i18n.md](content-and-i18n.md)
-- [ ] **The rest of Known gap 14:** wiring the IndexedDB adapter and deleting stored results are outside the conformance plan. Check what data-ingestion T10 covers, then plan the remainder. → [Known gaps](README.md#known-gaps)
+- [ ] **Shell visual remediation (Known gap 13, TODO-53):** Commission the shell/token/WCAG plan. Non-blocking for new compliant UI files, but existing shell violations remain. → [gap](README.md#known-gaps), [visual deviations](visual-design.md#5-deviation-registers)
+- [ ] **Further localisation (TODO-46):** Decide additional locales, switching/persistence and translation workflow. Non-blocking: Step 1's T1 covers only existing en configuration and UI instance. → [localisation](content-and-i18n.md#localisation-store)
 
 ## 6. Style or fix mockups
 
-Only you change the normative mockups. Where none exists, agents write an unstyled structural draft in `mockups/ui-scaffold/drafts/` and add an item here. Style the draft and move it up to `ui-scaffold/` to make it normative. → [draft mockups](visual-design.md#11-draft-mockups), [TODO.md §4](TODO.md#4-mockups-missing-or-out-of-date-mockupsui-scaffold)
+Only the human changes normative mockups. Drafts are structure only and use existing styles; promote them when styled. Each is non-blocking for its scoped behaviour.
 
-- [ ] **Empty mockups (TODO-36):** `03-4` to `03-7` are empty and `04_compare-results.html` is a placeholder. Their specs (§4) must come first; agents can then draft the structure. `03-3` is now filled in, so TODO-36 needs narrowing.
-- [ ] **Missing mockups:** the populated `/models` hub and the virtual table (see §2). Drafts can be written now.
-- [ ] **`01-3` (TODO-37):** remove the "Paste url to dataset" input; URL loading was dropped.
-- [ ] **Step lists (TODO-38):** render the current step as a link with `aria-current`, not a `<div>`. → [app-state-and-navigation § 4.4](app-state-and-navigation.md#44-sidebar-and-shortcuts)
-- [ ] **`01-4` and `01-5` (TODO-39):** both have the page title "Pen". `01-5` adds the column-details panel, so TODO-39 needs narrowing.
+- [ ] **Style virtual table (virtual-table-component):** Style segmented preview/controls and loading/empty/error states; then promote and commission parity. Non-blocking. → [draft](mockups/ui-scaffold/drafts/01-6_virtual-table.html)
+- [ ] **Style data states (step-1-load-data-and-preview):** Style progress/errors/import notices/histogram information and confirmation. Non-blocking. → [draft](mockups/ui-scaffold/drafts/01-7_data-states.html)
+- [ ] **Style target additions (step-2-set-target):** Style Notes/current target/blocked/error/confirmation states. Non-blocking. → [draft](mockups/ui-scaffold/drafts/02-3_target-states.html)
+- [ ] **Style models overview (step-3-train-models-overview-and-setup):** Style empty/blocked/loading/error/populated overview. Non-blocking. → [draft](mockups/ui-scaffold/drafts/03-0_models-overview.html)
+- [ ] **Style model descriptions (step-3-train-models-overview-and-setup):** Style description/loading/missing/error states. Non-blocking. → [draft](mockups/ui-scaffold/drafts/03-8_model-description.html)
+- [ ] **Style model text entries (step-3-train-models-overview-and-setup):** Style the accepted native text-entry chooser and its selected/loading/error/empty states. Non-blocking; artwork is not required to implement this fallback. → [draft](mockups/ui-scaffold/drafts/03-9_choose-model-text-entries.html)
+- [ ] **Optional model illustrations (step-3-train-models-overview-and-setup):** Commission model-appropriate SVGs and a follow-up plan when illustrated cards should replace text entries. Non-blocking; do not delay current implementation. → [accepted contract](plans/step-3-train-models-overview-and-setup.md#interfaces-and-behaviour)
+- [ ] **Style content modal (static-content-pipeline):** Style compiled prose/error state and promote. Non-blocking. → [draft](mockups/ui-scaffold/drafts/00-2_content-modal.html)
+- [ ] **Empty later mockups (TODO-36):** 03-4–03-7 are empty and 04_compare-results is a placeholder; write behaviour specs before drafting. Non-blocking for setup; 03-3 is populated. → [TODO](TODO.md#4-mockups-missing-or-out-of-date-mockupsui-scaffold)
+- [ ] **Remove obsolete URL field (TODO-37):** Update 01-3; UI plans already exclude it. Non-blocking. → [mockup](mockups/ui-scaffold/01-3_upload-dataset.html)
+- [ ] **Current-step links (TODO-38):** Replace mockup div with canonical link/aria-current pattern. Non-blocking; conformance owns application semantics. → [rule](app-state-and-navigation.md#44-sidebar-and-shortcuts)
+- [ ] **Preview titles/panel (TODO-39):** Replace Pen titles in 01-4/01-5 and reconcile unsupported stddev with stored stats; 01-5 already supplies the panel. Non-blocking. → [panel mockup](mockups/ui-scaffold/01-5_preview-dataset-aside.html)
 
-## 7. Decide spec-to-spec and spec-to-code conflicts
+## 7. Other spec conflicts and process backlog
 
-- [ ] **Development cross-origin isolation (TODO-50):** the dev server needs COOP/COEP headers for `SharedArrayBuffer`. → [TODO.md §6](TODO.md#6-inconsistencies-between-specs)
-- [ ] **ARCHITECTURE "Future Improvements" (TODO-51):** which of Zig, Emscripten and the scikit-learn benchmark apply to this repo rather than `web-ml`. → [ARCHITECTURE § Future Improvements](ARCHITECTURE.md#future-improvements)
-- [ ] **Known gaps 1–7, 10 and 17:** decide which side wins for each: entry file and directories, HTML template path, CSS inlining, content location, happy-dom vs Playwright, Comlink and the service worker, ESLint/CI, the product name (`web-ml-app` or `samata-ml`), and where Playwright component tests live. → [Known gaps](README.md#known-gaps)
-- [ ] **Scaffolding plans built on draft specs (TODO-52):** the five scaffolding plans are now `implemented`. Close the item, or record that they adopted the proposed answers. → [TODO.md §7](TODO.md#7-process)
+- [ ] **Development isolation (TODO-50):** Production \_headers declares COOP/COEP, but current development/static-server code does not; commission the missing development-isolation change. Non-blocking for these UI plans, but a prerequisite for future SharedArrayBuffer training. → [TODO](TODO.md#6-inconsistencies-between-specs)
+- [ ] **Architecture future tooling (TODO-51):** Decide which Zig/Emscripten/benchmark ideas apply here versus web-ml. Non-blocking. → [architecture](ARCHITECTURE.md#future-improvements)
+- [ ] **Remaining Known gaps 1–3, 5–7, 10, 17:** Commission reconciliation of entry/template/CSS, test environment, worker/service-worker and lint/CI rules, product name and test locations. Gap 4 is resolved; gap 18 is now owned by conformance. Non-blocking for scoped plans with explicit decisions. → [gaps](README.md#known-gaps)
+- [ ] **Close stale scaffolding process item (TODO-52):** Scaffolding plans are implemented; reconcile its old ready/draft wording during workflow spec sync. Non-blocking. → [TODO](TODO.md#7-process)
 
-## 8. Vision requirements with no spec yet
+## 8. Later vision work
 
-These aren't needed for Steps 1–3, but each needs a spec before it can be planned. → [TODO.md §5](TODO.md#5-vision-requirements-with-no-spec-yet-visionmd)
+- [ ] **Progressive disclosure (TODO-40):** Specify definitions/glossary/formulas. Non-blocking. → [vision](VISION.md#4-progressive-disclosure-and-plain-english-guidance)
+- [ ] **Visualisations (TODO-41):** Specify decision-boundary/confusion-matrix tools and chart library. Non-blocking. → [vision](VISION.md#5-appropriate-visualisations)
+- [ ] **Further ethical samples (TODO-42):** Scope future catalogue additions; COMPAS/German Credit already exist, COMPAS remains remote. Non-blocking. → [samples](sample-datasets.md)
+- [ ] **Threshold/fairness tools (TODO-43):** Specify group metrics/calibration/prompts. Non-blocking. → [vision](VISION.md#8-probabilistic-threshold-calibration-and-fairness-auditing)
+- [ ] **Neural network choice (TODO-44):** Specify educational presentation/comparison. Non-blocking. → [vision](VISION.md#9-explainable-classical-models-contrasted-with-an-opaque-neural-network)
+- [ ] **Performance/caching (TODO-45):** Define broader memory/bundle limits and service-worker update policy. Non-blocking. → [vision](VISION.md#12-privacy-responsiveness-and-open-source-longevity)
 
-- [ ] **Progressive disclosure (TODO-40):** plain-English definitions, glossary and optional formulas. → [VISION § 4](VISION.md#4-progressive-disclosure-and-plain-english-guidance)
-- [ ] **Visualisations (TODO-41):** decision boundaries and confusion matrices, plus a chart library. → [VISION § 5](VISION.md#5-appropriate-visualisations)
-- [ ] **Ethical sample datasets (TODO-42):** Folktables, COMPAS and German Credit, with licensing, size and datasheets. → [VISION § 6](VISION.md#6-consequential-sociotechnical-context)
-- [ ] **Threshold and fairness auditing (TODO-43):** threshold slider, FP/FN rates, group metrics and fairness prompts. → [VISION § 8](VISION.md#8-probabilistic-threshold-calibration-and-fairness-auditing)
-- [ ] **Neural network (TODO-44):** which model, and how it is contrasted with the inspectable ones. → [VISION § 9](VISION.md#9-explainable-classical-models-contrasted-with-an-opaque-neural-network)
-- [ ] **Performance budget and caching (TODO-45):** bundle and dataset limits, memory, service-worker caching and updates. → [VISION § 12](VISION.md#12-privacy-responsiveness-and-open-source-longevity)
-
-[FUTURE.md](FUTURE.md) lists deferred features. Nothing there is needed now; move an item into a spec only when you want it built.
+Deferred product work remains in [FUTURE.md](FUTURE.md). No broader host permissions were changed.

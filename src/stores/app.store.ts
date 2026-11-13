@@ -1,6 +1,7 @@
 import { atom } from 'nanostores';
 import {
 	INITIAL_APP_STATE,
+	isModelEligibleColumnType,
 	type DatasetSummary,
 	type HyperparameterConfig,
 	type HyperparameterValue,
@@ -128,7 +129,7 @@ export function setTarget(column: string): boolean {
 		if (!state.dataset) return false;
 
 		const col = state.dataset.columns.find((c) => c.name === column);
-		if (!col || col.type === 'text') return false;
+		if (!col || !isModelEligibleColumnType(col.type)) return false;
 
 		// Discard confirmation required if models already exist
 		if (state.models.length > 0 && state.target !== column) {

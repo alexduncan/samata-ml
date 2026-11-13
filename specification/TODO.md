@@ -24,19 +24,14 @@ Open questions and missing specification found by reviewing every Markdown and H
     - Mockup `03-3` is empty.
 - **TODO-07 — Choose Model** ([workflow-steps §3.1](workflow-steps.md)):
     - How the model list and task types are read from `web-ml`.
-    - Where each card's SVG illustration and description come from. Only `content/models/logistic-regression.md` exists.
+    - Where each card's SVG illustration and description come from. Only `content/en/models/logistic-regression.md` exists.
     - The badge lists "Clustering", but only classifiers and regressors are offered. Are clustering models in scope?
 - **TODO-08 — Models table on `/models`** ([workflow-steps §3](workflow-steps.md)): how models are named and numbered; what the Configuration and Training Setup columns show; and whether a model can be deleted or duplicated.
 - **TODO-09 — Custom dataset upload** ([workflow-steps §1](workflow-steps.md)):
-    - "When the following events fire…" lists no events.
-    - Limits on file size and row and column counts.
-    - Accepted encodings and delimiters, and whether there must be a header row.
-    - Error messages.
-    - Upload progress UI.
-    - How the user is told about skipped malformed rows (DATA-AC-2 in [data-ingestion](data-ingestion.md)).
+    - Specify the upload affordance, progress and cancellation copy, user-facing error messages, and how padded and skipped rows and invalid values are reported.
 - **TODO-10 — Column details panel** ([workflow-steps §1 Preview](workflow-steps.md)): how the histogram is rendered; how categorical frequencies are shown for high-cardinality columns; and what text columns show. [components/sidepanel.md](components/sidepanel.md) is a stub, and mockup `01-4` has no `<aside>`.
 - **TODO-11 — Set Target rules** ([workflow-steps §2](workflow-steps.md)): which columns can be targets, and what the Notes column says for each case: text, ID-like, constant, high-cardinality categorical, or mostly empty.
-- **TODO-12 — Modal content:** the welcome modal text; the datasheet's fields and their source (`datasets.ts` fields or a Markdown file per dataset); and the model description content for each model.
+- **TODO-12 — Modal content:** the welcome modal text and the model description content for each model. Dataset datasheets are authored as Markdown per [sample-datasets.md](sample-datasets.md).
 
 ## 2. Open questions in existing specs
 
@@ -49,14 +44,12 @@ Open questions and missing specification found by reviewing every Markdown and H
 - **TODO-17** — What happens to trained models when the dataset or target changes: confirm and discard (proposed), a hard lock, or keep them read-only and archived? (§6.4; mockup `02-2` shows a reset warning.)
 - **TODO-18** — Restore an open Datasheet or Model Description dialog on reload? (Currently no.)
 - **TODO-19** — Is scroll memory "latest per step" (proposed) or per history entry acceptable? (§8.4)
-- **TODO-20** — Reserved content: create `content/pages/help.md`? Give `terms-and-conditions.md` a route?
+- **TODO-20** — Give `terms-and-conditions.md` a route?
 
 ### [state-and-storage.md §11](state-and-storage.md)
 
 - **TODO-21** — Store results in a `model_results` store in `samata-db`, or in a separate database?
 - **TODO-22** — Identify uploads by content hash, so that re-uploading the same file keeps downstream state?
-- **TODO-23** — `datasets.ts` uses `name`/`shape` and has no stable `id`, while workflow-steps uses `title`/`num_records`/`num_columns`. Which is canonical?
-- **TODO-24** — Confirm that Web Locks meets the Baseline Widely available target.
 
 ### [components/button.md §12](components/button.md)
 
@@ -76,7 +69,7 @@ Open questions and missing specification found by reviewing every Markdown and H
     - Capitalisation of model types.
     - The `aria-describedby` approach for repeated button names.
     - Whether presentational components may import the i18n store.
-- **TODO-30** — Q10 refers to `specification/steps/step-one.md`, which does not exist (now [workflow-steps.md §1](workflow-steps.md)). The card says **Select Dataset**, but workflow-steps and mockup `01-1` say **Load Dataset**. Should the card show dataset `tasks`?
+- **TODO-30** — Q10: workflow-steps and mockup `01-1` say **Load Dataset**, while card.md says **Select Dataset**. The catalogue provides `taskTypes`; should the card display them?
 
 ### [components/virtual-table.md §12](components/virtual-table.md)
 
@@ -121,17 +114,15 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 - **TODO-40** — §4 Progressive disclosure: how plain-English definitions, a glossary and optional formulas are authored and shown.
 - **TODO-41** — §5 Model-specific interactive visualisations (decision boundaries, confusion matrices) and the choice of chart library. There is no dependency for one yet.
-- **TODO-42** — §6 Ethical sample datasets (Folktables, COMPAS, German Credit). `datasets.ts` has only Penguins and Iris. Also needed: licensing and size, and the datasheet content.
+- **TODO-42** — §6 Ethical sample datasets (including Folktables and German Credit), and future additions to the catalogue. Follow [sample-datasets.md](sample-datasets.md) for dataset authoring and licensing. COMPAS is a remote sample because ProPublica declares no licence; it is fetched from its pinned source when loaded.
 - **TODO-43** — §8 Probability threshold slider, false-positive and false-negative rates, fairness auditing (group metrics), and the fairness prompts the workflow asks.
 - **TODO-44** — §9 Which neural network model to offer, and how its opacity is contrasted with the inspectable models.
 - **TODO-45** — §12 Performance budget for a "commodity laptop" (bundle size, dataset size limits, memory). Also the service-worker caching and update strategy, which ARCHITECTURE requires but does not specify.
-- **TODO-46** — i18n: which locales ship, the language-switcher UI, and the translation workflow. [content-and-i18n.md](content-and-i18n.md) is only an outline.
+- **TODO-46** — Which locales ship after `en`, the language switcher, the locale store and the translation workflow (including stale translations)?
 
 ## 6. Inconsistencies between specs
 
-- **TODO-47** — Column types: [data-ingestion.md](data-ingestion.md) has no `boolean`, and [preview-dataset.md](preview-dataset.md) uses `text|integer|float|boolean`. [state-and-storage §10 #4](state-and-storage.md) sets the canonical set but says both need aligning.
 - **TODO-48** — [preview-dataset.md](preview-dataset.md) describes the old implementation (`Pipeline.state`, `SelectDataView`, single-dataset stores, the `dataset_stats` key), which state-and-storage §10 #5 and #8 supersede. Rewrite it or retire it.
-- **TODO-49** — The data-ingestion Pass 2 median collects every value into an array, which conflicts with its memory goal. Specify the algorithm (external sort, an approximation, or a size cap).
 - **TODO-50** — `SharedArrayBuffer` needs cross-origin isolation. `public/_headers` sets COOP and COEP for production, but the dev server does not send them. Specify this for development.
 - **TODO-51** — [ARCHITECTURE § Future Improvements](ARCHITECTURE.md) mentions Zig, Emscripten and a scikit-learn benchmark workflow. These look as though they belong to `web-ml`; confirm what applies to this repo.
 

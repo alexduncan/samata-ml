@@ -7,7 +7,6 @@ import { CERT_DIR, CERT_PATH, ensureHttpsCert, KEY_PATH } from './certificates';
 import { CSS_DIR, DEV_DIR, DIST_DIR, PUBLIC_DIR, SRC_DIR } from './config';
 import { isPathInside } from './filesystem';
 import { serveStaticFile } from './static-server';
-import { generateStaticPages } from './generate-pages';
 import { join } from 'node:path';
 
 const CONTENT_DIR = join(process.cwd(), 'content');
@@ -149,7 +148,6 @@ class DevBuildScheduler {
 	 */
 	async buildInitial(): Promise<void> {
 		log('Building development assets...');
-		await generateStaticPages();
 		await this.build();
 		log(`Development assets written to ${DEV_DIR}.`);
 	}
@@ -187,7 +185,6 @@ class DevBuildScheduler {
 
 		try {
 			log(`Rebuilding development assets because: ${reasons || 'manual request'}.`);
-			await generateStaticPages();
 			await this.build();
 			const elapsedMs = Math.round(performance.now() - startedAt);
 			log(`Rebuild finished in ${elapsedMs}ms.`);

@@ -1,7 +1,8 @@
-import { existsSync } from 'node:fs';
 import { copyFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { CSS_DIR, DEV_DIR, DIST_DIR, PUBLIC_DIR, ROOT_DIR, SRC_DIR } from './config';
+import { buildContent, type ContentBuildReport } from './build-content';
+import { generateSampleDatasets, type SampleDatasetBuildReport } from './generate-datasets';
 import { copyDirContents, resetDir, writeRevvedFile } from './filesystem';
 import { transformIndexHtml } from './html';
 
@@ -35,17 +36,17 @@ async function buildBrowserAssets(options: {
 }): Promise<void> {
 	// JavaScript and CSS are built separately because Bun treats them as
 	// separate browser entrypoints for this app.
-	const entrypoints = [path.join(SRC_DIR, 'app.ts')];
-	const storageWorkerPath = path.join(SRC_DIR, 'models/storage/storageWorker.ts');
-	if (existsSync(storageWorkerPath)) {
-		entrypoints.push(storageWorkerPath);
-	}
+	const entrypoints = [
+		path.join(SRC_DIR, 'app.ts'),
+		path.join(SRC_DIR, 'features/data/ingestion/storage.worker.ts')
+	];
 
 	const jsResult = await Bun.build({
 		entrypoints,
 		outdir: options.outdir,
 		target: 'browser',
 		format: 'esm',
+		naming: { entry: '[name].[ext]' },
 		minify: options.minify,
 		sourcemap: options.sourcemap,
 		splitting: true,
@@ -65,6 +66,28 @@ async function buildBrowserAssets(options: {
 	assertBuild(cssResult, 'CSS');
 }
 
+function logContentReport(report: ContentBuildReport): void {
+	const summary = Object.entries(report.locales)
+		.map(([locale, domains]) => {
+			const counts = Object.entries(domains)
+				.map(([domain, count]) =>
+					count.fallbacks > 0
+						? `${domain}:${count.total}(${count.fallbacks} fallback)`
+						: `${domain}:${count.total}`
+				)
+				.join(', ');
+			return `${locale} [${counts}]`;
+		})
+		.join('; ');
+	console.log(`Built static content: ${summary}`);
+}
+
+function logSampleDatasetReport(report: SampleDatasetBuildReport): void {
+	console.log(
+		`Built sample datasets: ${report.built.length} (${report.profiled.length} profiled, ${report.cached.length} cached)`
+	);
+}
+
 /**
  * Builds the development bundle into the dev directory with source maps and readable output.
  */
@@ -74,6 +97,8 @@ export async function buildDevBundle(): Promise<void> {
 	// Dev builds are disposable. Recreate the directory so deleted source files disappear.
 	await resetDir(DEV_DIR);
 	await copyDirContents(PUBLIC_DIR, DEV_DIR);
+	logContentReport(await buildContent(DEV_DIR));
+	logSampleDatasetReport(await generateSampleDatasets(DEV_DIR));
 	await copyFile(path.join(ROOT_DIR, 'index.html'), devHtml);
 	await buildBrowserAssets({
 		outdir: DEV_DIR,
@@ -99,6 +124,8 @@ export async function buildProductionBundle(): Promise<ProductionBuildResult> {
 	// Production builds are also recreated from scratch so old revved assets do not linger.
 	await resetDir(DIST_DIR);
 	await copyDirContents(PUBLIC_DIR, DIST_DIR);
+	logContentReport(await buildContent(DIST_DIR));
+	logSampleDatasetReport(await generateSampleDatasets(DIST_DIR));
 	await copyFile(path.join(ROOT_DIR, 'index.html'), outHtml);
 	await buildBrowserAssets({
 		outdir: DIST_DIR,

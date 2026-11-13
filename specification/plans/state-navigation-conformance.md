@@ -1,6 +1,6 @@
 # State and navigation conformance
 
-**Status:** ready | **Updated:** 2026-11-13T10:35:55Z
+**Status:** draft | **Updated:** 2026-11-13T22:17:28Z
 
 ## Goal
 
@@ -49,6 +49,7 @@
     - it decides when focus moves (user-initiated workflow navigation only);
     - reserved routes carry their `underlayPath`;
     - it flushes the persister before every history write.
+    - it finds same-origin anchors through `event.composedPath()`, including sidebar/dialog links inside shadow roots (Known gap 18).
 - **Scroll saving:** snapshots are recorded for the active key, and saving is disabled until restoration for that key has finished.
 - **App shell:** it focuses the `<h1>` only on the router's request and renders the underlay from the route's `underlayPath`.
 - **Sidebar:** `aria-current` follows §4.4 (register SEM-03 in visual-design §5).
@@ -118,16 +119,18 @@ Facts the planner verified, so the implementer need not re-check them.
         - the `aria-current` bindings (`:221-290`);
         - the step-number selector (`:128-132`).
 - **Tests and commands:**
-    - `bun run check` — baseline 0 type errors, 52 pass, 0 fail.
+    - Review baseline `bun run check` — 0 type errors, 144 pass, 0 fail in 22 files. Record fresh implementation before/after counts; do not clean the user's existing worktree.
     - Unit tests: `tests/state-and-storage.test.ts` (NAV-AC-3, 5–10) and `tests/router-and-navigation.test.ts` (NAV-AC-1, 2, 4).
     - `tests/setup.ts` preloads happy-dom and a Web Locks mock.
     - Playwright: `bun run test:e2e tests/app-shell.test.ts` (NAV-E2E-1, 2, 3, 9). It is excluded from `bun test` by `bunfig.toml`, and `playwright.config.ts` starts the dev server.
     - The parity and token checks are `bun test tests/style-tokens.test.ts` and `bun run test:e2e tests/visual-parity.e2e.ts tests/a11y.e2e.ts`.
-- **Web guidance:** None. No new platform feature is used: `aria-current`, `focus({ preventScroll })`, the History API and passive `scroll` listeners are already in use.
+- **Web guidance:** Retrieved `accessibility` and `responsive-table` during the 2026-11-13 review: keep native links and visible focus. Existing History/focus APIs stay unchanged. Shadow-root anchors are found from the composed event path, not the retargeted document event.target.
 - **Visual reference:** `specification/mockups/ui-scaffold/01-1_select-data.html` — `css/steps.css` `.step[aria-current]`, `.step-num`. T8 changes which element carries `aria-current` (the link, per SEM-03), not how anything looks. The sidebar's parity entries in `tests/visual-parity/map.ts` remain `knownDrift: 'scaffolding-visual-remediation'`. Deviations: SEM-03 (applied here).
 - **Lit skills:** implementers use `lit-implementer` for T8.
 - **Known gaps decided:** 14 (every bullet except the IndexedDB adapter and stored-results deletion, which stay) and 15 (see _Technical decisions_; its open questions were answered by the user on 2026-11-13, recorded under _Risks and open questions_).
 - **Assumptions requiring verification:** None.
+- **Review author:** Codex (model unrecorded), 2026-11-13; retain this co-author during workflow migration.
+- **Review handoff:** Prior human answers remain accepted. This substantive review adds the shadow-link fix and datetime validation, so the previously `ready` plan returns to `draft`; formal ready-for-review submission awaits workflow-gates.
 
 ## Technical decisions
 
@@ -190,8 +193,9 @@ export function takeFocusRequest(): boolean;
 - **`dataset`:** `null`, or an object with:
     - `id` and `name` strings;
     - `source` `'sample' | 'upload'`;
+    - optional sampleId, when present, is a non-empty string; preserve it (never replace with ingestion UUID);
     - `rowCount` integer ≥ 0;
-    - `columns` an array of `{ name: string; type: ColumnType; missingCount: integer ≥ 0 }`.
+    - `columns` an array of `{ name: string; type: ColumnType; missingCount: integer ≥ 0 }`, including implemented datetime in ColumnType.
 - **`data`:** `mode` `'select' | 'preview'`; `selectedColumn` string or `null`.
 - **`target`:** string or `null`.
 - **`models`:** an array; each entry has:
@@ -225,7 +229,7 @@ export function takeFocusRequest(): boolean;
 - **`setFeatures(num, names)`:** returns `false` if any of these hold:
     - there is no dataset;
     - a name is not a column of the dataset;
-    - a name is a `text` column or the target;
+    - a name fails `isModelEligibleColumnType` (including `text` and `datetime`) or is the target;
     - a name is duplicated.
 
     An equal set (order-insensitive) is a no-op returning `true`. Otherwise it applies D7.
@@ -292,8 +296,9 @@ T9 applies these and ticks each one.
 - [ ] `specification/state-and-storage.md` §6 check 7 — recovery un-completes `configure-training` as well (D8).
 - [ ] `specification/visual-design.md` — the status line and §5 SEM-03 row say SEM-03 is applied.
 - [ ] Known gap 13 — SEM-03 removed from the list of entries not yet applied.
-- [ ] Known gap 14 — narrowed to the IndexedDB adapter bullet and the deletion of stored results on discard.
+- [ ] Known gap 14 — narrow to genuinely undelivered scope such as stored-results deletion; the IndexedDB adapter is already implemented and must not be listed as missing.
 - [ ] Known gap 15 — resolved.
+- [ ] `specification/app-state-and-navigation.md` §5.1 and Known gap 18 — same-origin anchors inside shadow roots use the existing navigation interception rules through composedPath; gap 18 resolved.
 
 ## Implementation tasks
 
@@ -372,7 +377,7 @@ T9 applies these and ticks each one.
         - `setFeatures` with the same set in a different order returns `true` and does not change `$appState` (same reference);
         - a changed `setHyperparameters` on a model with sections 1–4 complete leaves `choose-model`, `select-features` and `configure-model` complete;
         - `chooseModel` with a different model resets options, hyperparameters and multiclass, and keeps features.
-    - [ ] SNC-6: `setFeatures` returns `false`, with no mutation, for an unknown column, a `text` column, the target or a duplicate. `setSelectedColumn('nope')` returns `false`.
+    - [ ] SNC-6: `setFeatures` returns `false`, with no mutation, for an unknown column, a `text` or `datetime` column, the target or a duplicate. Use the implemented isModelEligibleColumnType predicate. `setSelectedColumn('nope')` returns `false`.
     - [ ] SNC-7: `clearScroll` is never called inside an `updateState` transform. Check by code review in the task report.
 - **Verification:** `bun test tests/state-and-storage.test.ts`; `bun run check`
 - **Progress:** [ ] Not started
@@ -401,6 +406,7 @@ T9 applies these and ticks each one.
 - **Must not touch:** `src/router/route-parser.ts`; the public signatures of `navigate`, `openReserved` and `closeReserved`; `src/app.ts` (T8)
 - **Implementation:**
     - Remove the `queueMicrotask` focus block (`router.ts:114-123`).
+    - In handleClick, find the first HTMLAnchorElement in event.composedPath(), then retain all current same-origin, modifier, target, download and hash-only exclusions. Never query another component's shadowRoot.
     - Add the private focus flag and `takeFocusRequest()` (D9).
     - Add `underlayPath` to the reserved variant and set it per the table (D10).
     - Call `flushNow()` (from `../stores/persister`) immediately before each `pushState`/`replaceState` (D11).
@@ -410,6 +416,7 @@ T9 applies these and ticks each one.
     - [ ] SNC-10: `openReserved('/about')` from `/target` sets `$route` to `{ kind: 'reserved', path: '/about', underlayPath: '/target' }`. A direct `initRouter()` on `/help` sets `underlayPath` to `resumePath`.
     - [ ] SNC-11: with a pending debounced state write, `navigate('/models')` leaves the pending value in storage before the history call. Spy on `history.pushState` and read storage inside the spy.
     - [ ] Existing NAV-AC-1 and NAV-AC-2 tests pass.
+    - [ ] SNC-16: a real click on a same-origin link inside a shadow root reaches navigate once; external/download/target/modifier/hash-only links retain existing behaviour. Unit tests may cover path selection, but the real retargeting assertion belongs in tests/app-shell.test.ts in T8.
 - **Verification:** `bun test tests/router-and-navigation.test.ts`; `bun run check`
 - **Progress:** [ ] Not started
 
@@ -458,6 +465,7 @@ T9 applies these and ticks each one.
     - [ ] SNC-14: after reload on `/target`, `document.activeElement` is not the `<h1>`. After clicking the sidebar link to `/models`, it is the `<h1>`. After `/target` → open `/about` → press `Esc`, focus is not on the `<h1>`.
     - [ ] SNC-15: scroll `/target` down (make the page tall in the test with `page.addStyleTag` on `#content { min-height: 300vh }`), click to `/models`, then Back: `window.scrollY` is restored within 2 px. Open and close `/about`: `scrollY` is unchanged.
     - [ ] Existing NAV-E2E-1, 2, 3 and 9 pass.
+    - [ ] SNC-16: clicking sidebar and reserved-dialog same-origin links causes no document reload; route/focus/history update once. Use browser navigation events to distinguish full reload from client routing.
     - [ ] The token guard and parity suites show no new failures, and the sidebar entries stay `knownDrift`.
 - **Verification:** `bun run test:e2e tests/app-shell.test.ts`; `bun test tests/style-tokens.test.ts`; `bun run test:e2e tests/visual-parity.e2e.ts tests/a11y.e2e.ts` (attach both screenshots); `bun run check`. Manual check: VoiceOver or NVDA announces "current page" on the active sidebar link in one browser; record which.
 - **Progress:** [ ] Not started
@@ -486,7 +494,7 @@ Parallel-safe groups (no shared files):
 ## Verification and definition of done
 
 - [ ] All task acceptance criteria met.
-- [ ] `bun run check` introduces no new failures compared with the baseline recorded above (0 type errors, 52 pass, 0 fail; new tests only add passes).
+- [ ] `bun run check` introduces no new failures compared with a fresh baseline (review: 0 type errors, 144 pass, 0 fail; new tests only add passes).
 - [ ] Parity and token tests pass for UI changes (T8), with no new failures.
 - [ ] `bun run test:e2e tests/app-shell.test.ts` passes in Chromium, Firefox and WebKit, or each browser not run is recorded with the reason.
 - [ ] Accessibility: the sidebar `aria-current` check and the focus checks (SNC-14) pass. A screen-reader manual check is recorded.
@@ -495,7 +503,8 @@ Parallel-safe groups (no shared files):
 
 ## Risks and open questions
 
-- **Blocking:** none. The user answered these on 2026-11-13, accepting every recommendation. The code already behaves this way; T9 records the answers in app-state-and-navigation §12.
+- **Blocking:** None.
+- **Decisions accepted:** The user answered these on 2026-11-13, accepting every recommendation; T9 records the answers in app-state-and-navigation §12. The user subsequently chose review-complete draft metadata until workflow migration.
     - **§12 Q1b — re-opening completed model sections before training** (`reopenSection`): keep.
     - **§12 Q1c — a Cancel training action** (`cancelTraining`): keep. Long in-browser runs need it.
     - **§12 Q2 — target or dataset change with models present:** confirm-and-discard (`setTarget` rejects, then `confirmDiscardModels`), not a hard lock or read-only archived models.
@@ -507,7 +516,7 @@ Parallel-safe groups (no shared files):
     - **`h1` focus outline.** `src/app.ts` sets `outline: none` on `.page-header h1` with no replacement (COMPONENTS §7). Moving focus there only on navigation does not fix that. Owner: `scaffolding-visual-remediation` (Known gap 13).
     - **Mockup `.step[aria-current]`.** `steps.css` styles the current step's `<li>`. After D14 only links carry `aria-current`, so the remediation plan should port that rule as `.step:has(> .step-link[aria-current])` (`:has()` is Baseline Widely available). Owner: `scaffolding-visual-remediation`.
     - **`data.mode` changes** do not re-render the shell (`app.ts` subscribes only to `$route`), so the `/data` scroll key cannot switch between `data:select` and `data:preview` yet. There is no data view yet. Owner: the step-1 plan.
-    - **Overlap with data-ingestion-and-storage.** Its T1 also edits `src/stores/app.store.ts` and `src/stores/reconciler.ts` (eligibility predicate), and its T10 edits `reconciler.ts`. Whichever plan lands second rebases onto the first. This plan does not touch the predicate or the adapter.
+    - **Implemented prerequisites.** data-ingestion-and-storage and static-content-pipeline are implemented. Preserve their datetime predicate, sampleId, IndexedDB adapter and safe content-loader changes. Old line numbers above are historical locations: use named symbols in current files. T1's persisted-state validator must include optional sampleId and datetime. New view mounting belongs to Steps 1–3, which must wait for their own updateComplete before consuming a focus request.
 
 ## Implementation and verification log
 
@@ -517,7 +526,9 @@ Parallel-safe groups (no shared files):
 
 ## Change log
 
-| When (UTC)           | Change                                                                | Reason                                                       |
-| -------------------- | --------------------------------------------------------------------- | ------------------------------------------------------------ |
-| 2026-11-13T09:31:48Z | Initial draft                                                         | User request: plan the fixes for Known gaps 14 and 15        |
-| 2026-11-13T10:35:55Z | Status draft → ready; §12 Q1b, Q1c, Q2, Q4 and D8 recorded as decided | User accepted all five recommendations and approved the plan |
+| When (UTC)           | Change                                                                                                  | Reason                                                                                                                      |
+| -------------------- | ------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-13T09:31:48Z | Initial draft                                                                                           | User request: plan the fixes for Known gaps 14 and 15                                                                       |
+| 2026-11-13T10:35:55Z | Status draft → ready; §12 Q1b, Q1c, Q2, Q4 and D8 recorded as decided                                   | User accepted all five recommendations and approved the plan                                                                |
+| 2026-11-13T18:47:40Z | Returned to draft; added composed-path navigation and preserved implemented datetime/sampleId contracts | Review found shadow links would otherwise reload during all later UI flows. Existing human product answers remain accepted. |
+| 2026-11-13T22:17:28Z | Normalised no-blocker review handoff                                                                    | User chose review-complete drafts using current tooling; accepted product decisions remain unchanged.                       |

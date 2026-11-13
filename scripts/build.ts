@@ -1,13 +1,11 @@
-import { DIST_DIR } from "./config";
-import { buildProductionBundle } from "./build-assets";
-import { generateStaticPages } from "./generate-pages";
+import { DIST_DIR } from './config';
+import { buildProductionBundle } from './build-assets';
 
 /**
  * Runs the production build entrypoint and prints the generated asset names.
  */
 async function main(): Promise<void> {
-	console.log("Starting production build...");
-	await generateStaticPages();
+	console.log('Starting production build...');
 	const result = await buildProductionBundle();
 
 	console.log(`Production build complete.`);

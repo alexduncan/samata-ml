@@ -1,6 +1,13 @@
-import { openDB } from 'idb';
+import {
+	INGESTION_LOCK,
+	deleteDatasetsExcept,
+	hasModelResults as hasStoredModelResults,
+	openSamataDb,
+	getMetadata
+} from '../common/storage/db';
 import {
 	INITIAL_APP_STATE,
+	isModelEligibleColumnType,
 	SCROLL_STORAGE_KEY,
 	STATE_STORAGE_KEY,
 	STORAGE_VERSION,
@@ -29,69 +36,44 @@ export interface IndexedDBAdapter {
  * Creates a default IndexedDBAdapter connecting to the application's 'samata-db' database.
  */
 export function createDefaultIndexedDBAdapter(): IndexedDBAdapter {
-	const DB_NAME = 'samata-db';
-	const DB_VERSION = 1;
-
-	async function getDB() {
-		return openDB(DB_NAME, DB_VERSION, {
-			upgrade(db) {
-				if (!db.objectStoreNames.contains('metadata')) {
-					db.createObjectStore('metadata');
-				}
-				if (!db.objectStoreNames.contains('raw_records')) {
-					db.createObjectStore('raw_records');
-				}
-				if (!db.objectStoreNames.contains('model_results')) {
-					db.createObjectStore('model_results');
-				}
-			}
-		});
-	}
-
 	return {
 		async hasMetadata(datasetId: string): Promise<boolean> {
 			if (typeof indexedDB === 'undefined') return true;
+			const db = await openSamataDb();
 			try {
-				const db = await getDB();
-				const record = await db.get('metadata', datasetId);
-				return record !== undefined;
-			} catch {
-				return false;
+				return (await getMetadata(db, datasetId)) !== undefined;
+			} finally {
+				db.close();
 			}
 		},
 
 		async deleteOrphanDatasets(activeDatasetId: string | null): Promise<void> {
 			if (typeof indexedDB === 'undefined') return;
-			try {
-				const db = await getDB();
-				const metaKeys = await db.getAllKeys('metadata');
-				for (const key of metaKeys) {
-					if (key !== activeDatasetId) {
-						await db.delete('metadata', key);
-					}
+			const clean = async () => {
+				const db = await openSamataDb();
+				try {
+					await deleteDatasetsExcept(db, activeDatasetId);
+				} finally {
+					db.close();
 				}
-				const rawKeys = await db.getAllKeys('raw_records');
-				for (const key of rawKeys) {
-					if (typeof key === 'string' && key !== activeDatasetId) {
-						await db.delete('raw_records', key);
-					}
-				}
-			} catch {
-				// Non-fatal cleanup failure
+			};
+			const lockManager = typeof navigator === 'undefined' ? undefined : navigator.locks;
+			if (lockManager && typeof lockManager.request === 'function') {
+				await lockManager.request(INGESTION_LOCK, { ifAvailable: true }, async (lock) => {
+					if (lock) await clean();
+				});
+			} else {
+				await clean();
 			}
 		},
 
 		async hasModelResults(datasetId: string, modelNum: number): Promise<boolean> {
 			if (typeof indexedDB === 'undefined') return true;
+			const db = await openSamataDb();
 			try {
-				const db = await getDB();
-				const key = `${datasetId}:${modelNum}`;
-				const res =
-					(await db.get('model_results', key)) ??
-					(await db.get('model_results', [datasetId, modelNum]));
-				return res !== undefined;
-			} catch {
-				return false;
+				return await hasStoredModelResults(db, datasetId, modelNum);
+			} finally {
+				db.close();
 			}
 		}
 	};
@@ -204,7 +186,7 @@ export async function reconcileStartupState(
 		}
 	}
 
-	// 3. Target valid: ensure target column exists in dataset.columns and is not 'text'
+	// 3. Target valid: ensure target column exists in dataset.columns and is model-eligible
 	if (state.target !== null) {
 		if (!state.dataset) {
 			state = {
@@ -214,7 +196,7 @@ export async function reconcileStartupState(
 			};
 		} else {
 			const targetCol = state.dataset.columns.find((c) => c.name === state.target);
-			if (!targetCol || targetCol.type === 'text') {
+			if (!targetCol || !isModelEligibleColumnType(targetCol.type)) {
 				state = {
 					...state,
 					target: null,
@@ -232,7 +214,7 @@ export async function reconcileStartupState(
 	} else {
 		const eligibleColumns = new Set(
 			state.dataset.columns
-				.filter((c) => c.name !== state.target && c.type !== 'text')
+				.filter((c) => c.name !== state.target && isModelEligibleColumnType(c.type))
 				.map((c) => c.name)
 		);
 

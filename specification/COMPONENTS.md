@@ -71,6 +71,7 @@ The public API of a block is everything its spec lists under **Public API**: tag
 - Use `classMap()` for conditional classes and `styleMap()` for inline styles whose values are computed at runtime. Everything else goes in `static styles`.
 - Bind properties with `.prop=${…}`, boolean attributes with `?attr=${…}` and listeners with `@event=${this.handleX}`. Lit calls listeners with `this` set to the host, so do not use `.bind()` or arrow wrappers.
 - Do not use `unsafeHTML` or `unsafeCSS`.
+- First-party content is rendered only from the `DocumentFragment` returned by the content loader (`src/common/content/`); never with `unsafeHTML`, `innerHTML` or string templates.
 - Never mutate objects received through properties. Emit an event instead.
 
 **Derived values**
@@ -159,7 +160,7 @@ Styling crosses shadow boundaries in exactly two sanctioned ways.
 - `src/i18n.ts` creates the single i18n instance. Each component declares its own base-locale messages with `i18n('<tag-name>', { … })` in its own file and subscribes to them with `StoreController`.
 - Interpolation and plurals use the library's `params` and `count` helpers. Never concatenate strings to build a sentence.
 - Numbers, dates and lists are formatted with the i18n formatter, never by hand.
-- The locale store drives `lang` and `dir` on `<html>`.
+- The locale store takes its supported locales and base locale from `src/config/locales.ts`, and drives `lang` and `dir` on `<html>`.
 - Layouts MUST tolerate labels roughly 40% longer than English and right-to-left direction: no fixed widths on text, no clipping, logical properties only.
 - A block that renders only consumer-supplied text owns no strings and its spec MUST say so.
 
