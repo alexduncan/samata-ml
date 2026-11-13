@@ -10,6 +10,29 @@ The mockups in [`mockups/ui-scaffold/`](mockups/ui-scaffold/) (`*.html` and [`mo
 
 Markup, class names, file layout, and selectors may change to suit Lit, Shadow DOM, accessibility, and semantics. Behaviour and copy follow [workflow-steps.md](workflow-steps.md). When a mockup and a behaviour specification conflict, the behaviour specification wins, and the visual treatment is kept on the new structure.
 
+### 1.1 Draft mockups
+
+A missing mockup does not block a feature. When a surface has no mockup in `mockups/ui-scaffold/`, or its file is empty, an agent writes an unstyled **draft** that records structure and copy only. The draft gives the human a starting point for the styling; it makes no design decisions.
+
+**Writing a draft:**
+
+- **Location:** `mockups/ui-scaffold/drafts/<name>.html`, named as the normative mockup will be (e.g. `03-4_train-models-3-configure-model.html`). Agents create and edit files in `drafts/` only. `bun run serve:scaffold` serves them at `http://localhost:3333/drafts/<name>.html`; the index page doesn't list them.
+- **Shell:** copy the document shell (head, sidebar, page header) unchanged from the nearest existing mockup, and link `../style.css`. Only the new content area is drafted.
+- **Semantic HTML only:** landmarks, headings in order, lists, tables with a `<caption>` and `<th scope>`, forms with `<label>`, `<fieldset>` and `<legend>`, and native `<button>`, `<dialog>` and `<details>`. Use ARIA only where no native element fits. Follow the SEM register (§5.2).
+- **No design:** no `<style>` element, `style` attribute, new CSS file, token, icon or image. Reuse an existing class only where an existing pattern is reused unchanged (e.g. `.btn`, `.notification`, `.chiclet`); add no other classes.
+- **Content:** copy from the behaviour spec in British English, with realistic sample data (Palmer Penguins). Every state the spec describes (empty, blocked, loading, error, populated) gets its own file or its own headed `<section>`.
+- **Header comment:** directly after `<!doctype html>`: `<!-- DRAFT: structure only, not normative for appearance. Source: <spec § or plan>. Open questions: <TODO IDs or none>. -->`
+- **Human queue:** add an item to [HUMAN.md](HUMAN.md) §6 to style the draft.
+
+**Promotion:** the human styles the draft and moves it into `mockups/ui-scaffold/`, replacing any empty placeholder. Only then is it normative, and only then do §1 and the parity checks (§6) apply to it.
+
+**Building against a draft:**
+
+- Follow its structure and copy. Behaviour still follows [workflow-steps.md](workflow-steps.md).
+- Style with existing shared style modules (§3) and `css/root.css` tokens only. Component CSS is limited to `:host` display, `:host([hidden])`, §4 focus and motion rules, and the minimum layout needed to keep content readable (`display`, and a `gap` or `margin` from existing spacing values). Choose no colours, type sizes, borders or shadows.
+- Add no parity entries for draft-only elements. The token guard and the accessibility scan still apply.
+- The plan names the draft under **Visual reference** and lists "awaiting a styled mockup" as non-blocking under _Risks and open questions_. Once the mockup is promoted, a follow-up task ports its styles and adds parity entries.
+
 ## 2. Tokens
 
 The closed token vocabulary is defined in [`css/root.css`](../css/root.css). It consists of the mockup [`mockups/ui-scaffold/css/root.css`](mockups/ui-scaffold/css/root.css) unchanged, plus an `/* App additions */` block listing:

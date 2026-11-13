@@ -138,7 +138,7 @@ Styling crosses shadow boundaries in exactly two sanctioned ways.
 - Form controls set `font-family: inherit` (browsers do not inherit fonts into controls).
 - CSS parts and component-level custom properties are public API (§3) and exist only when a spec lists them.
 
-**6.4 Matching the mockups.** The mockups in `specification/mockups/ui-scaffold/` define how every user-visible surface looks. Follow [visual-design.md](visual-design.md): use only tokens from `css/root.css` with no fallbacks, record every visual deviation in the A11Y or SEM registers, and run the parity and token tests for any UI change.
+**6.4 Matching the mockups.** The mockups in `specification/mockups/ui-scaffold/` define how every user-visible surface looks. Follow [visual-design.md](visual-design.md): use only tokens from `css/root.css` with no fallbacks, record every visual deviation in the A11Y or SEM registers, and run the parity and token tests for any UI change. Where only a draft mockup exists, follow [visual-design.md §1.1](visual-design.md#11-draft-mockups): structure from the draft, existing styles only, no parity entries.
 
 ## 7. Accessibility (WCAG 2.2 AA)
 

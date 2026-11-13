@@ -23,15 +23,16 @@ Bun only: never npm, yarn, pnpm or `npx` (use `bunx`, including for commands in 
 
 ## Map
 
-`src/` app code · `css/` styles · `content/` Markdown pages · `public/` static assets · `scripts/` build and dev servers · `tests/` tests · `specification/` specs (index: [`specification/README.md`](specification/README.md)) · `specification/plans/` plans · `specification/mockups/` wireframes, normative for appearance
+`src/` app code · `css/` styles · `content/` Markdown pages · `public/` static assets · `scripts/` build and dev servers · `tests/` tests · `specification/` specs (index: [`specification/README.md`](specification/README.md)) · `specification/plans/` plans · `specification/notes/` the human's rough notes (inbox, not normative) · `specification/HUMAN.md` the human's work queue · `specification/mockups/` wireframes, normative for appearance (`ui-scaffold/drafts/` holds unstyled agent drafts)
 
 ## Rules
 
 - **Visual fidelity:** The mockups in `specification/mockups/ui-scaffold/` define how the app looks; markup may differ. Follow [`visual-design.md`](specification/visual-design.md): use only tokens from `css/root.css`, with no fallbacks; record every visual deviation; run the parity and token tests for any UI change.
-
+- **Missing mockups don't block:** if a surface has no mockup, write an unstyled semantic-HTML draft in `specification/mockups/ui-scaffold/drafts/` and build against it with existing styles only ([visual-design §1.1](specification/visual-design.md#11-draft-mockups)). Never write CSS or make design decisions for it; the human styles drafts.
+- **Human queue:** keep [`specification/HUMAN.md`](specification/HUMAN.md) current in every task. Add an item, with a recommended answer where you have one, whenever your work leaves the human something to decide or do (approval, blocking question, escalation, draft to style). Remove items once they are resolved. The format is at the top of that file.
 - **Specs:** pick specs from the index's "Read when" column. Specs marked `target` describe intended design, not current code. Check the index's _Known gaps_ first. If you find a new conflict, record it in the plan's Risks section; never silently pick a side.
 - **Specs stay current:** a plan is `implemented` only when its final `Sync specification` task has made the specs describe what was built (procedure in the `implementation` skill; writing rules in [`specification/README.md`](specification/README.md#writing-specs)). A no-plan fix that changes behaviour a spec describes updates that spec in the same change.
-- **Don't edit** `node_modules/`, `../web-ml`, `specification/mockups/`, vendored skills (`.agents/skills/modern-web-guidance/`), or `bun.lock` except through `bun add`/`bun remove` when a plan allows it.
+- **Don't edit** `specification/notes/` (a plan's `Sync specification` task may delete a note it absorbed), `node_modules/`, `../web-ml`, `specification/mockups/` (except files in `ui-scaffold/drafts/`), vendored skills (`.agents/skills/modern-web-guidance/`), or `bun.lock` except through `bun add`/`bun remove` when a plan allows it.
 - **Git:** never commit, push or switch branches unless the user asks. When asked, use one commit per task with the message `<plan-slug> Tn: <summary>`.
 - **Style:** British English in prose, docs and UI strings. Prettier settings: tabs, single quotes, width 100. Exported TypeScript needs TSDoc ([standards](specification/standards-and-documentation.md)).
 - **Final formatting:** make formatting the final file-editing step for every task. Run `bun run format <files>` on every Prettier-supported file changed by the task, including docs, configuration and tests. Use the appropriate formatter for changed files Prettier does not support. Do not format untouched files. If any file is edited after formatting, format it again before reporting the task complete.

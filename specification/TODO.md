@@ -4,7 +4,7 @@
 
 Open questions and missing specification found by reviewing every Markdown and HTML file in `specification/`. Each item names its source. These are **decisions for a human**: agents must not resolve them silently. When one is answered, update the source spec and delete the item here. Plans can cite items by ID (e.g. "decides TODO-05").
 
-Spec-vs-code conflicts are tracked separately in [README.md § Known gaps](README.md#known-gaps). Deferred features are in [FUTURE.md](FUTURE.md).
+[HUMAN.md](HUMAN.md) is the action queue that points into this list. Spec-vs-code conflicts are tracked separately in [README.md § Known gaps](README.md#known-gaps). Deferred features are in [FUTURE.md](FUTURE.md).
 
 ## 1. Workflow steps that need specifying
 

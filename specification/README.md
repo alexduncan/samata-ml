@@ -57,13 +57,15 @@ Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only wh
 
 ### Backlog
 
+- [HUMAN.md](HUMAN.md) — the human's work queue: approvals, decisions and mockups to style, each linking to its detail. Every agent keeps it current.
 - [TODO.md](TODO.md) — open questions and missing specification, with IDs (`TODO-nn`) that plans can cite.
 - [FUTURE.md](FUTURE.md) — deferred features. Do not plan these until they are moved into a spec.
 
 ### Other directories
 
-- [`mockups/`](mockups/) — static HTML/CSS wireframes, normative for appearance (see [visual-design.md](visual-design.md)); not for markup or behaviour. Served by `bun run serve:scaffold`. Reference only; don't edit unless a plan says to.
+- [`mockups/`](mockups/) — static HTML/CSS wireframes, normative for appearance (see [visual-design.md](visual-design.md)); not for markup or behaviour. Served by `bun run serve:scaffold`. Reference only; don't edit unless a plan says to. Exception: agents write unstyled, non-normative drafts in `mockups/ui-scaffold/drafts/` ([visual-design §1.1](visual-design.md#11-draft-mockups)).
 - [`plans/`](plans/README.md) — implementation plans. Only files that follow the planning template go here.
+- [`notes/`](notes/README.md) — the human's rough notes, inbox for planners. Not normative; a plan that uses a note deletes it in its `Sync specification` task.
 
 ## Known gaps
 

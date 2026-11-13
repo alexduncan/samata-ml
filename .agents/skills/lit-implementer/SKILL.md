@@ -47,7 +47,7 @@ Check each item before running verification.
 
 - [ ] Styles only in `static override styles`, including `:host { display: … }` and `:host([hidden]) { display: none; }`.
 - [ ] Only tokens defined in `css/root.css`, as `var(--name)` with no fallback; no invented token names; no literal colours anywhere, including fallbacks.
-- [ ] Values match the mapped mockup selectors; every difference is a translation rule or a cited register ID.
+- [ ] Values match the mapped mockup selectors; every difference is a translation rule or a cited register ID. Draft-only elements use existing styles only and choose no colours, type sizes, borders or shadows (visual-design §1.1).
 - [ ] Token guard and parity test pass.
 - [ ] Shared style modules where the plan names them, logical properties, motion inside `prefers-reduced-motion: no-preference`, and a `:focus-visible` outline.
 

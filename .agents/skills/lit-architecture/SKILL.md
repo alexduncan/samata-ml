@@ -21,7 +21,7 @@ Use this together with the `planning` skill: it covers the component part of tha
 
 4. **Fix the public API.** For each element, list everything §3 calls public: properties and attributes (type, default, whether reflected and why), slots, events, methods, CSS parts and CSS custom properties. For each event give the full name (§4 prefix), the TypeScript `detail` interface, and whether it bubbles and is composed, with the reason. Anything not listed stays private.
 5. **Check for shared code.** Don't plan base classes, mixins, shared controllers or shared helpers unless §3's conditions are met. Static markup that needs no state, events or reuse is a template function in the same file, not a new element.
-6. **Styling.** Map each element to its mockup selectors (from the plan's Visual reference). Copy the computed values, or name the shared module that holds them. List 'Changes from the mockup CSS' with register IDs. Name tokens only from `css/root.css`. Parts and custom properties come only from step 4.
+6. **Styling.** Map each element to its mockup selectors (from the plan's Visual reference). An element with only a draft mockup gets no mapping: name the shared modules it reuses and keep to the styling limits in visual-design §1.1. Copy the computed values, or name the shared module that holds them. List 'Changes from the mockup CSS' with register IDs. Name tokens only from `css/root.css`. Parts and custom properties come only from step 4.
 7. **Accessibility and i18n.** For each element, record how its accessible name is supplied, its keyboard behaviour and its manual checks (§7). Record its strings, or say it owns none (§8). For any web-platform feature, use the `modern-web-guidance` skill as the planning skill's step 4 describes.
 8. **Tests.** Give each acceptance criterion an ID (§9). Component behaviour is tested in Playwright; non-DOM logic in `bun:test`. Include RTL and long-label cases. Storybook is not installed (§10), so list stories as deferred. Use only commands that exist (`AGENTS.md`).
 
@@ -43,6 +43,6 @@ Use this together with the `planning` skill: it covers the component part of tha
 - Every element has a tier, tag, file path and closed public API.
 - Every event has a prefixed name, a `detail` interface and a stated `bubbles`/`composed` choice.
 - Every piece of state has one home, and no presentational element imports a store.
-- Every styled element has a mockup mapping and a parity entry.
+- Every styled element has a mockup mapping and a parity entry, or is marked draft-only (visual-design §1.1).
 - No shared helper, controller or base class is planned without §3's authorisation.
 - Every Lit task lists `COMPONENTS.md` §3–§9 under _Required reading_.
