@@ -1,6 +1,6 @@
 # Mockup visual fidelity: agent instructions, visual spec and parity checks
 
-**Status:** implemented | **Updated:** 2026-11-12T17:29:22Z
+**Status:** implemented | **Updated:** 2026-11-13T08:59:43Z
 
 ## Goal
 
@@ -253,6 +253,14 @@ Disabled controls are exempt from 1.4.3, but they must stay legible (`button.md`
     - Fail on violations, except rule ids listed in `KNOWN_A11Y_DRIFT` (each tied to the remediation plan, wrapped in `test.fail()` when non-empty).
     - Test ids: `A11Y-E2E-1` and `A11Y-E2E-2`.
 
+## Specification changes
+
+Applied retrospectively when the specs were reconciled with the code (2026-11-13).
+
+- [x] `specification/visual-design.md` (new) — the token vocabulary, shared modules and checks are in force; status partial
+- [x] `specification/components/button.md` §12 — Q1 and Q2 are answered by visual-design §2
+- [x] Known gap 13 — lists the A11Y and SEM entries not yet applied and the remaining shell drift
+
 ## Implementation tasks
 
 ### T1 — Write specification/visual-design.md
@@ -396,3 +404,4 @@ Disabled controls are exempt from 1.4.3, but they must stay legible (`button.md`
 | 2026-11-12T15:02:19Z | Initial draft                                            | User request: explain why the scaffold doesn't match the mockups, and change the agent instructions so it matches. |
 | 2026-11-12T15:13:51Z | Q1 and Q2 resolved; status set to ready                  | User approved the A11Y register values and the `@axe-core/playwright` dev dependency.                              |
 | 2026-11-12T17:29:22Z | All tasks implemented (T1–T7); status set to implemented | Fully verified with visual design spec, token guard, parity test harness, and a11y audit.                          |
+| 2026-11-13T08:59:43Z | Added _Specification changes_, applied retrospectively   | Spec reconciliation with the code                                                                                  |

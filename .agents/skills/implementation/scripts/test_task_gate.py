@@ -34,6 +34,9 @@ TEMPLATE = """# Test plan
 ## Verification and definition of done
 - [ ] All checks passed
 
+## Specification changes
+- [ ] `specification/example.md` §1 — Example rule; status target → implemented
+
 ## Implementation and verification log
 | When (UTC) | Task | Outcome / commands / evidence |
 | --- | --- | --- |
@@ -86,6 +89,19 @@ class TaskGateTests(unittest.TestCase):
         self.assertIn("RECORDED COMPLETE", module.completion_gate(status, tasks, full_text))
         status, tasks, full_text = self.read(TEMPLATE)
         with self.assertRaisesRegex(ValueError, "Unfinished task"):
+            module.completion_gate(status, tasks, full_text)
+
+    def test_completion_requires_specification_sync(self):
+        all_but_spec = (
+            TEMPLATE.replace("- [ ]", "- [x]")
+            .replace("- **Progress:** [ ] Not started", "- **Progress:** [x] Complete")
+            .replace("- [x] `specification/example.md`", "- [ ] `specification/example.md`")
+        )
+        status, tasks, full_text = self.read(all_but_spec)
+        with self.assertRaisesRegex(ValueError, "Specification not synced"):
+            module.completion_gate(status, tasks, full_text)
+        status, tasks, full_text = self.read(all_but_spec.split("## Specification changes")[0])
+        with self.assertRaisesRegex(ValueError, "Missing section: ## Specification changes"):
             module.completion_gate(status, tasks, full_text)
 
 

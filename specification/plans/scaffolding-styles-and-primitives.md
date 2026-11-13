@@ -1,6 +1,6 @@
 # Scaffolding: Design Tokens and Shared Style Primitives
 
-**Status:** implemented | **Updated:** 2026-11-12T12:39:16Z
+**Status:** implemented | **Updated:** 2026-11-13T08:59:43Z
 
 ## Goal
 
@@ -71,6 +71,14 @@ Exports from `src/styles/`:
 - `card.styles.ts`: `export const cardStyles: CSSResult;`
 - `dialog.styles.ts`: `export const dialogStyles: CSSResult;`
 - `global.ts`: `export function initGlobalStyles(): void;`
+
+## Specification changes
+
+Applied retrospectively when the specs were reconciled with the code (2026-11-13).
+
+- [x] `specification/COMPONENTS.md` — the shared style modules follow it; status target → partial
+- [x] `specification/components/button.md` — the status line says `buttonStyles` is built, except the A11Y-01 text colour
+- [x] `specification/components/card.md` — the status line says `cardStyles` is built; token references point at `css/root.css`
 
 ## Implementation tasks
 
@@ -201,6 +209,7 @@ Exports from `src/styles/`:
 
 ## Change log
 
-| When (UTC)           | Change        | Reason                                  |
-| -------------------- | ------------- | --------------------------------------- |
-| 2026-11-12T11:37:44Z | Initial draft | Scaffolding tokens and style primitives |
+| When (UTC)           | Change                                                 | Reason                                  |
+| -------------------- | ------------------------------------------------------ | --------------------------------------- |
+| 2026-11-12T11:37:44Z | Initial draft                                          | Scaffolding tokens and style primitives |
+| 2026-11-13T08:59:43Z | Added _Specification changes_, applied retrospectively | Spec reconciliation with the code       |

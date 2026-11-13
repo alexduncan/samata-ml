@@ -52,6 +52,14 @@ Facts the planner verified, so the implementer need not re-check them.
 
 <Specify data shapes, state transitions, API boundaries, edge-case rules and a11y semantics where they matter. Remove this instruction when filling the template.>
 
+## Specification changes
+
+What `specification/` must say once this plan is implemented. The final task applies these items and ticks each one; `task_gate.py --check-complete` refuses to close the plan while any is unticked.
+
+- [ ] `<Spec path>` §<Section> — <Present-tense rule the spec will state>; status <Old> → <New> (write "(new)" after the path for a spec this plan creates)
+- [ ] Known gap <Number> — <Resolved, or the narrower wording that remains>
+- [ ] None — <Why no spec describes this behaviour; use this line alone>
+
 ## Implementation tasks
 
 ### T1 — <Bounded outcome>
@@ -79,13 +87,27 @@ Facts the planner verified, so the implementer need not re-check them.
 - **Verification:** `<existing command>` / <specific manual check>
 - **Progress:** [ ] Not started
 
+### T3 — Sync specification
+
+- **Depends on:** T1, T2
+- **Risk:** needs care — specs must describe what was built, not what was planned
+- **Likely files:** `<Spec path>`, `specification/README.md`
+- **Must not touch:** Product code, tests and `specification/mockups/`
+- **Implementation:** Apply every item under _Specification changes_, following "Writing specs" in `specification/README.md`. Where the log records a deviation from the plan, document the deviation, not the plan. Update each changed spec's status line and its row in the index, and narrow or resolve _Known gaps_.
+- **Acceptance criteria:**
+    - [ ] Every item under _Specification changes_ is applied and ticked.
+    - [ ] No changed spec contradicts the code or another spec, or mentions this plan, its tasks or the history of the change.
+    - [ ] `bun run plans:check` reports no spec index mismatch.
+- **Verification:** `bun run plans:check`; `git diff specification/` reviewed against _Specification changes_
+- **Progress:** [ ] Not started
+
 ## Verification and definition of done
 
 - [ ] All task acceptance criteria met.
 - [ ] `bun run check` introduces no new failures compared with the baseline recorded above.
 - [ ] Parity and token tests pass for UI changes.
 - [ ] Accessibility, privacy/security and backward-compatibility checks completed where applicable.
-- [ ] Specifications, the _Known gaps_ list and documentation updated to reflect the final behaviour.
+- [ ] Every item under _Specification changes_ is ticked, and the specs describe the code as built.
 - [ ] No unintended changes outside the tasks' likely files.
 
 ## Risks and open questions

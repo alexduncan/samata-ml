@@ -1,6 +1,6 @@
 # Spec: Card (`app-dataset-card`, `app-model-card`)
 
-Status: Draft · Tier: **Presentational component** ×2 (conventions §2) · Criterion prefix: `CARD`
+Status: Draft — `cardStyles` (§5.4) is built; `app-dataset-card` and `app-model-card` are not; Q4–Q12 are open · Tier: **Presentational component** ×2 (conventions §2) · Criterion prefix: `CARD`
 
 Read [`COMPONENTS.md`](../COMPONENTS.md) first. This spec follows its §12 template. Where this spec
 is silent, COMPONENTS.md applies. The only explicit override is in §2 (shared style module).
@@ -51,34 +51,34 @@ any time); a base class for the two elements (violates §3).
 
 ### `<app-dataset-card>`
 
-| Item        | Detail                                                                      |
-| ----------- | --------------------------------------------------------------------------- |
-| Tag         | `app-dataset-card`. Class `AppDatasetCard` in `src/components/app-dataset-card.ts`. |
-| `name`      | `string`, default `''`. Attribute `name`. Dataset title.                    |
-| `description` | `string`, default `''`. Attribute `description`.                          |
-| `columns`   | `number`, default `0`. Attribute `columns`. Column count.                   |
-| `rows`      | `number`, default `0`. Attribute `rows`. Row count.                         |
-| Slots       | None.                                                                       |
-| Events      | `app-dataset-datasheet-open` and `app-dataset-select`, each `CustomEvent<{ name: string }>`. `detail.name` is the card's `name` at dispatch time. `bubbles: false`, `composed: false`. |
-| Parts, CSS custom properties, methods | None.                                         |
+| Item                                  | Detail                                                                                                                                                                                 |
+| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tag                                   | `app-dataset-card`. Class `AppDatasetCard` in `src/components/app-dataset-card.ts`.                                                                                                    |
+| `name`                                | `string`, default `''`. Attribute `name`. Dataset title.                                                                                                                               |
+| `description`                         | `string`, default `''`. Attribute `description`.                                                                                                                                       |
+| `columns`                             | `number`, default `0`. Attribute `columns`. Column count.                                                                                                                              |
+| `rows`                                | `number`, default `0`. Attribute `rows`. Row count.                                                                                                                                    |
+| Slots                                 | None.                                                                                                                                                                                  |
+| Events                                | `app-dataset-datasheet-open` and `app-dataset-select`, each `CustomEvent<{ name: string }>`. `detail.name` is the card's `name` at dispatch time. `bubbles: false`, `composed: false`. |
+| Parts, CSS custom properties, methods | None.                                                                                                                                                                                  |
 
 ### `<app-model-card>`
 
-| Item        | Detail                                                                      |
-| ----------- | --------------------------------------------------------------------------- |
-| Tag         | `app-model-card`. Class `AppModelCard` in `src/components/app-model-card.ts`. |
-| `type`      | `'classification' \| 'regression' \| 'clustering'`. Attribute `type`. Required; no default. |
-| `name`      | `string`, default `''`. Attribute `name`. Model title.                      |
-| `description` | `string`, default `''`. Attribute `description`.                          |
-| Slots       | `image`: one `<svg viewBox="0 0 360 216">` element. No default slot.        |
-| Events      | `app-model-description-open` and `app-model-select`, each `CustomEvent<{ name: string }>`. Same rules as the dataset events. |
-| Parts, CSS custom properties, methods | None.                                         |
+| Item                                  | Detail                                                                                                                       |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Tag                                   | `app-model-card`. Class `AppModelCard` in `src/components/app-model-card.ts`.                                                |
+| `type`                                | `'classification' \| 'regression' \| 'clustering'`. Attribute `type`. Required; no default.                                  |
+| `name`                                | `string`, default `''`. Attribute `name`. Model title.                                                                       |
+| `description`                         | `string`, default `''`. Attribute `description`.                                                                             |
+| Slots                                 | `image`: one `<svg viewBox="0 0 360 216">` element. No default slot.                                                         |
+| Events                                | `app-model-description-open` and `app-model-select`, each `CustomEvent<{ name: string }>`. Same rules as the dataset events. |
+| Parts, CSS custom properties, methods | None.                                                                                                                        |
 
 ### Shared
 
-| Item         | Detail                                                                     |
-| ------------ | -------------------------------------------------------------------------- |
-| `cardStyles` | `CSSResult` exported from `src/styles/card.styles.ts`.                     |
+| Item         | Detail                                                 |
+| ------------ | ------------------------------------------------------ |
+| `cardStyles` | `CSSResult` exported from `src/styles/card.styles.ts`. |
 
 Notes:
 
@@ -104,8 +104,7 @@ puts each one in a list item:
 			name="Penguins"
 			description="Body measurements for three penguin species."
 			columns="5"
-			rows="344"
-		></app-dataset-card>
+			rows="344"></app-dataset-card>
 	</li>
 </ul>
 
@@ -127,8 +126,7 @@ html`<app-dataset-card
 	columns=${d.shape.columns}
 	rows=${d.shape.rows}
 	@app-dataset-select=${this.onSelect}
-	@app-dataset-datasheet-open=${this.onDatasheet}
-></app-dataset-card>`;
+	@app-dataset-datasheet-open=${this.onDatasheet}></app-dataset-card>`;
 ```
 
 Usage rules:
@@ -149,7 +147,7 @@ Usage rules:
 
 ### 5.1 Tokens used
 
-All from `tokens.css`: `--surface` (new, `#fff`; resolved Q1), `--stone-100`, `--stone-200`,
+All from `css/root.css`: `--surface` (`#fff`; resolved Q1), `--stone-100`, `--stone-200`,
 `--stone-800` (`.stat` only), `--stone-900` (`.card-title`, `.card-text`; resolved Q2/Q14/Q15), `--font-mono`, plus the chiclet
 background tokens `--purple-700`, `--teal-700` and `--amber-500` (resolved Q3/Q13). The chiclet
 spec owns how the chiclet uses them.
@@ -217,18 +215,18 @@ buttons carry their own states from [`button.md`](../components/button.md).
 	--card-padding: 1rem;
 
 	display: flex;
-	flex-direction: column;
 	position: relative;
+	flex-direction: column;
 	gap: 0.5rem;
 	box-sizing: border-box;
+	border: 1.5px solid var(--stone-200);
+	border-radius: 1rem;
+	border-block-end-width: 3px;
+	background-color: var(--surface); /* replaces literal #fff; --surface is #fff */
+	padding-inline: 0;
+	padding-block: 0 1rem;
 	block-size: 100%;
 	overflow: hidden;
-	border: 1.5px solid var(--stone-200);
-	border-block-end-width: 3px;
-	border-radius: 1rem;
-	background-color: var(--surface); /* replaces literal #fff; --surface is #fff */
-	padding-block: 0 1rem;
-	padding-inline: 0;
 
 	> :not(.card-image):not(.card-type) {
 		padding-inline: var(--card-padding);
@@ -236,9 +234,9 @@ buttons carry their own states from [`button.md`](../components/button.md).
 
 	.card-image {
 		display: block;
+		background-color: var(--stone-100);
 		inline-size: 100%;
 		block-size: auto;
-		background-color: var(--stone-100);
 	}
 
 	.card-type {
@@ -248,8 +246,8 @@ buttons carry their own states from [`button.md`](../components/button.md).
 	}
 
 	.card-title {
-		margin-block: 0.25rem 0;
 		margin-inline: 0;
+		margin-block: 0.25rem 0;
 		color: var(--stone-900);
 		font-weight: 600;
 		font-size: 1.5rem;
@@ -266,14 +264,14 @@ buttons carry their own states from [`button.md`](../components/button.md).
 	}
 
 	.card-stats {
-		margin-block: 0.5rem;
 		margin-inline: 0;
+		margin-block: 0.5rem;
 
 		.stat {
 			border-radius: 0.25rem;
 			background-color: var(--stone-200);
-			padding-block: 0.25rem;
 			padding-inline: 0.375rem;
+			padding-block: 0.25rem;
 			color: var(--stone-800);
 			font-size: 0.875rem;
 			font-family: var(--font-mono);
@@ -368,22 +366,22 @@ helper for plurals. Numbers use the i18n formatter with compact notation.
 
 `app-dataset-card` (`i18n('app-dataset-card', …)`), base locale `en`:
 
-| Key             | Base-locale message               |
-| --------------- | --------------------------------- |
-| `datasheet`     | `Datasheet`                       |
-| `selectDataset` | `Select Dataset`                  |
+| Key             | Base-locale message                           |
+| --------------- | --------------------------------------------- |
+| `datasheet`     | `Datasheet`                                   |
+| `selectDataset` | `Select Dataset`                              |
 | `columns`       | `{count} column` / `{count} columns` (plural) |
 | `rows`          | `{count} row` / `{count} rows` (plural)       |
 
 `app-model-card` (`i18n('app-model-card', …)`), base locale `en`:
 
-| Key                | Base-locale message  |
-| ------------------ | -------------------- |
-| `modelDescription` | `Model Description`  |
-| `selectModel`      | `Select Model`       |
-| `classification`   | `classification`     |
-| `regression`       | `regression`         |
-| `clustering`       | `clustering`         |
+| Key                | Base-locale message |
+| ------------------ | ------------------- |
+| `modelDescription` | `Model Description` |
+| `selectModel`      | `Select Model`      |
+| `classification`   | `classification`    |
+| `regression`       | `regression`        |
+| `clustering`       | `clustering`        |
 
 - Counts are shown in compact notation: `1600000` shows as `1.6M`, `344` as `344`. `60845` shows as
   `61K` with default compact rounding (Q5). The plural form is chosen from the exact number.
@@ -401,33 +399,33 @@ helper for plurals. Numbers use the i18n formatter with compact notation.
 All run in real browsers through Playwright (Chromium, Firefox, WebKit) unless noted. Each criterion
 applies to both components unless it says otherwise.
 
-| ID          | Criterion                                                                                                                                                                                    |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| CARD-AC-1   | Every story of both components has zero axe violations, including colour contrast.                                                                             |
-| CARD-AC-2   | The card root is an `<article>` containing exactly one heading, an `<h3>`, whose text equals `name`.                                                                                         |
-| CARD-AC-3   | Computed card box: `border-radius` 16px; border widths 1.5px (inline and block-start) and 3px (block-end); `display: flex`; `flex-direction: column`; `row-gap` 8px; `overflow` hidden; background equals the `--surface` value. |
-| CARD-AC-4   | `.card-title`, `.card-text`, `.card-stats` and `.card-actions` each have computed inline padding of 16px. `.card-image` and `.card-type` have 0.                                            |
-| CARD-AC-5   | The title's computed block-start margin is 16px in `app-dataset-card` (first child) and 4px in `app-model-card`.                                                                            |
-| CARD-AC-6   | In a grid with two cards of different description length, both host elements have the same height, and the bottom edge of `.card-actions` sits at the same offset from the bottom of each card. |
-| CARD-AC-7   | The card contains two `<button type="button">` elements in order: `.btn`, then `.btn.btn-primary`. Their computed colour, background, border and padding equal those of a `.btn` in the document (`button.md`). |
-| CARD-AC-8   | Tab order inside the card is the secondary button, then the primary button. A keyboard-focused button's focus outline lies fully inside the card's border box (not clipped).                |
-| CARD-AC-9   | Each button's click, Enter and Space each fire exactly one event with the names in §3, and `detail.name` equals the `name` property. A listener on the parent element is never called (no bubbling). |
-| CARD-AC-10  | Each button's accessible description equals the card's `name`, and its accessible name equals the button's label message.                                                                   |
-| CARD-AC-11  | Dataset stats under `en`: `columns=21 rows=1600000` shows "21 columns" and "1.6M rows"; `columns=1 rows=1` shows "1 column" and "1 row"; `rows=60845` shows "61K rows" (Q5).               |
-| CARD-AC-12  | `.stat` computed `font-family` equals the `--font-mono` value, `font-size` is 14px and `background-color` equals the `--stone-200` value. The two stats are separated by whitespace.         |
-| CARD-AC-13  | With a second locale loaded, every card-owned string (button labels, stats, type label) renders in that locale and no base-locale text remains.                                             |
-| CARD-AC-14  | `app-model-card`: the `.card-image` wrapper has `aria-hidden="true"`; the slotted SVG's width equals the card's inner width, its height is 0.6 × width ±1px, and the wrapper's background equals `--stone-100`. The accessibility tree exposes no image for it. |
-| CARD-AC-15  | `app-model-card`: for each of the three `type` values the visible type label is the translated message, rendered in an element with classes `card-type chiclet` plus the colour class for the type (classification purple, regression teal, clustering amber), inside the card at 16px from the block-start and inline-start edges, overlapping the image. (Blocked on the chiclet spec, which defines the classes and text colours.) |
-| CARD-AC-16  | `app-dataset-card` renders no `.card-type` and no `.card-image`.                                                                                                                             |
-| CARD-AC-17  | With `dir="rtl"`, the chiclet is at the inline-start (right) edge, all padding is mirrored, the title is right-aligned, and there is no horizontal overflow.                                 |
-| CARD-AC-18  | With a title and description each about 3× the length of the typical fixtures (multi-word text), the card grows in height, nothing is clipped, and there is no horizontal overflow. (Unbroken strings: Q6.) |
-| CARD-AC-19  | In a 320px-wide container the card has no horizontal overflow, and at 200% zoom its text and buttons remain fully visible.                                                                   |
-| CARD-AC-20  | With `forced-colors: active` emulated, the card's border is still drawn (`border-style` not `none`) and a keyboard-focused button still has a visible outline.                              |
-| CARD-AC-21  | No element inside the card has a non-zero computed `transition-duration` or `animation-duration`, with and without `prefers-reduced-motion: reduce` emulated. Buttons are exempt (`button.md`). |
-| CARD-AC-22  | The `hidden` attribute on either host removes it from rendering (`display: none`).                                                                                                          |
-| CARD-AC-23  | The public API is closed: `observedAttributes` is exactly `['name', 'description', 'columns', 'rows']` (dataset) and `['type', 'name', 'description']` (model); the only slot in any shadow root is `image` in the model card; no element in either shadow root has a `part` attribute. |
-| CARD-AC-24  | `.card-title` colour on the card background is ≥ 4.5:1, computed from the actual token values. `.card-text` colour is ≥ 4.5:1 on the same background, computed the same way.                                 |
-| CARD-AC-25  | A `bun:test` check confirms neither component file imports from `src/stores/`. The only store-like import is the i18n instance. (Not a browser test.)                                       |
+| ID         | Criterion                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CARD-AC-1  | Every story of both components has zero axe violations, including colour contrast.                                                                                                                                                                                                                                                                                                                                                    |
+| CARD-AC-2  | The card root is an `<article>` containing exactly one heading, an `<h3>`, whose text equals `name`.                                                                                                                                                                                                                                                                                                                                  |
+| CARD-AC-3  | Computed card box: `border-radius` 16px; border widths 1.5px (inline and block-start) and 3px (block-end); `display: flex`; `flex-direction: column`; `row-gap` 8px; `overflow` hidden; background equals the `--surface` value.                                                                                                                                                                                                      |
+| CARD-AC-4  | `.card-title`, `.card-text`, `.card-stats` and `.card-actions` each have computed inline padding of 16px. `.card-image` and `.card-type` have 0.                                                                                                                                                                                                                                                                                      |
+| CARD-AC-5  | The title's computed block-start margin is 16px in `app-dataset-card` (first child) and 4px in `app-model-card`.                                                                                                                                                                                                                                                                                                                      |
+| CARD-AC-6  | In a grid with two cards of different description length, both host elements have the same height, and the bottom edge of `.card-actions` sits at the same offset from the bottom of each card.                                                                                                                                                                                                                                       |
+| CARD-AC-7  | The card contains two `<button type="button">` elements in order: `.btn`, then `.btn.btn-primary`. Their computed colour, background, border and padding equal those of a `.btn` in the document (`button.md`).                                                                                                                                                                                                                       |
+| CARD-AC-8  | Tab order inside the card is the secondary button, then the primary button. A keyboard-focused button's focus outline lies fully inside the card's border box (not clipped).                                                                                                                                                                                                                                                          |
+| CARD-AC-9  | Each button's click, Enter and Space each fire exactly one event with the names in §3, and `detail.name` equals the `name` property. A listener on the parent element is never called (no bubbling).                                                                                                                                                                                                                                  |
+| CARD-AC-10 | Each button's accessible description equals the card's `name`, and its accessible name equals the button's label message.                                                                                                                                                                                                                                                                                                             |
+| CARD-AC-11 | Dataset stats under `en`: `columns=21 rows=1600000` shows "21 columns" and "1.6M rows"; `columns=1 rows=1` shows "1 column" and "1 row"; `rows=60845` shows "61K rows" (Q5).                                                                                                                                                                                                                                                          |
+| CARD-AC-12 | `.stat` computed `font-family` equals the `--font-mono` value, `font-size` is 14px and `background-color` equals the `--stone-200` value. The two stats are separated by whitespace.                                                                                                                                                                                                                                                  |
+| CARD-AC-13 | With a second locale loaded, every card-owned string (button labels, stats, type label) renders in that locale and no base-locale text remains.                                                                                                                                                                                                                                                                                       |
+| CARD-AC-14 | `app-model-card`: the `.card-image` wrapper has `aria-hidden="true"`; the slotted SVG's width equals the card's inner width, its height is 0.6 × width ±1px, and the wrapper's background equals `--stone-100`. The accessibility tree exposes no image for it.                                                                                                                                                                       |
+| CARD-AC-15 | `app-model-card`: for each of the three `type` values the visible type label is the translated message, rendered in an element with classes `card-type chiclet` plus the colour class for the type (classification purple, regression teal, clustering amber), inside the card at 16px from the block-start and inline-start edges, overlapping the image. (Blocked on the chiclet spec, which defines the classes and text colours.) |
+| CARD-AC-16 | `app-dataset-card` renders no `.card-type` and no `.card-image`.                                                                                                                                                                                                                                                                                                                                                                      |
+| CARD-AC-17 | With `dir="rtl"`, the chiclet is at the inline-start (right) edge, all padding is mirrored, the title is right-aligned, and there is no horizontal overflow.                                                                                                                                                                                                                                                                          |
+| CARD-AC-18 | With a title and description each about 3× the length of the typical fixtures (multi-word text), the card grows in height, nothing is clipped, and there is no horizontal overflow. (Unbroken strings: Q6.)                                                                                                                                                                                                                           |
+| CARD-AC-19 | In a 320px-wide container the card has no horizontal overflow, and at 200% zoom its text and buttons remain fully visible.                                                                                                                                                                                                                                                                                                            |
+| CARD-AC-20 | With `forced-colors: active` emulated, the card's border is still drawn (`border-style` not `none`) and a keyboard-focused button still has a visible outline.                                                                                                                                                                                                                                                                        |
+| CARD-AC-21 | No element inside the card has a non-zero computed `transition-duration` or `animation-duration`, with and without `prefers-reduced-motion: reduce` emulated. Buttons are exempt (`button.md`).                                                                                                                                                                                                                                       |
+| CARD-AC-22 | The `hidden` attribute on either host removes it from rendering (`display: none`).                                                                                                                                                                                                                                                                                                                                                    |
+| CARD-AC-23 | The public API is closed: `observedAttributes` is exactly `['name', 'description', 'columns', 'rows']` (dataset) and `['type', 'name', 'description']` (model); the only slot in any shadow root is `image` in the model card; no element in either shadow root has a `part` attribute.                                                                                                                                               |
+| CARD-AC-24 | `.card-title` colour on the card background is ≥ 4.5:1, computed from the actual token values. `.card-text` colour is ≥ 4.5:1 on the same background, computed the same way.                                                                                                                                                                                                                                                          |
+| CARD-AC-25 | A `bun:test` check confirms neither component file imports from `src/stores/`. The only store-like import is the i18n instance. (Not a browser test.)                                                                                                                                                                                                                                                                                 |
 
 CARD-AC-1, 2, 7, 8, 9, 10, 11, 12, 14, 16 and 22 SHOULD be `play` functions on stories.
 CARD-AC-17, 19, 20 and 21 need browser or viewport emulation and go in the `*.test.ts` files.
@@ -471,7 +469,7 @@ Create:
 
 Modify:
 
-- `src/styles/tokens.css` only to add `--surface: #fff` (Q1), plus any chiclet tokens the chiclet spec decides.
+- `css/root.css` only to add chiclet tokens the chiclet spec decides (visual-design §2 governs additions).
 
 Do **not** modify `src/styles/global.ts` for this spec: `cardStyles` is used only inside shadow roots.
 
@@ -482,8 +480,6 @@ Dependencies (must exist or be specified first):
   `app-dataset-card` is not blocked by it. Chiclet styling, its pink token, text-transform and
   contrast belong in that spec. The exported style module's name is that spec's to decide.
 - `src/i18n.ts`, the single i18n instance (§8). It is not in the repository yet.
-- `src/styles/tokens.css` (§6.1). The tokens currently live in `css/root.css` and there is no
-  `--surface` token yet. Record this as a discrepancy rather than choosing a side.
 
 Implementation order: `cardStyles` → `app-dataset-card` → chiclet spec → `app-model-card`.
 

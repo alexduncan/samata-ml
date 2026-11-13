@@ -1,6 +1,6 @@
 # Data Ingestion & Storage Pipeline
 
-**Status:** draft | **Updated:** 2026-11-13T08:09:39Z
+**Status:** draft | **Updated:** 2026-11-13T08:53:21Z
 
 ## Goal
 
@@ -392,6 +392,22 @@ The manifest is sorted by difficulty (beginner first), then `name` with `localeC
 - `license` is in the allow-list.
 - `datasheet.md` exists and is non-empty.
 
+## Specification changes
+
+T13 applies these and ticks each one.
+
+- [ ] `specification/data-ingestion.md` §3–§6 — §3 links `src/types/dataset.ts`; §4 states the `samata-db` v2 schema (D14); §5 states D2–D7, D11 and the full type-inference rules from _Interfaces and behaviour_, absorbing `data-type-inference.md`; §6 states D15; DATA-AC-1–5 stay; status target → implemented
+- [ ] `specification/sample-datasets.md` (new) — descriptor schema, authoring layout, generator rules, R1–R8 and R18, absorbing `sample-dataset-specification.md`; status implemented
+- [ ] `specification/state-and-storage.md` §3, §10 #4 — `ColumnType` includes `datetime`; `DatasetSummary` has `sampleId`; §10 #4 points at the canonical type
+- [ ] `specification/workflow-steps.md` §1 — dataset cards come from the sample-dataset manifest and show `name`, `tagline`, `stats.rowCount` and `stats.columnCount`
+- [ ] `specification/ARCHITECTURE.md` — the `/src/config/` line no longer lists datasets; `content/datasets/` is described
+- [ ] `specification/TODO.md` — TODO-12 (datasheet part), TODO-23, TODO-24, TODO-47 and TODO-49 removed; TODO-09 reworded to its UI parts; TODO-42 points at `sample-datasets.md`
+- [ ] `specification/README.md` — `sample-datasets.md` row added; `data-ingestion.md` row says implemented; `plans/sample-dataset-specification.md` and `plans/data-type-inference.md` deleted
+- [ ] Known gap 4 — narrowed to the Markdown pages only (datasets decided)
+- [ ] Known gap 6 — removed or narrowed, per what remains specified but not installed
+- [ ] Known gap 9 — resolved (one canonical `ColumnType`)
+- [ ] Known gap 14 — first bullet resolved (the reconciler uses the v2 schema and is wired into `bootstrapApp`)
+
 ## Implementation tasks
 
 ### T1 — Canonical `ColumnType` gains `datetime`; one eligibility predicate
@@ -591,7 +607,7 @@ The manifest is sorted by difficulty (beginner first), then `name` with `localeC
 - **Verification:** `bun run test:e2e tests/storage-worker.e2e.ts`
 - **Progress:** [ ] Not started
 
-### T13 — Specs, notes, TODO list and Known gaps
+### T13 — Sync specification: specs, notes, TODO list and Known gaps
 
 - **Depends on:** T1–T12
 - **Risk:** routine
@@ -604,8 +620,9 @@ The manifest is sorted by difficulty (beginner first), then `name` with `localeC
     - **`workflow-steps.md` §1:** "cards for each dataset in `./src/config/datasets.ts`" becomes "in the sample-dataset manifest (sample-datasets.md)"; the card fields become `name`, `tagline`, `stats.rowCount`, `stats.columnCount`.
     - **`ARCHITECTURE.md`:** update the `/src/config/` line and add `content/datasets/`.
     - **`TODO.md`:** delete TODO-12 (datasheet part only; keep the welcome-modal and model-description parts), TODO-23, TODO-24, TODO-47 (re-scope its remainder to TODO-48) and TODO-49; re-word TODO-09 to its UI parts; note in TODO-42 that new datasets follow sample-datasets.md.
-    - **`README.md`:** add the `sample-datasets.md` row; set `data-ingestion.md` to `implemented`; Known gaps 4 (datasets decided), 6, 9 and 12.
+    - **`README.md`:** add the `sample-datasets.md` row; set `data-ingestion.md` to `implemented`; Known gaps 4 (datasets decided), 6, 9 and 14 (first bullet).
 - **Acceptance criteria:**
+    - [ ] Every item under _Specification changes_ is applied and ticked, following "Writing specs" in `specification/README.md`.
     - [ ] No spec contradicts D1–D17 or R1–R18 (no `unknown` type, no `Timestamp` type, no `histogram: number[]`, no hand-authored `stats`, no `src/config/datasets.ts`).
     - [ ] `bun run plans:check` passes for every plan (the two notes files are gone).
 - **Verification:** `bun run plans:check`; `bun run check`
@@ -619,7 +636,7 @@ The manifest is sorted by difficulty (beginner first), then `name` with `localeC
 - [ ] `bun run build` succeeds and emits `storage.worker.js` and `datasets/manifest.json`.
 - [ ] `bun run test:e2e tests/storage-worker.e2e.ts` passes in at least chromium, or is recorded as not run with the reason.
 - [ ] Privacy and security: every fetch is same-origin; no CSP change; datasheet HTML comes only from first-party Markdown.
-- [ ] Specifications, the _Known gaps_ list and `TODO.md` updated (T13).
+- [ ] Every item under _Specification changes_ is ticked, and the specs describe the code as built (T13).
 - [ ] No unintended changes outside the tasks' likely files; `bun run format` run on every changed Prettier-supported file (not the CSVs).
 
 ## Risks and open questions
@@ -655,3 +672,4 @@ The manifest is sorted by difficulty (beginner first), then `name` with `localeC
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
 | 2026-11-12T15:35:52Z | Initial draft                                                                                                                                                                                                                                                                                                                 | User request: turn the `data-ingestion-and-storage` stub into a draft plan |
 | 2026-11-13T08:09:39Z | Major revision: whole-file type inference with the notes' rules (D2–D4, R9–R17); histograms for floats and nice bins (D6); bounded-memory exact medians; 200 MB limit and quota check (D11); typed sample-dataset descriptors and build-time catalogue (D10, R1–R8); `datetime` in `ColumnType` (D17); tasks re-cut to T1–T13 | User review of D4, D6, D10, D11 and the two notes files                    |
+| 2026-11-13T08:53:21Z | Added _Specification changes_, distilled from T13; T13 renamed to the `Sync specification` task                                                                                                                                                                                                                               | New spec-sync rule in the planning and implementation skills               |

@@ -1,6 +1,6 @@
 # Content & Internationalization (i18n)
 
-**Status:** target — not implemented
+**Status:** target — `@nanostores/i18n` is installed but unused. `scripts/generate-pages.ts` compiles `content/` (no locales) into the git-ignored `src/generated/`, which nothing in `src/` imports ([Known gap](README.md#known-gaps) 4).
 
 ## Localization Store
 

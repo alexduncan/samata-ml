@@ -1,6 +1,6 @@
 # Machine Learning Orchestrator
 
-**Status:** target (stub — needs a full spec before implementation is planned)
+**Status:** stub — needs a full spec before implementation is planned
 
 The library `web-ml` (sister repository at `../web-ml`, installed as `file:../web-ml`) trains machine learning models in web workers. This app only builds the configuration payload and calls the `web-ml` API ([ARCHITECTURE.md](ARCHITECTURE.md)).
 

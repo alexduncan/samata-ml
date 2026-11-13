@@ -133,7 +133,13 @@ def completion_gate(status: str, tasks: dict[str, Task], text: str) -> str:
     open_checks = [label.strip() for marked, label in checks if marked.lower() != "x"]
     if open_checks:
         raise ValueError("Unverified definition-of-done item(s): " + "; ".join(open_checks))
-    return "RECORDED COMPLETE — all task/acceptance/definition-of-done checkboxes ticked; verify real test evidence before changing status"
+    spec_changes = CHECKBOX.findall(section(text, "Specification changes"))
+    if not spec_changes:
+        raise ValueError("No Specification changes items found (use '- [x] None — <reason>' if none apply)")
+    open_specs = [label.strip() for marked, label in spec_changes if marked.lower() != "x"]
+    if open_specs:
+        raise ValueError("Specification not synced: " + "; ".join(open_specs))
+    return "RECORDED COMPLETE — all task/acceptance/definition-of-done/specification checkboxes ticked; verify real test evidence and the spec diff before changing status"
 
 
 def main() -> int:

@@ -1,6 +1,6 @@
 # Code Standards & Documentation
 
-**Status:** partial — TSDoc required; no ESLint config or CI exists yet
+**Status:** partial — TSDoc is required and mostly present in `src/`; `eslint-plugin-tsdoc` is installed, but there is no ESLint config, `lint` script or CI ([Known gap](README.md#known-gaps) 7).
 
 ## Documentation Standards (TSDoc)
 

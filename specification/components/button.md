@@ -1,6 +1,6 @@
 # Spec: Button (`.btn`)
 
-Status: Draft · Tier: **Style primitive** (conventions §2) · Criterion prefix: `BTN`
+Status: Draft — `buttonStyles` is built from this draft, except the A11Y-01 text colour; Q1 and Q2 are answered, Q3–Q8 are open · Tier: **Style primitive** (conventions §2) · Criterion prefix: `BTN`
 
 ## 1. Summary
 
@@ -208,7 +208,7 @@ Docs page: purpose, the usage rules from §4 as Do / Don't, and the rationale in
 
 - Create `src/styles/button.styles.ts`
 - Create or modify `src/styles/global.ts` to adopt `buttonStyles` into the document
-- Modify `src/styles/tokens.css` only to add tokens decided in Q1 and Q2
+- Modify `css/root.css` only to add a token decided in Q3 (visual-design §2 governs additions)
 - Create `src/styles/button.stories.ts`
 - Create `src/styles/button.test.ts`
 
@@ -221,8 +221,8 @@ danger, ghost or other variants; links styled as buttons; dark-mode values
 
 ## 12. Open questions (human to answer; agents must not resolve)
 
-- **Q1.** Which token replaces `white` for the primary background? (`--surface` is a placeholder.)
-- **Q2.** Focus ring colour token, and is it the same for both variants? Proposed: `--focus-ring: var(--blue-700)`.
+- **Q1.** Which token replaces `white` for the primary background? _Answered: `--surface` (visual-design §2)._
+- **Q2.** Focus ring colour token, and is it the same for both variants? _Answered: `--focus-ring`, for both variants (visual-design §2)._
 - **Q3.** Disabled colours. The values above are a proposal.
 - **Q4.** Hover changes text colour but the transition covers only background and border,
   so text snaps while the background fades. Add `color` to the transition? Is 500ms intended?

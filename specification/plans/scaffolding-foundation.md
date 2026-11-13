@@ -1,6 +1,6 @@
 # Scaffolding: Foundation, Tooling and Baseline Cleanup
 
-**Status:** implemented | **Updated:** 2026-11-12T12:31:28Z
+**Status:** implemented | **Updated:** 2026-11-13T08:59:43Z
 
 ## Goal
 
@@ -73,6 +73,17 @@ if (!hasExtension && !filePathExists(url.pathname)) {
 	return serveIndexHtml();
 }
 ```
+
+## Specification changes
+
+Applied retrospectively when the specs were reconciled with the code (2026-11-13).
+
+- [x] `specification/ARCHITECTURE.md` — the status line names the implemented directory layout, root-absolute asset URLs and single-page fallback; status partial
+- [x] `specification/testing.md` — the status line says `bun:test` with happy-dom and Playwright are installed and used; status partial
+- [x] Known gap 1 — narrowed to the entry-point name and unlisted directories
+- [x] Known gap 2 — narrowed to the repository README's template path and ARCHITECTURE's example filename
+- [x] Known gap 5 — narrowed to the testing.md versus COMPONENTS §9 conflict and Storybook and Vitest
+- [x] Known gap 12 — resolved (`bun run build` passes)
 
 ## Implementation tasks
 
@@ -177,6 +188,7 @@ if (!hasExtension && !filePathExists(url.pathname)) {
 
 ## Change log
 
-| When (UTC)           | Change        | Reason                                   |
-| -------------------- | ------------- | ---------------------------------------- |
-| 2026-11-12T11:37:44Z | Initial draft | Scaffolding foundation and tooling setup |
+| When (UTC)           | Change                                                 | Reason                                   |
+| -------------------- | ------------------------------------------------------ | ---------------------------------------- |
+| 2026-11-12T11:37:44Z | Initial draft                                          | Scaffolding foundation and tooling setup |
+| 2026-11-13T08:59:43Z | Added _Specification changes_, applied retrospectively | Spec reconciliation with the code        |

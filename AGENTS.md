@@ -16,10 +16,10 @@ Bun only: never npm, yarn, pnpm or `npx` (use `bunx`, including for commands in 
 - `bun run check` — typecheck + tests. Run it before reporting a task as done.
 - `bun test <path>` — one test file.
 - `bun run format <files>` — Prettier on the files you changed.
-- `bun run plans:check [plan.md]` — validate plan structure.
+- `bun run plans:check [plan.md]` — validate plan structure and that spec status lines match the spec index.
 - `bun run build` · `bun run server` (https://localhost:3000) · `bun run serve:scaffold` (mockups).
 
-**Baseline:** `bun run check` passes (0 type errors, 48 tests); `bun run build` passes (emits production bundle in `dist/`). Do not add new failures, and report the before/after counts.
+**Baseline:** `bun run check` passes (0 type errors, 52 tests); `bun run build` passes (emits production bundle in `dist/`). Do not add new failures, and report the before/after counts.
 
 ## Map
 
@@ -30,6 +30,7 @@ Bun only: never npm, yarn, pnpm or `npx` (use `bunx`, including for commands in 
 - **Visual fidelity:** The mockups in `specification/mockups/ui-scaffold/` define how the app looks; markup may differ. Follow [`visual-design.md`](specification/visual-design.md): use only tokens from `css/root.css`, with no fallbacks; record every visual deviation; run the parity and token tests for any UI change.
 
 - **Specs:** pick specs from the index's "Read when" column. Specs marked `target` describe intended design, not current code. Check the index's _Known gaps_ first. If you find a new conflict, record it in the plan's Risks section; never silently pick a side.
+- **Specs stay current:** a plan is `implemented` only when its final `Sync specification` task has made the specs describe what was built (procedure in the `implementation` skill; writing rules in [`specification/README.md`](specification/README.md#writing-specs)). A no-plan fix that changes behaviour a spec describes updates that spec in the same change.
 - **Don't edit** `node_modules/`, `../web-ml`, `specification/mockups/`, vendored skills (`.agents/skills/modern-web-guidance/`), or `bun.lock` except through `bun add`/`bun remove` when a plan allows it.
 - **Git:** never commit, push or switch branches unless the user asks. When asked, use one commit per task with the message `<plan-slug> Tn: <summary>`.
 - **Style:** British English in prose, docs and UI strings. Prettier settings: tabs, single quotes, width 100. Exported TypeScript needs TSDoc ([standards](specification/standards-and-documentation.md)).

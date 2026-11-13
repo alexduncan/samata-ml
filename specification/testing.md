@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Status:** partial — `bun:test` is in use; happy-dom and Playwright are not installed
+**Status:** partial — `bun:test` with a happy-dom preload (`tests/setup.ts`) and Playwright (Chromium, Firefox, WebKit) are installed and used. Comlink and worker or IndexedDB browser tests are target. The happy-dom rule for Lit components conflicts with COMPONENTS §9 ([Known gap](README.md#known-gaps) 5).
 
 All functionality must be created alongside a comprehensive test setup. Code submitted without tests will be rejected.
 

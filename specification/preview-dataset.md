@@ -1,6 +1,6 @@
 # Uploaded Dataset Preview Design
 
-**Status:** target
+**Status:** target — not implemented. Its _Storage Model_ and `Pipeline.state` sections describe a removed prototype, not current code, and conflict with state-and-storage.md (TODO-48, [Known gap](README.md#known-gaps) 16).
 
 ## Goal
 
@@ -60,7 +60,7 @@ This keeps inference predictable and cheap during upload.
 The Select Data step shows the preview only when:
 
 ```ts
-Pipeline.state.datasetId !== null && Pipeline.state.modelType === null
+Pipeline.state.datasetId !== null && Pipeline.state.modelType === null;
 ```
 
 That rule captures the intended UX:

@@ -1,6 +1,6 @@
 # Scaffolding: Application State and Persistence Layer
 
-**Status:** implemented | **Updated:** 2026-11-12T12:51:37Z
+**Status:** implemented | **Updated:** 2026-11-13T08:59:43Z
 
 ## Goal
 
@@ -79,6 +79,14 @@ export const INITIAL_APP_STATE: PersistedAppState = {
 	results: { ui: {} }
 };
 ```
+
+## Specification changes
+
+Applied retrospectively when the specs were reconciled with the code (2026-11-13).
+
+- [x] `specification/state-and-storage.md` — the status line lists the implemented and target sections; status stays draft (open questions)
+- [x] Known gap 14 — records where the stores and reconciler differ from the spec
+- [x] Known gap 15 — records spec-to-spec conflicts and behaviour built ahead of open questions
 
 ## Implementation tasks
 
@@ -213,11 +221,12 @@ export const INITIAL_APP_STATE: PersistedAppState = {
 | 2026-11-12T12:40:50Z | T1   | Complete. Created: src/types/state.ts with full state schema and constants. Verified: bun run typecheck (PASS 0 errors).                                             |
 | 2026-11-12T12:42:44Z | T2   | Complete. Created: src/stores/{app.store,scroll.store,predicates}.ts with all actions and predicates. Verified: bun run check (PASS with 0 errors, 19 tests passed). |
 | 2026-11-12T12:43:51Z | T3   | Complete. Created: src/stores/persister.ts with debounced write scheduling and quota recovery. Verified: bun run check (PASS with 0 errors, 19 tests passed).        |
-| 2026-11-12T12:48:14Z | T4   | Complete. Created: src/stores/reconciler.ts with 7-step startup reconciler & Web Lock recovery. Verified: bun run check (PASS with 0 errors, 19 tests passed). |
-| 2026-11-12T12:51:37Z | T5   | Complete. Implemented: tests/state-and-storage.test.ts covering NAV-AC-3 to NAV-AC-10. Verified: bun run check (PASS with 0 errors, 33 tests passed).          |
+| 2026-11-12T12:48:14Z | T4   | Complete. Created: src/stores/reconciler.ts with 7-step startup reconciler & Web Lock recovery. Verified: bun run check (PASS with 0 errors, 19 tests passed).       |
+| 2026-11-12T12:51:37Z | T5   | Complete. Implemented: tests/state-and-storage.test.ts covering NAV-AC-3 to NAV-AC-10. Verified: bun run check (PASS with 0 errors, 33 tests passed).                |
 
 ## Change log
 
-| When (UTC)           | Change        | Reason                                                   |
-| -------------------- | ------------- | -------------------------------------------------------- |
-| 2026-11-12T11:37:44Z | Initial draft | Scaffolding state stores, persistence and reconciliation |
+| When (UTC)           | Change                                                 | Reason                                                   |
+| -------------------- | ------------------------------------------------------ | -------------------------------------------------------- |
+| 2026-11-12T11:37:44Z | Initial draft                                          | Scaffolding state stores, persistence and reconciliation |
+| 2026-11-13T08:59:43Z | Added _Specification changes_, applied retrospectively | Spec reconciliation with the code                        |

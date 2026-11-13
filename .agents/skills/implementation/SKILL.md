@@ -49,7 +49,7 @@ Preserve the original H1, task IDs, design decisions and metadata format:
 - Touch only your task's block, your new log row and the `**Updated:**` line. Other agents may be editing other tasks of the same plan, so don't reformat, reorder or rewrite anything else.
 - If the user has authorised commits, make one commit per task with the message `<plan-slug> Tn: <summary>`, so the planner can review a single diff.
 - Refresh the plan's `**Updated:**` timestamp at write time using `date -u '+%Y-%m-%dT%H:%M:%SZ'` or equivalent. Keep overall status `ready` during partial implementation; **no** `in-progress` or `blocked` status exists.
-- Update lasting specification/documentation where the approved plan requires it. Only update `specification/plans/README.md` when plan status changes. Don't change approved decisions; a substantive change requires planning review and reapproval (`draft`).
+- Change `specification/` (other than the plan) only in the `Sync specification` task. Only update `specification/plans/README.md` when plan status changes. Don't change approved decisions; a substantive change requires planning review and reapproval (`draft`).
 
 ## Stop and escalate
 
@@ -57,16 +57,27 @@ Stop the affected task when status or prerequisites are invalid, a requirement i
 
 Use [references/escalation-format.md](references/escalation-format.md): record **evidence, exact conflict, impact and decision needed**. Leave status `ready` and task unchecked while blocked; the planner decides whether an amendment returns it to `draft`. Preserve partial work.
 
+## Sync specification task
+
+A plan is not implemented until `specification/` describes what was built. The plan's last task, `Sync specification`, does this:
+
+1. **Apply each item** under `## Specification changes`, then tick it. If the log records a deviation from the plan, document what was built and note the deviation in the log entry. If a needed change is missing from the list, add it as an item and apply it.
+2. **Synthesise; don't copy.** Merge the lasting rules (interfaces, data shapes, state transitions, invariants, edge cases) into the existing sections. Do not paste task text, acceptance checklists or the plan's rationale tables.
+3. **Write the present tense.** Say how the system works. No history or provenance: not "Updated X to do Y", not "Added in <plan>", no migration steps. Rationale may stay where a reader needs it to avoid undoing a decision.
+4. **Remove what it supersedes.** Search `specification/` for the old rule (`grep -rn '<old term>' specification --exclude-dir=plans --exclude-dir=mockups`) and update or delete every copy, so no two specs contradict each other.
+5. **Keep the status honest.** Update the spec's `**Status:**` line (`target` → `partial` or `implemented`; a `partial` line names what is still target), update the same spec's row in `specification/README.md`, and narrow resolved _Known gaps_ or mark them _Resolved._ (keep their numbers).
+6. **Check.** Run `bun run plans:check` (it fails if a spec's status line and its index row disagree), then `bun run format` on the changed specs.
+
 ## Final closure gate
 
-Only after **every task** is verified: perform all `## Verification and definition of done` checks, update authoritative specifications and log evidence. Run if available:
+Only after **every task**, including `Sync specification`, is verified: perform all `## Verification and definition of done` checks and log evidence. Run if available:
 
 ```sh
 python3 .agents/skills/implementation/scripts/task_gate.py specification/plans/<name>.md --check-complete
 bun run plans:check specification/plans/<name>.md
 ```
 
-These scripts check structure/checkmarks, **not** whether code works or results are truthful. Set status `implemented` and update `specification/plans/README.md` **only when** all acceptance criteria, real checks and final definition-of-done items are satisfied, with no blocking regressions. Otherwise retain `ready` and report outstanding work.
+These scripts check structure/checkmarks, **not** whether code works or results are truthful. `--check-complete` fails while any _Specification changes_ item is unticked. Set status `implemented` and update `specification/plans/README.md` **only when** all acceptance criteria, real checks and final definition-of-done items are satisfied, with no blocking regressions. Otherwise retain `ready` and report outstanding work.
 
 ## Response
 

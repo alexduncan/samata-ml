@@ -1,6 +1,6 @@
 # Scaffolding: App Shell, Sidebar and Modals
 
-**Status:** implemented | **Updated:** 2026-11-12T13:16:00Z
+**Status:** implemented | **Updated:** 2026-11-13T08:59:43Z
 
 ## Goal
 
@@ -77,6 +77,15 @@ Sidebar step items:
 	</ol>
 </nav>
 ```
+
+## Specification changes
+
+Applied retrospectively when the specs were reconciled with the code (2026-11-13).
+
+- [x] `specification/workflow-steps.md` — the step URLs, sidebar and first-load welcome modal are built; status target → partial
+- [x] `specification/app-state-and-navigation.md` §2, §5.4 — the layout regions and reserved-route modals are listed as implemented
+- [x] Known gap 13 — records the shell's token, mockup and COMPONENTS drift
+- [x] Known gap 14 — records the sidebar `aria-current` and focus behaviour
 
 ## Implementation tasks
 
@@ -204,6 +213,7 @@ Sidebar step items:
 
 ## Change log
 
-| When (UTC)           | Change        | Reason                                     |
-| -------------------- | ------------- | ------------------------------------------ |
-| 2026-11-12T11:37:44Z | Initial draft | Scaffolding app shell, sidebar, and modals |
+| When (UTC)           | Change                                                 | Reason                                     |
+| -------------------- | ------------------------------------------------------ | ------------------------------------------ |
+| 2026-11-12T11:37:44Z | Initial draft                                          | Scaffolding app shell, sidebar, and modals |
+| 2026-11-13T08:59:43Z | Added _Specification changes_, applied retrospectively | Spec reconciliation with the code          |

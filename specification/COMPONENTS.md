@@ -1,6 +1,6 @@
 # Engineering Conventions for Components
 
-**Status:** target — applies to all new components; existing `src/views/` and `src/partials/` code predates it
+**Status:** partial — binding on all UI code. The shared style modules (`src/styles/`) follow it; the scaffold shell (`src/app.ts`, `src/features/**`) does not yet meet §4, §6.1, §6.3, §7 or §8 ([Known gap](README.md#known-gaps) 13). `src/i18n.ts` (§8) and Storybook (§10) do not exist.
 
 Applies to every component, style primitive and store in this repository. Agents MUST read this file before implementing any spec in `specification/components/`.
 

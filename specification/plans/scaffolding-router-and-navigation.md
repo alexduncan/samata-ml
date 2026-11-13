@@ -1,6 +1,6 @@
 # Scaffolding: Vanilla TS Router and Navigation
 
-**Status:** implemented | **Updated:** 2026-11-12T12:56:01Z
+**Status:** implemented | **Updated:** 2026-11-13T08:59:43Z
 
 ## Goal
 
@@ -68,6 +68,14 @@ export type ParsedRoute =
 	| { kind: 'reserved'; path: '/about' | '/privacy' | '/help' }
 	| { kind: 'unknown'; path: string };
 ```
+
+## Specification changes
+
+Applied retrospectively when the specs were reconciled with the code (2026-11-13).
+
+- [x] `specification/app-state-and-navigation.md` — the status line lists the implemented and target parts; status stays draft (open questions)
+- [x] `specification/ARCHITECTURE.md` — the history router and hydration order are listed as implemented
+- [x] Known gap 14 — records where the router and predicates differ from the spec
 
 ## Implementation tasks
 
@@ -168,15 +176,16 @@ export type ParsedRoute =
 
 ## Implementation and verification log
 
-| When (UTC)           | Task | Outcome / commands / evidence                                                                                          |
-| -------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------- |
-| 2026-11-12T12:52:45Z | T1   | Complete. Created: src/types/routes.ts & src/router/route-parser.ts. Verified: bun run check (PASS 0 errors, 33 tests). |
-| 2026-11-12T12:53:56Z | T2   | Complete. Created: src/router/router.ts ($route, navigate, openReserved, closeReserved). Verified: bun run check.       |
-| 2026-11-12T12:54:38Z | T3   | Complete. Created: src/router/scroll-restorer.ts (scroll memory & restoration). Verified: bun run check.                |
+| When (UTC)           | Task | Outcome / commands / evidence                                                                                             |
+| -------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-12T12:52:45Z | T1   | Complete. Created: src/types/routes.ts & src/router/route-parser.ts. Verified: bun run check (PASS 0 errors, 33 tests).   |
+| 2026-11-12T12:53:56Z | T2   | Complete. Created: src/router/router.ts ($route, navigate, openReserved, closeReserved). Verified: bun run check.         |
+| 2026-11-12T12:54:38Z | T3   | Complete. Created: src/router/scroll-restorer.ts (scroll memory & restoration). Verified: bun run check.                  |
 | 2026-11-12T12:56:01Z | T4   | Complete. Created: tests/router-and-navigation.test.ts (NAV-AC-1, NAV-AC-2, NAV-AC-4). Verified: bun run check (48 pass). |
 
 ## Change log
 
-| When (UTC)           | Change        | Reason                                                |
-| -------------------- | ------------- | ----------------------------------------------------- |
-| 2026-11-12T11:37:44Z | Initial draft | Scaffolding router, history manager and scroll memory |
+| When (UTC)           | Change                                                 | Reason                                                |
+| -------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
+| 2026-11-12T11:37:44Z | Initial draft                                          | Scaffolding router, history manager and scroll memory |
+| 2026-11-13T08:59:43Z | Added _Specification changes_, applied retrospectively | Spec reconciliation with the code                     |

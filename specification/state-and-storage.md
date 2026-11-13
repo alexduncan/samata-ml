@@ -1,6 +1,6 @@
 # Application State Persistence
 
-**Status:** draft — target design; open questions in §11
+**Status:** draft — open questions in §11 (§11.5 is answered: Web Locks is Baseline Widely available). Implemented: §3 schema, §4 persister (except the save-failure notification) and §6 checks 3 and 5–8. Target: §6 checks 1, 2 and 4 (no IndexedDB adapter is wired at startup), §7 multi-tab sync, §8 read-only mode and migrations, and ingestion ordering. Code that differs from this spec is listed in [Known gap](README.md#known-gaps) 14.
 
 > **Source of truth:** [workflow-steps.md](workflow-steps.md). Navigation, routing, step behaviour and scroll memory are specified in [app-state-and-navigation.md](app-state-and-navigation.md) (now the hybrid router + store design). This document specifies **how state is stored**: keys, schema, write scheduling, IndexedDB reconciliation, multi-tab behaviour, versioning.
 >
@@ -10,17 +10,17 @@
 
 Persisted state exists so that **reloading the tab, or opening the base URL in a new tab, shows exactly the UI the user last saw** (app-state-and-navigation.md goal G3), without keeping dataset rows in reactive application memory.
 
-It stores *what the user has done and chosen*. *Where the user is* comes from the URL; the one exception is `resumePath`, which is what `/` resolves to.
+It stores _what the user has done and chosen_. _Where the user is_ comes from the URL; the one exception is `resumePath`, which is what `/` resolves to.
 
 ## 2. Storage Split
 
-| Data | Where | Why |
-| :--- | :--- | :--- |
-| Workflow state, UI selections, model records, headline metrics | `localStorage` key `samata-ml:state` | Small, needed synchronously at startup before first render and before routing |
-| Scroll snapshots | `localStorage` key `samata-ml:scroll` | Written far more often than the rest; separate key keeps writes small and lets multi-tab sync ignore it |
-| Dataset rows | IndexedDB `samata-db` → `raw_records` | Large, streamed in slices ([data-ingestion.md](data-ingestion.md)) |
-| Column statistics (histograms, category counts, median) | IndexedDB `samata-db` → `metadata` | Unbounded (up to 100 bins × columns, arbitrary category counts) |
-| Detailed training results (confusion matrices, curves, predictions, feature importances) | IndexedDB `samata-db` → `model_results`, key `[datasetId, modelNum]` | Large and only needed on the results screens |
+| Data                                                                                     | Where                                                                | Why                                                                                                     |
+| :--------------------------------------------------------------------------------------- | :------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------ |
+| Workflow state, UI selections, model records, headline metrics                           | `localStorage` key `samata-ml:state`                                 | Small, needed synchronously at startup before first render and before routing                           |
+| Scroll snapshots                                                                         | `localStorage` key `samata-ml:scroll`                                | Written far more often than the rest; separate key keeps writes small and lets multi-tab sync ignore it |
+| Dataset rows                                                                             | IndexedDB `samata-db` → `raw_records`                                | Large, streamed in slices ([data-ingestion.md](data-ingestion.md))                                      |
+| Column statistics (histograms, category counts, median)                                  | IndexedDB `samata-db` → `metadata`                                   | Unbounded (up to 100 bins × columns, arbitrary category counts)                                         |
+| Detailed training results (confusion matrices, curves, predictions, feature importances) | IndexedDB `samata-db` → `model_results`, key `[datasetId, modelNum]` | Large and only needed on the results screens                                                            |
 
 `localStorage` is synchronous and quota-limited (~5 MB); it MUST NOT hold dataset rows, column statistics or per-row results. A `localStorage` write failure MUST NOT break the app (§4.3).
 
@@ -35,141 +35,140 @@ export const STORAGE_VERSION = 1;
 export type ColumnType = 'numeric' | 'categorical' | 'boolean' | 'text';
 
 export interface ColumnSummary {
-  name: string;
-  type: ColumnType;
-  missingCount: number;
+	name: string;
+	type: ColumnType;
+	missingCount: number;
 }
 
 /** Lightweight dataset identity. Rows and statistics live in IndexedDB. */
 export interface DatasetSummary {
-  id: string;
-  name: string;
-  source: 'sample' | 'upload';
-  rowCount: number;
-  columns: ColumnSummary[];
+	id: string;
+	name: string;
+	source: 'sample' | 'upload';
+	rowCount: number;
+	columns: ColumnSummary[];
 }
 
-export type WorkflowPath =
-  | '/data' | '/target' | '/models' | `/models/${number}` | '/results';
+export type WorkflowPath = '/data' | '/target' | '/models' | `/models/${number}` | '/results';
 
 export type ModelSectionId =
-  | 'choose-model'
-  | 'select-features'
-  | 'configure-model'
-  | 'configure-training'
-  | 'training'
-  | 'results';
+	| 'choose-model'
+	| 'select-features'
+	| 'configure-model'
+	| 'configure-training'
+	| 'training'
+	| 'results';
 
 export type HyperparameterValue = number | string | boolean | number[];
 
 export interface HyperparameterConfig {
-  mode: 'manual' | 'tuning';
-  values: Record<string, HyperparameterValue>;
-  tuningSearchSpace?: Record<string, HyperparameterValue[]>;
+	mode: 'manual' | 'tuning';
+	values: Record<string, HyperparameterValue>;
+	tuningSearchSpace?: Record<string, HyperparameterValue[]>;
 }
 
 /** Placeholder until workflow-steps "Configure Training" is specified. */
 export type ValidationMethodology =
-  | { type: 'nested_cv'; outerFolds: number; innerFolds: number }
-  | { type: 'k_fold_cv'; folds: number }
-  | { type: 'train_test_split'; testRatio: number };
+	| { type: 'nested_cv'; outerFolds: number; innerFolds: number }
+	| { type: 'k_fold_cv'; folds: number }
+	| { type: 'train_test_split'; testRatio: number };
 
 export type MulticlassStrategy = 'native' | 'one-vs-rest' | 'one-vs-one';
 
 export interface TrainingProgress {
-  percent: number;
-  currentFold?: number;
-  totalFolds?: number;
-  statusMessage: string;
+	percent: number;
+	currentFold?: number;
+	totalFolds?: number;
+	statusMessage: string;
 }
 
 export interface TrainingError {
-  code: 'TRAINING_FAILED' | 'TRAINING_CANCELLED' | 'TRAINING_INTERRUPTED_BY_RELOAD';
-  message: string;
-  timestamp: number;
-  details?: string;
+	code: 'TRAINING_FAILED' | 'TRAINING_CANCELLED' | 'TRAINING_INTERRUPTED_BY_RELOAD';
+	message: string;
+	timestamp: number;
+	details?: string;
 }
 
 export interface TrainingTimings {
-  /** Per-step rows for nested CV / hyperparameter tuning, plus a total. */
-  steps: { label: string; durationMs: number }[];
-  totalMs: number;
+	/** Per-step rows for nested CV / hyperparameter tuning, plus a total. */
+	steps: { label: string; durationMs: number }[];
+	totalMs: number;
 }
 
 export type ModelStatus = 'draft' | 'training' | 'trained';
 
 /** One entry per model; `num` is the `{num}` in `/models/{num}`. */
 export interface ModelRecord {
-  num: number;
-  createdAt: number;
-  status: ModelStatus;
-  completedSteps: ModelSectionId[];
+	num: number;
+	createdAt: number;
+	status: ModelStatus;
+	completedSteps: ModelSectionId[];
 
-  /** Section 1 – Choose Model. `web-ml` model id. */
-  modelId: string | null;
-  /** Section 2 – Select Features. Never contains the target. */
-  features: string[];
-  /** Section 2 – model-specific extras, e.g. one-hot encoding, regularisation. */
-  modelOptions: Record<string, HyperparameterValue>;
-  /** Section 3 – Configure Model. */
-  hyperparameters: HyperparameterConfig;
-  multiclass: MulticlassStrategy | null;
-  /** Section 4 – Configure Training. */
-  trainingSetup: ValidationMethodology | null;
+	/** Section 1 – Choose Model. `web-ml` model id. */
+	modelId: string | null;
+	/** Section 2 – Select Features. Never contains the target. */
+	features: string[];
+	/** Section 2 – model-specific extras, e.g. one-hot encoding, regularisation. */
+	modelOptions: Record<string, HyperparameterValue>;
+	/** Section 3 – Configure Model. */
+	hyperparameters: HyperparameterConfig;
+	multiclass: MulticlassStrategy | null;
+	/** Section 4 – Configure Training. */
+	trainingSetup: ValidationMethodology | null;
 
-  /** Section 5 – Training. */
-  progress: TrainingProgress | null;
-  error: TrainingError | null;
-  timings: TrainingTimings | null;
-  durationMs: number | null;
+	/** Section 5 – Training. */
+	progress: TrainingProgress | null;
+	error: TrainingError | null;
+	timings: TrainingTimings | null;
+	durationMs: number | null;
 
-  /** Headline metrics for the /models table and /results; full results live in IndexedDB. */
-  metrics: Record<string, number> | null;
+	/** Headline metrics for the /models table and /results; full results live in IndexedDB. */
+	metrics: Record<string, number> | null;
 
-  /** Section 6 – per-model UI selections (chart tab etc.). Shape defined with the results spec. */
-  ui: Record<string, unknown>;
+	/** Section 6 – per-model UI selections (chart tab etc.). Shape defined with the results spec. */
+	ui: Record<string, unknown>;
 }
 
 export interface PersistedAppState {
-  version: typeof STORAGE_VERSION;
-  updatedAt: number;
+	version: typeof STORAGE_VERSION;
+	updatedAt: number;
 
-  onboarding: { welcomeDismissed: boolean };
+	onboarding: { welcomeDismissed: boolean };
 
-  /** What `/` resolves to. Always a workflow path, never a reserved path. */
-  resumePath: WorkflowPath;
+	/** What `/` resolves to. Always a workflow path, never a reserved path. */
+	resumePath: WorkflowPath;
 
-  dataset: DatasetSummary | null;
-  data: {
-    /** Picker or preview on /data. A stored value, not derived. */
-    mode: 'select' | 'preview';
-    /** Column whose details <aside> is open. */
-    selectedColumn: string | null;
-  };
+	dataset: DatasetSummary | null;
+	data: {
+		/** Picker or preview on /data. A stored value, not derived. */
+		mode: 'select' | 'preview';
+		/** Column whose details <aside> is open. */
+		selectedColumn: string | null;
+	};
 
-  /** Target column name. Meaningful only when `dataset !== null`. */
-  target: string | null;
+	/** Target column name. Meaningful only when `dataset !== null`. */
+	target: string | null;
 
-  models: ModelRecord[];
-  /** Next `num` to allocate. Monotonic; numbers are never reused. */
-  nextModelNum: number;
+	models: ModelRecord[];
+	/** Next `num` to allocate. Monotonic; numbers are never reused. */
+	nextModelNum: number;
 
-  /** UI selections for /results. Shape defined with the results spec. */
-  results: { ui: Record<string, unknown> };
+	/** UI selections for /results. Shape defined with the results spec. */
+	results: { ui: Record<string, unknown> };
 }
 
 export interface ScrollSnapshot {
-  /** window.innerWidth (CSS px) when saved. */
-  viewportWidth: number;
-  top: number;
-  regions?: Record<string, { top: number; left: number }>;
-  savedAt: number;
+	/** window.innerWidth (CSS px) when saved. */
+	viewportWidth: number;
+	top: number;
+	regions?: Record<string, { top: number; left: number }>;
+	savedAt: number;
 }
 
 export interface PersistedScroll {
-  version: typeof STORAGE_VERSION;
-  /** Keys: `data:select`, `data:preview`, `target`, `models`, `models/{num}`, `results`. */
-  snapshots: Record<string, ScrollSnapshot>;
+	version: typeof STORAGE_VERSION;
+	/** Keys: `data:select`, `data:preview`, `target`, `models`, `models/{num}`, `results`. */
+	snapshots: Record<string, ScrollSnapshot>;
 }
 ```
 
@@ -181,13 +180,13 @@ A single **persister** subscribes to the stores and is the only code that touche
 
 ### 4.1 Triggers
 
-| Change | Write |
-| :--- | :--- |
-| `resumePath` (any workflow navigation), dataset, target, model created, section completed/re-opened, `status` change, error set, `welcomeDismissed`, `data.mode` | **Synchronous**, within the same task as the action |
-| Discrete UI selections (checkbox, card select, `data.selectedColumn`) | Synchronous |
-| Free-form field edits (hyperparameter numbers/text) | Debounced ~300 ms, plus flushed on `change`; only **committed, valid** values are stored |
-| Training `progress` ticks | At most about one write per second; entry into and exit from `training` are synchronous |
-| Scroll snapshots (`samata-ml:scroll`) | Debounced ~150 ms; flushed before router navigation, on `visibilitychange` → `hidden` and on `pagehide` |
+| Change                                                                                                                                                           | Write                                                                                                   |
+| :--------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------ |
+| `resumePath` (any workflow navigation), dataset, target, model created, section completed/re-opened, `status` change, error set, `welcomeDismissed`, `data.mode` | **Synchronous**, within the same task as the action                                                     |
+| Discrete UI selections (checkbox, card select, `data.selectedColumn`)                                                                                            | Synchronous                                                                                             |
+| Free-form field edits (hyperparameter numbers/text)                                                                                                              | Debounced ~300 ms, plus flushed on `change`; only **committed, valid** values are stored                |
+| Training `progress` ticks                                                                                                                                        | At most about one write per second; entry into and exit from `training` are synchronous                 |
+| Scroll snapshots (`samata-ml:scroll`)                                                                                                                            | Debounced ~150 ms; flushed before router navigation, on `visibilitychange` → `hidden` and on `pagehide` |
 
 `flushNow()` is exported for those lifecycle hooks. `beforeunload` MUST NOT be relied on.
 
@@ -207,18 +206,18 @@ A single **persister** subscribes to the stores and is the only code that touche
 
 This is what makes "exact same UI" enforceable as the app grows. Each new feature spec MUST add its UI state to the registry below or state why it is transient.
 
-| UI state | Persisted as | Notes |
-| :--- | :--- | :--- |
-| Welcome modal dismissed | `onboarding.welcomeDismissed` | |
-| `/data` picker vs preview | `data.mode` | |
-| Open column-details aside | `data.selectedColumn` | |
-| Virtual table scroll offsets | `ScrollSnapshot.regions['data-table']` | |
-| Page scroll, per step | `PersistedScroll.snapshots[key]` | Ignored if viewport width differs |
-| Per-model section completion | `ModelRecord.completedSteps` | Drives `.train-step-complete` and the check icon |
-| Chosen model, features, options, hyperparameters, multiclass, training setup | `ModelRecord.*` | Committed values |
-| Per-model results view | `ModelRecord.ui` | Defined by the section 6 spec |
-| Compare Results view | `results.ui` | Defined by the section 4 spec |
-| Location | URL, plus `resumePath` for `/` | |
+| UI state                                                                     | Persisted as                           | Notes                                            |
+| :--------------------------------------------------------------------------- | :------------------------------------- | :----------------------------------------------- |
+| Welcome modal dismissed                                                      | `onboarding.welcomeDismissed`          |                                                  |
+| `/data` picker vs preview                                                    | `data.mode`                            |                                                  |
+| Open column-details aside                                                    | `data.selectedColumn`                  |                                                  |
+| Virtual table scroll offsets                                                 | `ScrollSnapshot.regions['data-table']` |                                                  |
+| Page scroll, per step                                                        | `PersistedScroll.snapshots[key]`       | Ignored if viewport width differs                |
+| Per-model section completion                                                 | `ModelRecord.completedSteps`           | Drives `.train-step-complete` and the check icon |
+| Chosen model, features, options, hyperparameters, multiclass, training setup | `ModelRecord.*`                        | Committed values                                 |
+| Per-model results view                                                       | `ModelRecord.ui`                       | Defined by the section 6 spec                    |
+| Compare Results view                                                         | `results.ui`                           | Defined by the section 4 spec                    |
+| Location                                                                     | URL, plus `resumePath` for `/`         |                                                  |
 
 **Transient (never persisted):** reserved-route modals (`/about`, `/privacy`, `/help`; these are restored only because the URL says so), Datasheet, Upload and Model Description dialogs, focus, hover, uncommitted field text, in-flight ingestion state, upload validation errors, live training progress between throttled writes.
 
@@ -226,7 +225,7 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 
 ## 6. IndexedDB Reconciliation
 
-`localStorage` and IndexedDB are separate stores that can diverge (partial "clear site data", eviction under storage pressure, an upload interrupted by reload, a second tab replacing the dataset). After reading persisted state and **before the first render**, the hydrator runs these checks in order. A failed check repairs the *smallest* affected piece and cascades downward; it never silently invents data.
+`localStorage` and IndexedDB are separate stores that can diverge (partial "clear site data", eviction under storage pressure, an upload interrupted by reload, a second tab replacing the dataset). After reading persisted state and **before the first render**, the hydrator runs these checks in order. A failed check repairs the _smallest_ affected piece and cascades downward; it never silently invents data.
 
 1. **Dataset present.** If `dataset !== null` but `metadata` for `dataset.id` is missing from IndexedDB, treat as `dataset = null`: clear `target`, `models`, `data.selectedColumn`, set `data.mode = 'select'`, clear non-`/data` scroll keys, and queue a notification.
 2. **Orphans.** Delete IndexedDB rows/metadata for any dataset id other than `dataset.id`. A partial upload (rows written, no `metadata`) is an orphan by definition.
@@ -259,7 +258,7 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 
 **Why is the dataset not in `localStorage`?** Datasets can be large and `localStorage` is synchronous, size-limited and unsuitable for streaming or slice reads. Only a summary (id, name, size, column names/types/missing counts) is stored so the sidebar and blocked-state logic work at startup without touching IndexedDB.
 
-**Why store `data.mode` instead of deriving it?** The old rule (`datasetId !== null && modelType === null`) conflated "dataset exists" with "user is looking at the preview". The new workflow lets the user have a dataset *and* return to the picker, and a reload must show the same one.
+**Why store `data.mode` instead of deriving it?** The old rule (`datasetId !== null && modelType === null`) conflated "dataset exists" with "user is looking at the preview". The new workflow lets the user have a dataset _and_ return to the picker, and a reload must show the same one.
 
 **Why a separate scroll key?** Scroll updates are frequent and low-value; isolating them keeps the main blob small, avoids rewriting model data on every scroll tick, and lets multi-tab sync ignore them.
 
@@ -271,17 +270,17 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 
 ## 10. Inconsistencies Found and How They Are Resolved
 
-| # | Where | Inconsistency | Resolution |
-| :--- | :--- | :--- | :--- |
-| 1 | Old store plan | Persisted `currentStep`, global `modelType`/`hyperparameters`/`selectedFeatures` | URL replaces `currentStep`; per-model `ModelRecord` replaces globals (workflow-steps §3) |
-| 2 | Old store plan | Route guards **redirect** a reloaded session to the first step | Navigation is never blocked or redirected by state; pages that cannot display show a `.notification` (app-state-and-navigation.md §4) |
-| 3 | Old store plan | `trainingStatus`, `resultsId` not persisted | Status is persisted so interruption is detectable; results are persisted in IndexedDB |
-| 4 | Column type vocabularies | workflow-steps: `numeric\|categorical\|boolean`; old FSM: `+datetime\|text`; data-ingestion: `numeric\|categorical\|text\|unknown`; preview-dataset: `text\|integer\|float\|boolean`; `datasets.ts`: `string\|number\|boolean` | Canonical UI/state type is `numeric \| categorical \| boolean \| text`. The ingestion layer's finer types (integer/float, unknown) map onto it at the boundary; `datetime` is deferred and maps to `text`. data-ingestion and preview-dataset need aligning. |
-| 5 | preview-dataset vs data-ingestion | Single active dataset, stores `dataset`/`metadata`, key `dataset_stats`, clear-on-upload **vs** `samata-db`, `metadata`/`raw_records`, compound `[datasetId,rowIndex]` | data-ingestion is canonical; "one *active* dataset" is a policy enforced after a successful upload (§6) |
-| 6 | Old store plan | `Pipeline.initialize()` singleton with `Proxy` state | Nanostores + actions + persister (§9) |
-| 7 | Old FSM plan | URL-paste dataset source | Removed; workflow-steps has samples + upload only. (Sample datasets are still fetched by URL internally.) |
-| 8 | preview-dataset | Preview shown when `datasetId !== null && modelType === null` | `data.mode` (§9) |
-| 9 | README / COMPONENTS | `state-and-storage.md` was referenced but did not exist | Resolved 2026-11-12: this file moved here |
+| #   | Where                             | Inconsistency                                                                                                                                                                                                                  | Resolution                                                                                                                                                                                                                                                   |
+| :-- | :-------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | Old store plan                    | Persisted `currentStep`, global `modelType`/`hyperparameters`/`selectedFeatures`                                                                                                                                               | URL replaces `currentStep`; per-model `ModelRecord` replaces globals (workflow-steps §3)                                                                                                                                                                     |
+| 2   | Old store plan                    | Route guards **redirect** a reloaded session to the first step                                                                                                                                                                 | Navigation is never blocked or redirected by state; pages that cannot display show a `.notification` (app-state-and-navigation.md §4)                                                                                                                        |
+| 3   | Old store plan                    | `trainingStatus`, `resultsId` not persisted                                                                                                                                                                                    | Status is persisted so interruption is detectable; results are persisted in IndexedDB                                                                                                                                                                        |
+| 4   | Column type vocabularies          | workflow-steps: `numeric\|categorical\|boolean`; old FSM: `+datetime\|text`; data-ingestion: `numeric\|categorical\|text\|unknown`; preview-dataset: `text\|integer\|float\|boolean`; `datasets.ts`: `string\|number\|boolean` | Canonical UI/state type is `numeric \| categorical \| boolean \| text`. The ingestion layer's finer types (integer/float, unknown) map onto it at the boundary; `datetime` is deferred and maps to `text`. data-ingestion and preview-dataset need aligning. |
+| 5   | preview-dataset vs data-ingestion | Single active dataset, stores `dataset`/`metadata`, key `dataset_stats`, clear-on-upload **vs** `samata-db`, `metadata`/`raw_records`, compound `[datasetId,rowIndex]`                                                         | data-ingestion is canonical; "one _active_ dataset" is a policy enforced after a successful upload (§6)                                                                                                                                                      |
+| 6   | Old store plan                    | `Pipeline.initialize()` singleton with `Proxy` state                                                                                                                                                                           | Nanostores + actions + persister (§9)                                                                                                                                                                                                                        |
+| 7   | Old FSM plan                      | URL-paste dataset source                                                                                                                                                                                                       | Removed; workflow-steps has samples + upload only. (Sample datasets are still fetched by URL internally.)                                                                                                                                                    |
+| 8   | preview-dataset                   | Preview shown when `datasetId !== null && modelType === null`                                                                                                                                                                  | `data.mode` (§9)                                                                                                                                                                                                                                             |
+| 9   | README / COMPONENTS               | `state-and-storage.md` was referenced but did not exist                                                                                                                                                                        | Resolved 2026-11-12: this file moved here                                                                                                                                                                                                                    |
 
 ## 11. Open Questions
 

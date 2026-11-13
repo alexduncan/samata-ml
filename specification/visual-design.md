@@ -1,6 +1,6 @@
 # Visual Design Specification
 
-**Status:** target
+**Status:** partial — the token vocabulary (§2), the shared style modules (§3) and the checks (§6) are in force. The shell does not yet match the mockups (§1), the `css/` copies of button, card, badges and modal remain (§3), and A11Y-01, A11Y-02, A11Y-09 and SEM-01–03 (§5) are not yet applied ([Known gap](README.md#known-gaps) 13).
 
 This specification defines the visual standards, token architecture, mockup mappings, translation rules, and deviation registers for the application.
 

@@ -1,6 +1,6 @@
 # System Architecture
 
-**Status:** partial — tooling and delivery rules apply now; the directory structure, router, stores and service worker are target design not yet in `src/` (see [Known gaps](README.md#known-gaps))
+**Status:** partial — the directory layout, history router, stores, hydration order, root-absolute asset URLs and single-page fallback are implemented. The service worker, dynamically imported views, Markdown-driven reserved routes, `/content-src/`, per-model configuration and no-inlining are target (see [Known gaps](README.md#known-gaps) 1–4, 6).
 
 This document defines the target system shape and the architectural invariants that changes must preserve.
 
@@ -39,7 +39,7 @@ The repository strictly adheres to a domain-driven, feature-based directory stru
 
 The workflow is specified in [workflow-steps.md](workflow-steps.md); routing, state and scroll behaviour are specified in [app-state-and-navigation.md](app-state-and-navigation.md) (hybrid router + store), and persistence in [state-and-storage.md](state-and-storage.md).
 
-- **Hybrid state model:** *Where the user is* is the URL (`/data`, `/target`, `/models`, `/models/{num}`, `/results`), driven by the History API. *What the user has done* is in persisted Nanostores. There is no single application-wide finite state machine. A small model-lifecycle machine (`draft → training → trained`) covers the one genuinely sequential flow.
+- **Hybrid state model:** _Where the user is_ is the URL (`/data`, `/target`, `/models`, `/models/{num}`, `/results`), driven by the History API. _What the user has done_ is in persisted Nanostores. There is no single application-wide finite state machine. A small model-lifecycle machine (`draft → training → trained`) covers the one genuinely sequential flow.
 - **History router (framework-free):** `src/router/` is the only code that calls `history.pushState`, `history.replaceState` or reads `location`. Components render `<a href>`; the router intercepts same-origin clicks (never modified clicks). It sets `history.scrollRestoration = 'manual'` and owns per-step scroll memory (ignored when the viewport width has changed).
 - **Navigation is never blocked by state:** The user can always navigate to any workflow page. State only decides what the page shows; a page that cannot display yet renders a `.notification` explaining why (e.g. "You need to train more than one model before you can compare results."). Redirects are limited to `/` → resume path and URLs that name no page (unknown paths, malformed model numbers), via `replaceState`.
 - **Reserved routes:** `/about`, `/privacy` and `/help` render static content in a native `<dialog>` over the current workflow page. They are real history entries but are **never persisted** to application state. Content comes from the Markdown pipeline ([content-and-i18n.md](content-and-i18n.md)).
