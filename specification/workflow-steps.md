@@ -125,6 +125,8 @@ If the target variable is Categorical containing more than two categories and de
 
 Later Error-Correcting Output Codes (ECOC) will be added as an option.
 
+The configuration of each model's hyperparameters will be fetched from the file `./src/config/models/{model-name}-hyperparameters.ts`. The specification will be used to determine which ui controls need to be rendered.
+
 Once all hyperparameters have been configured the "Continue" button in the `<header>` of the section will change from disabled to `.btn-primary`. The `<h2>` in the `<header>` of the section will change to display "Model Configured" or "Hyperparameter Tuning". After the user clicks the "Continue" button, the button will be replaced with an `<svg><use href="#check" /></svg>` and the class `.train-step-complete` is added to the `.train-step` element.
 
 ### 4. Configure Training
@@ -148,7 +150,7 @@ When training is complete the "View Results" button in the `<header>` of the sec
 
 This step allows the user to view detailed results from the model training. Every model will display common metrics for the type of task (Classification | Regression).
 
-A configuration file in `./src/config/models/{model-name}.ts` will be used to determine which specific charts are rendered for the trained model.
+A configuration file in `./src/config/models/{model-name}-results.ts` will be used to determine which specific charts are rendered for the trained model.
 
 **TODO: More work is required to design the specification for this step.**
 

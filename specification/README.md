@@ -16,20 +16,21 @@ Each spec has a `**Status:**` line under its title:
 
 ## Specs
 
-| Spec                                                                 | Status    | Read when                                                                                            |
-| -------------------------------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------- |
-| [VISION.md](VISION.md)                                               | reference | Planning a new feature (product intent, educational and ethical goals)                               |
-| [workflow-steps.md](workflow-steps.md)                               | target    | Anything a user sees in the four workflow steps. **Wins over other specs on user-facing behaviour.** |
-| [ARCHITECTURE.md](ARCHITECTURE.md)                                   | partial   | New directories or modules, routing, build, delivery, caching, Bun tooling                           |
-| [COMPONENTS.md](COMPONENTS.md)                                       | target    | Any Lit component, style primitive, store binding, a11y or i18n in UI                                |
-| [app-state-and-navigation.md](app-state-and-navigation.md)           | draft     | Router, URL/history, step behaviour, scroll memory, model lifecycle                                  |
-| [state-and-storage.md](state-and-storage.md)                         | draft     | Nanostores, persisted schema, `localStorage`, IndexedDB, multi-tab                                   |
-| [data-ingestion.md](data-ingestion.md)                               | target    | CSV upload/parsing, column statistics, IndexedDB dataset storage                                     |
-| [preview-dataset.md](preview-dataset.md)                             | target    | Dataset preview table after upload                                                                   |
-| [machine-learning-orchestrator.md](machine-learning-orchestrator.md) | stub      | Calling the `web-ml` library or training workers                                                     |
-| [content-and-i18n.md](content-and-i18n.md)                           | target    | Markdown content pipeline, localisation                                                              |
-| [testing.md](testing.md)                                             | partial   | Writing or running tests                                                                             |
-| [standards-and-documentation.md](standards-and-documentation.md)     | partial   | Any exported TypeScript (TSDoc rules)                                                                |
+| Spec                                                                 | Status    | Read when                                                                                                                |
+| -------------------------------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------ |
+| [VISION.md](VISION.md)                                               | reference | Planning a new feature (product intent, educational and ethical goals)                                                   |
+| [workflow-steps.md](workflow-steps.md)                               | target    | Anything a user sees in the four workflow steps. **Wins over other specs on user-facing behaviour.**                     |
+| [ARCHITECTURE.md](ARCHITECTURE.md)                                   | partial   | New directories or modules, routing, build, delivery, caching, Bun tooling                                               |
+| [COMPONENTS.md](COMPONENTS.md)                                       | target    | Any Lit component, style primitive, store binding, a11y or i18n in UI                                                    |
+| [visual-design.md](visual-design.md)                                 | target    | Anything a user sees: colours, type, spacing, tokens, mockup fidelity, contrast. Wins over the mockups on accessibility. |
+| [app-state-and-navigation.md](app-state-and-navigation.md)           | draft     | Router, URL/history, step behaviour, scroll memory, model lifecycle                                                      |
+| [state-and-storage.md](state-and-storage.md)                         | draft     | Nanostores, persisted schema, `localStorage`, IndexedDB, multi-tab                                                       |
+| [data-ingestion.md](data-ingestion.md)                               | target    | CSV upload/parsing, column statistics, IndexedDB dataset storage                                                         |
+| [preview-dataset.md](preview-dataset.md)                             | target    | Dataset preview table after upload                                                                                       |
+| [machine-learning-orchestrator.md](machine-learning-orchestrator.md) | stub      | Calling the `web-ml` library or training workers                                                                         |
+| [content-and-i18n.md](content-and-i18n.md)                           | target    | Markdown content pipeline, localisation                                                                                  |
+| [testing.md](testing.md)                                             | partial   | Writing or running tests                                                                                                 |
+| [standards-and-documentation.md](standards-and-documentation.md)     | partial   | Any exported TypeScript (TSDoc rules)                                                                                    |
 
 ### Component specs (`components/`)
 
@@ -49,7 +50,7 @@ Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only wh
 
 ### Other directories
 
-- [`mockups/`](mockups/) — static HTML/CSS wireframes referenced by `workflow-steps.md`. Served by `bun run serve:scaffold`. Reference only; don't edit unless a plan says to.
+- [`mockups/`](mockups/) — static HTML/CSS wireframes, normative for appearance (see [visual-design.md](visual-design.md)); not for markup or behaviour. Served by `bun run serve:scaffold`. Reference only; don't edit unless a plan says to.
 - [`plans/`](plans/README.md) — implementation plans. Only files that follow the planning template go here.
 
 ## Known gaps
@@ -67,4 +68,5 @@ Known conflicts between specs, and between specs and code, as of 2026-11-12. A p
 9. **Column type vocabularies** differ across specs; see the table in [state-and-storage.md §10](state-and-storage.md).
 10. **Product name.** VISION and `wrangler.jsonc` say `web-ml-app`; the repository and UI say `samata-ml`/`samatā.ml`.
 11. **`npx` vs Bun.** The vendored `modern-web-guidance` skill runs `npx`; this repo uses Bun only, so run its commands with `bunx`.
-12. **Legacy code and baseline failures.** `src/views/` and `src/partials/` import Mithril, which is not installed (20 `bun run typecheck` errors). `bun run build` fails because `src/models/storage/storageWorker.ts` does not exist. One scaffold-server test fails (`--font-sans` expected in the mockup CSS).
+12. **Build failure.** `bun run build` fails because `src/models/storage/storageWorker.ts` does not exist.
+13. **Mockups versus WCAG and the Lit scaffold.** The mockups contain contrast and semantic failures (registers A11Y and SEM in [mockup-visual-fidelity](plans/mockup-visual-fidelity.md)). The scaffold's shell components use invented tokens with literal fallbacks and do not match the mockups. These are remediated by the follow-up plan `scaffolding-visual-remediation` (not yet written).
