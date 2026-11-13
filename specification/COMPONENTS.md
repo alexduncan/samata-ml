@@ -114,11 +114,11 @@ The public API of a block is everything its spec lists under **Public API**: tag
 
 Styling crosses shadow boundaries in exactly two sanctioned ways.
 
-**6.1 Tokens.** `src/styles/tokens.css` defines custom properties on `:root` and is loaded once by `index.html`. Custom properties inherit into shadow roots, so every component sees them without imports. Components MUST use tokens for colour, and MUST NOT use literal colours (`#fff`, `white`, `rgb()`).
+**6.1 Tokens.** `css/root.css`, loaded by `/style.css`, is the only token file. The token vocabulary is closed; adding a token requires a plan decision and an entry in [visual-design.md](visual-design.md). Custom properties inherit into shadow roots, so every component sees them without imports. Components MUST use tokens for colour, and MUST NOT use literal colours (`#hex`, `white`, `rgb()`, `hsl()`), including inside `var()` fallbacks. Fallbacks on global tokens are forbidden.
 
 **6.2 Shared style modules.** Rules that must apply both in the document and inside shadow roots (e.g. style primitives) live in `src/styles/<name>.styles.ts` and export a Lit `CSSResult`. That single export is the only source of the rules:
 
-- Components include it in `static styles = [buttonStyles, css\`…\`]`.
+- Components include it in `static styles = [buttonStyles, css`…`];`.
 - `src/styles/global.ts` adopts the same sheets into the document:
     ```ts
     document.adoptedStyleSheets = [
@@ -137,6 +137,8 @@ Styling crosses shadow boundaries in exactly two sanctioned ways.
 - Every focusable thing has a `:focus-visible` style using `outline` (not `box-shadow`, which disappears in forced-colours mode), at least 2px, colour from a token.
 - Form controls set `font-family: inherit` (browsers do not inherit fonts into controls).
 - CSS parts and component-level custom properties are public API (§3) and exist only when a spec lists them.
+
+**6.4 Matching the mockups.** The mockups in `specification/mockups/ui-scaffold/` define how every user-visible surface looks. Follow [visual-design.md](visual-design.md): use only tokens from `css/root.css` with no fallbacks, record every visual deviation in the A11Y or SEM registers, and run the parity and token tests for any UI change.
 
 ## 7. Accessibility (WCAG 2.2 AA)
 
@@ -184,6 +186,8 @@ Styling crosses shadow boundaries in exactly two sanctioned ways.
 
 - [ ] Only the spec's public API exists (§3).
 - [ ] Every acceptance criterion has a passing test named with its ID.
+- [ ] Computed styles match the mapped mockup (parity test), deviations cited by register ID.
+- [ ] No unknown tokens or literal fallbacks (token guard).
 - [ ] All stories pass axe with zero violations.
 - [ ] Manual a11y checks in the spec done and noted in the PR.
 - [ ] No string literals, no literal colours, no physical-direction CSS.
@@ -198,7 +202,7 @@ Each spec in `specification/components/` uses these sections, in this order:
 2. **Decision and rationale**: why this tier and shape; rejected alternatives.
 3. **Public API (closed)**: exhaustive.
 4. **Usage**: canonical code examples and usage rules.
-5. **Visual specification**: tokens, states, normative CSS if it is a style primitive.
+5. **Visual specification**: mockup page(s) and selectors, tokens, states, normative CSS if it is a style primitive, and 'Changes from the mockup CSS' with register IDs.
 6. **Accessibility**: requirements beyond §7, plus manual checks.
 7. **Internationalisation**: strings owned, layout constraints.
 8. **Acceptance criteria**: numbered, testable, with IDs.

@@ -113,3 +113,9 @@
 	/* Deep Shadow */
 	--shadow-deep: 0 0 0.25rem rgb(30 25 22 / 0.25), 0 1rem 2rem rgb(30 25 22 / 0.3);
 }
+
+/* App additions (specification/visual-design.md §2) */
+:root {
+	--surface: #fff;
+	--focus-ring: var(--blue-700);
+}

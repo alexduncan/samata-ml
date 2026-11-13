@@ -19,13 +19,15 @@ Bun only: never npm, yarn, pnpm or `npx` (use `bunx`, including for commands in 
 - `bun run plans:check [plan.md]` — validate plan structure.
 - `bun run build` · `bun run server` (https://localhost:3000) · `bun run serve:scaffold` (mockups).
 
-**Baseline failures:** `bun run check` already fails (20 type errors, mostly from the pre-Lit Mithril views in `src/views/` and `src/partials/`, plus 1 failing test in `tests/serve-ui-scaffold.test.ts`), and `bun run build` fails (missing `src/models/storage/storageWorker.ts`). Don't fix these unless your task says to. Do not add new failures, and report the before/after counts.
+**Baseline:** `bun run check` passes (0 type errors, 48 tests); `bun run build` passes (emits production bundle in `dist/`). Do not add new failures, and report the before/after counts.
 
 ## Map
 
-`src/` app code · `css/` styles · `content/` Markdown pages · `public/` static assets · `scripts/` build and dev servers · `tests/` tests · `specification/` specs (index: [`specification/README.md`](specification/README.md)) · `specification/plans/` plans · `specification/mockups/` wireframes
+`src/` app code · `css/` styles · `content/` Markdown pages · `public/` static assets · `scripts/` build and dev servers · `tests/` tests · `specification/` specs (index: [`specification/README.md`](specification/README.md)) · `specification/plans/` plans · `specification/mockups/` wireframes, normative for appearance
 
 ## Rules
+
+- **Visual fidelity:** The mockups in `specification/mockups/ui-scaffold/` define how the app looks; markup may differ. Follow [`visual-design.md`](specification/visual-design.md): use only tokens from `css/root.css`, with no fallbacks; record every visual deviation; run the parity and token tests for any UI change.
 
 - **Specs:** pick specs from the index's "Read when" column. Specs marked `target` describe intended design, not current code. Check the index's _Known gaps_ first. If you find a new conflict, record it in the plan's Risks section; never silently pick a side.
 - **Don't edit** `node_modules/`, `../web-ml`, `specification/mockups/`, vendored skills (`.agents/skills/modern-web-guidance/`), or `bun.lock` except through `bun add`/`bun remove` when a plan allows it.

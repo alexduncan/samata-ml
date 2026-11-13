@@ -71,15 +71,15 @@ Usage rules:
 
 ### 5.1 Tokens used
 
-All from `tokens.css`: `--stone-50`, `--stone-200`, `--stone-300`, `--stone-400`,
-`--stone-600`, `--stone-700`, `--blue-100`, `--blue-700`, plus the tokens named in
+All from `css/root.css`: `--stone-50`, `--stone-200`, `--stone-300`, `--stone-400`,
+`--stone-700` (default text colour, A11Y-01), `--blue-100`, `--blue-700`, plus the tokens named in
 Open questions Q1 to Q3 once decided.
 
 ### 5.2 States
 
 | State                | Default                                                         | Primary                                         |
 | -------------------- | --------------------------------------------------------------- | ----------------------------------------------- |
-| Rest                 | text stone-600, border stone-300, bg stone-50                   | text blue-700, border blue-700, bg surface (Q1) |
+| Rest                 | text stone-700 (A11Y-01), border stone-300, bg stone-50         | text blue-700, border blue-700, bg surface (Q1) |
 | Hover (enabled only) | text stone-700, border stone-400, bg stone-200                  | bg blue-100                                     |
 | Focus-visible        | 2px outline, focus-ring token (Q2), 2px offset                  | same                                            |
 | Disabled             | provisional values (Q3); no hover change; `cursor: not-allowed` | same                                            |
@@ -96,7 +96,7 @@ This is the implementation. Values marked `/* Qn */` wait on Open questions.
 	border-block-end-width: 3px;
 	background-color: var(--stone-50);
 	padding: 0.5rem;
-	color: var(--stone-600);
+	color: var(--stone-700); /* A11Y-01 */
 	font-weight: 500;
 	font-size: 1rem;
 	font-family: inherit;
@@ -151,7 +151,7 @@ Beyond conventions §7:
 
 - Accessible name is the button's text content. Icon-only buttons are out of scope.
 - These colour pairs MUST meet 4.5:1, verified against the actual token values:
-  stone-600 on stone-50; stone-700 on stone-200; blue-700 on surface; blue-700 on blue-100.
+  stone-700 on stone-50 (5.88:1, A11Y-01); stone-700 on stone-200; blue-700 on surface; blue-700 on blue-100.
 - The focus ring MUST be at least 3:1 against the page background(s) it appears on.
 - Disabled buttons are exempt from contrast requirements but MUST remain legible.
 

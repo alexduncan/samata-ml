@@ -27,10 +27,17 @@ export default defineConfig({
 			use: { ...devices['Desktop Safari'] }
 		}
 	],
-	webServer: {
-		command: 'bun run server',
-		url: 'https://localhost:3000',
-		ignoreHTTPSErrors: true,
-		reuseExistingServer: !process.env.CI
-	}
+	webServer: [
+		{
+			command: 'bun run server',
+			url: 'https://localhost:3000',
+			ignoreHTTPSErrors: true,
+			reuseExistingServer: !process.env.CI
+		},
+		{
+			command: 'bun run serve:scaffold --port 3333',
+			url: 'http://localhost:3333',
+			reuseExistingServer: !process.env.CI
+		}
+	]
 });
