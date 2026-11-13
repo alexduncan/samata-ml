@@ -17,7 +17,17 @@ Bun only: never npm, yarn, pnpm or `npx` (use `bunx`, including for commands in 
 - `bun test <path>` — one test file.
 - `bun run format <files>` — Prettier on the files you changed.
 - `bun run plans:check [plan.md]` — validate plan structure and that spec status lines match the spec index.
+- `bun run plans:task <plan.md> [--task Tn | --check-complete]` — implementation task gate.
+- `bun run --silent now` — current UTC timestamp for plan metadata.
+- `bun run test:e2e [file]` — Playwright end-to-end tests.
 - `bun run build` · `bun run server` (https://localhost:3000) · `bun run serve:scaffold` (mockups).
+
+**Shell use (avoids permission prompts in every agent tool).** Agent tools pre-approve `bun` and `bunx` commands and plain read-only commands, and they match whole commands. So:
+
+- Run one command per call, from the repository root. No `cd`, no `&&`, `;` or `||` chains, no pipes (`| tail`, `| head`), no `$(…)`, variable assignments, heredocs or shell loops.
+- Run repository scripts through `bun run <script>`, never `python3 …` or `bun -e …` directly. If you need a script that doesn't exist, say so rather than improvising one inline.
+- Read and search with your file tools, or with a single read-only command (`ls`, `cat`, `sed -n`, `rg`, `grep`, `git status`, `git diff`, `git log`).
+- Change files with your edit tool, never with `sed -i`, `cat > file`, `tee` or scripts.
 
 **Baseline:** `bun run check` passes (0 type errors, 52 tests); `bun run build` passes (emits production bundle in `dist/`). Do not add new failures, and report the before/after counts.
 

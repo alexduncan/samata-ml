@@ -22,10 +22,10 @@ Implement the **approved plan**, not a new design. Be economical with context: i
 3. **Preflight.** Run, from repository root, if available:
 
     ```sh
-    python3 .agents/skills/implementation/scripts/task_gate.py specification/plans/<name>.md --task T1
+    bun run plans:task specification/plans/<name>.md --task T1
     ```
 
-    Omit `--task` for automatic next-task selection. If Python is unavailable, check manually. This script validates _recorded_ status, task IDs, dependencies and progress, not actual code correctness. Do not ignore a failed gate.
+    Omit `--task` for automatic next-task selection. If the command fails to start (e.g. no Python), check manually. This script validates _recorded_ status, task IDs, dependencies and progress, not actual code correctness. Do not ignore a failed gate.
 
 4. **Orient narrowly.** Read the plan's Goal, Scope, `## Required reading`, Codebase context, Technical decisions and Risks, then the selected task's fields. Read the specifications listed under _Required reading_ and nothing else from `specification/`. If those are not enough to proceed, that is a blocker: record it rather than reading widely. For UI tasks, open the mockup pages named under Visual reference next to the app before you code. If the reference is a draft, build its structure and copy with existing styles only ([visual-design §1.1](../../../specification/visual-design.md#11-draft-mockups)). If a UI task has neither a mockup nor a draft, write the draft first under the same rules, log it, and carry on. For web-platform features, retrieve only the guide IDs the plan lists. If the task touches Lit components, reactive controllers, store bindings, component styles or component tests (the plan's _Codebase context_ names these tasks), follow the `lit-implementer` skill as well. Inspect the task's likely files; check for blocking conflicts or overlapping worktree changes. Do not guess unknown contracts.
 5. **Implement minimally.** Change only the files necessary for the task, including specified tests and directly related integration fixes. Never edit anything listed under the task's **Must not touch**. Reuse current project patterns. Avoid unrelated refactors and do not start another task by default. Run `bun run format <changed files>` on the files you touched.
@@ -48,7 +48,7 @@ Preserve the original H1, task IDs, design decisions and metadata format:
 - After **every attempted task**, append an honest, concise entry to `## Implementation and verification log`: UTC time, task, changed files, actual checks/results, any blocker and next action. Keep past entries and redact secrets.
 - Touch only your task's block, your new log row and the `**Updated:**` line. Other agents may be editing other tasks of the same plan, so don't reformat, reorder or rewrite anything else.
 - If the user has authorised commits, make one commit per task with the message `<plan-slug> Tn: <summary>`, so the planner can review a single diff.
-- Refresh the plan's `**Updated:**` timestamp at write time using `date -u '+%Y-%m-%dT%H:%M:%SZ'` or equivalent. Keep overall status `ready` during partial implementation; **no** `in-progress` or `blocked` status exists.
+- Refresh the plan's `**Updated:**` timestamp at write time with `bun run --silent now`. Keep overall status `ready` during partial implementation; **no** `in-progress` or `blocked` status exists.
 - Change `specification/` (other than the plan) only in the `Sync specification` task. Two exceptions: keep `specification/HUMAN.md` current, and write draft mockups in `specification/mockups/ui-scaffold/drafts/`. Only update `specification/plans/README.md` when plan status changes. Don't change approved decisions; a substantive change requires planning review and reapproval (`draft`).
 
 ## Stop and escalate
@@ -73,7 +73,7 @@ A plan is not implemented until `specification/` describes what was built. The p
 Only after **every task**, including `Sync specification`, is verified: perform all `## Verification and definition of done` checks and log evidence. Run if available:
 
 ```sh
-python3 .agents/skills/implementation/scripts/task_gate.py specification/plans/<name>.md --check-complete
+bun run plans:task specification/plans/<name>.md --check-complete
 bun run plans:check specification/plans/<name>.md
 ```
 

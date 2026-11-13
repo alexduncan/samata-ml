@@ -20,5 +20,6 @@
 		"**/.bun": true,
 		"**/dist": true,
 		"**/bun.lock": true
-	}
+	},
+	"antigravity.agent.terminal.allowedCommands": ["bun", "bunx"]
 }
