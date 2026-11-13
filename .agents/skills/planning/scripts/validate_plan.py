@@ -35,7 +35,7 @@ TASK_FIELDS = (
     "Verification",
     "Progress",
 )
-METADATA = re.compile(r"^\*\*Status:\*\* (draft|ready|implemented) \| \*\*Updated:\*\* (\S+)$")
+METADATA = re.compile(r"^\*\*Status:\*\* (draft|ready|implemented|stub) \| \*\*Updated:\*\* (\S+)$")
 TASK_HEADING = re.compile(r"^### (T\d+) [—-] .+$", re.MULTILINE)
 # Template placeholders such as <Concise plan title>, <path>, <exact/path>. Lower-case HTML/custom
 # element names such as <dialog> or <ui-table> are not matched unless listed here.
@@ -64,7 +64,7 @@ def validate(path: Path) -> list[str]:
     # Status line follows the H1; Prettier inserts a blank line between them.
     status_line = next((l for l in lines[1:3] if l.strip()), "")
     if not (match := METADATA.fullmatch(status_line)):
-        errors.append("Line after the H1 must be '**Status:** draft|ready|implemented | **Updated:** ISO-8601-UTC'.")
+        errors.append("Line after the H1 must be '**Status:** draft|ready|implemented|stub | **Updated:** ISO-8601-UTC'.")
     else:
         status, timestamp = match.groups()
         try:
@@ -73,6 +73,16 @@ def validate(path: Path) -> list[str]:
                 errors.append("Updated timestamp must specify UTC (Z or +00:00).")
         except ValueError:
             errors.append(f"Updated timestamp is invalid: {timestamp}")
+
+    if status == "stub":
+        index = path.parent / "README.md"
+        if index.is_file():
+            row = next((l for l in index.read_text(encoding="utf-8").splitlines() if f"({path.name})" in l), None)
+            if row is None:
+                errors.append(f"Plan is not listed in {index}.")
+            elif not re.search(r"\bstub\b", row):
+                errors.append(f"Status in {index} does not match plan status 'stub'.")
+        return errors
 
     found = set(re.findall(r"^## (.+?)\s*$", text, re.MULTILINE))
     for section in REQUIRED_SECTIONS:

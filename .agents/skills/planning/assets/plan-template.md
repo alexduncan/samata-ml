@@ -37,6 +37,7 @@ Facts the planner verified, so the implementer need not re-check them.
 - **Relevant implementation:** `<path>` — <current responsibility>
 - **Tests and commands:** `<path>` / `<command>` — <what they validate; baseline result before this plan>
 - **Web guidance:** None / `<guide-id>` — <decision taken from it>
+- **Visual reference:** None / `<mockup page>` — `<css file>` `<selectors>`; deviations: <register IDs or none>
 - **Lit skills:** None / implementers use `lit-implementer` for <task IDs>
 - **Known gaps decided:** None / <gap number from specification/README.md and the decision>
 - **Assumptions requiring verification:** None / <clearly identified assumption>
@@ -82,6 +83,7 @@ Facts the planner verified, so the implementer need not re-check them.
 
 - [ ] All task acceptance criteria met.
 - [ ] `bun run check` introduces no new failures compared with the baseline recorded above.
+- [ ] Parity and token tests pass for UI changes.
 - [ ] Accessibility, privacy/security and backward-compatibility checks completed where applicable.
 - [ ] Specifications, the _Known gaps_ list and documentation updated to reflect the final behaviour.
 - [ ] No unintended changes outside the tasks' likely files.
