@@ -1,5 +1,5 @@
 import { StoreController } from '@nanostores/lit';
-import { css, html, LitElement } from 'lit';
+import { css, html, LitElement, nothing } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { $route } from '../../router/router';
 import { $appState } from '../../stores/app.store';
@@ -124,8 +124,7 @@ export class AppSidebar extends LitElement {
 			font-size: var(--text-xs, 0.75rem);
 		}
 
-		li.step[aria-current='step'] .step-num,
-		li.step a[aria-current='page'] .step-num {
+		li.step > a[aria-current] .step-num {
 			background-color: var(--color-primary, #0284c7);
 			color: #ffffff;
 		}
@@ -218,10 +217,8 @@ export class AppSidebar extends LitElement {
 			<nav class="steps" aria-label="Workflow">
 				<ol class="steps-list">
 					<!-- Step 1: Load Data -->
-					<li class="step" ?aria-current=${isStep1 ? 'step' : undefined}>
-						<a
-							href="/data"
-							?aria-current=${currentPath === '/data' ? 'page' : undefined}>
+					<li class="step">
+						<a href="/data" aria-current=${currentPath === '/data' ? 'page' : nothing}>
 							<span class="step-num">1</span>
 							<span class="step-label">Load Data</span>
 						</a>
@@ -234,10 +231,10 @@ export class AppSidebar extends LitElement {
 					</li>
 
 					<!-- Step 2: Set Target -->
-					<li class="step" ?aria-current=${isStep2 ? 'step' : undefined}>
+					<li class="step">
 						<a
 							href="/target"
-							?aria-current=${currentPath === '/target' ? 'page' : undefined}>
+							aria-current=${currentPath === '/target' ? 'page' : nothing}>
 							<span class="step-num">2</span>
 							<span class="step-label">Set Target</span>
 						</a>
@@ -247,14 +244,14 @@ export class AppSidebar extends LitElement {
 					</li>
 
 					<!-- Step 3: Train Models -->
-					<li class="step" ?aria-current=${isStep3 ? 'step' : undefined}>
+					<li class="step">
 						<a
 							href="/models"
-							?aria-current=${currentPath === '/models'
+							aria-current=${currentPath === '/models'
 								? 'page'
 								: isStep3
 									? 'true'
-									: undefined}>
+									: nothing}>
 							<span class="step-num">3</span>
 							<span class="step-label">Train Models</span>
 						</a>
@@ -266,10 +263,10 @@ export class AppSidebar extends LitElement {
 												<li>
 													<a
 														href="/models/${m.num}"
-														?aria-current=${currentPath ===
+														aria-current=${currentPath ===
 														`/models/${m.num}`
 															? 'page'
-															: undefined}>
+															: nothing}>
 														Model
 														${m.num}${m.status === 'trained'
 															? ' ✓'
@@ -284,10 +281,10 @@ export class AppSidebar extends LitElement {
 					</li>
 
 					<!-- Step 4: Compare Results -->
-					<li class="step" ?aria-current=${isStep4 ? 'step' : undefined}>
+					<li class="step">
 						<a
 							href="/results"
-							?aria-current=${currentPath === '/results' ? 'page' : undefined}>
+							aria-current=${currentPath === '/results' ? 'page' : nothing}>
 							<span class="step-num">4</span>
 							<span class="step-label">Compare Results</span>
 						</a>

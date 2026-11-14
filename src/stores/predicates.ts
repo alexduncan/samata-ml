@@ -40,6 +40,7 @@ export type BlockedReason =
 /**
  * Pure evaluation of the blocked reason for a specific route and application state.
  * Returns null if the route can render its primary content.
+ * Follows specification/app-state-and-navigation.md §4.3 and D5.
  *
  * @param route - Normalized path (e.g. '/data', '/target', '/models', '/models/1', '/results').
  * @param state - Current persisted application state.
@@ -66,25 +67,17 @@ export function blockedReason(route: string, state: PersistedAppState): BlockedR
 		return null;
 	}
 
-	// 4. /models/{num}
+	// 4. /models/{num}: null if model exists, else MODEL_NOT_FOUND per D5
 	const modelMatch = route.match(/^\/models\/(\d+)$/);
 	if (modelMatch && modelMatch[1]) {
 		const num = Number.parseInt(modelMatch[1], 10);
 		const modelExists = state.models.some((m) => m.num === num);
-		if (modelExists) {
-			return null;
-		}
-		if (!hasDataset) return 'DATASET_REQUIRED';
-		if (!hasTarget) return 'TARGET_REQUIRED';
-		return 'MODEL_NOT_FOUND';
+		return modelExists ? null : 'MODEL_NOT_FOUND';
 	}
 
-	// 5. /results requires dataset, target, and at least two trained models
+	// 5. /results: TWO_TRAINED_MODELS_REQUIRED unless at least two models are trained per D5
 	if (route === '/results') {
-		if (!hasDataset) return 'DATASET_REQUIRED';
-		if (!hasTarget) return 'TARGET_REQUIRED';
-		if (trainedCount < 2) return 'TWO_TRAINED_MODELS_REQUIRED';
-		return null;
+		return trainedCount >= 2 ? null : 'TWO_TRAINED_MODELS_REQUIRED';
 	}
 
 	return null;

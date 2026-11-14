@@ -20,7 +20,7 @@ Bun only: never npm, yarn, pnpm or `npx` (use `bunx`, including for commands in 
 - `bun run plans:task <plan.md> [--task Tn | --check-complete]` — implementation task gate.
 - `bun run --silent now` — current UTC timestamp for plan metadata.
 - `bun run test:e2e [file]` — Playwright end-to-end tests.
-- `bun run build` · `bun run server` (https://localhost:3000) · `bun run serve:scaffold` (mockups).
+- `bun run build` · `bun run server` (https://localhost:3000) · `bun run serve:mockups` (mockup review) · `bun run audit:mockups [paths]` (requires the review server). `bun run serve:scaffold` remains a deprecated alias.
 
 **Shell use (avoids permission prompts in every agent tool).** Agent tools pre-approve `bun` and `bunx` commands and plain read-only commands, and they match whole commands. So:
 
@@ -29,7 +29,16 @@ Bun only: never npm, yarn, pnpm or `npx` (use `bunx`, including for commands in 
 - Read and search with your file tools, or with a single read-only command (`ls`, `cat`, `sed -n`, `rg`, `grep`, `git status`, `git diff`, `git log`).
 - Change files with your edit tool, never with `sed -i`, `cat > file`, `tee` or scripts.
 
-**Baseline:** `bun run check` passes (0 type errors, 52 tests); `bun run build` passes (emits production bundle in `dist/`). Do not add new failures, and report the before/after counts.
+**Command whitelist & auto-approval:** An active lifecycle hook (`.agents/hooks.json` calling `.agents/scripts/whitelist-check.ts`) and IDE permissions (`.claude/settings.json`) auto-approve repository commands matching safe patterns:
+
+- Bun lifecycle: `bun run check`, `bun run build`, `bun run server`, `bun run serve:mockups`, deprecated `bun run serve:scaffold`, `bun run audit:mockups`, `bun run format`, `bun run format:check`, `bun run plans:check`, `bun run plans:task`, `bun run --silent now`.
+- Bun test and package commands: `bun test [path]`, `bun install`, `bun add`, `bun remove`.
+- Bunx CLI tools: `bunx playwright test [path]`, `bunx prettier`, `bunx tsc`.
+- Read-only tools: `git status|diff|log|branch|rev-parse|show`, `ls`, `cat`, `grep`, `rg`, `find`, `wc`, `head`, `tail`, `sed -n`, `file`, `date`.
+- Note cleanup: `rm specification/notes/<file>.md` (when syncing specifications).
+  Any command with shell chaining (`&&`, `;`, `||`), redirection (`>`, `>>`), substitution (`$(...)`, `` ` ``), or unrecognised binaries falls back to prompting the user.
+
+**Baseline:** `bun run check` passes (0 type errors, 199 tests across 25 files); `bun run build` passes (emits production bundle in `dist/`). Do not add new failures, and report the before/after counts.
 
 ## Map
 

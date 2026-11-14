@@ -1,6 +1,6 @@
 # Step 3: Models overview and setup
 
-**Status:** draft | **Updated:** 2026-11-13T22:14:44Z
+**Status:** ready | **Updated:** 2026-11-13T22:14:44Z
 
 ## Goal
 

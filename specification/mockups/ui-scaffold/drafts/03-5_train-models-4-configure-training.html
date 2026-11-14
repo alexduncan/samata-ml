@@ -1,0 +1,225 @@
+<!doctype html>
+<!-- DRAFT: structure only, not normative for appearance. Source: plans/web-ml-classification-integration.md, interfaces and behaviour B–G. Open questions: plan approval. -->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="stylesheet" href="../style.css" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>samatā.ml | Train Models</title>
+	</head>
+	<body>
+		<svg style="display: none" aria-hidden="true" focusable="false">
+			<symbol
+				id="settings"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<path
+					d="M12 21.5c2 0 .8-2.3 2.7-3 1.8-.8 2.6 1.6 4 .2s-1-2.2-.2-4c.7-1.9 3-.7 3-2.7s-2.3-.8-3-2.7c-.8-1.8 1.6-2.6.2-4s-2.2 1-4 .2c-1.9-.7-.7-3-2.7-3s-.8 2.3-2.7 3c-1.8.8-2.6-1.6-4-.2s1 2.2.2 4c-.7 1.9-3 .7-3 2.7s2.3.8 3 2.7c.8 1.8-1.6 2.6-.2 4s2.2-1 4-.3c1.9.8.7 3.1 2.7 3.1Z" />
+				<circle cx="12" cy="12" r="3.5" />
+			</symbol>
+
+			<symbol
+				id="close"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<line x1="18" y1="6" x2="6" y2="18" />
+				<line x1="6" y1="6" x2="18" y2="18" />
+			</symbol>
+
+			<symbol id="check" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m5.73 5.29a1 1 0 0 0-1.41 0L10 14.6l-2.31-2.32a1 1 0 1 0-1.42 1.42l3.02 3.02a1 1 0 0 0 1.42 0l7.02-7.03a1 1 0 0 0 0-1.41" />
+			</symbol>
+
+			<symbol id="question" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m0 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2m0-10.2A3 3 0 0 0 8.8 9a.8.8 0 0 0 1.4 0q.2-1.6 1.8-1.7T13.8 9q0 .6-.8 1.5l-.3.3-1 1.2a4 4 0 0 0-.4 2 .7.7 0 1 0 1.4 0q0-1.2 1.1-2.2l.3-.3q1.2-1.2 1.2-2.5c0-2-1.4-3.2-3.3-3.2" />
+			</symbol>
+		</svg>
+
+		<div class="sidebar">
+			<h1>samat&amacr;.ml</h1>
+			<p class="tagline">Machine Learning in Your Browser</p>
+			<section class="project">
+				<h4>Project</h4>
+				<span class="project-name">New Project</span>
+				<button class="btn-icon project-settings" aria-label="Project settings">
+					<svg class="icon" aria-hidden="true" focusable="false">
+						<use href="#settings"></use>
+					</svg>
+				</button>
+			</section>
+			<nav class="workflow" aria-label="Workflow">
+				<ol class="steps">
+					<li class="step">
+						<a href="/load-data" class="step-link">
+							<span class="step-num">1</span>
+							<span class="step-label-small">Dataset</span>
+							<span class="step-value">{Dataset Name}</span>
+							<span class="step-chiclets">
+								<span class="chiclet">999 rows</span>
+								<span class="chiclet">999 columns</span>
+							</span>
+						</a>
+					</li>
+					<li class="step">
+						<a href="/select-target" class="step-link">
+							<span class="step-num">2</span>
+							<span class="step-label-small">Target</span>
+							<span class="step-value">{Target Variable Column Name}</span>
+							<span class="step-chiclets">
+								<span class="chiclet">Categorical</span>
+							</span>
+						</a>
+					</li>
+					<li class="step">
+						<div class="step-link">
+							<span class="step-num">3</span>
+							<span class="step-label-small">Models</span>
+							<ul class="step-models">
+								<li class="step-model">
+									<div class="step-model-link" aria-current="step">
+										Training New Model...
+									</div>
+								</li>
+							</ul>
+						</div>
+					</li>
+					<li class="step">
+						<a href="/compare-results" class="step-link">
+							<span class="step-num">4</span>
+							<span class="step-label">Compare Results</span>
+						</a>
+					</li>
+				</ol>
+			</nav>
+			<footer>
+				<a href="/about">about</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/privacy">privacy</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/help">help</a>
+			</footer>
+		</div>
+
+		<main>
+			<header class="page-header">
+				<h1>Train Models</h1>
+				<p>Choose a model to predict your target variable.</p>
+			</header>
+
+			<section>
+				<h2>4. Configure Training</h2>
+				<p>Palmer Penguins · Target: species</p>
+				<form aria-labelledby="training-setup-heading">
+					<h3 id="training-setup-heading">Holdout evaluation</h3>
+					<p>
+						Manual training fits the development data and evaluates once on held-out
+						test data.
+					</p>
+					<p>
+						Random Search fits training data and chooses parameters on validation data,
+						then refits on development data before evaluating on the test data.
+					</p>
+					<label for="test-ratio">Test fraction</label
+					><input
+						id="test-ratio"
+						name="testRatio"
+						type="number"
+						min="0"
+						max="1"
+						step="any"
+						value="0.2" />
+					<label for="validation-ratio">Validation fraction (Random Search only)</label
+					><input
+						id="validation-ratio"
+						name="validationRatio"
+						type="number"
+						min="0"
+						max="1"
+						step="any"
+						value="0.2" />
+					<p>
+						The validation fraction is measured against all eligible rows, not only the
+						development rows.
+					</p>
+					<label for="split-seed">Split seed</label
+					><input
+						id="split-seed"
+						name="randomState"
+						type="number"
+						min="0"
+						max="4294967295"
+						step="1"
+						value="42" />
+					<label for="numeric-missing">Missing numeric values</label
+					><select id="numeric-missing" name="numericMissing">
+						<option>Use the fitting-data mean</option>
+						<option>Reject missing values</option>
+					</select>
+					<label for="categorical-missing">Missing categorical values</label
+					><select id="categorical-missing" name="categoricalMissing">
+						<option>Use a separate missing category</option>
+						<option>Reject missing values</option>
+					</select>
+					<p>
+						Categorical features use categories learned from fitting data. Unknown
+						held-out categories encode as all-zero. Numeric features are not scaled.
+					</p>
+					<button class="btn btn-primary" type="button">Train Model</button>
+				</form>
+			</section>
+			<section>
+				<h2>Preparation summary — example</h2>
+				<p>
+					Palmer Penguins: 344 eligible rows, 0 excluded missing-target rows. Four
+					selected numeric features.
+				</p>
+				<p>
+					Counts are stratified and rounded per class. The confirmed counts are shown
+					after preparation.
+				</p>
+				<p>
+					Manual: development and test. Random Search: training, validation and test,
+					followed by a development refit.
+				</p>
+			</section>
+			<section>
+				<h2>Blocked setup</h2>
+				<p role="alert">The test and validation fractions must add up to less than 1.</p>
+				<button class="btn" type="button" disabled>Train Model</button>
+			</section>
+			<section>
+				<h2>Dataset too small</h2>
+				<p role="alert">
+					Every class needs at least three labelled rows for the stratified split. Add
+					data or choose another target.
+				</p>
+			</section>
+			<section>
+				<h2>Browser unavailable</h2>
+				<p role="alert">
+					Training requires a secure, cross-origin isolated page and browser support for
+					workers and Web Locks. Reload the correctly configured site.
+				</p>
+			</section>
+			<section>
+				<h2>Training in another tab</h2>
+				<p>Another tab is training this model. Its configuration is read-only.</p>
+			</section>
+			<section>
+				<h2>Preparing summary</h2>
+				<progress aria-label="Preparing dataset summary"></progress>
+				<p>Checking rows, class counts and transformed feature width…</p>
+			</section>
+		</main>
+	</body>
+</html>

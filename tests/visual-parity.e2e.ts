@@ -17,14 +17,89 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 				);
 			}
 
-			// Open mockup page on scaffold server (http://localhost:3333)
+			// Open the unmodified mockup document on the review server.
 			const mockupPage = await context.newPage();
-			await mockupPage.goto(`http://localhost:3333/${entry.mockupPage}`);
+			await mockupPage.goto(
+				`http://localhost:3333/files/ui-scaffold/${encodeURIComponent(entry.mockupPage)}?clean=1`
+			);
 			const mockupEl = mockupPage.locator(entry.mockupSelector).first();
 			await mockupEl.waitFor({ state: 'attached', timeout: 5000 });
 
 			// Open app route on app server (https://localhost:3000) with fresh state
 			await page.goto(entry.appRoute);
+			if (entry.id.startsWith('preview-')) {
+				const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
+				try {
+					await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
+					await getStartedBtn.click();
+				} catch {
+					// Already dismissed
+				}
+				const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
+				await irisCard.waitFor({ state: 'visible', timeout: 5000 });
+				await irisCard.locator('button.btn-primary').click();
+				await page
+					.locator('app-dataset-preview')
+					.waitFor({ state: 'attached', timeout: 5000 });
+				if (entry.id.includes('aside')) {
+					await page.locator('app-dataset-preview .header-btn').first().click();
+					await page
+						.locator('app-column-details aside.overlay')
+						.waitFor({ state: 'attached', timeout: 5000 });
+				}
+			}
+			if (entry.id.startsWith('target-')) {
+				await page.goto('/data');
+				const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
+				try {
+					await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
+					await getStartedBtn.click();
+				} catch {
+					// Already dismissed
+				}
+				const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
+				await irisCard.waitFor({ state: 'visible', timeout: 5000 });
+				await irisCard.locator('button.btn-primary').click();
+				await page
+					.locator('app-dataset-preview')
+					.waitFor({ state: 'attached', timeout: 5000 });
+				await page.goto('/target');
+				await page
+					.locator('app-target-view [data-testid="target-ready"]')
+					.waitFor({ state: 'visible', timeout: 5000 });
+				if (entry.id.includes('alert')) {
+					await page.evaluate(() => {
+						const s = window.__appState!.get();
+						window.__appState!.set({
+							...s,
+							models: [
+								{
+									num: 1,
+									createdAt: Date.now(),
+									status: 'draft',
+									completedSteps: [],
+									modelId: null,
+									features: ['sepal width'],
+									modelOptions: {},
+									hyperparameters: { mode: 'manual', values: {} },
+									multiclass: null,
+									trainingSetup: null,
+									progress: null,
+									error: null,
+									timings: null,
+									durationMs: null,
+									metrics: null,
+									ui: {}
+								}
+							]
+						});
+					});
+					await page
+						.locator('app-target-view .notification.notification-alert')
+						.first()
+						.waitFor({ state: 'visible', timeout: 5000 });
+				}
+			}
 			const appEl = page.locator(entry.appSelector).first();
 			await appEl.waitFor({ state: 'attached', timeout: 5000 });
 

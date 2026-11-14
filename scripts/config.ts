@@ -10,7 +10,10 @@ export const CSS_DIR = path.join(ROOT_DIR, 'css');
 export const DEV_DIR = path.join(ROOT_DIR, 'dev');
 export const DIST_DIR = path.join(ROOT_DIR, 'dist');
 
+/** Directory containing every normative mockup, draft and related resource. */
+export const MOCKUPS_DIR = path.join(ROOT_DIR, 'specification', 'mockups');
+
 /**
  * Directory containing UI scaffold wireframes and preview templates.
  */
-export const UI_SCAFFOLD_DIR = path.join(ROOT_DIR, 'specification', 'mockups', 'ui-scaffold');
+export const UI_SCAFFOLD_DIR = path.join(MOCKUPS_DIR, 'ui-scaffold');

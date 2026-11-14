@@ -6,6 +6,8 @@ let liveScrollTop = 0;
 let isRestoringScroll = false;
 let restorerInitialized = false;
 let cleanupRestorer: (() => void) | undefined;
+let activeKey: string | null = null;
+let savingEnabled = false;
 
 /**
  * Returns the canonical scroll memory key for a given parsed route.
@@ -88,70 +90,77 @@ export async function restoreScroll(
 	routeKey: string,
 	whenSettled?: Promise<void>
 ): Promise<boolean> {
-	if (typeof window === 'undefined') {
-		return false;
-	}
-
-	const snapshot = $scrollState.get().snapshots[routeKey];
-	if (!snapshot) {
-		window.scrollTo({ top: 0, behavior: 'instant' });
-		return false;
-	}
-
-	// Viewport-width rule (§8.3): ignore snapshot if window.innerWidth differs
-	if (snapshot.viewportWidth !== window.innerWidth) {
-		window.scrollTo({ top: 0, behavior: 'instant' });
-		return false;
-	}
-
-	let userInterrupted = false;
-
-	const onUserScrollInput = (event: Event) => {
-		// Detect user interaction that cancels restoration
-		if (event.type === 'keydown') {
-			const keyEvent = event as KeyboardEvent;
-			const scrollKeys = [
-				'ArrowUp',
-				'ArrowDown',
-				'PageUp',
-				'PageDown',
-				'Home',
-				'End',
-				'Space',
-				' '
-			];
-			if (!scrollKeys.includes(keyEvent.key)) {
-				return;
-			}
-		}
-		userInterrupted = true;
-	};
-
-	const abortEvents: (keyof WindowEventMap)[] = ['wheel', 'touchstart', 'keydown'];
-	for (const evt of abortEvents) {
-		window.addEventListener(evt, onUserScrollInput, { passive: true });
-	}
-
-	isRestoringScroll = true;
+	activeKey = routeKey;
+	savingEnabled = false;
 
 	try {
-		if (whenSettled) {
-			await whenSettled;
-		}
-
-		if (userInterrupted) {
+		if (typeof window === 'undefined') {
 			return false;
 		}
 
-		// Perform instant restoration
-		window.scrollTo({ top: snapshot.top, behavior: 'instant' });
-		liveScrollTop = snapshot.top;
-		return true;
-	} finally {
-		isRestoringScroll = false;
-		for (const evt of abortEvents) {
-			window.removeEventListener(evt, onUserScrollInput);
+		const snapshot = $scrollState.get().snapshots[routeKey];
+		if (!snapshot) {
+			window.scrollTo({ top: 0, behavior: 'instant' });
+			return false;
 		}
+
+		// Viewport-width rule (§8.3): ignore snapshot if window.innerWidth differs
+		if (snapshot.viewportWidth !== window.innerWidth) {
+			window.scrollTo({ top: 0, behavior: 'instant' });
+			return false;
+		}
+
+		let userInterrupted = false;
+
+		const onUserScrollInput = (event: Event) => {
+			// Detect user interaction that cancels restoration
+			if (event.type === 'keydown') {
+				const keyEvent = event as KeyboardEvent;
+				const scrollKeys = [
+					'ArrowUp',
+					'ArrowDown',
+					'PageUp',
+					'PageDown',
+					'Home',
+					'End',
+					'Space',
+					' '
+				];
+				if (!scrollKeys.includes(keyEvent.key)) {
+					return;
+				}
+			}
+			userInterrupted = true;
+		};
+
+		const abortEvents: (keyof WindowEventMap)[] = ['wheel', 'touchstart', 'keydown'];
+		for (const evt of abortEvents) {
+			window.addEventListener(evt, onUserScrollInput, { passive: true });
+		}
+
+		isRestoringScroll = true;
+
+		try {
+			if (whenSettled) {
+				await whenSettled;
+			}
+
+			if (userInterrupted) {
+				return false;
+			}
+
+			// Perform instant restoration
+			window.scrollTo({ top: snapshot.top, behavior: 'instant' });
+			liveScrollTop = snapshot.top;
+			return true;
+		} finally {
+			isRestoringScroll = false;
+			for (const evt of abortEvents) {
+				window.removeEventListener(evt, onUserScrollInput);
+			}
+		}
+	} finally {
+		savingEnabled = true;
 	}
 }
 
@@ -160,6 +169,20 @@ export async function restoreScroll(
  */
 export function getIsRestoringScroll(): boolean {
 	return isRestoringScroll;
+}
+
+/**
+ * Returns the currently active scroll key.
+ */
+export function getActiveKey(): string | null {
+	return activeKey;
+}
+
+/**
+ * Returns whether scroll position saving is currently enabled.
+ */
+export function getSavingEnabled(): boolean {
+	return savingEnabled;
 }
 
 /**
@@ -178,6 +201,9 @@ export function initScrollRestorer(): () => void {
 
 	const onScroll = () => {
 		liveScrollTop = window.scrollY || document.documentElement?.scrollTop || 0;
+		if (activeKey !== null && savingEnabled && !isRestoringScroll) {
+			recordCurrentScroll(activeKey);
+		}
 	};
 
 	window.addEventListener('scroll', onScroll, { passive: true });
@@ -201,4 +227,6 @@ export function stopScrollRestorer(): void {
 	restorerInitialized = false;
 	liveScrollTop = 0;
 	isRestoringScroll = false;
+	activeKey = null;
+	savingEnabled = false;
 }

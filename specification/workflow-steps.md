@@ -1,6 +1,6 @@
 # Steps
 
-**Status:** partial — wins over every other spec on user-facing behaviour. The step URLs, sidebar and first-load welcome modal are built; all step content is target.
+**Status:** partial — Step 1 Load Data and Step 2 Set Target are implemented. Steps 3–4 remain target.
 
 This web application has four sections.
 
@@ -12,40 +12,48 @@ If no saved state is found in localStorage, the user will be shown a welcome mod
 
 **url:** `/data`
 
-This is the first page the user sees when the app loads.
+This is the first page the user sees when the app loads. It supports two modes: selection mode (`mode: 'select'`) when no dataset is loaded, and preview mode (`mode: 'preview'`) once a dataset has been ingested into browser storage.
 
 ### Sample Datasets
 
 The page shows a card for each sample dataset in the generated catalogue at `/datasets/index.json` ([sample-datasets.md](sample-datasets.md)). Each card shows `name`, `tagline`, `stats.rowCount` and `stats.columnCount`, with buttons for "Datasheet" and "Load Dataset". This is shown in [01-1_select-data.html](mockups/ui-scaffold/01-1_select-data.html).
 
-Clicking the "Datasheet" button on a dataset card will display a modal containing detailed information about the sample dataset as shown in [01-2_dataset-card.html](mockups/ui-scaffold/01-2_dataset-card.html).
+For any dataset where `csvOrigin === 'remote'` (such as COMPAS Recidivism), the card's enclosing item prominently displays a remote source notice: _"Downloaded from GitHub when loaded; internet connection required"_.
+
+Clicking the "Datasheet" button on a dataset card displays a modal containing sanitized markdown/HTML information about the sample dataset as shown in [01-2_dataset-card.html](mockups/ui-scaffold/01-2_dataset-card.html). Hostile markup (`<script>`, inline handlers, iframes) is stripped. Network failures display an alert with a "Retry" button, and closing the modal returns focus to the invoker button.
 
 ### Custom Dataset Upload
 
 The `.page-header` contains a button "Upload Dataset". Clicking the button displays a modal as shown in [01-3_upload-dataset.html](mockups/ui-scaffold/01-3_upload-dataset.html).
 
-When the following events fire, the app will attempt to load and parse the CSV file using `Papa.parse`.
+The modal provides both a keyboard-reachable native file picker and a drag-and-drop zone. Upload criteria:
+
+- Single `.csv` file (case-insensitive filename check).
+- File size up to browser limits, max 256 columns.
+- Progress reporting through dedicated phases: _Downloading dataset_, _Reading CSV_, _Detecting column types_, _Calculating statistics_.
+- Plain-English error mappings without raw exceptions.
+- Dismissing or cancelling the dialog aborts the running ingestion worker request and retains any existing dataset, target, and models intact.
 
 ### Preview Dataset
 
 Dataset preview displays after successful loading of a dataset by:
 
 1. Clicking the "Load Dataset" button on a Sample Dataset card.
-2. Successful parsing of a custom uploaded dataset.
+2. Successful parsing and ingestion of a custom uploaded dataset.
 
-The dataset preview shows a virtual table which loads rows from IndexedDB using the storage worker. Clicking on a column displays an `<aside>` on the right containing further details about the column:
+The dataset preview view displays:
 
-- Column Name
-- Column Type
-- Count of empty records
-- If numeric:
-    - min
-    - median
-    - mean
-    - max
-    - histogram of values
-- If categorical:
-    - Value and frequency of each category
+- A page header with the dataset name, row/column counts, and a "Change Dataset" button. Clicking "Change Dataset" opens a confirmation modal requiring explicit confirmation before discarding the active dataset.
+- A virtual table (`ui-virtual-table`) rendering a 10,000-row active segment with segment navigation controls and "Go to row" input. Up to 10,000,000 rows can be browsed without unbounded DOM expansion.
+- An inspector overlay panel (`app-column-details`) on the right when clicking a column header:
+    - Column name, data type, and description.
+    - Missing and invalid record counts and tokens.
+    - If numeric: min, median, mean, max, and precomputed histogram bins.
+    - If categorical: distinct value count, frequencies sorted descending, and percentages over non-missing values (with Show all / Show fewer toggle).
+    - If boolean: true/false frequencies.
+    - If datetime: earliest and latest UTC bounds.
+    - Identifier candidate hint when distinct count equals row count.
+    - Pressing Escape or the Close button dismisses the overlay and returns focus to the column header.
 
 #### Future Development
 
@@ -58,9 +66,44 @@ The dataset preview shows a virtual table which loads rows from IndexedDB using 
 
 **url:** `/target`
 
-The user sees a table with a row for each column in the dataset as shown in [02-1_set-target.html](mockups/ui-scaffold/02-1_set-target.html). The table has columns for: - Dataset Column Name - Column Type (numeric|categorical|boolean) - Notes (e.g. if the column is text and cannot currently be used as a target or feature) - If able to be selected a "Set as Target" button to let the user select the specific column as the target variable.
+The user chooses the target variable to predict from their loaded dataset. Visual layout follows [02-1_set-target.html](mockups/ui-scaffold/02-1_set-target.html) and [02-2_target-set.html](mockups/ui-scaffold/02-2_target-set.html).
 
-If no dataset has been loaded a warning bar displays telling the user they need to load a dataset before they can set the target.
+### Workflow States
+
+- **Blocked view (`!hasDataset`):** When no dataset is loaded, a page header and notification alert (`.notification.notification-alert`) are displayed: _"Load a dataset before choosing a target."_ with a link to `/data`. Table actions are not rendered.
+- **Loading view:** When column resources are being fetched, a loading status message displays: _"Loading column information…"_.
+- **Failure view:** If column information fails to load, an alert message displays: _"Column information could not be loaded."_ along with a "Retry" button.
+- **Ready view:** Displays a scrollable table (`table.table`) with a caption (`{Dataset Name} target candidates`) and four columns:
+    - **Column Name:** The column name as a row header (`<th scope="row">`).
+    - **Type:** The data type formatted as code (`<code>Numeric</code>`, `<code>Categorical</code>`, `<code>Boolean</code>`, `<code>Text</code>`, `<code>Datetime</code>`).
+    - **Notes:** Explanatory reasons or advisory notices:
+        - `INELIGIBLE_TEXT`: "Text columns cannot be targets."
+        - `INELIGIBLE_DATETIME`: "Date and time columns cannot be targets."
+        - `INELIGIBLE_ALL_MISSING`: "No usable values."
+        - `INELIGIBLE_CONSTANT`: "Only one value is present."
+        - `ADVISORY_IDENTIFIER`: "This column may identify individual records."
+        - `ADVISORY_MISSING_VALUES`: "{count} missing or invalid values."
+        - `ADVISORY_HIGH_CARDINALITY`: "{count} categories; check that this is a meaningful target."
+        - `ADVISORY_TARGET_CANDIDATE`: "Suggested target"
+        - `METADATA_UNAVAILABLE`: "Column information is unavailable."
+          Disqualifying reasons disable the column; advisory notices provide informational guidance while keeping the column eligible.
+    - **Action:**
+        - For the currently selected target: A disabled button reading "Current Target".
+        - For eligible columns: A button with `.btn-primary` reading "Set as Target" (accessible name: `Set as Target: {column}`).
+        - For ineligible columns: A disabled button reading "Set as Target".
+
+### Model Discard Warning and Confirmation
+
+- If any models exist (`models.length > 0`), an alert notification displays above the table: _"Changing the target will reset all existing models."_
+- Clicking "Set as Target" for a different column opens a native `<dialog class="confirm-dialog">` requiring explicit confirmation before discarding all existing models (`confirmDiscardModels()`) and setting the new target (`setTarget(column)`).
+- Dismissing the modal (via Cancel or Escape) retains all existing models and restores focus to the invoking button.
+- If the dataset is changed while the modal is open, the modal closes safely without applying pending mutations.
+- Clicking the button for the column that is already the current target is a no-op that never displays confirmation or alters models.
+
+### Continuation
+
+- Setting a target updates state and keeps the user on `/target` to inspect the table.
+- A "Train Models" link (`<a href="/models" class="btn btn-primary">`) in the page header enables proceeding to Step 3 once a target is selected.
 
 ## 3. Train Models
 

@@ -28,20 +28,22 @@ Open questions and missing specification found by reviewing every Markdown and H
     - The badge lists "Clustering", but only classifiers and regressors are offered. Are clustering models in scope?
 - **TODO-08 — Models table on `/models`** ([workflow-steps §3](workflow-steps.md)): how models are named and numbered; what the Configuration and Training Setup columns show; and whether a model can be deleted or duplicated.
 - **TODO-09 — Custom dataset upload** ([workflow-steps §1](workflow-steps.md)):
-    - Specify the upload affordance, progress and cancellation copy, user-facing error messages, and how padded and skipped rows and invalid values are reported.
-- **TODO-10 — Column details panel** ([workflow-steps §1 Preview](workflow-steps.md)): how the histogram is rendered; how categorical frequencies are shown for high-cardinality columns; and what text columns show. [components/sidepanel.md](components/sidepanel.md) is a stub, and mockup `01-4` has no `<aside>`.
-- **TODO-11 — Set Target rules** ([workflow-steps §2](workflow-steps.md)): which columns can be targets, and what the Notes column says for each case: text, ID-like, constant, high-cardinality categorical, or mostly empty.
-- **TODO-12 — Modal content:** the welcome modal text and the model description content for each model. Dataset datasheets are authored as Markdown per [sample-datasets.md](sample-datasets.md).
+    - _Resolved for Step 1:_ Upload dialog (`app-upload-dataset-dialog`), progress phases, error mappings, cancellation lifecycle, and data-quality reporting implemented.
+- **TODO-10 — Column details panel** ([workflow-steps §1 Preview](workflow-steps.md)):
+    - _Resolved for Step 1:_ Delivered in `app-column-details` and [components/sidepanel.md](components/sidepanel.md) (stored statistics, discrete histogram bin table, categorical expansion, UTC datetimes, text identifier candidate, Escape/close focus return).
+- **TODO-11 — Set Target rules** ([workflow-steps §2](workflow-steps.md)):
+    - _Resolved for Step 2:_ Implemented in `src/features/target/target-eligibility.ts` and `app-target-view.ts`: unsupported (text, datetime), constant, and all-missing columns disabled with exact notes; identifier, missing values count, high cardinality, and descriptor candidate hints are advisory.
+- **TODO-12 — Modal content:** Dataset datasheets are rendered via safe sanitized Markdown in `app-datasheet-dialog`; welcome modal text is in place. Model description articles remain for Step 3.
 
 ## 2. Open questions in existing specs
 
 ### [app-state-and-navigation.md §12](app-state-and-navigation.md)
 
-- **TODO-13** — How does the user leave the dataset preview: **Change Dataset**, **Delete Dataset** (shown disabled in mockup `01-4`), or both? (§6.1)
+- **TODO-13** — _Resolved:_ **Change Dataset** button opens a modal confirmation dialog before clearing dataset, target, and models via `clearDataset()`.
 - **TODO-14** — Can completed model sections be re-opened and edited before training? (§6.3)
 - **TODO-15** — Add a **Cancel training** control? (§7)
-- **TODO-16** — Replace the "warning bar" on `/target` with the shared `.notification`? (§4.3)
-- **TODO-17** — What happens to trained models when the dataset or target changes: confirm and discard (proposed), a hard lock, or keep them read-only and archived? (§6.4; mockup `02-2` shows a reset warning.)
+- **TODO-16** — _Resolved for Step 2:_ Replaced "warning bar" with shared `.notification.notification-alert` with `/data` link in blocked view (§4.3).
+- **TODO-17** — _Resolved for Step 2:_ Confirm and discard modal dialog whenever any model exists (`models.length > 0`) on selecting a different target; current target is a no-op (§6.4).
 - **TODO-18** — Restore an open Datasheet or Model Description dialog on reload? (Currently no.)
 - **TODO-19** — Is scroll memory "latest per step" (proposed) or per history entry acceptable? (§8.4)
 - **TODO-20** — Give `terms-and-conditions.md` a route?
@@ -56,20 +58,12 @@ Open questions and missing specification found by reviewing every Markdown and H
 - **TODO-25** — Q1 primary background token: [card.md](components/card.md) Q1 answered `--surface: #fff`, so adopt that in button.md.
 - **TODO-26** — Q2–Q8: focus-ring token; disabled colours; hover transition (add `color`? is 500 ms intended?); long labels wrap or not; a pressed `:active` style; hover only under `@media (hover: hover)`; how many primary buttons a view may have.
 - **TODO-27** — card.md Q2 found that button.md's claim that `--stone-600` on `--stone-50` reaches 4.5:1 is wrong (3.97:1). Recheck it.
-- **TODO-28** — Mockup `01-4` uses `.btn-red`, but button.md §11 excludes danger variants. Add a variant, or change the mockup.
+- **TODO-28** — _Resolved for Step 1:_ No `.btn-red` style primitive added; Change Dataset opens a confirmation dialog with a `.btn-danger` confirm button.
 
 ### [components/card.md §12](components/card.md)
 
-- **TODO-29** — Q4–Q9, Q11, Q12:
-    - The `app-` prefix.
-    - Compact number notation losing precision ("61K").
-    - `overflow-wrap` for long strings.
-    - An empty image slot.
-    - Wrapping `.stat` spans.
-    - Capitalisation of model types.
-    - The `aria-describedby` approach for repeated button names.
-    - Whether presentational components may import the i18n store.
-- **TODO-30** — Q10: workflow-steps and mockup `01-1` say **Load Dataset**, while card.md says **Select Dataset**. The catalogue provides `taskTypes`; should the card display them?
+- **TODO-29** — _Resolved:_ Q4–Q9, Q11, Q12 answered in `components/card.md` §12 (`app-` prefix, compact notation, overflow-wrap, flex stats, capitalized strings, native button names, typed labels property dictionary).
+- **TODO-30** — _Resolved:_ Button is **Load Dataset**; task badges are omitted from cards.
 
 ### [components/virtual-table.md §12](components/virtual-table.md)
 
@@ -90,14 +84,14 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 [app-state-and-navigation §3](app-state-and-navigation.md) says each component needs a spec in `components/` before implementation (COMPONENTS.md §12). None of these has one:
 
-- **TODO-34** — `<app-sidebar>`, `<app-welcome-modal>`, `<app-content-modal>`, and the transient dialogs (datasheet, upload, model description).
+- **TODO-34** — Transient dialogs for datasheets and CSV upload, and `app-column-details`, delivered in Step 1. `<app-sidebar>`, `<app-welcome-modal>`, and `<app-content-modal>` remain owned by storybook-component-library.
 - **TODO-35** — Patterns that appear in the mockup CSS but have no spec:
-    - `.notification` (`notifications.css`).
+    - `.notification` (`notifications.css`) — alert variant implemented in `src/styles/notification.styles.ts` and adopted globally.
     - The badge or chiclet. Its rules live inside card.md; consider moving them to `components/chiclet.md`.
-    - The upload dropzone (`dropzone.css`).
-    - The modal and dialog styles (`modal.css`).
+    - The upload dropzone (`dropzone.css`) — used in `app-upload-dataset-dialog`.
+    - The modal and dialog styles (`modal.css`) — used in Step 1 dialogs.
     - The sidebar step list (`steps.css`, `sidebar.css`).
-    - The data tables on `/target` and `/models` (`table.css`).
+    - The data tables on `/target` and `/models` (`table.css`) — table style module implemented in `src/styles/table.styles.ts` and adopted globally.
     - The `.train-step` sections (`train-model.css`).
     - The status dot (`dot.css`).
     - The training progress bar.
@@ -106,9 +100,9 @@ Open questions and missing specification found by reviewing every Markdown and H
 ## 4. Mockups missing or out of date ([mockups/ui-scaffold/](mockups/ui-scaffold/))
 
 - **TODO-36** — `03-3` to `03-7` are empty files, and `04_compare-results.html` contains only a placeholder.
-- **TODO-37** — `01-3` still has a "Paste url to dataset" input, but URL-paste was removed ([state-and-storage §10 #7](state-and-storage.md)).
+- **TODO-37** — `01-3` still has a "Paste url to dataset" input; excluded from implemented `app-upload-dataset-dialog`. Human styling queue owns mockup cleanup.
 - **TODO-38** — The step lists render the current step as a non-link `<div>`, which [app-state-and-navigation §4.4](app-state-and-navigation.md) supersedes.
-- **TODO-39** — `01-4` has the page title "Pen", and has no column-details panel.
+- **TODO-39** — `01-4` has page title "Pen" and lacks column details panel; resolved for application code with DATA-UI-01/02/03.
 
 ## 5. Vision requirements with no spec yet ([VISION.md](VISION.md))
 
@@ -118,11 +112,11 @@ Open questions and missing specification found by reviewing every Markdown and H
 - **TODO-43** — §8 Probability threshold slider, false-positive and false-negative rates, fairness auditing (group metrics), and the fairness prompts the workflow asks.
 - **TODO-44** — §9 Which neural network model to offer, and how its opacity is contrasted with the inspectable models.
 - **TODO-45** — §12 Performance budget for a "commodity laptop" (bundle size, dataset size limits, memory). Also the service-worker caching and update strategy, which ARCHITECTURE requires but does not specify.
-- **TODO-46** — Which locales ship after `en`, the language switcher, the locale store and the translation workflow (including stale translations)?
+- **TODO-46** — _Narrowed:_ Base-locale `en` instance `$locale` and `$format` implemented in `src/i18n.ts`. Additional locales, switcher, and translation workflow remain target.
 
 ## 6. Inconsistencies between specs
 
-- **TODO-48** — [preview-dataset.md](preview-dataset.md) describes the old implementation (`Pipeline.state`, `SelectDataView`, single-dataset stores, the `dataset_stats` key), which state-and-storage §10 #5 and #8 supersede. Rewrite it or retire it.
+- **TODO-48** — _Resolved:_ [preview-dataset.md](preview-dataset.md) rewritten to describe implemented store, paging, virtualization, and scroll contracts.
 - **TODO-50** — `SharedArrayBuffer` needs cross-origin isolation. `public/_headers` sets COOP and COEP for production, but the dev server does not send them. Specify this for development.
 - **TODO-51** — [ARCHITECTURE § Future Improvements](ARCHITECTURE.md) mentions Zig, Emscripten and a scikit-learn benchmark workflow. These look as though they belong to `web-ml`; confirm what applies to this repo.
 

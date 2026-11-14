@@ -10,6 +10,9 @@ Items the specifications mark as _future_, _later_ or _deferred_. They are **not
     - Convert numeric columns to `boolean` or `categorical` using rules.
     - Delete records based on specific column values.
     - Delete a column.
+- **Richer column statistics & charts:** Interactive graphical distribution charts and standard deviation calculation/display for numeric columns (deferred in Step 1 T4; currently summary stats and discrete histogram bins are stored and displayed).
+- **Editable dataset metadata and fairness audits:** In-browser editing of dataset descriptions/column notes; pedagogical algorithmic fairness exploration on sensitive attributes (e.g. sex/race in COMPAS or Adult Census).
+- **Dataset card repeated-action a11y review:** Human evaluation of `aria-describedby` pointing to card descriptions for repeated action buttons vs clean native button accessible names.
 - **Error-Correcting Output Codes (ECOC)** as a multiclass strategy, alongside native multiclass, One-vs-Rest and One-vs-One ([workflow-steps §3.3](workflow-steps.md)).
 - **Learner-decided missing values.** Dataset authors declare which coded values count as missing (`implicitMissingValues`; see [sample-datasets.md](sample-datasets.md)). Learners cannot currently change that choice. An open pedagogical question is whether learners should decide per column on Load Data or Select Features. A middle option is to keep the author's default, show affected counts and let the learner override it with an explanation.
 - **Datetime feature engineering.** Datetime columns are inferred and stored as UTC epoch milliseconds, but are not model inputs. Future work may add datetime feature engineering and recognise further date formats: `.` separators, 12-hour clocks, weekday prefixes and non-English month names.

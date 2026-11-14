@@ -112,6 +112,25 @@ Development server features:
 
 Use `Ctrl-C` to stop the server.
 
+## Review mockups
+
+Browse the complete mockup tree, including drafts, source files and empty placeholders:
+
+```bash
+bun run serve:mockups
+```
+
+Open `http://localhost:3333/`. The review server is read-only. It offers clean previews that omit the in-flow review controls. The old `bun run serve:scaffold` command remains as a deprecated alias for historical instructions.
+
+With the mockup server running, audit one or more HTML files or the whole tree:
+
+```bash
+bun run audit:mockups ui-scaffold/drafts/03-0_models-overview.html
+bun run audit:mockups
+```
+
+Reports are written to `test-results/mockup-a11y/latest.json` and `latest.html`. Automated results do not replace manual keyboard, screen-reader, zoom and responsive checks. See [the mockup review guide](specification/mockup-review.md) for the CSS, markup-request, promotion and application-port workflow.
+
 ## Build the Production App
 
 ```bash

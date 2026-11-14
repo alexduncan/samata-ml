@@ -12,6 +12,11 @@ This repository MUST NOT contain actual training algorithms. The only responsibi
 - **State:** Nanostores. Navigation state lives in the URL; everything else is in persisted stores (see [Routing](#routing-flow-control-and-code-splitting)).
 - **Package Manager & Runtime:** Bun. You MUST use `bun add`, `bun run`, and `bunx` for all terminal commands. Do not use `npm`, `yarn`, or `pnpm`.
 
+### Local mockup review tooling
+
+- Run `bun run serve:mockups` to browse every regular file under `specification/mockups/` at `http://localhost:3333/`. The server reads files only, serves nested files under `/files/`, and injects a review helper into normal HTML previews. `?clean=1` returns the original HTML without injected controls or live reload. `bun run serve:scaffold` remains a deprecated alias for old instructions.
+- Run `bun run audit:mockups [relative-path ...] [--port 3333]` with the mockup server running to audit selected HTML files, or omit paths to scan every non-empty HTML file. It uses local Playwright Chromium and axe, writes `test-results/mockup-a11y/latest.json` and `latest.html`, and never suppresses contrast findings. A clean automated result is not an accessibility approval; review incomplete results and perform the manual checks in [mockup-review.md](mockup-review.md).
+
 ## Directory Structure (Feature-Based)
 
 The repository strictly adheres to a domain-driven, feature-based directory structure to keep related logic (UI, state, workers) co-located. Agents must not create generic horizontal directories like `/views` or `/controllers`.

@@ -1,0 +1,122 @@
+#!/usr/bin/env bun
+/**
+ * Antigravity PreToolUse hook for run_command.
+ * Evaluates the requested command against the repository whitelist.
+ * Returns {"decision": "allow"} for whitelisted commands,
+ * or {"decision": "ask"} for commands requiring manual review.
+ */
+
+interface ToolCallInput {
+	toolCall?: {
+		id?: string;
+		name?: string;
+		args?: {
+			CommandLine?: string;
+			BypassSandbox?: boolean;
+		};
+	};
+}
+
+interface HookDecision {
+	decision: 'allow' | 'ask' | 'deny';
+	reason?: string;
+}
+
+async function main() {
+	let input = '';
+	for await (const chunk of Bun.stdin.stream()) {
+		input += Buffer.from(chunk).toString();
+	}
+
+	let data: ToolCallInput;
+	try {
+		data = JSON.parse(input);
+	} catch {
+		output({ decision: 'ask', reason: 'Invalid hook payload' });
+		return;
+	}
+
+	const cmd = data.toolCall?.args?.CommandLine?.trim();
+	if (!cmd) {
+		output({ decision: 'ask', reason: 'Empty command line' });
+		return;
+	}
+
+	// Disallow dangerous multi-command chaining or subshells
+	if (hasDangerousChaining(cmd)) {
+		output({ decision: 'ask', reason: 'Command contains shell chaining or substitution' });
+		return;
+	}
+
+	if (isWhitelisted(cmd)) {
+		output({
+			decision: 'allow',
+			reason: 'Command matches repository whitelist'
+		});
+	} else {
+		output({
+			decision: 'ask',
+			reason: 'Command not in repository whitelist'
+		});
+	}
+}
+
+function hasDangerousChaining(cmd: string): boolean {
+	// Flag command substitution $(...) or `...`
+	if (/\$\(/.test(cmd) || /`/.test(cmd)) return true;
+
+	// Flag dangerous chaining with ';' or '&&' or '||' or '|'
+	// (Except in standard quoted string arguments where needed, but plain commands shouldn't have unquoted chaining)
+	if (/;|&&|\|\||\|/.test(cmd)) return true;
+
+	// Flag dangerous redirection or destructive operations
+	if (/>|>>/.test(cmd)) return true;
+	if (/\brm\s+(-[a-zA-Z]*r[a-zA-Z]*|-rf|--recursive)\b/.test(cmd)) return true;
+
+	return false;
+}
+
+function isWhitelisted(cmd: string): boolean {
+	// Whitelist patterns for samata-ml repository
+	const WHITELIST_PATTERNS: RegExp[] = [
+		// Bun commands
+		/^bun\s+run\s+(check|typecheck|build|server|serve:mockups|serve:scaffold|audit:mockups|format|format:check|plans:check|plans:task|now)(\s+.*)?$/,
+		/^bun\s+run\s+--silent\s+now$/,
+		/^bun\s+test(\s+.*)?$/,
+		/^bun\s+(install|add|remove)(\s+.*)?$/,
+
+		// Bunx commands
+		/^bunx\s+playwright\s+test(\s+.*)?$/,
+		/^bunx\s+prettier(\s+.*)?$/,
+		/^bunx\s+tsc(\s+.*)?$/,
+
+		// Python specification/gate scripts
+		/^python3\s+\.agents\/skills\/planning\/scripts\/validate_plan\.py(\s+.*)?$/,
+		/^python3\s+\.agents\/skills\/implementation\/scripts\/task_gate\.py(\s+.*)?$/,
+
+		// Read-only repository inspection commands
+		/^git\s+(status|diff|log|branch|rev-parse|show)(\s+.*)?$/,
+		/^ls(\s+.*)?$/,
+		/^cat(\s+.*)?$/,
+		/^grep(\s+.*)?$/,
+		/^rg(\s+.*)?$/,
+		/^find(\s+.*)?$/,
+		/^wc(\s+.*)?$/,
+		/^head(\s+.*)?$/,
+		/^tail(\s+.*)?$/,
+		/^sed\s+-n(\s+.*)?$/,
+		/^file(\s+.*)?$/,
+		/^date(\s+.*)?$/,
+
+		// Safe note cleanup prescribed by plan spec sync
+		/^rm\s+specification\/notes\/[a-zA-Z0-9_\-]+\.md$/
+	];
+
+	return WHITELIST_PATTERNS.some((pattern) => pattern.test(cmd));
+}
+
+function output(res: HookDecision) {
+	console.log(JSON.stringify(res));
+}
+
+main();

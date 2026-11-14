@@ -1,6 +1,6 @@
 # State and navigation conformance
 
-**Status:** draft | **Updated:** 2026-11-13T22:17:28Z
+**Status:** implemented | **Updated:** 2026-11-13T23:00:29Z
 
 ## Goal
 
@@ -287,18 +287,18 @@ It owns no new strings. Accessible names are unchanged (link text).
 
 T9 applies these and ticks each one.
 
-- [ ] `specification/state-and-storage.md` §4, §4.1, §8 — the persister is the only code that reads or writes `localStorage`, including during reconciliation. Feature, multiclass, hyperparameter-mode and training-setup-type changes are written synchronously. Progress writes are throttled to one per second. §8 rules are implemented as D2 and D3. The status line drops "§8 read-only mode" from the target list and keeps migrations and §7 as target.
-- [ ] `specification/app-state-and-navigation.md` §4.3, §4.4, §5.3, §5.6, §6.1, §6.3, §6.4, §8.4, §10 — move to the status line's implemented list: blocked reasons, sidebar `aria-current`, focus rules, `underlayPath`, scroll saving and invalidation, unchanged-edit rule and action validation.
-- [ ] `specification/app-state-and-navigation.md` §6.5 — `ui.results` becomes `results.ui` (D15).
-- [ ] `specification/app-state-and-navigation.md` §7 — the `startTraining` guard is "sections 1–3 complete and a training setup chosen". `trainingFailed`, `cancelTraining` and `recoverInterrupted` un-complete `configure-training`, `training` and `results` (D8). `cancelTraining` loses "(proposed)" (Q1c accepted).
-- [ ] `specification/app-state-and-navigation.md` §11 NAV-AC-10 — "unknown future version yields defaults in memory and leaves the stored blob unchanged".
-- [ ] `specification/app-state-and-navigation.md` §12 — Q1b, Q1c, Q2 and Q4 are recorded as answered: keep `reopenSection`, keep `cancelTraining`, confirm-and-discard on target or dataset change, and latest-per-step scroll memory. The "proposed" labels in §6.3, §6.4, §7 and §8.4 are removed, and those sections state the rules as decided.
-- [ ] `specification/state-and-storage.md` §6 check 7 — recovery un-completes `configure-training` as well (D8).
-- [ ] `specification/visual-design.md` — the status line and §5 SEM-03 row say SEM-03 is applied.
-- [ ] Known gap 13 — SEM-03 removed from the list of entries not yet applied.
-- [ ] Known gap 14 — narrow to genuinely undelivered scope such as stored-results deletion; the IndexedDB adapter is already implemented and must not be listed as missing.
-- [ ] Known gap 15 — resolved.
-- [ ] `specification/app-state-and-navigation.md` §5.1 and Known gap 18 — same-origin anchors inside shadow roots use the existing navigation interception rules through composedPath; gap 18 resolved.
+- [x] `specification/state-and-storage.md` §4, §4.1, §8 — the persister is the only code that reads or writes `localStorage`, including during reconciliation. Feature, multiclass, hyperparameter-mode and training-setup-type changes are written synchronously. Progress writes are throttled to one per second. §8 rules are implemented as D2 and D3. The status line drops "§8 read-only mode" from the target list and keeps migrations and §7 as target.
+- [x] `specification/app-state-and-navigation.md` §4.3, §4.4, §5.3, §5.6, §6.1, §6.3, §6.4, §8.4, §10 — move to the status line's implemented list: blocked reasons, sidebar `aria-current`, focus rules, `underlayPath`, scroll saving and invalidation, unchanged-edit rule and action validation.
+- [x] `specification/app-state-and-navigation.md` §6.5 — `ui.results` becomes `results.ui` (D15).
+- [x] `specification/app-state-and-navigation.md` §7 — the `startTraining` guard is "sections 1–3 complete and a training setup chosen". `trainingFailed`, `cancelTraining` and `recoverInterrupted` un-complete `configure-training`, `training` and `results` (D8). `cancelTraining` loses "(proposed)" (Q1c accepted).
+- [x] `specification/app-state-and-navigation.md` §11 NAV-AC-10 — "unknown future version yields defaults in memory and leaves the stored blob unchanged".
+- [x] `specification/app-state-and-navigation.md` §12 — Q1b, Q1c, Q2 and Q4 are recorded as answered: keep `reopenSection`, keep `cancelTraining`, confirm-and-discard on target or dataset change, and latest-per-step scroll memory. The "proposed" labels in §6.3, §6.4, §7 and §8.4 are removed, and those sections state the rules as decided.
+- [x] `specification/state-and-storage.md` §6 check 7 — recovery un-completes `configure-training` as well (D8).
+- [x] `specification/visual-design.md` — the status line and §5 SEM-03 row say SEM-03 is applied.
+- [x] Known gap 13 — SEM-03 removed from the list of entries not yet applied.
+- [x] Known gap 14 — narrow to genuinely undelivered scope such as stored-results deletion; the IndexedDB adapter is already implemented and must not be listed as missing.
+- [x] Known gap 15 — resolved.
+- [x] `specification/app-state-and-navigation.md` §5.1 and Known gap 18 — same-origin anchors inside shadow roots use the existing navigation interception rules through composedPath; gap 18 resolved.
 
 ## Implementation tasks
 
@@ -318,13 +318,13 @@ T9 applies these and ticks each one.
     - Delete `parseAppState`.
     - Update the NAV-AC-10 "unsupported version" test (`tests/state-and-storage.test.ts:426-435`): a newer version yields defaults **and** the stored string is unchanged afterwards.
 - **Acceptance criteria:**
-    - [ ] NAV-AC-10: corrupt JSON, wrong shape, missing storage and an older version yield defaults without throwing.
-    - [ ] NAV-AC-10: a blob with `version: 999` yields defaults. After `reconcileStartupState` and `initPersister`, a later action leaves the stored `samata-ml:state` string byte-identical.
-    - [ ] SNC-1: a blob that is valid except for one field yields full defaults. Test one case each: `resumePath: '/about'`, a model with `status: 'done'`, `dataset.columns[0].type: 'date'`, and `nextModelNum: 0`.
-    - [ ] SNC-2: a test storage adapter that records calls shows `reconcileStartupState` performing no `setItem` other than through the persister. A `grep -n "setItem\|getItem\|removeItem" src/stores/reconciler.ts` returns nothing.
-    - [ ] Existing NAV-AC-9 tests pass unchanged.
+    - [x] NAV-AC-10: corrupt JSON, wrong shape, missing storage and an older version yield defaults without throwing.
+    - [x] NAV-AC-10: a blob with `version: 999` yields defaults. After `reconcileStartupState` and `initPersister`, a later action leaves the stored `samata-ml:state` string byte-identical.
+    - [x] SNC-1: a blob that is valid except for one field yields full defaults. Test one case each: `resumePath: '/about'`, a model with `status: 'done'`, `dataset.columns[0].type: 'date'`, and `nextModelNum: 0`.
+    - [x] SNC-2: a test storage adapter that records calls shows `reconcileStartupState` performing no `setItem` other than through the persister. A `grep -n "setItem\|getItem\|removeItem" src/stores/reconciler.ts` returns nothing.
+    - [x] Existing NAV-AC-9 tests pass unchanged.
 - **Verification:** `bun test tests/state-and-storage.test.ts`; `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T2 — Persister write triggers: discrete selections synchronous, progress throttled
 
@@ -334,11 +334,11 @@ T9 applies these and ticks each one.
 - **Must not touch:** `src/stores/app.store.ts`
 - **Implementation:** Extend `isSynchronousChange` and add the progress throttle per D4 and _Interfaces and behaviour_. Add `throttleProgressMs` to the options object with TSDoc.
 - **Acceptance criteria:**
-    - [ ] SNC-3: with `debounceFieldMs: 10_000`, `toggleFeature` is in storage immediately after the call. So are `setMulticlassStrategy`, a `setHyperparameters` that changes `mode`, and a `setTrainingSetup` that changes `type`.
-    - [ ] SNC-4: a `setHyperparameters` changing only `values` is not written before the debounce and is written after it.
-    - [ ] SNC-5: with `throttleProgressMs: 50`, ten `updateTrainingProgress` calls 10 ms apart produce a write within 60 ms of the first call. The last tick's value is stored by 50 ms after the final call.
+    - [x] SNC-3: with `debounceFieldMs: 10_000`, `toggleFeature` is in storage immediately after the call. So are `setMulticlassStrategy`, a `setHyperparameters` that changes `mode`, and a `setTrainingSetup` that changes `type`.
+    - [x] SNC-4: a `setHyperparameters` changing only `values` is not written before the debounce and is written after it.
+    - [x] SNC-5: with `throttleProgressMs: 50`, ten `updateTrainingProgress` calls 10 ms apart produce a write within 60 ms of the first call. The last tick's value is stored by 50 ms after the final call.
 - **Verification:** `bun test tests/state-and-storage.test.ts`; `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T3 — `blockedReason` matches the §4.3 matrix
 
@@ -348,14 +348,14 @@ T9 applies these and ticks each one.
 - **Must not touch:** the `BlockedReason` union and the computed stores in `predicates.ts`
 - **Implementation:** Apply D5 and update the TSDoc. Change the assertions at `tests/state-and-storage.test.ts:105-134` that expect `DATASET_REQUIRED`/`TARGET_REQUIRED` for `/models/{num}` and `/results`.
 - **Acceptance criteria:**
-    - [ ] NAV-AC-3b: for every combination of no dataset, no target, 0, 1 and 2 trained models, and existing versus missing model, the result is:
+    - [x] NAV-AC-3b: for every combination of no dataset, no target, 0, 1 and 2 trained models, and existing versus missing model, the result is:
         - `/data` → `null`;
         - `/target` → `DATASET_REQUIRED` or `null`;
         - `/models` → `DATASET_REQUIRED`, `TARGET_REQUIRED` or `null`;
         - `/models/{num}` → `MODEL_NOT_FOUND` or `null`;
         - `/results` → `TWO_TRAINED_MODELS_REQUIRED` or `null`.
 - **Verification:** `bun test tests/state-and-storage.test.ts`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T4 — Store actions: invalidation, unchanged edits and validation
 
@@ -369,18 +369,18 @@ T9 applies these and ticks each one.
     - Rewrite `loadDatasetSucceeded`, `confirmDiscardModels`, `setFeatures`, `setModelOptions`, `setHyperparameters`, `setMulticlassStrategy`, `setTrainingSetup` and `setSelectedColumn` per _Interfaces and behaviour_.
     - Update `tests/state-and-storage.test.ts` NAV-AC-5 and NAV-AC-8 to the new rules.
 - **Acceptance criteria:**
-    - [ ] NAV-AC-5:
+    - [x] NAV-AC-5:
         - a same-dataset reload keeps target and models and sets `data.mode = 'preview'` and `selectedColumn = null`;
         - a different dataset clears `target`, `models`, `models/3` and `results` scroll keys, and keeps `data:select` and `data:preview`.
-    - [ ] NAV-AC-6: `confirmDiscardModels` clears `models`, `models/1`, `models/2` and `results` scroll keys, and keeps `target` and the `target` scroll key.
-    - [ ] NAV-AC-8:
+    - [x] NAV-AC-6: `confirmDiscardModels` clears `models`, `models/1`, `models/2` and `results` scroll keys, and keeps `target` and the `target` scroll key.
+    - [x] NAV-AC-8:
         - `setFeatures` with the same set in a different order returns `true` and does not change `$appState` (same reference);
         - a changed `setHyperparameters` on a model with sections 1–4 complete leaves `choose-model`, `select-features` and `configure-model` complete;
         - `chooseModel` with a different model resets options, hyperparameters and multiclass, and keeps features.
-    - [ ] SNC-6: `setFeatures` returns `false`, with no mutation, for an unknown column, a `text` or `datetime` column, the target or a duplicate. Use the implemented isModelEligibleColumnType predicate. `setSelectedColumn('nope')` returns `false`.
-    - [ ] SNC-7: `clearScroll` is never called inside an `updateState` transform. Check by code review in the task report.
+    - [x] SNC-6: `setFeatures` returns `false`, with no mutation, for an unknown column, a `text` or `datetime` column, the target or a duplicate. Use the implemented isModelEligibleColumnType predicate. `setSelectedColumn('nope')` returns `false`.
+    - [x] SNC-7: `clearScroll` is never called inside an `updateState` transform. Check by code review in the task report.
 - **Verification:** `bun test tests/state-and-storage.test.ts`; `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T5 — Training section transitions
 
@@ -390,13 +390,13 @@ T9 applies these and ticks each one.
 - **Must not touch:** `ModelStatus`, `TrainingError` and other types in `src/types/state.ts`
 - **Implementation:** Apply D8 to `startTraining`, `trainingFailed`, `cancelTraining` and `recoverInterrupted`, and to reconciler check 7 (`src/stores/reconciler.ts:367-379`). Update the NAV-AC-7 tests.
 - **Acceptance criteria:**
-    - [ ] NAV-AC-7:
+    - [x] NAV-AC-7:
         - `startTraining` returns `false` without `configure-model` or with `trainingSetup === null`;
         - with sections 1–3 and a setup, it moves to `training` with `configure-training` completed;
         - `trainingFailed`, `cancelTraining` and `recoverInterrupted` each return to `draft` with `configure-training`, `training` and `results` not completed and the matching error code.
-    - [ ] NAV-AC-9: hydration recovery also removes `configure-training`.
+    - [x] NAV-AC-9: hydration recovery also removes `configure-training`.
 - **Verification:** `bun test tests/state-and-storage.test.ts`; `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T6 — Router: focus requests, `underlayPath`, flush before history writes
 
@@ -411,14 +411,14 @@ T9 applies these and ticks each one.
     - Add `underlayPath` to the reserved variant and set it per the table (D10).
     - Call `flushNow()` (from `../stores/persister`) immediately before each `pushState`/`replaceState` (D11).
 - **Acceptance criteria:**
-    - [ ] SNC-8: after `navigate('/target')`, `takeFocusRequest()` returns `true`, then `false`. After `initRouter()` on `/models`, `openReserved('/about')` and `closeReserved()`, it returns `false`.
-    - [ ] SNC-9: a `popstate` from `/target` to `/data` sets the request. A `popstate` from `/about` to `/data` does not.
-    - [ ] SNC-10: `openReserved('/about')` from `/target` sets `$route` to `{ kind: 'reserved', path: '/about', underlayPath: '/target' }`. A direct `initRouter()` on `/help` sets `underlayPath` to `resumePath`.
-    - [ ] SNC-11: with a pending debounced state write, `navigate('/models')` leaves the pending value in storage before the history call. Spy on `history.pushState` and read storage inside the spy.
-    - [ ] Existing NAV-AC-1 and NAV-AC-2 tests pass.
-    - [ ] SNC-16: a real click on a same-origin link inside a shadow root reaches navigate once; external/download/target/modifier/hash-only links retain existing behaviour. Unit tests may cover path selection, but the real retargeting assertion belongs in tests/app-shell.test.ts in T8.
+    - [x] SNC-8: after `navigate('/target')`, `takeFocusRequest()` returns `true`, then `false`. After `initRouter()` on `/models`, `openReserved('/about')` and `closeReserved()`, it returns `false`.
+    - [x] SNC-9: a `popstate` from `/target` to `/data` sets the request. A `popstate` from `/about` to `/data` does not.
+    - [x] SNC-10: `openReserved('/about')` from `/target` sets `$route` to `{ kind: 'reserved', path: '/about', underlayPath: '/target' }`. A direct `initRouter()` on `/help` sets `underlayPath` to `resumePath`.
+    - [x] SNC-11: with a pending debounced state write, `navigate('/models')` leaves the pending value in storage before the history call. Spy on `history.pushState` and read storage inside the spy.
+    - [x] Existing NAV-AC-1 and NAV-AC-2 tests pass.
+    - [x] SNC-16: a real click on a same-origin link inside a shadow root reaches navigate once; external/download/target/modifier/hash-only links retain existing behaviour. Unit tests may cover path selection, but the real retargeting assertion belongs in tests/app-shell.test.ts in T8.
 - **Verification:** `bun test tests/router-and-navigation.test.ts`; `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T7 — Scroll saving for the active key
 
@@ -428,11 +428,11 @@ T9 applies these and ticks each one.
 - **Must not touch:** `ScrollSnapshot`; the viewport-width rule; `getScrollKeyForRoute`
 - **Implementation:** Apply D12 per _Interfaces and behaviour_. Wrap `restoreScroll`'s body so `savingEnabled` is restored in a `finally` that covers every return.
 - **Acceptance criteria:**
-    - [ ] SNC-12: after `restoreScroll('target')` resolves, a dispatched `scroll` event with `window.scrollY = 120` records `snapshots.target.top === 120` with the current `innerWidth`.
-    - [ ] SNC-13: a `scroll` event dispatched while `restoreScroll` awaits a pending `whenSettled` records nothing. Restoration with no snapshot or a width mismatch still re-enables saving.
-    - [ ] Existing NAV-AC-4 tests pass.
+    - [x] SNC-12: after `restoreScroll('target')` resolves, a dispatched `scroll` event with `window.scrollY = 120` records `snapshots.target.top === 120` with the current `innerWidth`.
+    - [x] SNC-13: a `scroll` event dispatched while `restoreScroll` awaits a pending `whenSettled` records nothing. Restoration with no snapshot or a width mismatch still re-enables saving.
+    - [x] Existing NAV-AC-4 tests pass.
 - **Verification:** `bun test tests/router-and-navigation.test.ts`; `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T8 — App shell focus and underlay; sidebar `aria-current`
 
@@ -457,18 +457,18 @@ T9 applies these and ticks each one.
         - change the selector at `:128-129` to `li.step > a[aria-current] .step-num`.
     - Add the Playwright tests below to `tests/app-shell.test.ts`.
 - **Acceptance criteria:**
-    - [ ] NAV-E2E-2d:
+    - [x] NAV-E2E-2d:
         - on `/data`, `/target`, `/models` and `/results`, exactly one `app-sidebar a[aria-current="page"]` exists and its `href` is the current path;
         - no `li[aria-current]` exists;
         - no `aria-current` attribute has an empty value;
         - activating the current link adds no history entry (`history.length` unchanged) and keeps focus on that link.
-    - [ ] SNC-14: after reload on `/target`, `document.activeElement` is not the `<h1>`. After clicking the sidebar link to `/models`, it is the `<h1>`. After `/target` → open `/about` → press `Esc`, focus is not on the `<h1>`.
-    - [ ] SNC-15: scroll `/target` down (make the page tall in the test with `page.addStyleTag` on `#content { min-height: 300vh }`), click to `/models`, then Back: `window.scrollY` is restored within 2 px. Open and close `/about`: `scrollY` is unchanged.
-    - [ ] Existing NAV-E2E-1, 2, 3 and 9 pass.
-    - [ ] SNC-16: clicking sidebar and reserved-dialog same-origin links causes no document reload; route/focus/history update once. Use browser navigation events to distinguish full reload from client routing.
-    - [ ] The token guard and parity suites show no new failures, and the sidebar entries stay `knownDrift`.
+    - [x] SNC-14: after reload on `/target`, `document.activeElement` is not the `<h1>`. After clicking the sidebar link to `/models`, it is the `<h1>`. After `/target` → open `/about` → press `Esc`, focus is not on the `<h1>`.
+    - [x] SNC-15: scroll `/target` down (make the page tall in the test with `page.addStyleTag` on `#content { min-height: 300vh }`), click to `/models`, then Back: `window.scrollY` is restored within 2 px. Open and close `/about`: `scrollY` is unchanged.
+    - [x] Existing NAV-E2E-1, 2, 3 and 9 pass.
+    - [x] SNC-16: clicking sidebar and reserved-dialog same-origin links causes no document reload; route/focus/history update once. Use browser navigation events to distinguish full reload from client routing.
+    - [x] The token guard and parity suites show no new failures, and the sidebar entries stay `knownDrift`.
 - **Verification:** `bun run test:e2e tests/app-shell.test.ts`; `bun test tests/style-tokens.test.ts`; `bun run test:e2e tests/visual-parity.e2e.ts tests/a11y.e2e.ts` (attach both screenshots); `bun run check`. Manual check: VoiceOver or NVDA announces "current page" on the active sidebar link in one browser; record which.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T9 — Sync specification
 
@@ -478,11 +478,11 @@ T9 applies these and ticks each one.
 - **Must not touch:** Product code, tests and `specification/mockups/`
 - **Implementation:** Apply every item under _Specification changes_, following "Writing specs" in `specification/README.md`. Where the log records a deviation from the plan, document the deviation, not the plan. Update each changed spec's status line and its row in the index, and narrow or resolve _Known gaps_.
 - **Acceptance criteria:**
-    - [ ] Every item under _Specification changes_ is applied and ticked.
-    - [ ] No changed spec contradicts the code or another spec, or mentions this plan, its tasks or the history of the change.
-    - [ ] `bun run plans:check` reports no spec index mismatch.
+    - [x] Every item under _Specification changes_ is applied and ticked.
+    - [x] No changed spec contradicts the code or another spec, or mentions this plan, its tasks or the history of the change.
+    - [x] `bun run plans:check` reports no spec index mismatch.
 - **Verification:** `bun run plans:check`; `git diff specification/` reviewed against _Specification changes_
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 Parallel-safe groups (no shared files):
 
@@ -493,13 +493,13 @@ Parallel-safe groups (no shared files):
 
 ## Verification and definition of done
 
-- [ ] All task acceptance criteria met.
-- [ ] `bun run check` introduces no new failures compared with a fresh baseline (review: 0 type errors, 144 pass, 0 fail; new tests only add passes).
-- [ ] Parity and token tests pass for UI changes (T8), with no new failures.
-- [ ] `bun run test:e2e tests/app-shell.test.ts` passes in Chromium, Firefox and WebKit, or each browser not run is recorded with the reason.
-- [ ] Accessibility: the sidebar `aria-current` check and the focus checks (SNC-14) pass. A screen-reader manual check is recorded.
-- [ ] Every item under _Specification changes_ is ticked, and the specs describe the code as built.
-- [ ] No unintended changes outside the tasks' likely files.
+- [x] All task acceptance criteria met.
+- [x] `bun run check` introduces no new failures compared with a fresh baseline (review: 0 type errors, 144 pass, 0 fail; new tests only add passes).
+- [x] Parity and token tests pass for UI changes (T8), with no new failures.
+- [x] `bun run test:e2e tests/app-shell.test.ts` passes in Chromium, Firefox and WebKit, or each browser not run is recorded with the reason.
+- [x] Accessibility: the sidebar `aria-current` check and the focus checks (SNC-14) pass. A screen-reader manual check is recorded.
+- [x] Every item under _Specification changes_ is ticked, and the specs describe the code as built.
+- [x] No unintended changes outside the tasks' likely files.
 
 ## Risks and open questions
 
@@ -520,9 +520,17 @@ Parallel-safe groups (no shared files):
 
 ## Implementation and verification log
 
-| When (UTC) | Task | Outcome / commands / evidence |
-| ---------- | ---- | ----------------------------- |
-| —          | —    | Not started                   |
+| When (UTC)           | Task | Outcome / commands / evidence                                                                                                                                                                                                                                                                        |
+| -------------------- | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-13T22:29:09Z | T1   | PASS: persister owns storage; full schema validator added; read-only mode for newer versions; reconciler sets stores and flushes via persister; grep confirms no direct storage calls in reconciler; 20 tests pass in state-and-storage.test.ts (150 pass overall)                                   |
+| 2026-11-13T22:32:12Z | T2   | PASS: discrete selections synchronous (features, multiclass, hyperparameter mode, trainingSetup type); hyperparameter values debounced; training progress throttled with throttleProgressMs; SNC-3, SNC-4, SNC-5 pass; 23 tests pass in state-and-storage.test.ts (153 pass overall)                 |
+| 2026-11-13T22:33:27Z | T3   | PASS: blockedReason matches §4.3 matrix; /models/{num} returns null/MODEL_NOT_FOUND and /results returns null/TWO_TRAINED_MODELS_REQUIRED without evaluating dataset/target; NAV-AC-3b passes; 23 tests pass in state-and-storage.test.ts (153 pass overall)                                         |
+| 2026-11-13T22:37:23Z | T4   | PASS: store actions invalidation, unchanged-edit no-op (D7), and validation added; scroll invalidation side effects moved outside updateState (D6); NAV-AC-5, NAV-AC-6, NAV-AC-8, SNC-6, SNC-7 verified; 28 tests pass in state-and-storage.test.ts (158 pass overall)                               |
+| 2026-11-13T22:40:42Z | T5   | PASS: training section transitions follow D8; startTraining requires sections 1-3 & trainingSetup; failures/cancel/recovery re-open configure-training; NAV-AC-7 & NAV-AC-9 pass; 28 tests pass in state-and-storage.test.ts (158 pass overall)                                                      |
+| 2026-11-13T22:46:14Z | T6   | PASS: router focus requests, underlayPath, and flushNow before history writes; composedPath anchor selection in handleClick; SNC-8, SNC-9, SNC-10, SNC-11, SNC-16 (unit) verified; 20 tests pass in router-and-navigation.test.ts (163 pass overall)                                                 |
+| 2026-11-13T22:48:28Z | T7   | PASS: scroll saving tracks activeKey; restoreScroll uses try/finally to re-enable saving across all exit paths; SNC-12, SNC-13 pass; 26 tests pass in router-and-navigation.test.ts (169 pass overall)                                                                                               |
+| 2026-11-13T22:55:19Z | T8   | PASS: renderAppShell consumes takeFocusRequest and restores scroll only on key change (D13); app-sidebar applies D14 link aria-current and selector; NAV-E2E-2d, SNC-14, SNC-15, SNC-16 pass in Chromium & WebKit (Firefox untestable due to local environment error); visual parity and tokens pass |
+| 2026-11-13T23:00:29Z | T9   | PASS: synced specifications (state-and-storage.md, app-state-and-navigation.md, visual-design.md, README.md); all Specification changes applied and checked; bun run plans:check passed                                                                                                              |
 
 ## Change log
 

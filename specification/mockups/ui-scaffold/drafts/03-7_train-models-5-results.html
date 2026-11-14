@@ -1,0 +1,366 @@
+<!doctype html>
+<!-- DRAFT: structure only, not normative for appearance. Source: plans/web-ml-classification-integration.md, interfaces and behaviour B–G. Open questions: plan approval. -->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="stylesheet" href="../style.css" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>samatā.ml | Train Models</title>
+	</head>
+	<body>
+		<svg style="display: none" aria-hidden="true" focusable="false">
+			<symbol
+				id="settings"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<path
+					d="M12 21.5c2 0 .8-2.3 2.7-3 1.8-.8 2.6 1.6 4 .2s-1-2.2-.2-4c.7-1.9 3-.7 3-2.7s-2.3-.8-3-2.7c-.8-1.8 1.6-2.6.2-4s-2.2 1-4 .2c-1.9-.7-.7-3-2.7-3s-.8 2.3-2.7 3c-1.8.8-2.6-1.6-4-.2s1 2.2.2 4c-.7 1.9-3 .7-3 2.7s2.3.8 3 2.7c.8 1.8-1.6 2.6-.2 4s2.2-1 4-.3c1.9.8.7 3.1 2.7 3.1Z" />
+				<circle cx="12" cy="12" r="3.5" />
+			</symbol>
+
+			<symbol
+				id="close"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<line x1="18" y1="6" x2="6" y2="18" />
+				<line x1="6" y1="6" x2="18" y2="18" />
+			</symbol>
+
+			<symbol id="check" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m5.73 5.29a1 1 0 0 0-1.41 0L10 14.6l-2.31-2.32a1 1 0 1 0-1.42 1.42l3.02 3.02a1 1 0 0 0 1.42 0l7.02-7.03a1 1 0 0 0 0-1.41" />
+			</symbol>
+
+			<symbol id="question" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m0 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2m0-10.2A3 3 0 0 0 8.8 9a.8.8 0 0 0 1.4 0q.2-1.6 1.8-1.7T13.8 9q0 .6-.8 1.5l-.3.3-1 1.2a4 4 0 0 0-.4 2 .7.7 0 1 0 1.4 0q0-1.2 1.1-2.2l.3-.3q1.2-1.2 1.2-2.5c0-2-1.4-3.2-3.3-3.2" />
+			</symbol>
+		</svg>
+
+		<div class="sidebar">
+			<h1>samat&amacr;.ml</h1>
+			<p class="tagline">Machine Learning in Your Browser</p>
+			<section class="project">
+				<h4>Project</h4>
+				<span class="project-name">New Project</span>
+				<button class="btn-icon project-settings" aria-label="Project settings">
+					<svg class="icon" aria-hidden="true" focusable="false">
+						<use href="#settings"></use>
+					</svg>
+				</button>
+			</section>
+			<nav class="workflow" aria-label="Workflow">
+				<ol class="steps">
+					<li class="step">
+						<a href="/load-data" class="step-link">
+							<span class="step-num">1</span>
+							<span class="step-label-small">Dataset</span>
+							<span class="step-value">{Dataset Name}</span>
+							<span class="step-chiclets">
+								<span class="chiclet">999 rows</span>
+								<span class="chiclet">999 columns</span>
+							</span>
+						</a>
+					</li>
+					<li class="step">
+						<a href="/select-target" class="step-link">
+							<span class="step-num">2</span>
+							<span class="step-label-small">Target</span>
+							<span class="step-value">{Target Variable Column Name}</span>
+							<span class="step-chiclets">
+								<span class="chiclet">Categorical</span>
+							</span>
+						</a>
+					</li>
+					<li class="step">
+						<div class="step-link">
+							<span class="step-num">3</span>
+							<span class="step-label-small">Models</span>
+							<ul class="step-models">
+								<li class="step-model">
+									<div class="step-model-link" aria-current="step">
+										Training New Model...
+									</div>
+								</li>
+							</ul>
+						</div>
+					</li>
+					<li class="step">
+						<a href="/compare-results" class="step-link">
+							<span class="step-num">4</span>
+							<span class="step-label">Compare Results</span>
+						</a>
+					</li>
+				</ol>
+			</nav>
+			<footer>
+				<a href="/about">about</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/privacy">privacy</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/help">help</a>
+			</footer>
+		</div>
+
+		<main>
+			<header class="page-header">
+				<h1>Train Models</h1>
+				<p>Choose a model to predict your target variable.</p>
+			</header>
+
+			<section>
+				<h2>6. Results — Logistic Regression</h2>
+				<p>Palmer Penguins · Target: species · Test data only</p>
+				<p>These sample numbers illustrate structure; they are not measured outcomes.</p>
+				<dl>
+					<dt>Accuracy</dt>
+					<dd>94%</dd>
+					<dt>Macro F1</dt>
+					<dd>0.93</dd>
+					<dt>Log loss</dt>
+					<dd>0.18</dd>
+				</dl>
+				<p>
+					The chosen model uses One-vs-Rest classification and four numeric features. No
+					numeric scaling was applied.
+				</p>
+				<table>
+					<caption>
+						Confusion counts on 10 illustrative test rows
+					</caption>
+					<thead>
+						<tr>
+							<th scope="col">True class / Predicted class</th>
+							<th scope="col">Adelie</th>
+							<th scope="col">Chinstrap</th>
+							<th scope="col">Gentoo</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<th scope="row">Adelie</th>
+							<td>4</td>
+							<td>0</td>
+							<td>0</td>
+						</tr>
+						<tr>
+							<th scope="row">Chinstrap</th>
+							<td>1</td>
+							<td>1</td>
+							<td>0</td>
+						</tr>
+						<tr>
+							<th scope="row">Gentoo</th>
+							<td>0</td>
+							<td>0</td>
+							<td>4</td>
+						</tr>
+					</tbody>
+				</table>
+				<p>
+					Repeated model choices based on this test set can make later comparisons
+					optimistic. Nested cross-validation is planned for a later release.
+				</p>
+			</section>
+			<section>
+				<h2>Model diagnostics — examples from other classifiers</h2>
+				<p>A model with no declared diagnostics still shows the common test scores.</p>
+				<dl>
+					<dt>Tree node count</dt>
+					<dd>11</dd>
+					<dt>Tree depth</dt>
+					<dd>4</dd>
+					<dt>MLP iterations</dt>
+					<dd>200</dd>
+				</dl>
+				<table>
+					<caption>
+						MLP training loss history
+					</caption>
+					<thead>
+						<tr>
+							<th scope="col">Iteration</th>
+							<th scope="col">Loss</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<th scope="row">1</th>
+							<td>0.72</td>
+						</tr>
+						<tr>
+							<th scope="row">2</th>
+							<td>0.65</td>
+						</tr>
+					</tbody>
+				</table>
+				<p>Page 1 of 4. Up to 50 observations per page.</p>
+				<button class="btn" type="button" disabled>First</button
+				><button class="btn" type="button" disabled>Previous</button
+				><button class="btn" type="button">Next</button
+				><button class="btn" type="button">Last</button>
+				<table>
+					<caption>
+						SVC support counts in fitted class order
+					</caption>
+					<thead>
+						<tr>
+							<th scope="col">Class</th>
+							<th scope="col">Support vectors</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<th scope="row">Adelie</th>
+							<td>8</td>
+						</tr>
+						<tr>
+							<th scope="row">Chinstrap</th>
+							<td>11</td>
+						</tr>
+						<tr>
+							<th scope="row">Gentoo</th>
+							<td>7</td>
+						</tr>
+					</tbody>
+				</table>
+			</section>
+			<section>
+				<h2>Random Search history</h2>
+				<table>
+					<caption>
+						Candidate validation results
+					</caption>
+					<thead>
+						<tr>
+							<th scope="col">Trial</th>
+							<th scope="col">Parameters</th>
+							<th scope="col">Status</th>
+							<th scope="col">Validation accuracy</th>
+							<th scope="col">Fit and score duration</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<th scope="row">1</th>
+							<td>Maximum iterations: 200</td>
+							<td>Completed</td>
+							<td>94%</td>
+							<td>0.25 seconds</td>
+						</tr>
+						<tr>
+							<th scope="row">2</th>
+							<td>Maximum iterations: 500</td>
+							<td>Failed</td>
+							<td>Unavailable</td>
+							<td>0.10 seconds</td>
+						</tr>
+					</tbody>
+				</table>
+				<p>
+					Search duration, final refit duration and total application time are separate
+					measurements. Validation accuracy selected the parameters; test accuracy
+					evaluates the final refitted model.
+				</p>
+			</section>
+			<section>
+				<h2>Many-class results</h2>
+				<label for="true-class">True class</label
+				><select id="true-class" name="true-class">
+					<option>All classes</option>
+					<option>Adelie</option>
+					<option>Chinstrap</option>
+					<option>Gentoo</option>
+				</select>
+				<p>All predicted-class columns remain available.</p>
+			</section>
+			<section>
+				<h2>Unavailable metric</h2>
+				<p>Log loss is unavailable because SVC probability calibration was disabled.</p>
+			</section>
+			<section>
+				<h2>Loading</h2>
+				<progress aria-label="Loading saved results"></progress>
+				<p>Loading the result layout and saved results…</p>
+			</section>
+			<section>
+				<h2>Empty</h2>
+				<p>This model has not completed training.</p>
+			</section>
+			<section>
+				<h2>Result error</h2>
+				<p role="alert">
+					The result layout could not be loaded or uses an unsupported version.
+				</p>
+				<button class="btn" type="button">Retry</button>
+			</section>
+			<section>
+				<h2>Lost results</h2>
+				<p>
+					Saved model results are missing or incompatible. Your configuration is retained;
+					train again to produce new results.
+				</p>
+			</section>
+			<section>
+				<h2>Compare Results</h2>
+				<table>
+					<caption>
+						Models evaluated on the same test rows
+					</caption>
+					<thead>
+						<tr>
+							<th scope="col">Model</th>
+							<th scope="col">Features</th>
+							<th scope="col">Configuration mode</th>
+							<th scope="col">Test accuracy</th>
+							<th scope="col">Macro F1</th>
+							<th scope="col">Log loss</th>
+							<th scope="col">Library duration</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<th scope="row">Model 1 — Logistic Regression</th>
+							<td>Four numeric features</td>
+							<td>Manual</td>
+							<td>94%</td>
+							<td>0.93</td>
+							<td>0.18</td>
+							<td>0.42 seconds</td>
+						</tr>
+						<tr>
+							<th scope="row">Model 2 — Support Vector Classifier</th>
+							<td>Four numeric features</td>
+							<td>Random Search</td>
+							<td>95%</td>
+							<td>0.94</td>
+							<td>Unavailable: calibration disabled</td>
+							<td>1.8 seconds</td>
+						</tr>
+					</tbody>
+				</table>
+				<p>No automatic winner is selected.</p>
+			</section>
+			<section>
+				<h2>Comparison blocked</h2>
+				<p>Train at least two models to compare results.</p>
+				<a href="/models">Train models</a>
+			</section>
+			<section>
+				<h2>Incompatible comparison</h2>
+				<p>
+					Model 3 used different test rows. Its results are shown separately and cannot be
+					directly compared with this group.
+				</p>
+			</section>
+		</main>
+	</body>
+</html>

@@ -1,0 +1,202 @@
+<!doctype html>
+<!-- DRAFT: structure only, not normative for appearance. Source: plans/web-ml-classification-integration.md, interfaces and behaviour B–G. Open questions: plan approval. -->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="stylesheet" href="../style.css" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>samatā.ml | Train Models</title>
+	</head>
+	<body>
+		<svg style="display: none" aria-hidden="true" focusable="false">
+			<symbol
+				id="settings"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<path
+					d="M12 21.5c2 0 .8-2.3 2.7-3 1.8-.8 2.6 1.6 4 .2s-1-2.2-.2-4c.7-1.9 3-.7 3-2.7s-2.3-.8-3-2.7c-.8-1.8 1.6-2.6.2-4s-2.2 1-4 .2c-1.9-.7-.7-3-2.7-3s-.8 2.3-2.7 3c-1.8.8-2.6-1.6-4-.2s1 2.2.2 4c-.7 1.9-3 .7-3 2.7s2.3.8 3 2.7c.8 1.8-1.6 2.6-.2 4s2.2-1 4-.3c1.9.8.7 3.1 2.7 3.1Z" />
+				<circle cx="12" cy="12" r="3.5" />
+			</symbol>
+
+			<symbol
+				id="close"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<line x1="18" y1="6" x2="6" y2="18" />
+				<line x1="6" y1="6" x2="18" y2="18" />
+			</symbol>
+
+			<symbol id="check" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m5.73 5.29a1 1 0 0 0-1.41 0L10 14.6l-2.31-2.32a1 1 0 1 0-1.42 1.42l3.02 3.02a1 1 0 0 0 1.42 0l7.02-7.03a1 1 0 0 0 0-1.41" />
+			</symbol>
+
+			<symbol id="question" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m0 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2m0-10.2A3 3 0 0 0 8.8 9a.8.8 0 0 0 1.4 0q.2-1.6 1.8-1.7T13.8 9q0 .6-.8 1.5l-.3.3-1 1.2a4 4 0 0 0-.4 2 .7.7 0 1 0 1.4 0q0-1.2 1.1-2.2l.3-.3q1.2-1.2 1.2-2.5c0-2-1.4-3.2-3.3-3.2" />
+			</symbol>
+		</svg>
+
+		<div class="sidebar">
+			<h1>samat&amacr;.ml</h1>
+			<p class="tagline">Machine Learning in Your Browser</p>
+			<section class="project">
+				<h4>Project</h4>
+				<span class="project-name">New Project</span>
+				<button class="btn-icon project-settings" aria-label="Project settings">
+					<svg class="icon" aria-hidden="true" focusable="false">
+						<use href="#settings"></use>
+					</svg>
+				</button>
+			</section>
+			<nav class="workflow" aria-label="Workflow">
+				<ol class="steps">
+					<li class="step">
+						<a href="/load-data" class="step-link">
+							<span class="step-num">1</span>
+							<span class="step-label-small">Dataset</span>
+							<span class="step-value">{Dataset Name}</span>
+							<span class="step-chiclets">
+								<span class="chiclet">999 rows</span>
+								<span class="chiclet">999 columns</span>
+							</span>
+						</a>
+					</li>
+					<li class="step">
+						<a href="/select-target" class="step-link">
+							<span class="step-num">2</span>
+							<span class="step-label-small">Target</span>
+							<span class="step-value">{Target Variable Column Name}</span>
+							<span class="step-chiclets">
+								<span class="chiclet">Categorical</span>
+							</span>
+						</a>
+					</li>
+					<li class="step">
+						<div class="step-link">
+							<span class="step-num">3</span>
+							<span class="step-label-small">Models</span>
+							<ul class="step-models">
+								<li class="step-model">
+									<div class="step-model-link" aria-current="step">
+										Training New Model...
+									</div>
+								</li>
+							</ul>
+						</div>
+					</li>
+					<li class="step">
+						<a href="/compare-results" class="step-link">
+							<span class="step-num">4</span>
+							<span class="step-label">Compare Results</span>
+						</a>
+					</li>
+				</ol>
+			</nav>
+			<footer>
+				<a href="/about">about</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/privacy">privacy</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/help">help</a>
+			</footer>
+		</div>
+
+		<main>
+			<header class="page-header">
+				<h1>Train Models</h1>
+				<p>Choose a model to predict your target variable.</p>
+			</header>
+
+			<section>
+				<h2>5. Training — waiting</h2>
+				<label for="queued">Model fitting</label><progress id="queued"></progress>
+				<p role="status">Waiting to train.</p>
+				<button class="btn" type="button">Cancel training</button>
+			</section>
+			<section>
+				<h2>Preparing data</h2>
+				<label for="preparing">Dataset preparation</label
+				><progress id="preparing" max="344" value="172"></progress>
+				<p>172 of 344 rows checked. Fitting transformations uses only the fitting rows.</p>
+				<button class="btn" type="button">Cancel training</button>
+			</section>
+			<section>
+				<h2>Fitting Logistic Regression</h2>
+				<label for="fitting">Model fitting</label
+				><progress id="fitting" max="100" value="55"></progress>
+				<p>Training · 50 of 100 work units · 55% of scheduled library work</p>
+				<p>Work progress is not an estimate of remaining time.</p>
+				<button class="btn" type="button">Cancel training</button>
+			</section>
+			<section>
+				<h2>Random Search</h2>
+				<label for="search">Search evaluations completed</label
+				><progress id="search" max="10" value="6"></progress>
+				<p>6 of 10 evaluations complete · 1 active · Best validation accuracy: 94%</p>
+				<button class="btn" type="button">Cancel training</button>
+			</section>
+			<section>
+				<h2>Refitting selected parameters</h2>
+				<label for="refit">Final development-data fit</label
+				><progress id="refit"></progress>
+				<p>Search is complete. Fitting the selected configuration on development data.</p>
+			</section>
+			<section>
+				<h2>Evaluating test data</h2>
+				<label for="evaluating">Test evaluation</label><progress id="evaluating"></progress>
+				<p>Calculating final test scores…</p>
+			</section>
+			<section>
+				<h2>Saving results</h2>
+				<label for="saving">Saving model results</label><progress id="saving"></progress>
+				<p>The model has finished fitting. Results are being saved in this browser.</p>
+				<button class="btn" type="button" disabled>View Results</button>
+			</section>
+			<section>
+				<h2>Advisory</h2>
+				<p role="status">A worker was retried. Training is continuing.</p>
+			</section>
+			<section>
+				<h2>Cancelling</h2>
+				<p role="status">Cancelling training and releasing resources…</p>
+				<button class="btn" type="button" disabled>Cancel training</button>
+			</section>
+			<section>
+				<h2>Cancelled</h2>
+				<p role="status">Training was cancelled. Your settings are saved.</p>
+				<button class="btn" type="button">Train Model</button>
+			</section>
+			<section>
+				<h2>Failed</h2>
+				<p role="alert">
+					The model could not be saved because browser storage is unavailable. Check site
+					storage and try again.
+				</p>
+				<button class="btn" type="button">Train Model</button>
+			</section>
+			<section>
+				<h2>Interrupted by reload</h2>
+				<p>
+					Training was interrupted. Starting again uses your saved settings and begins a
+					new run.
+				</p>
+				<button class="btn" type="button">Train Model</button>
+			</section>
+			<section>
+				<h2>Training Complete</h2>
+				<p role="status">The trained model and results have been saved.</p>
+				<p>Library fitting duration: 0.42 seconds. Total application time: 0.68 seconds.</p>
+				<button class="btn btn-primary" type="button">View Results</button>
+			</section>
+		</main>
+	</body>
+</html>

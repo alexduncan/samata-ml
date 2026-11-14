@@ -1,6 +1,6 @@
 # Engineering Conventions for Components
 
-**Status:** partial — binding on all UI code. The shared style modules (`src/styles/`) follow it; the scaffold shell (`src/app.ts`, `src/features/**`) does not yet meet §4, §6.1, §6.3, §7 or §8 ([Known gap](README.md#known-gaps) 13). `src/i18n.ts` (§8) and Storybook (§10) do not exist.
+**Status:** partial — binding on all UI code. The shared style modules (`src/styles/`) follow it; the minimal `src/i18n.ts` UI instance and formatter are implemented; the scaffold shell (`src/app.ts`, `src/features/**`) does not yet meet §4, §6.1, §6.3, §7 or §8 ([Known gap](README.md#known-gaps) 13). Storybook (§10) does not exist yet.
 
 Applies to every component, style primitive and store in this repository. Agents MUST read this file before implementing any spec in `specification/components/`.
 
@@ -59,6 +59,7 @@ The public API of a block is everything its spec lists under **Public API**: tag
 - One element per file. File name matches the tag name (`app-dataset-picker.ts`).
 - Register with `@customElement('app-…')` or `@customElement('ui-…')`, as specified, and augment `HTMLElementTagNameMap`.
 - Public reactive properties use `@property`; internal state uses `@state` and is `private`. Reflect attributes only when CSS needs them.
+- Domain identity convention: Elements that represent a specific dataset or model entity reflect their domain key as a typed, hyphenated attribute (e.g. `dataset-id="iris"`), never an untyped generic `id` or raw DOM ID.
 - Decorated reactive fields MUST use the `accessor` keyword: `@property() accessor label = '';`, `@state() private accessor open = false;`. A plain field (`@property() label = '';`) fails typecheck and throws "Unsupported decorator location: field" at runtime.
 - Overridden Lit members (`render`, `updated`, `willUpdate`, `firstUpdated`, `connectedCallback`, `disconnectedCallback`, `styles`) use `override`.
 - Internal methods and fields use TypeScript `private` (e.g. `private handleClick()`), not `#private` names. Decorators cannot be applied to `#private` names.
@@ -162,6 +163,7 @@ Styling crosses shadow boundaries in exactly two sanctioned ways.
 - Numbers, dates and lists are formatted with the i18n formatter, never by hand.
 - The locale store takes its supported locales and base locale from `src/config/locales.ts`, and drives `lang` and `dir` on `<html>`.
 - Layouts MUST tolerate labels roughly 40% longer than English and right-to-left direction: no fixed widths on text, no clipping, logical properties only.
+- Presentational component exception: Tier 2 presentational components do not import store subscriptions or `src/i18n.ts`. Instead, they accept pre-translated strings through a typed `labels` property object with explicit default fallbacks, or render consumer-supplied content directly.
 - A block that renders only consumer-supplied text owns no strings and its spec MUST say so.
 
 ## 9. Testing

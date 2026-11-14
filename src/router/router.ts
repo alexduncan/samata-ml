@@ -1,5 +1,6 @@
 import { atom } from 'nanostores';
 import { $appState, setResumePath } from '../stores/app.store';
+import { flushNow } from '../stores/persister';
 import type { HistoryEntryState, ParsedRoute, ReservedPath, WorkflowPath } from '../types/routes';
 import { parseRoute } from './route-parser';
 
@@ -15,6 +16,16 @@ let isSyncingFromHistory = false;
 let routerInitialized = false;
 let cleanupListeners: (() => void) | undefined;
 let inAppHistoryCount = 0;
+let pendingFocusRequest = false;
+
+/**
+ * Returns true once after a user-initiated workflow navigation, so the shell can move focus (§5.6).
+ */
+export function takeFocusRequest(): boolean {
+	const requested = pendingFocusRequest;
+	pendingFocusRequest = false;
+	return requested;
+}
 
 /**
  * Maps a parsed route to its canonical document title: samatā.ml | {Page}
@@ -70,8 +81,19 @@ function updateTitle(route: ParsedRoute): void {
  * @param options - Navigation options (e.g. { replace: true }).
  */
 export function navigate(path: string, options?: { replace?: boolean }): void {
+	internalNavigate(path, options, true);
+}
+
+function internalNavigate(
+	path: string,
+	options?: { replace?: boolean },
+	requestFocus: boolean = true
+): void {
 	if (typeof window === 'undefined') {
 		const parsed = parseRoute(path);
+		if (requestFocus && parsed.kind === 'workflow') {
+			pendingFocusRequest = true;
+		}
 		$route.set(parsed);
 		return;
 	}
@@ -115,6 +137,8 @@ export function navigate(path: string, options?: { replace?: boolean }): void {
 		entryId: Math.random().toString(36).slice(2)
 	};
 
+	flushNow();
+
 	if (options?.replace) {
 		window.history.replaceState(historyState, '', targetPath);
 	} else {
@@ -122,19 +146,14 @@ export function navigate(path: string, options?: { replace?: boolean }): void {
 		inAppHistoryCount++;
 	}
 
+	if (requestFocus && parsed.kind === 'workflow') {
+		pendingFocusRequest = true;
+	} else if (!requestFocus) {
+		pendingFocusRequest = false;
+	}
+
 	$route.set(parsed);
 	updateTitle(parsed);
-
-	// Move focus to <h1> in .page-header if user-initiated workflow navigation
-	if (parsed.kind === 'workflow' && typeof document !== 'undefined') {
-		queueMicrotask(() => {
-			const h1 = document.querySelector<HTMLElement>('.page-header h1, h1');
-			if (h1) {
-				h1.setAttribute('tabindex', '-1');
-				h1.focus({ preventScroll: true });
-			}
-		});
-	}
 }
 
 /**
@@ -144,7 +163,14 @@ export function navigate(path: string, options?: { replace?: boolean }): void {
  */
 export function openReserved(path: ReservedPath): void {
 	if (typeof window === 'undefined') {
-		$route.set({ kind: 'reserved', path });
+		const currentRoute = $route.get();
+		const underlayPath =
+			(currentRoute.kind === 'workflow'
+				? currentRoute.path
+				: currentRoute.kind === 'reserved'
+					? currentRoute.underlayPath
+					: $appState.get().resumePath) ?? '/data';
+		$route.set({ kind: 'reserved', path, underlayPath });
 		return;
 	}
 
@@ -160,6 +186,7 @@ export function openReserved(path: ReservedPath): void {
 		// Reserved -> reserved replaces state to never stack modal entries (§5.2)
 		const existingUnderlay =
 			(window.history.state as HistoryEntryState)?.underlayPath ??
+			currentRoute.underlayPath ??
 			$appState.get().resumePath ??
 			'/data';
 		const historyState: HistoryEntryState = {
@@ -167,7 +194,11 @@ export function openReserved(path: ReservedPath): void {
 			entryId: Math.random().toString(36).slice(2),
 			underlayPath: existingUnderlay
 		};
+		flushNow();
 		window.history.replaceState(historyState, '', path);
+		const parsed: ParsedRoute = { kind: 'reserved', path, underlayPath: existingUnderlay };
+		$route.set(parsed);
+		updateTitle(parsed);
 	} else {
 		// Workflow -> reserved pushes new entry carrying underlayPath
 		const underlayPath =
@@ -178,13 +209,13 @@ export function openReserved(path: ReservedPath): void {
 			entryId: Math.random().toString(36).slice(2),
 			underlayPath
 		};
+		flushNow();
 		window.history.pushState(historyState, '', path);
 		inAppHistoryCount++;
+		const parsed: ParsedRoute = { kind: 'reserved', path, underlayPath };
+		$route.set(parsed);
+		updateTitle(parsed);
 	}
-
-	const parsed: ParsedRoute = { kind: 'reserved', path };
-	$route.set(parsed);
-	updateTitle(parsed);
 }
 
 /**
@@ -205,12 +236,13 @@ export function closeReserved(): void {
 		inAppHistoryCount--;
 		window.history.back();
 	} else {
-		// If loaded directly from URL, replaceState to underlayPath
+		// If loaded directly from URL, replaceState to underlayPath without requesting focus
 		const underlay =
 			(window.history.state as HistoryEntryState)?.underlayPath ??
+			current.underlayPath ??
 			$appState.get().resumePath ??
 			'/data';
-		navigate(underlay, { replace: true });
+		internalNavigate(underlay, { replace: true }, false);
 	}
 }
 
@@ -229,8 +261,17 @@ function handleClick(event: MouseEvent): void {
 		return;
 	}
 
-	const target = event.target as Element | null;
-	const anchor = target?.closest('a');
+	const path = typeof event.composedPath === 'function' ? event.composedPath() : [];
+	let anchor: HTMLAnchorElement | null = null;
+	for (const node of path) {
+		if (node instanceof HTMLAnchorElement) {
+			anchor = node;
+			break;
+		}
+	}
+	if (!anchor && event.target instanceof Element) {
+		anchor = event.target.closest('a');
+	}
 	if (!anchor) return;
 
 	// Ignore links with target or download
@@ -263,6 +304,7 @@ function handlePopState(): void {
 	try {
 		const rawPath = window.location.pathname;
 		const parsed = parseRoute(rawPath);
+		const previousRoute = $route.get();
 
 		if (parsed.kind === 'root' || parsed.kind === 'unknown') {
 			const resume = $appState.get().resumePath || '/data';
@@ -270,18 +312,36 @@ function handlePopState(): void {
 				v: 1,
 				entryId: Math.random().toString(36).slice(2)
 			};
+			flushNow();
 			window.history.replaceState(historyState, '', resume);
 			const resolved = parseRoute(resume);
+			if (resolved.kind === 'workflow' && previousRoute.kind === 'workflow') {
+				pendingFocusRequest = true;
+			} else {
+				pendingFocusRequest = false;
+			}
 			$route.set(resolved);
-			setResumePath(resume);
+			if (resolved.kind === 'workflow') {
+				setResumePath(resolved.path);
+			}
 			updateTitle(resolved);
 		} else if (parsed.kind === 'workflow') {
+			if (previousRoute.kind === 'workflow') {
+				pendingFocusRequest = true;
+			} else {
+				pendingFocusRequest = false;
+			}
 			$route.set(parsed);
 			setResumePath(parsed.path);
 			updateTitle(parsed);
 		} else if (parsed.kind === 'reserved') {
-			$route.set(parsed);
-			updateTitle(parsed);
+			pendingFocusRequest = false;
+			const resume = ($appState.get().resumePath || '/data') as WorkflowPath;
+			const underlayPath = ((window.history.state as HistoryEntryState)?.underlayPath ??
+				resume) as WorkflowPath;
+			const resolved: ParsedRoute = { ...parsed, underlayPath };
+			$route.set(resolved);
+			updateTitle(resolved);
 		}
 	} finally {
 		isSyncingFromHistory = false;
@@ -328,8 +388,11 @@ export function initRouter(): () => void {
 	const rawPath = window.location.pathname;
 	const parsed = parseRoute(rawPath);
 
+	pendingFocusRequest = false;
+
 	if (parsed.kind === 'root') {
 		const resume = $appState.get().resumePath || '/data';
+		flushNow();
 		window.history.replaceState(
 			{ v: 1, entryId: Math.random().toString(36).slice(2) },
 			'',
@@ -340,6 +403,7 @@ export function initRouter(): () => void {
 		updateTitle(resolved);
 	} else if (parsed.kind === 'unknown') {
 		const resume = $appState.get().resumePath || '/data';
+		flushNow();
 		window.history.replaceState(
 			{ v: 1, entryId: Math.random().toString(36).slice(2) },
 			'',
@@ -349,15 +413,17 @@ export function initRouter(): () => void {
 		$route.set(resolved);
 		updateTitle(resolved);
 	} else if (parsed.kind === 'reserved') {
-		const resume = $appState.get().resumePath || '/data';
+		const resume = ($appState.get().resumePath || '/data') as WorkflowPath;
 		const stateObj: HistoryEntryState = {
 			v: 1,
 			entryId: Math.random().toString(36).slice(2),
 			underlayPath: resume
 		};
+		flushNow();
 		window.history.replaceState(stateObj, '', parsed.path);
-		$route.set(parsed);
-		updateTitle(parsed);
+		const resolved: ParsedRoute = { ...parsed, underlayPath: resume };
+		$route.set(resolved);
+		updateTitle(resolved);
 	} else {
 		// Workflow route
 		setResumePath(parsed.path);
@@ -377,4 +443,5 @@ export function stopRouter(): void {
 	}
 	inAppHistoryCount = 0;
 	routerInitialized = false;
+	pendingFocusRequest = false;
 }

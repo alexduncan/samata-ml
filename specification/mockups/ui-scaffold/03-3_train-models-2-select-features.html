@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="stylesheet" href="./style.css" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>samatā.ml | Train Models</title>
+	</head>
+	<body>
+		<svg style="display: none" aria-hidden="true" focusable="false">
+			<symbol
+				id="settings"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<path
+					d="M12 21.5c2 0 .8-2.3 2.7-3 1.8-.8 2.6 1.6 4 .2s-1-2.2-.2-4c.7-1.9 3-.7 3-2.7s-2.3-.8-3-2.7c-.8-1.8 1.6-2.6.2-4s-2.2 1-4 .2c-1.9-.7-.7-3-2.7-3s-.8 2.3-2.7 3c-1.8.8-2.6-1.6-4-.2s1 2.2.2 4c-.7 1.9-3 .7-3 2.7s2.3.8 3 2.7c.8 1.8-1.6 2.6-.2 4s2.2-1 4-.3c1.9.8.7 3.1 2.7 3.1Z" />
+				<circle cx="12" cy="12" r="3.5" />
+			</symbol>
+
+			<symbol
+				id="close"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<line x1="18" y1="6" x2="6" y2="18" />
+				<line x1="6" y1="6" x2="18" y2="18" />
+			</symbol>
+
+			<symbol id="check" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m5.73 5.29a1 1 0 0 0-1.41 0L10 14.6l-2.31-2.32a1 1 0 1 0-1.42 1.42l3.02 3.02a1 1 0 0 0 1.42 0l7.02-7.03a1 1 0 0 0 0-1.41" />
+			</symbol>
+
+			<symbol id="question" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m0 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2m0-10.2A3 3 0 0 0 8.8 9a.8.8 0 0 0 1.4 0q.2-1.6 1.8-1.7T13.8 9q0 .6-.8 1.5l-.3.3-1 1.2a4 4 0 0 0-.4 2 .7.7 0 1 0 1.4 0q0-1.2 1.1-2.2l.3-.3q1.2-1.2 1.2-2.5c0-2-1.4-3.2-3.3-3.2" />
+			</symbol>
+		</svg>
+
+		<div class="sidebar">
+			<h1>samat&amacr;.ml</h1>
+			<p class="tagline">Machine Learning in Your Browser</p>
+			<section class="project">
+				<h4>Project</h4>
+				<span class="project-name">New Project</span>
+				<button class="btn-icon project-settings" aria-label="Project settings">
+					<svg class="icon" aria-hidden="true" focusable="false">
+						<use href="#settings"></use>
+					</svg>
+				</button>
+			</section>
+			<nav class="workflow" aria-label="Workflow">
+				<ol class="steps">
+					<li class="step">
+						<a href="/load-data" class="step-link">
+							<span class="step-num">1</span>
+							<span class="step-label-small">Dataset</span>
+							<span class="step-value">{Dataset Name}</span>
+							<span class="step-chiclets">
+								<span class="chiclet">999 rows</span>
+								<span class="chiclet">999 columns</span>
+							</span>
+						</a>
+					</li>
+					<li class="step">
+						<a href="/select-target" class="step-link">
+							<span class="step-num">2</span>
+							<span class="step-label-small">Target</span>
+							<span class="step-value">{Target Variable Column Name}</span>
+							<span class="step-chiclets">
+								<span class="chiclet">Categorical</span>
+							</span>
+						</a>
+					</li>
+					<li class="step">
+						<div class="step-link">
+							<span class="step-num">3</span>
+							<span class="step-label-small">Models</span>
+							<ul class="step-models">
+								<li class="step-model">
+									<div class="step-model-link" aria-current="step">
+										Training New Model...
+									</div>
+								</li>
+							</ul>
+						</div>
+					</li>
+					<li class="step">
+						<a href="/compare-results" class="step-link">
+							<span class="step-num">4</span>
+							<span class="step-label">Compare Results</span>
+						</a>
+					</li>
+				</ol>
+			</nav>
+			<footer>
+				<a href="/about">about</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/privacy">privacy</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/help">help</a>
+			</footer>
+		</div>
+
+		<main>
+			<header class="page-header">
+				<h1>Train Models</h1>
+				<p>
+					Select a machine learning model to train on your dataset.
+					<a href="">learn more...</a>
+				</p>
+			</header>
+
+			<section>
+				<ol class="train-model" aria-label="Model training steps">
+					<!-- Step 1: Completed -->
+					<li class="train-step">
+						<section class="train-step-panel" aria-labelledby="step-1-title">
+							<header class="train-step-header">
+								<h2 id="step-1-title">1. Logistic Regression</h2>
+
+								<span class="train-step-action train-step-status">
+									<span class="visually-hidden">Completed</span>
+									<svg aria-hidden="true" width="24" height="24">
+										<use href="#check"></use>
+									</svg>
+								</span>
+							</header>
+						</section>
+					</li>
+
+					<!-- Step 2: Active -->
+					<li class="train-step train-step-active" aria-current="step">
+						<section class="train-step-panel" aria-labelledby="step-2-title">
+							<header class="train-step-header">
+								<h2 id="step-2-title">2. Select Features</h2>
+
+								<button
+									type="submit"
+									form="features-form"
+									class="train-step-action btn btn-primary">
+									Continue
+								</button>
+							</header>
+
+							<div class="train-step-content">
+								<p>
+									Select the features you want the model to use to try and predict
+									<code>{Target Variable Column Name}</code>.
+								</p>
+								<table class="table">
+									<thead>
+										<tr>
+											<th>Include</th>
+											<th>Column Name</th>
+											<th>Type</th>
+											<th>Notes</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												<input
+													type="checkbox"
+													id="include-column-1"
+													name="include-column-1" />
+											</td>
+											<td>Column 1</td>
+											<td><code>String</code></td>
+											<td></td>
+										</tr>
+										<tr class="target-variable">
+											<td></td>
+											<td>
+												Column 2
+												<span class="badge badge-amber">target</span>
+											</td>
+											<td><code>Number</code></td>
+											<td></td>
+										</tr>
+										<tr aria-selected="true">
+											<td>
+												<input
+													type="checkbox"
+													id="include-column-3"
+													name="include-column-3"
+													checked />
+											</td>
+											<td>Column 3</td>
+											<td><code>Categorical</code></td>
+											<td></td>
+										</tr>
+										<tr>
+											<td>
+												<input
+													type="checkbox"
+													id="include-column-4"
+													name="include-column-4" />
+											</td>
+											<td>Column 4</td>
+											<td><code>Boolean</code></td>
+											<td></td>
+										</tr>
+										<tr class="feature-unsupported">
+											<td></td>
+											<td>Column 4</td>
+											<td><code>Text</code></td>
+											<td>
+												Text columns are currently not supported as
+												features.
+											</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</section>
+					</li>
+
+					<!-- Step 3: Pending -->
+					<li class="train-step train-step-pending">
+						<section class="train-step-panel" aria-labelledby="step-3-title">
+							<header class="train-step-header">
+								<h2 id="step-3-title">3. Configure Model</h2>
+							</header>
+
+							<div class="train-step-content" hidden>
+								<form id="model-form">
+									<!-- Hyperparameter controls -->
+								</form>
+							</div>
+
+							<button
+								type="submit"
+								form="model-form"
+								class="train-step-action btn btn-primary"
+								hidden>
+								Continue
+							</button>
+						</section>
+					</li>
+
+					<!-- Step 4: Pending -->
+					<li class="train-step train-step-pending">
+						<section class="train-step-panel" aria-labelledby="step-4-title">
+							<header class="train-step-header">
+								<h2 id="step-4-title">4. Configure Training</h2>
+							</header>
+
+							<div class="train-step-content" hidden>
+								<form id="training-form">
+									<!-- Training configuration controls -->
+								</form>
+							</div>
+
+							<button
+								type="submit"
+								form="training-form"
+								class="train-step-action btn btn-primary"
+								hidden>
+								Start Training
+							</button>
+						</section>
+					</li>
+
+					<!-- Step 5: Pending -->
+					<li class="train-step train-step-pending">
+						<section class="train-step-panel" aria-labelledby="step-5-title">
+							<header class="train-step-header">
+								<h2 id="step-5-title">5. Training</h2>
+							</header>
+
+							<div class="train-step-content" hidden>
+								<label for="training-progress"> Training progress </label>
+								<progress id="training-progress"></progress>
+								<p role="status" id="training-status"></p>
+							</div>
+
+							<button type="button" class="train-step-action btn btn-primary" hidden>
+								View Results
+							</button>
+						</section>
+					</li>
+
+					<!-- Step 6: Pending -->
+					<li class="train-step train-step-pending">
+						<section class="train-step-panel" aria-labelledby="step-6-title">
+							<header class="train-step-header">
+								<h2 id="step-6-title">6. Results</h2>
+							</header>
+
+							<div class="train-step-content" hidden>
+								<!-- Results and evaluation metrics -->
+							</div>
+						</section>
+					</li>
+				</ol>
+			</section>
+		</main>
+	</body>
+</html>

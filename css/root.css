@@ -118,4 +118,5 @@
 :root {
 	--surface: #fff;
 	--focus-ring: var(--blue-700);
+	--shadow-panel: -2px 0 5px rgba(0, 0, 0, 0.1);
 }

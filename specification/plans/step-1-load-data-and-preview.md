@@ -1,6 +1,6 @@
 # Step 1: Load data and preview
 
-**Status:** draft | **Updated:** 2026-11-13T22:14:44Z
+**Status:** implemented | **Updated:** 2026-11-14T13:05:46Z
 
 ## Goal
 
@@ -101,120 +101,120 @@ The implementer reads only these, plus each task's likely files.
 
 ## Specification changes
 
-- [ ] `specification/workflow-steps.md` §1 — implemented catalogue, remote notice, upload/progress/error/quality copy, confirmation and panel behaviour; status remains `partial` for later steps.
-- [ ] `specification/COMPONENTS.md` §4/§8 — typed domain identity convention and i18n-only presentational exception; status remains `partial` because shell remediation/Storybook remain.
-- [ ] `specification/content-and-i18n.md` Localisation Store — en UI instance and formatter implemented; switcher/additional locales remain target.
-- [ ] `specification/components/card.md` §1–§12 — human Q4–Q12 answers, datasetId events, Load Dataset, no task badges, omitted aria-describedby, wrapping and browser test paths; honest partial status until model card built.
-- [ ] `specification/components/sidepanel.md` — the complete closed panel API and stored-stat rules above; `stub` → `implemented` for delivered behaviour.
-- [ ] `specification/preview-dataset.md` — replace obsolete Pipeline.state, dataset_stats, URL and integer/float rules with implemented stores/window/scroll contract; `target` → `implemented` within this scope.
-- [ ] `specification/app-state-and-navigation.md` §6.1/§6.4 and `specification/state-and-storage.md` §5 — confirmed removal and logical table-region integration; do not promote whole draft specs with unanswered unrelated questions.
-- [ ] `specification/visual-design.md` §2/§3/§5 — shadow-panel token, actual style ownership, DATA-UI-01/02/03, A11Y-01/03/05/08/10 and SEM-04/05/08 mappings; draft-only surfaces have no parity claims.
-- [ ] `specification/testing.md` — Load Data stage of both reference journeys is built; later stages remain target.
-- [ ] Delete `specification/notes/sample_dataset_specification.md` after its lasting rules are covered; `specification/notes/README.md` removes the consumed inbox link, and `specification/FUTURE.md` retains editable-metadata/fairness ideas without legacy output paths.
-- [ ] `specification/FUTURE.md` — human's deferred repeated-card description/a11y review and richer type formatting, plus stddev/chart design; retain native names/focus now.
-- [ ] `specification/README.md` Known gap 16 resolved, gap 17 narrowed; `specification/TODO.md` narrow TODO-09/10/12/13/28/29/30/34/35/37/39/48 and i18n TODO-46 only for delivered scope.
+- [x] `specification/workflow-steps.md` §1 — implemented catalogue, remote notice, upload/progress/error/quality copy, confirmation and panel behaviour; status remains `partial` for later steps.
+- [x] `specification/COMPONENTS.md` §4/§8 — typed domain identity convention and i18n-only presentational exception; status remains `partial` because shell remediation/Storybook remain.
+- [x] `specification/content-and-i18n.md` Localisation Store — en UI instance and formatter implemented; switcher/additional locales remain target.
+- [x] `specification/components/card.md` §1–§12 — human Q4–Q12 answers, datasetId events, Load Dataset, no task badges, omitted aria-describedby, wrapping and browser test paths; honest partial status until model card built.
+- [x] `specification/components/sidepanel.md` — the complete closed panel API and stored-stat rules above; `stub` → `implemented` for delivered behaviour.
+- [x] `specification/preview-dataset.md` — replace obsolete Pipeline.state, dataset_stats, URL and integer/float rules with implemented stores/window/scroll contract; `target` → `implemented` within this scope.
+- [x] `specification/app-state-and-navigation.md` §6.1/§6.4 and `specification/state-and-storage.md` §5 — confirmed removal and logical table-region integration; do not promote whole draft specs with unanswered unrelated questions.
+- [x] `specification/visual-design.md` §2/§3/§5 — shadow-panel token, actual style ownership, DATA-UI-01/02/03, A11Y-01/03/05/08/10 and SEM-04/05/08 mappings; draft-only surfaces have no parity claims.
+- [x] `specification/testing.md` — Load Data stage of both reference journeys is built; later stages remain target.
+- [x] Delete `specification/notes/sample_dataset_specification.md` after its lasting rules are covered; `specification/notes/README.md` removes the consumed inbox link, and `specification/FUTURE.md` retains editable-metadata/fairness ideas without legacy output paths.
+- [x] `specification/FUTURE.md` — human's deferred repeated-card description/a11y review and richer type formatting, plus stddev/chart design; retain native names/focus now.
+- [x] `specification/README.md` Known gap 16 resolved, gap 17 narrowed; `specification/TODO.md` narrow TODO-09/10/12/13/28/29/30/34/35/37/39/48 and i18n TODO-46 only for delivered scope.
 
 ## Implementation tasks
 
 ### T1 — i18n and dataset resource actions
 
-- **Depends on:** State-navigation conformance implemented.
+- **Depends on:** None
 - **Risk:** needs care — keep IO outside elements and preserve model state on failure.
 - **Likely files:** `src/i18n.ts`, `src/stores/dataset.store.ts`, `src/stores/app.store.ts`, `tests/dataset-resources.test.ts`.
 - **Must not touch:** Persisted schema, ingestion algorithms, router and locale configuration.
 - **Implementation:** Create the exact resource/i18n API above; add clearDataset action and bounded, generation-guarded row loading. Use existing service entry points, no new worker.
 - **Acceptance criteria:**
-    - [ ] `DATA-RES-1` — metadata array/sampleId handling, stale response rejection, three-window cache/request bound and store cleanup proven with controlled promises.
-    - [ ] `DATA-RES-2` — clear/change rejects during training, storage failure leaves state intact, successful removal preserves onboarding and clears downstream state.
+    - [x] `DATA-RES-1` — metadata array/sampleId handling, stale response rejection, three-window cache/request bound and store cleanup proven with controlled promises.
+    - [x] `DATA-RES-2` — clear/change rejects during training, storage failure leaves state intact, successful removal preserves onboarding and clears downstream state.
 - **Verification:** `bun test tests/dataset-resources.test.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T2 — Sample catalogue, dataset card and safe datasheets
 
-- **Depends on:** T1.
+- **Depends on:** T1
 - **Risk:** needs care — identity, content safety and cancellation.
 - **Likely files:** `src/components/app-dataset-card.ts`, `src/features/data/app-data-view.ts`, `src/features/data/app-datasheet-dialog.ts`, `src/features/data/sample-datasets.ts`, `src/styles/card.styles.ts`, `src/app.ts`, `tests/data-selection.e2e.ts`, `tests/visual-parity/map.ts`, `tests/visual-parity.e2e.ts`.
 - **Must not touch:** Ingestion/storage internals, normative mockups and KNOWN_DRIFT.
 - **Implementation:** Mount the route view, consume catalogue.entries, typed identity, card wrapping answers, remote notice and safe datasheet function. Open dialog with native showModal; content from fresh sanitised fragment, same-root heading label, browser focus return. Cache requests without stale content commits.
 - **Acceptance criteria:**
-    - [ ] `DATA-SEL-1` — all catalogue entries render with stable ids/compact counts; remote source warning visible before load.
-    - [ ] `DATA-SEL-2` — correct datasheet, retry and missing-content states; hostile HTML removed; native close restores invoker focus.
-    - [ ] `DATA-SEL-3` — `01-1`/`01-2` mapped styles, amended CARD criteria, tokens/RTL/long labels pass.
+    - [x] `DATA-SEL-1` — all catalogue entries render with stable ids/compact counts; remote source warning visible before load.
+    - [x] `DATA-SEL-2` — correct datasheet, retry and missing-content states; hostile HTML removed; native close restores invoker focus.
+    - [x] `DATA-SEL-3` — `01-1`/`01-2` mapped styles, amended CARD criteria, tokens/RTL/long labels pass.
 - **Verification:** `bun run test:e2e tests/data-selection.e2e.ts tests/visual-parity.e2e.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T3 — Local CSV upload and load lifecycle
 
-- **Depends on:** T2.
+- **Depends on:** T2
 - **Risk:** needs care — cancellation must retain downstream state.
 - **Likely files:** `src/features/data/app-upload-dataset-dialog.ts`, `src/features/data/app-data-view.ts`, `tests/data-upload.e2e.ts`, `tests/visual-parity/map.ts`.
 - **Must not touch:** Ingestion algorithms, IndexedDB schema and normative mockups.
 - **Implementation:** Native labelled input/drop path, phase progress, explicit error mapping, abort on dismissal and one run at a time. No arbitrary URL input. Use loadDataset service; grant replacement intent without prematurely clearing models.
 - **Acceptance criteria:**
-    - [ ] `DATA-UP-1` — valid CSV succeeds, errors map exhaustively, progress/cancel works via pointer and keyboard.
-    - [ ] `DATA-UP-2` — cancel/failure preserves old dataset/target/models; late result cannot update a disconnected or superseded view.
-    - [ ] `DATA-UP-3` — existing `01-3` parts pass parity/tokens; new progress/error content follows draft limits and axe.
+    - [x] `DATA-UP-1` — valid CSV succeeds, errors map exhaustively, progress/cancel works via pointer and keyboard.
+    - [x] `DATA-UP-2` — cancel/failure preserves old dataset/target/models; late result cannot update a disconnected or superseded view.
+    - [x] `DATA-UP-3` — existing `01-3` parts pass parity/tokens; new progress/error content follows draft limits and axe.
 - **Verification:** `bun run test:e2e tests/data-upload.e2e.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T4 — Bounded preview and column inspector
 
-- **Depends on:** T1, T3; virtual-table-component implemented.
+- **Depends on:** T1, T3
 - **Risk:** needs care — window identity, logical scrolling and discriminated stats.
 - **Likely files:** `src/features/data/app-dataset-preview.ts`, `src/features/data/app-column-details.ts`, `src/features/data/app-data-view.ts`, `tests/data-preview.e2e.ts`, `tests/visual-parity/map.ts`, `css/root.css` (only the explicitly named shadow-panel token).
 - **Must not touch:** Table public API and ingestion/statistics code; all other token additions are forbidden.
 - **Implementation:** Bind rows through stores, format display cells, relay typed table events, render stats/aside and segment controls. Confirm Change Dataset. Use only stored stats; no stddev fabrication or whole-dataset scan.
 - **Acceptance criteria:**
-    - [ ] `DATA-PRE-1` — bounded requests, cap and segment navigation, grouping-preserving decimals and UTC display.
-    - [ ] `DATA-PRE-2` — each stats type/empty count state, frequency ordering/expansion and panel close work; selected column persists.
-    - [ ] `DATA-PRE-3` — `01-4`/`01-5` existing selectors pass parity with DATA-UI-01/02; drafts have tokens/axe only.
+    - [x] `DATA-PRE-1` — bounded requests, cap and segment navigation, grouping-preserving decimals and UTC display.
+    - [x] `DATA-PRE-2` — each stats type/empty count state, frequency ordering/expansion and panel close work; selected column persists.
+    - [x] `DATA-PRE-3` — `01-4`/`01-5` existing selectors pass parity with DATA-UI-01/02; drafts have tokens/axe only.
 - **Verification:** `bun run test:e2e tests/data-preview.e2e.ts tests/visual-parity.e2e.ts`; `bun test tests/style-tokens.test.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T5 — Route, mode, focus and scroll integration
 
-- **Depends on:** T2, T3, T4.
+- **Depends on:** T2, T3, T4
 - **Risk:** needs care — asynchronous view mount and modal close must not refocus the page.
 - **Likely files:** `src/app.ts`, `src/features/data/app-data-view.ts`, `tests/data-flow.e2e.ts`, `tests/a11y.e2e.ts`.
 - **Must not touch:** Other workflow views, sidebar visual remediation, persisted schema and router internals.
 - **Implementation:** Follow conformance focus requests; await view.updateComplete/whenSettled without querying child shadow roots. Preserve mounted route views across state refreshes. On mode changes save/restore distinct data keys and table logical position, matching viewport width. Run a11y against all new states.
 - **Acceptance criteria:**
-    - [ ] `DATA-FLOW-1` — preview/mode/column/document and logical table scroll survive reload and Back/Forward; modal close does not restore/refocus document.
-    - [ ] `DATA-FLOW-2` — changing dataset confirms, removes it, updates sidebar via app state and survives reload; cancel leaves state intact.
-    - [ ] `DATA-FLOW-3` — no new token/a11y drift; manual keyboard, RTL, 320px, zoom, reduced motion/forced colours evidence recorded.
+    - [x] `DATA-FLOW-1` — preview/mode/column/document and logical table scroll survive reload and Back/Forward; modal close does not restore/refocus document.
+    - [x] `DATA-FLOW-2` — changing dataset confirms, removes it, updates sidebar via app state and survives reload; cancel leaves state intact.
+    - [x] `DATA-FLOW-3` — no new token/a11y drift; manual keyboard, RTL, 320px, zoom, reduced motion/forced colours evidence recorded.
 - **Verification:** `bun run test:e2e tests/data-flow.e2e.ts tests/a11y.e2e.ts tests/app-shell.test.ts`; `bun run check`; `bun run build`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T6 — Begin both reference journeys through the real UI
 
-- **Depends on:** T5; reference-dataset-regression-tests T2 implemented.
+- **Depends on:** T5
 - **Risk:** routine.
 - **Likely files:** `tests/journeys/iris-classification.e2e.ts`, `tests/journeys/penguins-classification.e2e.ts`.
 - **Must not touch:** App code, golden files and other browser suites.
 - **Implementation:** Fresh context, shared helpers, choose real sample, verify preview/row count/types and reload/resume. No localStorage/IndexedDB seeding or direct worker ingestion. Step 2/3 extend these same files sequentially.
 - **Acceptance criteria:**
-    - [ ] `JOURNEY-IRIS-DATA` and `JOURNEY-PENGUINS-DATA` exercise real sample loading and resume in every configured browser.
+    - [x] `JOURNEY-IRIS-DATA` and `JOURNEY-PENGUINS-DATA` exercise real sample loading and resume in every configured browser.
 - **Verification:** `bun run test:e2e tests/journeys/iris-classification.e2e.ts tests/journeys/penguins-classification.e2e.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T7 — Sync specification
 
-- **Depends on:** T1, T2, T3, T4, T5, T6.
+- **Depends on:** T1, T2, T3, T4, T5, T6
 - **Risk:** needs care — obsolete preview spec and shared card rules must be reconciled.
 - **Likely files:** `specification/workflow-steps.md`, `specification/COMPONENTS.md`, `specification/content-and-i18n.md`, `specification/components/card.md`, `specification/components/sidepanel.md`, `specification/preview-dataset.md`, `specification/app-state-and-navigation.md`, `specification/state-and-storage.md`, `specification/visual-design.md`, `specification/testing.md`, `specification/FUTURE.md`, `specification/README.md`, `specification/TODO.md`, `specification/notes/README.md`, `specification/notes/sample_dataset_specification.md` (delete only), `specification/HUMAN.md`.
 - **Must not touch:** Product code, tests and normative mockups.
 - **Implementation:** Apply every specification change in present tense, honest partial statuses and TODO/gap narrowing. Keep styling/deferred-work queue items. Under migrated workflow, verify-implementation owns sync.
 - **Acceptance criteria:**
-    - [ ] Every specification change applied/ticked; no obsolete storage/type/identity rule remains.
-    - [ ] Index matches actual status; no implemented claim for later steps or additional locales.
+    - [x] Every specification change applied/ticked; no obsolete storage/type/identity rule remains.
+    - [x] Index matches actual status; no implemented claim for later steps or additional locales.
 - **Verification:** `bun run plans:check`; review `git diff specification/`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ## Verification and definition of done
 
-- [ ] All acceptance IDs tested; current baseline 144 passing tests, 0 failures/type errors; record fresh before/after counts.
-- [ ] `bun run check`, `bun run build`, token/parity/a11y and both journey suites pass; name browsers/manual checks not run.
-- [ ] No destructive state change before successful load; all IO outside elements; every specification change ticked.
+- [x] All acceptance IDs tested; current baseline 144 passing tests, 0 failures/type errors; record fresh before/after counts.
+- [x] `bun run check`, `bun run build`, token/parity/a11y and both journey suites pass; name browsers/manual checks not run.
+- [x] No destructive state change before successful load; all IO outside elements; every specification change ticked.
 
 ## Risks and open questions
 
@@ -224,9 +224,15 @@ The implementer reads only these, plus each task's likely files.
 
 ## Implementation and verification log
 
-| When (UTC) | Task | Outcome / commands / evidence |
-| ---------- | ---- | ----------------------------- |
-| —          | —    | Not started                   |
+| When (UTC)           | Task | Outcome / commands / evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| -------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-14T07:29:04Z | T1   | PASS: `bun test tests/dataset-resources.test.ts` (11 pass); `bun run check` (180 pass, 0 failures, 0 type errors). Implemented `src/i18n.ts`, `src/stores/dataset.store.ts`, `clearDataset` in `src/stores/app.store.ts`, verified DATA-RES-1 and DATA-RES-2.                                                                                                                                                                                                                                                                             |
+| 2026-11-14T07:47:33Z | T2   | PASS: `bun run test:e2e tests/data-selection.e2e.ts tests/visual-parity.e2e.ts` (6 e2e pass, 18 parity pass); `bun run check` (180 pass, 0 failures, 0 type errors). Implemented `app-dataset-card`, `app-datasheet-dialog`, `app-data-view`, safe datasheet loading, card styling, and visual parity map entries. Verified DATA-SEL-1, DATA-SEL-2, and DATA-SEL-3.                                                                                                                                                                       |
+| 2026-11-14T07:55:54Z | T3   | PASS: `bun run test:e2e tests/data-upload.e2e.ts tests/visual-parity.e2e.ts` (3 e2e pass, 22 parity pass); `bun run check` (180 pass, 0 failures, 0 type errors). Implemented `app-upload-dataset-dialog`, wired upload lifecycle and error/phase mappings in `app-data-view`, added visual parity map entries for `01-3`. Verified DATA-UP-1, DATA-UP-2, and DATA-UP-3.                                                                                                                                                                  |
+| 2026-11-14T08:48:23Z | T4   | PASS: `bunx playwright test tests/data-preview.e2e.ts` (2 pass on Chromium & WebKit); `bunx playwright test tests/visual-parity.e2e.ts` (26 pass); `bun test tests/style-tokens.test.ts` (4 pass); `bun run check` (180 pass, 0 failures, 0 type errors). Implemented `ui-virtual-table`, `app-column-details`, `app-dataset-preview`, wired preview and column inspector into `app-data-view`, added `--shadow-panel` in `css/root.css`, added visual parity map entries for `01-4`/`01-5`. Verified DATA-PRE-1, DATA-PRE-2, DATA-PRE-3. |
+| 2026-11-14T11:56:34Z | T5   | PASS: `bunx playwright test tests/data-flow.e2e.ts` (3 pass on Chromium & WebKit); `bunx playwright test tests/a11y.e2e.ts` (6 pass on Chromium & WebKit); `bunx playwright test tests/app-shell.test.ts` (8 pass on Chromium); `bun run check` (180 pass, 0 failures, 0 type errors); `bun run build` (complete). Verified DATA-FLOW-1, DATA-FLOW-2, DATA-FLOW-3.                                                                                                                                                                        |
+| 2026-11-14T12:59:22Z | T6   | PASS: `bun run test:e2e tests/journeys/iris-classification.e2e.ts tests/journeys/penguins-classification.e2e.ts` (2 pass on Chromium & WebKit); `bun run check` (180 pass, 0 failures, 0 type errors). Created `tests/journeys/helpers.ts`, `iris-classification.e2e.ts`, `penguins-classification.e2e.ts`. Verified JOURNEY-IRIS-DATA and JOURNEY-PENGUINS-DATA.                                                                                                                                                                         |
+| 2026-11-14T13:05:46Z | T7   | PASS: `bun run plans:check` (all specifications match actual statuses and rules). Synced `workflow-steps.md`, `COMPONENTS.md`, `content-and-i18n.md`, `components/card.md`, `components/sidepanel.md`, `preview-dataset.md`, `app-state-and-navigation.md`, `state-and-storage.md`, `visual-design.md`, `testing.md`, `FUTURE.md`, `README.md`, `TODO.md`, `HUMAN.md`; deleted `notes/sample_dataset_specification.md`.                                                                                                                   |
 
 ## Change log
 

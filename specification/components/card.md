@@ -1,6 +1,6 @@
 # Spec: Card (`app-dataset-card`, `app-model-card`)
 
-Status: Draft — `cardStyles` (§5.4) is built; `app-dataset-card` and `app-model-card` are not; Q4–Q12 are open · Tier: **Presentational component** ×2 (conventions §2) · Criterion prefix: `CARD`
+Status: partial — cardStyles and app-dataset-card are implemented; app-model-card remains target. · Tier: **Presentational component** ×2 (conventions §2) · Criterion prefix: `CARD`
 
 Read [`COMPONENTS.md`](../COMPONENTS.md) first. This spec follows its §12 template. Where this spec
 is silent, COMPONENTS.md applies. The only explicit override is in §2 (shared style module).
@@ -51,16 +51,18 @@ any time); a base class for the two elements (violates §3).
 
 ### `<app-dataset-card>`
 
-| Item                                  | Detail                                                                                                                                                                                 |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Tag                                   | `app-dataset-card`. Class `AppDatasetCard` in `src/components/app-dataset-card.ts`.                                                                                                    |
-| `name`                                | `string`, default `''`. Attribute `name`. Dataset title.                                                                                                                               |
-| `description`                         | `string`, default `''`. Attribute `description`.                                                                                                                                       |
-| `columns`                             | `number`, default `0`. Attribute `columns`. Column count.                                                                                                                              |
-| `rows`                                | `number`, default `0`. Attribute `rows`. Row count.                                                                                                                                    |
-| Slots                                 | None.                                                                                                                                                                                  |
-| Events                                | `app-dataset-datasheet-open` and `app-dataset-select`, each `CustomEvent<{ name: string }>`. `detail.name` is the card's `name` at dispatch time. `bubbles: false`, `composed: false`. |
-| Parts, CSS custom properties, methods | None.                                                                                                                                                                                  |
+| Item                                  | Detail                                                                                                                                                                                                                          |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Tag                                   | `app-dataset-card`. Class `AppDatasetCard` in `src/components/app-dataset-card.ts`.                                                                                                                                             |
+| `datasetId`                           | `string`, default `''`. Attribute `dataset-id`. Reflects dataset domain identity.                                                                                                                                               |
+| `name`                                | `string`, default `''`. Attribute `name`. Dataset title.                                                                                                                                                                        |
+| `description`                         | `string`, default `''`. Attribute `description`.                                                                                                                                                                                |
+| `columns`                             | `number`, default `0`. Attribute `columns`. Column count.                                                                                                                                                                       |
+| `rows`                                | `number`, default `0`. Attribute `rows`. Row count.                                                                                                                                                                             |
+| `labels`                              | Object with `datasheet`, `loadDataset`, `columns`, `rows` string properties providing translated UI text with defaults.                                                                                                         |
+| Slots                                 | None.                                                                                                                                                                                                                           |
+| Events                                | `app-dataset-datasheet-open` and `app-dataset-select`, each `CustomEvent<{ datasetId: string; name: string }>`. `detail.datasetId` and `detail.name` carry card identity at dispatch time. `bubbles: false`, `composed: false`. |
+| Parts, CSS custom properties, methods | None.                                                                                                                                                                                                                           |
 
 ### `<app-model-card>`
 
@@ -521,28 +523,14 @@ Answered by the spec owner (2026-11-05), kept here for the record:
 - **Q15 (answered).** `.card-title` changes from `--stone-800` to `--stone-900`, matching
   `.card-text`. The heading stands out by size (1.5rem) and weight (600), not by colour.
 
-Still open:
+Answered and resolved during Step 1 planning & implementation:
 
-- **Q4.** Confirm the `app-` prefix for both elements. (They are domain cards, not primitive UI,
-  so `app-` is proposed. The event names and `i18n()` keys depend on it.)
-- **Q5.** Compact notation turns `60,845` into `61K` and `19,158` into `19K`, which loses
-  precision. Is that intended, or should there be a fraction-digit or threshold rule? The scaffold
-  showed `60,845 rows` in full.
-- **Q6.** `overflow: hidden` clips unbroken long strings (a URL or identifier in `name` or
-  `description`). Add `overflow-wrap: anywhere` to the title and text? (Same issue as `button.md` Q5.)
-- **Q7.** If the model card's `image` slot is empty, should the card reserve the 5:3
-  grey area, collapse it, or is a missing image simply invalid?
-- **Q8.** Two padded inline `.stat` spans can touch or overlap when they wrap onto two lines in a
-  narrow container. Keep the original inline layout, or switch to a wrapping flex row with a gap?
-- **Q9.** Model type text: should the capitalisation come from the chiclet CSS
-  (`text-transform`), or should the messages be capitalised ("Classification")?
-- **Q10.** Discrepancy to resolve: `specification/steps/step-one.md` describes the dataset card
-  buttons as "info" and "select", and says the card shows "the tasks the dataset can be used for".
-  The supplied HTML has _Datasheet_ and _Select Dataset_ and no tasks field, although
-  the generated sample-dataset catalogue provides `taskTypes`. This spec follows the supplied
-  HTML. Should the card gain a `taskTypes` display, or should the catalogue remain available only
-  to filtering and selection logic?
-- **Q11.** Confirm the `aria-describedby` approach in §6 for repeated button names, or choose another
-  (for example an `aria-label` with an interpolated message, which adds strings).
-- **Q12.** Confirm that importing the i18n message store is the accepted exception to "presentational
-  components MUST NOT import stores" (§2 against §8). This spec assumes it is.
+- **Q4 (answered).** Confirmed `app-` prefix (`app-dataset-card`, `app-model-card`).
+- **Q5 (answered).** Compact notation used (`notation: 'compact'`), e.g. "150 rows", "61K rows".
+- **Q6 (answered).** Added `overflow-wrap: anywhere; word-break: normal;` on title and text to prevent overflow blowout.
+- **Q7 (answered).** Model cards require an illustration; dataset cards omit task badges.
+- **Q8 (answered).** Switched to flex wrapping layout with gap for `.stats`.
+- **Q9 (answered).** Model type messages are capitalized directly in strings ("Classification").
+- **Q10 (answered).** Dataset card buttons are "Datasheet" and "Load Dataset"; task badges omitted.
+- **Q11 (answered).** Deferred repeated-button `aria-describedby` in favor of clean native button names.
+- **Q12 (answered).** Presentational components receive pre-translated strings via a typed `labels` property dictionary or render consumer content, avoiding store imports.

@@ -1,6 +1,6 @@
 # Application State Persistence
 
-**Status:** draft — open questions in §11 (§11.5 is answered: Web Locks is Baseline Widely available). Implemented: §3 schema, §4 persister (except the save-failure notification) and §6 checks 3 and 5–8. Target: §6 checks 1, 2 and 4 (no IndexedDB adapter is wired at startup), §7 multi-tab sync, §8 read-only mode and migrations, and ingestion ordering. Code that differs from this spec is listed in [Known gap](README.md#known-gaps) 14.
+**Status:** draft — open questions in §11 (§11.5 is answered: Web Locks is Baseline Widely available). Implemented: §3 schema, §4 persister (including synchronous discrete triggers and progress throttle, except save-failure notification), §6 checks 1–8, §8 validation and read-only mode. Target: §7 multi-tab sync, §8 migrations, and ingestion ordering. Code that differs from this spec is listed in [Known gap](README.md#known-gaps) 14.
 
 > **Source of truth:** [workflow-steps.md](workflow-steps.md). Navigation, routing, step behaviour and scroll memory are specified in [app-state-and-navigation.md](app-state-and-navigation.md) (now the hybrid router + store design). This document specifies **how state is stored**: keys, schema, write scheduling, IndexedDB reconciliation, multi-tab behaviour, versioning.
 >
@@ -178,17 +178,17 @@ Defaults on first load: `welcomeDismissed: false`, `resumePath: '/data'`, `datas
 
 ## 4. Write Scheduling
 
-A single **persister** subscribes to the stores and is the only code that touches `localStorage`. Components and actions never call `setItem`.
+A single **persister** subscribes to the stores and is the only code that touches `localStorage`, including startup reading and reconciliation via `readPersistedState` and `persistNow`. Components, reconcilers and actions never call `setItem`, `getItem` or `removeItem` directly.
 
 ### 4.1 Triggers
 
-| Change                                                                                                                                                           | Write                                                                                                   |
-| :--------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------ |
-| `resumePath` (any workflow navigation), dataset, target, model created, section completed/re-opened, `status` change, error set, `welcomeDismissed`, `data.mode` | **Synchronous**, within the same task as the action                                                     |
-| Discrete UI selections (checkbox, card select, `data.selectedColumn`)                                                                                            | Synchronous                                                                                             |
-| Free-form field edits (hyperparameter numbers/text)                                                                                                              | Debounced ~300 ms, plus flushed on `change`; only **committed, valid** values are stored                |
-| Training `progress` ticks                                                                                                                                        | At most about one write per second; entry into and exit from `training` are synchronous                 |
-| Scroll snapshots (`samata-ml:scroll`)                                                                                                                            | Debounced ~150 ms; flushed before router navigation, on `visibilitychange` → `hidden` and on `pagehide` |
+| Change                                                                                                                                                           | Write                                                                                                            |
+| :--------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------- |
+| `resumePath` (any workflow navigation), dataset, target, model created, section completed/re-opened, `status` change, error set, `welcomeDismissed`, `data.mode` | **Synchronous**, within the same task as the action                                                              |
+| Discrete UI selections (checkbox, card select, `data.selectedColumn`, `features`, `multiclass`, `hyperparameters.mode`, `trainingSetup?.type`)                   | Synchronous                                                                                                      |
+| Free-form field edits (hyperparameter numbers/text, values-only edits)                                                                                           | Debounced ~300 ms, plus flushed on `change`; only **committed, valid** values are stored                         |
+| Training `progress` ticks                                                                                                                                        | Throttled (at most one write per second without starvation); entry into and exit from `training` are synchronous |
+| Scroll snapshots (`samata-ml:scroll`)                                                                                                                            | Debounced ~150 ms; flushed before router navigation, on `visibilitychange` → `hidden` and on `pagehide`          |
 
 `flushNow()` is exported for those lifecycle hooks. `beforeunload` MUST NOT be relied on.
 
@@ -235,7 +235,7 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 4. **Models valid.** For each model: `features ⊆ dataset.columns` (eligible, ≠ target); drop unknown features and un-complete `select-features` onward if any were dropped. A `trained` model whose `model_results` entry is missing reverts to `draft` with a `TRAINING_FAILED` error whose message explains the stored results were lost.
 5. **Counters.** `nextModelNum = max(nextModelNum, max(models.num) + 1)`.
 6. **Selections valid.** `data.selectedColumn` must exist in `dataset.columns`. `resumePath` is **not** corrected when it names a page that cannot currently display (for example `/models/3` after model 3 was discarded): `/` resumes there and the page shows its notification, because state never blocks navigation (app-state-and-navigation.md §4).
-7. **Interrupted training.** For each model with `status === 'training'`, try `navigator.locks.request('samata-ml:training:{num}', { ifAvailable: true }, …)`. Lock acquired ⇒ nobody is training it ⇒ `recoverInterrupted` (status `draft`, `progress = null`, `TRAINING_INTERRUPTED_BY_RELOAD`). Lock unavailable ⇒ another tab is training it; leave it `training` and treat it as read-only. If the Web Locks API is missing, fall back to treating it as interrupted.
+7. **Interrupted training.** For each model with `status === 'training'`, try `navigator.locks.request('samata-ml:training:{num}', { ifAvailable: true }, …)`. Lock acquired ⇒ nobody is training it ⇒ `recoverInterrupted` (status `draft`, `progress = null`, `TRAINING_INTERRUPTED_BY_RELOAD`; un-completes `configure-training`, `training` and `results`, returning section 4 to active). Lock unavailable ⇒ another tab is training it; leave it `training` and treat it as read-only. If the Web Locks API is missing, fall back to treating it as interrupted.
 8. Persist the repaired state immediately.
 
 **Ingestion ordering requirement.** To make check 1 and 2 safe, ingestion MUST write the new dataset under a **new** `datasetId` and delete the previous dataset only after `metadata` for the new one is written. The "clear old stores first" behaviour in the earlier preview-dataset design would destroy the user's current dataset if an upload is interrupted.
@@ -252,8 +252,8 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 ## 8. Versioning & Validation
 
 - Every persisted blob has `version`. `STORAGE_VERSION` starts at `1`; the earlier `ml_app_fsm_state_v1` key and the `Pipeline` proxy design were never implemented and need no migration.
-- Reads are wrapped in `try/catch`. JSON that fails to parse, fails the runtime shape check, or has a version below current without a migration, is discarded wholesale (fresh defaults). A hand-written type guard is used; no new dependency is introduced for this.
-- A version **higher** than the running code understands (a stale tab after a deploy) puts the persister into **read-only mode** for that blob: the tab runs from memory and never overwrites newer data.
+- Reads are wrapped in `try/catch`. JSON that fails to parse, fails the full runtime shape check, or has a version below current without a migration, is discarded wholesale (fresh defaults). A hand-written type guard is used; no new dependency is introduced for this.
+- A version **higher** than the running code understands (a stale tab after a deploy) yields fresh defaults in memory and puts the persister into **read-only mode** for that key for the lifetime of the document: the tab runs from memory and never overwrites newer data.
 - Migrations are an ordered array of pure `(old) => new` functions with tests.
 
 ## 9. Design Rationale

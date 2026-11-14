@@ -1,0 +1,380 @@
+<!doctype html>
+<!-- DRAFT: structure only, not normative for appearance. Source: plans/web-ml-classification-integration.md, interfaces and behaviour B–G. Open questions: plan approval. -->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<link rel="stylesheet" href="../style.css" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>samatā.ml | Train Models</title>
+	</head>
+	<body>
+		<svg style="display: none" aria-hidden="true" focusable="false">
+			<symbol
+				id="settings"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<path
+					d="M12 21.5c2 0 .8-2.3 2.7-3 1.8-.8 2.6 1.6 4 .2s-1-2.2-.2-4c.7-1.9 3-.7 3-2.7s-2.3-.8-3-2.7c-.8-1.8 1.6-2.6.2-4s-2.2 1-4 .2c-1.9-.7-.7-3-2.7-3s-.8 2.3-2.7 3c-1.8.8-2.6-1.6-4-.2s1 2.2.2 4c-.7 1.9-3 .7-3 2.7s2.3.8 3 2.7c.8 1.8-1.6 2.6-.2 4s2.2-1 4-.3c1.9.8.7 3.1 2.7 3.1Z" />
+				<circle cx="12" cy="12" r="3.5" />
+			</symbol>
+
+			<symbol
+				id="close"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<line x1="18" y1="6" x2="6" y2="18" />
+				<line x1="6" y1="6" x2="18" y2="18" />
+			</symbol>
+
+			<symbol id="check" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m5.73 5.29a1 1 0 0 0-1.41 0L10 14.6l-2.31-2.32a1 1 0 1 0-1.42 1.42l3.02 3.02a1 1 0 0 0 1.42 0l7.02-7.03a1 1 0 0 0 0-1.41" />
+			</symbol>
+
+			<symbol id="question" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m0 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2m0-10.2A3 3 0 0 0 8.8 9a.8.8 0 0 0 1.4 0q.2-1.6 1.8-1.7T13.8 9q0 .6-.8 1.5l-.3.3-1 1.2a4 4 0 0 0-.4 2 .7.7 0 1 0 1.4 0q0-1.2 1.1-2.2l.3-.3q1.2-1.2 1.2-2.5c0-2-1.4-3.2-3.3-3.2" />
+			</symbol>
+		</svg>
+
+		<div class="sidebar">
+			<h1>samat&amacr;.ml</h1>
+			<p class="tagline">Machine Learning in Your Browser</p>
+			<section class="project">
+				<h4>Project</h4>
+				<span class="project-name">New Project</span>
+				<button class="btn-icon project-settings" aria-label="Project settings">
+					<svg class="icon" aria-hidden="true" focusable="false">
+						<use href="#settings"></use>
+					</svg>
+				</button>
+			</section>
+			<nav class="workflow" aria-label="Workflow">
+				<ol class="steps">
+					<li class="step">
+						<a href="/load-data" class="step-link">
+							<span class="step-num">1</span>
+							<span class="step-label-small">Dataset</span>
+							<span class="step-value">{Dataset Name}</span>
+							<span class="step-chiclets">
+								<span class="chiclet">999 rows</span>
+								<span class="chiclet">999 columns</span>
+							</span>
+						</a>
+					</li>
+					<li class="step">
+						<a href="/select-target" class="step-link">
+							<span class="step-num">2</span>
+							<span class="step-label-small">Target</span>
+							<span class="step-value">{Target Variable Column Name}</span>
+							<span class="step-chiclets">
+								<span class="chiclet">Categorical</span>
+							</span>
+						</a>
+					</li>
+					<li class="step">
+						<div class="step-link">
+							<span class="step-num">3</span>
+							<span class="step-label-small">Models</span>
+							<ul class="step-models">
+								<li class="step-model">
+									<div class="step-model-link" aria-current="step">
+										Training New Model...
+									</div>
+								</li>
+							</ul>
+						</div>
+					</li>
+					<li class="step">
+						<a href="/compare-results" class="step-link">
+							<span class="step-num">4</span>
+							<span class="step-label">Compare Results</span>
+						</a>
+					</li>
+				</ol>
+			</nav>
+			<footer>
+				<a href="/about">about</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/privacy">privacy</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/help">help</a>
+			</footer>
+		</div>
+
+		<main>
+			<header class="page-header">
+				<h1>Train Models</h1>
+				<p>Choose a model to predict your target variable.</p>
+			</header>
+
+			<section>
+				<h2>3. Configure Model — Logistic Regression</h2>
+				<p>Palmer Penguins · Target: species · One-vs-Rest classification</p>
+				<form aria-labelledby="configuration-heading">
+					<h3 id="configuration-heading">Model options</h3>
+					<fieldset>
+						<legend>Configuration mode</legend>
+						<input id="manual" type="radio" name="mode" value="manual" checked /><label
+							for="manual"
+							>Manual</label
+						>
+						<input id="tuning" type="radio" name="mode" value="tuning" /><label
+							for="tuning"
+							>Random Search (advanced)</label
+						>
+					</fieldset>
+					<p>Defaults come from the model specification. Reset removes your override.</p>
+					<label for="solver">Solver</label
+					><select id="solver" name="solver" aria-describedby="solver-help">
+						<option>adam</option>
+						<option>sgd</option>
+						<option>lbfgs</option>
+						<option>coordinate_descent</option>
+					</select>
+					<p id="solver-help">
+						Adam uses a fixed learning rate of 0.001. Select SGD to adjust the rate.
+					</p>
+					<p>Learning rate: 0.001 (fixed by Adam)</p>
+					<label for="penalty">Penalty</label
+					><select id="penalty" name="penalty">
+						<option>none</option>
+						<option>l1</option>
+						<option>l2</option>
+						<option>elasticnet</option>
+					</select>
+					<input id="intercept" name="fitIntercept" type="checkbox" checked /><label
+						for="intercept"
+						>Fit an intercept</label
+					>
+					<label for="iterations">Maximum iterations</label
+					><input
+						id="iterations"
+						name="maxIter"
+						type="number"
+						min="1"
+						step="1"
+						value="1000" />
+					<label for="tolerance">Tolerance</label
+					><input
+						id="tolerance"
+						name="tol"
+						type="number"
+						min="0"
+						step="any"
+						value="0.000001" />
+					<button type="button" class="btn">Reset tolerance</button>
+					<p>Single-label classification is fixed. Multiclass strategy: One-vs-Rest.</p>
+					<button type="button" class="btn btn-primary">Continue</button>
+				</form>
+			</section>
+			<section>
+				<h2>SGD rate and bounded fractions</h2>
+				<p>
+					These examples appear only when the chosen option is applicable. Both controls
+					edit one value.
+				</p>
+				<label for="rate-range">Learning rate (logarithmic convenience slider)</label
+				><input
+					id="rate-range"
+					name="rate-range"
+					type="range"
+					min="-6"
+					max="0"
+					step="0.1"
+					value="-2"
+					aria-valuetext="0.01" />
+				<label for="rate-number">Exact learning rate</label
+				><input
+					id="rate-number"
+					name="learningRate"
+					type="number"
+					min="0"
+					step="any"
+					value="0.01" />
+				<p>Positive values outside the slider span can be entered exactly.</p>
+				<label for="ratio-range">Elastic-net L1 ratio</label
+				><input
+					id="ratio-range"
+					name="ratio-range"
+					type="range"
+					min="0"
+					max="1"
+					step="0.01"
+					value="0.5" />
+				<label for="ratio-number">Exact L1 ratio</label
+				><input
+					id="ratio-number"
+					name="l1Ratio"
+					type="number"
+					min="0"
+					max="1"
+					step="any"
+					value="0.5" />
+			</section>
+			<section>
+				<h2>Structured controls used by other classifiers</h2>
+				<fieldset>
+					<legend>MLP hidden layers</legend>
+					<label for="layer-1">Units in layer 1</label
+					><input
+						id="layer-1"
+						name="layer-1"
+						type="number"
+						min="1"
+						step="1"
+						value="100" /><button type="button" class="btn">Add layer</button
+					><button type="button" class="btn">Remove layer 1</button>
+				</fieldset>
+				<label for="depth-mode">Tree maximum depth</label
+				><select id="depth-mode" name="depth-mode">
+					<option>Unlimited</option>
+					<option>Value</option>
+				</select>
+				<label for="gamma-mode">SVC gamma</label
+				><select id="gamma-mode" name="gamma-mode">
+					<option>scale</option>
+					<option>auto</option>
+					<option>Numeric value</option>
+				</select>
+				<fieldset>
+					<legend>Gaussian class priors — Custom</legend>
+					<label for="adelie">Adelie probability</label
+					><input
+						id="adelie"
+						name="Adelie"
+						type="number"
+						min="0"
+						max="1"
+						step="any"
+						value="0.4" />
+					<label for="chinstrap">Chinstrap probability</label
+					><input
+						id="chinstrap"
+						name="Chinstrap"
+						type="number"
+						min="0"
+						max="1"
+						step="any"
+						value="0.2" />
+					<label for="gentoo">Gentoo probability</label
+					><input
+						id="gentoo"
+						name="Gentoo"
+						type="number"
+						min="0"
+						max="1"
+						step="any"
+						value="0.4" />
+					<p>Supply one probability per class. The total must be 1.</p>
+				</fieldset>
+				<fieldset>
+					<legend>Class weights</legend>
+					<label for="weight-mode">Weight mode</label
+					><select id="weight-mode" name="weight-mode">
+						<option>None</option>
+						<option>Balanced</option>
+						<option selected>Custom</option>
+					</select>
+					<label for="weight-adelie">Adelie weight</label
+					><input
+						id="weight-adelie"
+						name="weight-Adelie"
+						type="number"
+						min="0"
+						step="any"
+						value="1" />
+					<label for="weight-chinstrap">Chinstrap weight</label
+					><input
+						id="weight-chinstrap"
+						name="weight-Chinstrap"
+						type="number"
+						min="0"
+						step="any"
+						value="1" />
+					<label for="weight-gentoo">Gentoo weight</label
+					><input
+						id="weight-gentoo"
+						name="weight-Gentoo"
+						type="number"
+						min="0"
+						step="any"
+						value="1" />
+				</fieldset>
+			</section>
+			<section>
+				<h2>Advanced Random Search</h2>
+				<p>
+					Choose at least one active parameter to tune. Solver and structured options stay
+					fixed.
+				</p>
+				<label for="search-mode">Maximum iterations</label
+				><select id="search-mode" name="search-mode">
+					<option>Fixed</option>
+					<option selected>Tune</option>
+				</select>
+				<label for="distribution">Distribution</label
+				><select id="distribution" name="distribution">
+					<option>Integer</option>
+				</select>
+				<label for="search-min">Minimum</label
+				><input id="search-min" name="min" type="number" min="1" step="1" value="100" />
+				<label for="search-max">Maximum</label
+				><input id="search-max" name="max" type="number" min="1" step="1" value="1000" />
+				<label for="trials">Trials</label
+				><input
+					id="trials"
+					name="trials"
+					type="number"
+					min="1"
+					max="50"
+					step="1"
+					value="10" />
+				<label for="search-seed">Search seed</label
+				><input
+					id="search-seed"
+					name="search-seed"
+					type="number"
+					min="0"
+					max="4294967295"
+					step="1"
+					value="42" />
+				<p>
+					Objective: maximise validation accuracy. The final test data is not used to
+					select parameters.
+				</p>
+			</section>
+			<section>
+				<h2>Loading model specification</h2>
+				<p>Loading model options…</p>
+				<progress aria-label="Loading model specification"></progress>
+			</section>
+			<section>
+				<h2>Specification error</h2>
+				<p role="alert">Model options could not be loaded or use an unsupported version.</p>
+				<button type="button" class="btn">Retry</button>
+			</section>
+			<section>
+				<h2>Invalid configuration</h2>
+				<p role="alert">
+					L-BFGS supports only no penalty or L2. Choose a compatible penalty before
+					continuing.
+				</p>
+				<button type="button" class="btn" disabled>Continue</button>
+			</section>
+			<section>
+				<h2>No classification model available</h2>
+				<p>This target is numeric. Regression will be added later.</p>
+				<a href="/target">Choose a categorical or boolean target</a>
+			</section>
+		</main>
+	</body>
+</html>

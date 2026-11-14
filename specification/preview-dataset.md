@@ -1,105 +1,50 @@
-# Uploaded Dataset Preview Design
+# Dataset Preview Design
 
-**Status:** target — not implemented. Its _Storage Model_ and `Pipeline.state` sections describe a removed prototype, not current code, and conflict with state-and-storage.md (TODO-48, [Known gap](README.md#known-gaps) 16).
+**Status:** implemented — delivered in Step 1 (`src/features/data/app-dataset-preview.ts`, `src/components/ui-virtual-table.ts`, `src/features/data/app-column-details.ts`, `src/stores/dataset.store.ts`).
 
 ## Goal
 
-After a successful upload, the Select Data step should immediately switch from upload controls to a scrollable table preview of the uploaded dataset. That preview must also survive page reloads until the user moves on to model selection.
+After loading a sample dataset or uploading a CSV file, the `/data` view switches immediately from selection cards to a scrollable virtual table preview of the dataset. The preview survives page reloads and browser navigation until explicitly changed or cleared.
 
 ## High-Level Flow
 
-1. the user uploads a CSV file or selects a remote dataset URL
-2. `CSVStreamer` parses the CSV incrementally with PapaParse
-3. each row chunk is written to IndexedDB through the storage worker
-4. metadata and inferred schema are updated as the stream progresses
-5. upload success marks `Pipeline.state.datasetId` as non-null
-6. `SelectDataView` switches into preview mode
-7. the preview model loads metadata and fetches row chunks on demand for the visible viewport
+1. The user selects a sample dataset or uploads a local CSV file.
+2. Ingestion worker parses and profiles the dataset, writing metadata to IndexedDB store `dataset_metadata` and typed rows to `dataset_rows`.
+3. Application state records `dataset: { id, name, rowCount, columnCount, ... }` and sets `data: { mode: 'preview', selectedColumn: null }`.
+4. `AppDataView` mounts `app-dataset-preview` and `app-column-details`.
+5. The virtual table requests row chunks on demand for the visible viewport through `loadPreviewRows(offset, limit)` and `$previewRows`.
 
-## Storage Model
+## Storage & Metadata Model
 
-The current implementation uses a single active dataset:
+- Rows are keyed in IndexedDB by compound key `[datasetId, rowIndex]`.
+- Metadata is stored per dataset in `dataset_metadata` with typed columns:
+    - `numeric`
+    - `categorical`
+    - `boolean`
+    - `datetime`
+    - `text`
+- Statistics for each column include missing/invalid counts, tokens, and type-specific summaries (min/mean/max/histogram for numeric, value frequencies for categorical, UTC bounds for datetime).
 
-- a new upload clears the old `dataset` and `metadata` stores
-- rows are stored with explicit `rowIndex` keys
-- metadata is stored under the fixed key `dataset_stats`
+## View-Switch & State Rules
 
-This design keeps the storage layer simple while still supporting reload-safe preview rendering.
-
-## Persisted Metadata
-
-The preview depends on stored metadata rather than reparsing the dataset:
-
-- `totalRows`
-- ordered `columns`
-- inferred `schema`
-- simple summary fields already tracked during streaming
-
-The schema uses:
-
-- `text`
-- `integer`
-- `float`
-- `boolean`
-
-Date and datetime inference are intentionally deferred and currently fall back to `text`.
-
-## Schema Inference Rules
-
-During streaming, each observed value can widen a column type:
-
-- all integers stays `integer`
-- any decimal number widens numeric columns to `float`
-- pure booleans stay `boolean`
-- mixed incompatible values fall back to `text`
-
-This keeps inference predictable and cheap during upload.
-
-## View-Switch Rule
-
-The Select Data step shows the preview only when:
+The `/data` view renders the preview when:
 
 ```ts
-Pipeline.state.datasetId !== null && Pipeline.state.modelType === null;
+$appState.get().dataset !== null && $appState.get().data.mode === 'preview';
 ```
 
-That rule captures the intended UX:
+- When `dataset === null` or `data.mode === 'select'`, the sample dataset catalogue and upload header are shown.
+- "Change Dataset" requires explicit user confirmation via a modal dialog before clearing the active dataset, target, and models.
 
-- uploaded but not yet moved on: show preview
-- no dataset yet: show upload controls
-- model selection already started: do not force the old preview state
+## Virtualized Table & Row Paging
 
-## Virtualized Row Loading
+- Memory remains bounded by requesting only visible row ranges plus overscan (typically 40–80 rows per fetch) via `ui-virtual-table-range-change`.
+- For large datasets, the table operates within a 10,000-row segment with segment navigation controls ("Previous segment", "Next segment", "Go to row"), supporting datasets up to 10,000,000 rows without massive DOM virtualization rail distortion.
+- Placeholders render while rows are in flight.
+- Dates format in UTC; numbers format with locale grouping and preserved decimals via `$format.number()`.
 
-The preview does not read the entire dataset into memory.
+## Scroll & Focus Integration
 
-Instead it uses:
-
-- `rowCount` from stored metadata
-- `rowAt(index)` to resolve rows from an in-memory cache
-- `onWindowChange(startIndex, endIndex)` from the table component to request row chunks near the viewport
-
-The preview model keeps:
-
-- loaded chunk indexes
-- in-flight chunk indexes
-- a row cache keyed by absolute row index
-
-Distant chunks are evicted so memory stays bounded.
-
-## Table Rendering Design
-
-The table uses virtualization because datasets may contain very large numbers of rows.
-
-Important design choices:
-
-- sticky headers remain visible while rows scroll
-- only visible rows plus overscan are mounted
-- the body uses a real positioned height rail so the browser has a concrete scroll area
-- missing not-yet-loaded rows render as empty placeholders rather than crashing the table
-
-## Why a Worker-Based Storage Layer?
-
-IndexedDB access is routed through a dedicated worker proxy so the main thread stays focused on UI work and the storage protocol remains centralized.
-
-That separation also makes it easier to evolve storage behavior without pushing IndexedDB details directly into views.
+- On scroll, logical table position is recorded in the active route's scroll snapshot under `regions['data-table'] = { top, left }`.
+- When navigating back or reloading, `restoreScroll` awaits `app-data-view.whenSettled()`, verifies matching viewport width, and delegates restoration to `previewEl.restorePosition(tableRegion)`.
+- Selecting a column opens `<app-column-details>` without stealing document scroll. Closing the inspector restores focus to the column header.

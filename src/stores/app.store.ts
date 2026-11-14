@@ -13,7 +13,7 @@ import {
 	type ValidationMethodology,
 	type WorkflowPath
 } from '../types/state';
-import { clearScroll } from './scroll.store';
+import { $scrollState, clearScroll } from './scroll.store';
 
 /**
  * Nanostore holding persisted domain application state.
@@ -31,13 +31,84 @@ const SECTION_ORDER: ModelSectionId[] = [
 ];
 
 /**
+ * Deep structural equality check for JSON-compatible values.
+ */
+function jsonEqual(a: unknown, b: unknown): boolean {
+	if (a === b) return true;
+	if (typeof a !== 'object' || a === null || typeof b !== 'object' || b === null) {
+		return false;
+	}
+	if (Array.isArray(a) !== Array.isArray(b)) {
+		return false;
+	}
+	if (Array.isArray(a) && Array.isArray(b)) {
+		if (a.length !== b.length) return false;
+		for (let i = 0; i < a.length; i++) {
+			if (!jsonEqual(a[i], b[i])) return false;
+		}
+		return true;
+	}
+	const keysA = Object.keys(a as Record<string, unknown>);
+	const keysB = Object.keys(b as Record<string, unknown>);
+	if (keysA.length !== keysB.length) return false;
+	for (const key of keysA) {
+		if (!Object.prototype.hasOwnProperty.call(b, key)) return false;
+		if (!jsonEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])) {
+			return false;
+		}
+	}
+	return true;
+}
+
+/**
+ * Invalidates every section in SECTION_ORDER strictly after the owner section per D7.
+ */
+function invalidateLaterSections(
+	completedSteps: ModelSectionId[],
+	owner: ModelSectionId
+): ModelSectionId[] {
+	const ownerIndex = SECTION_ORDER.indexOf(owner);
+	if (ownerIndex === -1) return completedSteps;
+	const later = new Set(SECTION_ORDER.slice(ownerIndex + 1));
+	return completedSteps.filter((s) => !later.has(s));
+}
+
+/**
+ * Clears all scroll snapshots other than keys starting with 'data:'.
+ */
+function clearNonDataScroll(): void {
+	const currentKeys = Object.keys($scrollState.get().snapshots);
+	const keysToClear = currentKeys.filter((k) => !k.startsWith('data:'));
+	if (keysToClear.length > 0) {
+		clearScroll(keysToClear);
+	}
+}
+
+/**
+ * Clears scroll snapshots for models, models/*, and results.
+ */
+function clearModelAndResultScroll(): void {
+	const currentKeys = Object.keys($scrollState.get().snapshots);
+	const keysToClear = currentKeys.filter(
+		(k) => k === 'models' || k.startsWith('models/') || k === 'results'
+	);
+	if (keysToClear.length > 0) {
+		clearScroll(keysToClear);
+	}
+}
+
+/**
  * Helper to update state with an updated timestamp while preserving immutability.
+ * Skips setting the store when the transform returns the same reference per D7.
  */
 function updateState(transform: (state: PersistedAppState) => PersistedAppState | false): boolean {
 	const current = $appState.get();
 	const next = transform(current);
 	if (next === false) {
 		return false;
+	}
+	if (next === current) {
+		return true;
 	}
 	$appState.set({
 		...next,
@@ -71,7 +142,8 @@ export function setResumePath(resumePath: WorkflowPath): boolean {
  * Preserves downstream state if schema is identical; resets target and models on change.
  */
 export function loadDatasetSucceeded(dataset: DatasetSummary): boolean {
-	return updateState((state) => {
+	let isDifferentDataset = false;
+	const success = updateState((state) => {
 		const current = state.dataset;
 		const isSameDataset =
 			current !== null &&
@@ -84,11 +156,12 @@ export function loadDatasetSucceeded(dataset: DatasetSummary): boolean {
 		if (isSameDataset) {
 			return {
 				...state,
-				dataset
+				dataset,
+				data: { mode: 'preview', selectedColumn: null }
 			};
 		}
 
-		clearScroll(['target', 'models', 'results']);
+		isDifferentDataset = true;
 		return {
 			...state,
 			dataset,
@@ -98,6 +171,32 @@ export function loadDatasetSucceeded(dataset: DatasetSummary): boolean {
 			nextModelNum: 1
 		};
 	});
+
+	if (success && isDifferentDataset) {
+		clearNonDataScroll();
+	}
+	return success;
+}
+
+/**
+ * Clears the active dataset, target, models, and non-data scroll snapshots,
+ * and resets data mode to 'select'. Preserves onboarding and preferences.
+ * Follows specification/plans/step-1-load-data-and-preview.md D6.
+ */
+export function clearDataset(): boolean {
+	const success = updateState((state) => ({
+		...state,
+		dataset: null,
+		data: { mode: 'select', selectedColumn: null },
+		target: null,
+		models: [],
+		nextModelNum: 1
+	}));
+
+	if (success) {
+		clearNonDataScroll();
+	}
+	return success;
 }
 
 /**
@@ -112,12 +211,23 @@ export function setDataMode(mode: 'select' | 'preview'): boolean {
 
 /**
  * Sets the selected column in the data inspection panel.
+ * Non-null name must belong to current dataset columns.
  */
 export function setSelectedColumn(selectedColumn: string | null): boolean {
-	return updateState((state) => ({
-		...state,
-		data: { ...state.data, selectedColumn }
-	}));
+	return updateState((state) => {
+		if (selectedColumn !== null) {
+			if (!state.dataset || !state.dataset.columns.some((c) => c.name === selectedColumn)) {
+				return false;
+			}
+		}
+		if (state.data.selectedColumn === selectedColumn) {
+			return state;
+		}
+		return {
+			...state,
+			data: { ...state.data, selectedColumn }
+		};
+	});
 }
 
 /**
@@ -154,12 +264,15 @@ export function setTarget(column: string): boolean {
  * Confirms discarding all models and associated scroll states.
  */
 export function confirmDiscardModels(): boolean {
-	clearScroll(['target', 'models', 'results']);
-	return updateState((state) => ({
+	const success = updateState((state) => ({
 		...state,
 		models: [],
 		nextModelNum: 1
 	}));
+	if (success) {
+		clearModelAndResultScroll();
+	}
+	return success;
 }
 
 /**
@@ -248,27 +361,40 @@ export function chooseModel(
 
 /**
  * Sets features list for Section 2.
+ * Rejects unknown, non-model-eligible (including text/datetime), target, or duplicated columns.
+ * Order-insensitive equality is a no-op returning true; changes invalidate downstream sections per D7.
  */
 export function setFeatures(num: number, names: string[]): boolean {
 	return updateState((state) => {
 		const model = state.models.find((m) => m.num === num);
 		if (!model || model.status !== 'draft') return false;
+		if (!state.dataset) return false;
 
-		// Target column must never be a feature
-		if (state.target && names.includes(state.target)) return false;
+		const nameSet = new Set(names);
+		if (nameSet.size !== names.length) return false;
+
+		for (const name of names) {
+			const col = state.dataset.columns.find((c) => c.name === name);
+			if (!col) return false;
+			if (!isModelEligibleColumnType(col.type)) return false;
+			if (state.target !== null && name === state.target) return false;
+		}
+
+		const currentFeaturesSet = new Set(model.features);
+		const isSameSet =
+			currentFeaturesSet.size === nameSet.size &&
+			names.every((n) => currentFeaturesSet.has(n));
+
+		if (isSameSet) {
+			return state;
+		}
 
 		const updatedModels = state.models.map((m) => {
 			if (m.num !== num) return m;
 			return {
 				...m,
 				features: names,
-				completedSteps: m.completedSteps.filter(
-					(s) =>
-						s !== 'configure-model' &&
-						s !== 'configure-training' &&
-						s !== 'training' &&
-						s !== 'results'
-				)
+				completedSteps: invalidateLaterSections(m.completedSteps, 'select-features')
 			};
 		});
 
@@ -294,6 +420,7 @@ export function toggleFeature(num: number, name: string): boolean {
 
 /**
  * Sets Section 2 model-specific options.
+ * Equality is a no-op returning true; changes invalidate downstream sections per D7.
  */
 export function setModelOptions(
 	num: number,
@@ -303,9 +430,17 @@ export function setModelOptions(
 		const model = state.models.find((m) => m.num === num);
 		if (!model || model.status !== 'draft') return false;
 
+		if (jsonEqual(model.modelOptions, options)) {
+			return state;
+		}
+
 		const updatedModels = state.models.map((m) => {
 			if (m.num !== num) return m;
-			return { ...m, modelOptions: options };
+			return {
+				...m,
+				modelOptions: options,
+				completedSteps: invalidateLaterSections(m.completedSteps, 'configure-model')
+			};
 		});
 		return { ...state, models: updatedModels };
 	});
@@ -313,15 +448,24 @@ export function setModelOptions(
 
 /**
  * Sets Section 3 hyperparameters.
+ * Equality is a no-op returning true; changes invalidate downstream sections per D7.
  */
 export function setHyperparameters(num: number, config: HyperparameterConfig): boolean {
 	return updateState((state) => {
 		const model = state.models.find((m) => m.num === num);
 		if (!model || model.status !== 'draft') return false;
 
+		if (jsonEqual(model.hyperparameters, config)) {
+			return state;
+		}
+
 		const updatedModels = state.models.map((m) => {
 			if (m.num !== num) return m;
-			return { ...m, hyperparameters: config };
+			return {
+				...m,
+				hyperparameters: config,
+				completedSteps: invalidateLaterSections(m.completedSteps, 'configure-model')
+			};
 		});
 		return { ...state, models: updatedModels };
 	});
@@ -329,15 +473,24 @@ export function setHyperparameters(num: number, config: HyperparameterConfig): b
 
 /**
  * Sets Section 3 multiclass strategy.
+ * Equality is a no-op returning true; changes invalidate downstream sections per D7.
  */
 export function setMulticlassStrategy(num: number, strategy: MulticlassStrategy | null): boolean {
 	return updateState((state) => {
 		const model = state.models.find((m) => m.num === num);
 		if (!model || model.status !== 'draft') return false;
 
+		if (model.multiclass === strategy) {
+			return state;
+		}
+
 		const updatedModels = state.models.map((m) => {
 			if (m.num !== num) return m;
-			return { ...m, multiclass: strategy };
+			return {
+				...m,
+				multiclass: strategy,
+				completedSteps: invalidateLaterSections(m.completedSteps, 'configure-model')
+			};
 		});
 		return { ...state, models: updatedModels };
 	});
@@ -345,15 +498,24 @@ export function setMulticlassStrategy(num: number, strategy: MulticlassStrategy 
 
 /**
  * Sets Section 4 training setup.
+ * Equality is a no-op returning true; changes invalidate downstream sections per D7.
  */
 export function setTrainingSetup(num: number, setup: ValidationMethodology | null): boolean {
 	return updateState((state) => {
 		const model = state.models.find((m) => m.num === num);
 		if (!model || model.status !== 'draft') return false;
 
+		if (jsonEqual(model.trainingSetup, setup)) {
+			return state;
+		}
+
 		const updatedModels = state.models.map((m) => {
 			if (m.num !== num) return m;
-			return { ...m, trainingSetup: setup };
+			return {
+				...m,
+				trainingSetup: setup,
+				completedSteps: invalidateLaterSections(m.completedSteps, 'configure-training')
+			};
 		});
 		return { ...state, models: updatedModels };
 	});
@@ -401,21 +563,22 @@ export function reopenSection(num: number, section: ModelSectionId): boolean {
 }
 
 /**
- * Transitions model status to 'training' when sections 1–4 are complete.
+ * Transitions model status to 'training' when sections 1–3 are complete and trainingSetup is set.
+ * Completes Section 4 (configure-training) per D8.
  */
 export function startTraining(num: number): boolean {
 	return updateState((state) => {
 		const model = state.models.find((m) => m.num === num);
 		if (!model || model.status !== 'draft') return false;
+		if (model.trainingSetup === null) return false;
 
-		const required: ModelSectionId[] = [
-			'choose-model',
-			'select-features',
-			'configure-model',
-			'configure-training'
-		];
+		const required: ModelSectionId[] = ['choose-model', 'select-features', 'configure-model'];
 		const canTrain = required.every((s) => model.completedSteps.includes(s));
 		if (!canTrain) return false;
+
+		const completedSteps = model.completedSteps.includes('configure-training')
+			? model.completedSteps
+			: [...model.completedSteps, 'configure-training' as const];
 
 		const updatedModels = state.models.map((m) => {
 			if (m.num !== num) return m;
@@ -423,7 +586,8 @@ export function startTraining(num: number): boolean {
 				...m,
 				status: 'training' as const,
 				error: null,
-				progress: { percent: 0, statusMessage: 'Initializing...' }
+				progress: { percent: 0, statusMessage: 'Initializing...' },
+				completedSteps
 			};
 		});
 		return { ...state, models: updatedModels };
@@ -482,7 +646,7 @@ export function trainingSucceeded(
 }
 
 /**
- * Reverts model to 'draft' with error details upon training failure.
+ * Reverts model to 'draft' with error details upon training failure, reopening configure-training.
  */
 export function trainingFailed(num: number, message: string, details?: string): boolean {
 	return updateState((state) => {
@@ -501,7 +665,9 @@ export function trainingFailed(num: number, message: string, details?: string): 
 					timestamp: Date.now(),
 					details
 				},
-				completedSteps: m.completedSteps.filter((s) => s !== 'training')
+				completedSteps: m.completedSteps.filter(
+					(s) => s !== 'configure-training' && s !== 'training' && s !== 'results'
+				)
 			};
 		});
 		return { ...state, models: updatedModels };
@@ -509,7 +675,7 @@ export function trainingFailed(num: number, message: string, details?: string): 
 }
 
 /**
- * Cancels active model training.
+ * Cancels active model training, reopening configure-training.
  */
 export function cancelTraining(num: number): boolean {
 	return updateState((state) => {
@@ -526,7 +692,10 @@ export function cancelTraining(num: number): boolean {
 					code: 'TRAINING_CANCELLED' as const,
 					message: 'Training was cancelled',
 					timestamp: Date.now()
-				}
+				},
+				completedSteps: m.completedSteps.filter(
+					(s) => s !== 'configure-training' && s !== 'training' && s !== 'results'
+				)
 			};
 		});
 		return { ...state, models: updatedModels };
@@ -534,7 +703,7 @@ export function cancelTraining(num: number): boolean {
 }
 
 /**
- * Recovers interrupted model training from browser reload.
+ * Recovers interrupted model training from browser reload, reopening configure-training.
  */
 export function recoverInterrupted(num: number): boolean {
 	return updateState((state) => {
@@ -551,7 +720,10 @@ export function recoverInterrupted(num: number): boolean {
 					code: 'TRAINING_INTERRUPTED_BY_RELOAD' as const,
 					message: 'Training was interrupted by a page reload',
 					timestamp: Date.now()
-				}
+				},
+				completedSteps: m.completedSteps.filter(
+					(s) => s !== 'configure-training' && s !== 'training' && s !== 'results'
+				)
 			};
 		});
 		return { ...state, models: updatedModels };

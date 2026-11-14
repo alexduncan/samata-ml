@@ -53,6 +53,7 @@ export const cardStyles: CSSResult = css`
 			color: var(--stone-900);
 			font-weight: 600;
 			font-size: 1.5rem;
+			overflow-wrap: anywhere;
 
 			&:first-child {
 				margin-block-start: 1rem;
@@ -63,9 +64,13 @@ export const cardStyles: CSSResult = css`
 			margin: 0;
 			color: var(--stone-900);
 			line-height: 1.5rem;
+			overflow-wrap: anywhere;
 		}
 
 		.card-stats {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 0.5rem;
 			margin-inline: 0;
 			margin-block: 0.5rem;
 

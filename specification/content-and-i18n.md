@@ -1,12 +1,15 @@
 # Content & Internationalisation (i18n)
 
-**Status:** partial — the Markdown content pipeline (locales configuration, build compiler, per-locale/domain JSON indexes, content loader, safe `DocumentFragment` rendering and reserved-route pages) is implemented. `@nanostores/i18n`, the locale store, language switcher UI and additional locales beyond `en` remain target.
+**Status:** partial — the Markdown content pipeline and base-locale UI i18n (`src/i18n.ts` with `$locale` and `$format`) are implemented. Language switcher UI, runtime persistence and additional locales beyond `en` remain target.
 
 ## Localisation Store
 
 - Supported locales (`LOCALES` mapping BCP 47 codes to `{ dir: 'ltr' | 'rtl' }`) and `BASE_LOCALE` (`'en'`) are declared in `src/config/locales.ts`.
-- All UI text must be routed through `@nanostores/i18n`.
-- Lit components must subscribe to the translation store to enable instant, refresh-free language toggling.
+- The base UI i18n instance is implemented in `src/i18n.ts`:
+    - Exports `$locale` atom initialized to `BASE_LOCALE` (`'en'`).
+    - Exports `$format` computed store wrapping `@nanostores/i18n` formatter for localized numbers, dates, times and relative lists.
+    - Connected views consume `$format` for display formatting; presentational components receive pre-translated strings via typed `labels` property dictionaries with explicit default fallbacks.
+- Language switcher UI, locale persistence across reload, and translation catalogs for additional locales beyond `en` remain target.
 
 ## Static Content
 

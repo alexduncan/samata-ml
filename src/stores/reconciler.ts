@@ -8,16 +8,13 @@ import {
 import {
 	INITIAL_APP_STATE,
 	isModelEligibleColumnType,
-	SCROLL_STORAGE_KEY,
-	STATE_STORAGE_KEY,
-	STORAGE_VERSION,
 	type ModelRecord,
 	type ModelSectionId,
 	type PersistedAppState,
 	type ScrollSnapshot
 } from '../types/state';
 import { $appState } from './app.store';
-import { getActiveStorage, type StorageAdapter } from './persister';
+import { getActiveStorage, persistNow, readPersistedState, type StorageAdapter } from './persister';
 import { $scrollState } from './scroll.store';
 
 /**
@@ -80,30 +77,6 @@ export function createDefaultIndexedDBAdapter(): IndexedDBAdapter {
 }
 
 /**
- * Validates and parses raw JSON from storage into a PersistedAppState, falling back to defaults on corruption.
- */
-function parseAppState(raw: string | null): PersistedAppState {
-	if (!raw) return { ...INITIAL_APP_STATE };
-	try {
-		const parsed = JSON.parse(raw);
-		if (
-			!parsed ||
-			typeof parsed !== 'object' ||
-			parsed.version !== STORAGE_VERSION ||
-			typeof parsed.nextModelNum !== 'number' ||
-			!Array.isArray(parsed.models) ||
-			!parsed.data ||
-			!parsed.onboarding
-		) {
-			return { ...INITIAL_APP_STATE };
-		}
-		return parsed as PersistedAppState;
-	} catch {
-		return { ...INITIAL_APP_STATE };
-	}
-}
-
-/**
  * Reconciles startup state across localStorage and IndexedDB before initial render.
  * Executes checks 1–7 per specification/state-and-storage.md §6 and immediately persists repaired state.
  *
@@ -115,26 +88,10 @@ export async function reconcileStartupState(
 	storage: StorageAdapter = getActiveStorage(),
 	idb?: IndexedDBAdapter
 ): Promise<PersistedAppState> {
-	// Parse initial state from storage
-	let state = parseAppState(storage.getItem(STATE_STORAGE_KEY));
-
-	// Load scroll state from storage if present
-	const scrollRaw = storage.getItem(SCROLL_STORAGE_KEY);
-	if (scrollRaw) {
-		try {
-			const parsedScroll = JSON.parse(scrollRaw);
-			if (
-				parsedScroll &&
-				parsedScroll.version === STORAGE_VERSION &&
-				parsedScroll.snapshots &&
-				typeof parsedScroll.snapshots === 'object'
-			) {
-				$scrollState.set(parsedScroll);
-			}
-		} catch {
-			// Ignore corrupted scroll data
-		}
-	}
+	// Parse initial state and scroll snapshots from persister
+	const persisted = readPersistedState(storage);
+	let state = persisted.state;
+	$scrollState.set(persisted.scroll);
 
 	// 1. Dataset present: check IDB metadata; if missing, reset dataset and downstream state
 	if (state.dataset !== null && idb) {
@@ -169,11 +126,6 @@ export async function reconcileStartupState(
 				...currentScroll,
 				snapshots: filteredSnapshots
 			});
-			try {
-				storage.setItem(SCROLL_STORAGE_KEY, JSON.stringify($scrollState.get()));
-			} catch {
-				// Ignore quota error on scroll write
-			}
 		}
 	}
 
@@ -355,7 +307,7 @@ export async function reconcileStartupState(
 					timestamp: Date.now()
 				},
 				completedSteps: model.completedSteps.filter(
-					(s) => s !== 'training' && s !== 'results'
+					(s) => s !== 'configure-training' && s !== 'training' && s !== 'results'
 				)
 			});
 		} else {
@@ -366,11 +318,7 @@ export async function reconcileStartupState(
 
 	// 8. Persist the repaired state immediately
 	$appState.set(state);
-	try {
-		storage.setItem(STATE_STORAGE_KEY, JSON.stringify(state));
-	} catch (err) {
-		console.error('Failed to persist reconciled startup state:', err);
-	}
+	persistNow(storage);
 
 	return state;
 }

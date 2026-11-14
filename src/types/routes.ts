@@ -13,7 +13,7 @@ export type { WorkflowPath } from './state';
 export type ParsedRoute =
 	| { kind: 'root' }
 	| { kind: 'workflow'; path: WorkflowPath; section: SectionNumber; modelNum?: number }
-	| { kind: 'reserved'; path: ReservedPath }
+	| { kind: 'reserved'; path: ReservedPath; underlayPath?: WorkflowPath }
 	| { kind: 'unknown'; path: string };
 
 /**
