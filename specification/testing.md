@@ -1,6 +1,6 @@
 # Testing Strategy
 
-**Status:** partial — `bun:test` with a happy-dom preload (`tests/setup.ts`), Playwright (Chromium, Firefox, WebKit), visual parity, application accessibility audits, mockup review browser coverage and per-file mockup audits are implemented. The Load Data and Target Selection stages of both reference journeys are implemented; later workflow stages remain target.
+**Status:** partial — `bun:test` with a happy-dom preload (`tests/setup.ts`), Playwright (Chromium, Firefox, WebKit), visual parity, application accessibility audits, mockup review browser coverage and per-file mockup audits are implemented. The Load Data, Target Selection, and Model/Feature Setup stages of both reference journeys are implemented; later training execution and comparison stages remain target.
 
 All functionality must be created alongside a comprehensive test setup. Code submitted without tests will be rejected.
 
@@ -27,4 +27,5 @@ All functionality must be created alongside a comprehensive test setup. Code sub
 - Two reference classification journeys (`tests/journeys/iris-classification.e2e.ts` and `tests/journeys/penguins-classification.e2e.ts`) test realistic user workflows end-to-end through the real UI in browser engines.
 - The **Load Data stage** (`JOURNEY-IRIS-DATA` and `JOURNEY-PENGUINS-DATA`) is implemented: exercises real sample dataset loading, header metadata, table row virtual rendering, column inspector panels, and page reload/resume.
 - The **Target Selection stage** (`JOURNEY-IRIS-TARGET` and `JOURNEY-PENGUINS-TARGET`) is implemented: exercises navigating to `/target` via sidebar, selecting target column (`class` for Iris, `species` for Penguins), verifying current target state, continue link to `/models`, and state resumption on page reload.
-- Subsequent workflow stages (model training, comparison) in these reference journeys remain target and will be extended sequentially in Step 3.
+- The **Model and Feature Setup stage** (`JOURNEY-IRIS-SETUP` and `JOURNEY-PENGUINS-SETUP`) is implemented: exercises navigating to `/models`, creating a new model, selecting Logistic Regression, continuing to Section 2, verifying target exclusion, verifying feature selections and toggles, completing Section 2, reaching pending Section 3, and state resumption on page reload.
+- Subsequent workflow stages (model training execution, results comparison) in these reference journeys remain target.

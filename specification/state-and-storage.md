@@ -127,7 +127,12 @@ export interface ModelRecord {
 	/** Headline metrics for the /models table and /results; full results live in IndexedDB. */
 	metrics: Record<string, number> | null;
 
-	/** Section 6 – per-model UI selections (chart tab etc.). Shape defined with the results spec. */
+	/**
+	 * Per-model UI selections (e.g. `featureSelectionInitialised: boolean`, chart tabs).
+	 * `featureSelectionInitialised` tracks whether initial eligible features were populated once
+	 * on Choose Model completion, ensuring intentional user toggles (including empty selections)
+	 * survive reload and reopening. Results shapes defined with the results spec.
+	 */
 	ui: Record<string, unknown>;
 }
 
@@ -208,18 +213,19 @@ A single **persister** subscribes to the stores and is the only code that touche
 
 This is what makes "exact same UI" enforceable as the app grows. Each new feature spec MUST add its UI state to the registry below or state why it is transient.
 
-| UI state                                                                     | Persisted as                           | Notes                                            |
-| :--------------------------------------------------------------------------- | :------------------------------------- | :----------------------------------------------- |
-| Welcome modal dismissed                                                      | `onboarding.welcomeDismissed`          |                                                  |
-| `/data` picker vs preview                                                    | `data.mode`                            |                                                  |
-| Open column-details aside                                                    | `data.selectedColumn`                  |                                                  |
-| Virtual table scroll offsets                                                 | `ScrollSnapshot.regions['data-table']` |                                                  |
-| Page scroll, per step                                                        | `PersistedScroll.snapshots[key]`       | Ignored if viewport width differs                |
-| Per-model section completion                                                 | `ModelRecord.completedSteps`           | Drives `.train-step-complete` and the check icon |
-| Chosen model, features, options, hyperparameters, multiclass, training setup | `ModelRecord.*`                        | Committed values                                 |
-| Per-model results view                                                       | `ModelRecord.ui`                       | Defined by the section 6 spec                    |
-| Compare Results view                                                         | `results.ui`                           | Defined by the section 4 spec                    |
-| Location                                                                     | URL, plus `resumePath` for `/`         |                                                  |
+| UI state                                                                     | Persisted as                                 | Notes                                            |
+| :--------------------------------------------------------------------------- | :------------------------------------------- | :----------------------------------------------- |
+| Welcome modal dismissed                                                      | `onboarding.welcomeDismissed`                |                                                  |
+| `/data` picker vs preview                                                    | `data.mode`                                  |                                                  |
+| Open column-details aside                                                    | `data.selectedColumn`                        |                                                  |
+| Virtual table scroll offsets                                                 | `ScrollSnapshot.regions['data-table']`       |                                                  |
+| Page scroll, per step                                                        | `PersistedScroll.snapshots[key]`             | Ignored if viewport width differs                |
+| Per-model section completion                                                 | `ModelRecord.completedSteps`                 | Drives `.train-step-complete` and the check icon |
+| Feature initialisation state                                                 | `ModelRecord.ui.featureSelectionInitialised` | Tracks one-time population on model continue     |
+| Chosen model, features, options, hyperparameters, multiclass, training setup | `ModelRecord.*`                              | Committed values                                 |
+| Per-model results view                                                       | `ModelRecord.ui`                             | Defined by the section 6 spec                    |
+| Compare Results view                                                         | `results.ui`                                 | Defined by the section 4 spec                    |
+| Location                                                                     | URL, plus `resumePath` for `/`               |                                                  |
 
 **Transient (never persisted):** reserved-route modals (`/about`, `/privacy`, `/help`; these are restored only because the URL says so), Datasheet, Upload and Model Description dialogs, focus, hover, uncommitted field text, in-flight ingestion state, upload validation errors, live training progress between throttled writes.
 

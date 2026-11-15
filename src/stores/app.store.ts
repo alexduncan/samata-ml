@@ -403,6 +403,50 @@ export function setFeatures(num: number, names: string[]): boolean {
 }
 
 /**
+ * Initialises feature selection once for Section 2.
+ * Validates current dataset/target, draft status and names using the same eligibility guards as setFeatures.
+ * If model.ui.featureSelectionInitialised === true, returns true without mutating.
+ * Otherwise sets features and ui.featureSelectionInitialised = true atomically,
+ * preserving other UI keys and applying normal downstream invalidation.
+ */
+export function initialiseFeatureSelection(num: number, names: string[]): boolean {
+	return updateState((state) => {
+		const model = state.models.find((m) => m.num === num);
+		if (!model || model.status !== 'draft') return false;
+		if (!state.dataset) return false;
+
+		const nameSet = new Set(names);
+		if (nameSet.size !== names.length) return false;
+
+		for (const name of names) {
+			const col = state.dataset.columns.find((c) => c.name === name);
+			if (!col) return false;
+			if (!isModelEligibleColumnType(col.type)) return false;
+			if (state.target !== null && name === state.target) return false;
+		}
+
+		if (model.ui.featureSelectionInitialised === true) {
+			return state;
+		}
+
+		const updatedModels = state.models.map((m) => {
+			if (m.num !== num) return m;
+			return {
+				...m,
+				features: names,
+				ui: {
+					...m.ui,
+					featureSelectionInitialised: true
+				},
+				completedSteps: invalidateLaterSections(m.completedSteps, 'select-features')
+			};
+		});
+
+		return { ...state, models: updatedModels };
+	});
+}
+
+/**
  * Toggles a single feature selection.
  */
 export function toggleFeature(num: number, name: string): boolean {

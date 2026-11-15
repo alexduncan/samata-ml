@@ -29,3 +29,11 @@
     - Both the build compiler (`scripts/markdown.ts`) and runtime sanitiser (`src/common/content/sanitise-fragment.ts`) enforce the allow-list in `src/common/content/fragment-policy.ts`.
 - **Build output:** `scripts/build-content.ts` writes compiled wrapper-free HTML fragments to `{outDir}/content/{locale}/{domain}/{id}.html` and one versioned index per locale and domain to `{outDir}/content/{locale}/{domain}/index.json` (`{ version: 1, locale, domain, entries }`, with `url` carrying `?v={12 hex}` content hash). Generated files never live in the source tree.
 - **Content loader and rendering:** `src/common/content/content-loader.ts` provides `loadContentIndex(domain, opts?)` and `loadContentEntry(domain, id, opts?)` (defaulting `locale` to `BASE_LOCALE`, supporting `AbortSignal` and caching indexes per locale/domain). Consumers parse and sanitise fetched fragments into a `DocumentFragment` and render that node directly—never using `unsafeHTML`, `innerHTML` or string templates—setting `lang` from `entry.lang` and `dir` from `LOCALES[entry.lang].dir`.
+
+### Model Descriptions and Dialog Fallback
+
+The model description modal (`app-model-description-dialog`) retrieves articles using `loadContentEntry('models', modelId)`:
+
+- **Authored prose:** When an article exists (e.g. `content/en/models/logistic-regression.md`), the sanitized `DocumentFragment` renders with recorded `lang` and `dir` attributes.
+- **Missing prose fallback:** When prose is not yet authored for a model, `loadContentEntry` throws `ContentLoadError` with code `NOT_FOUND`. The dialog sets its status to `missing`, displaying the library JSON plain-text description alongside a clear notice (_"Detailed description is not yet available for this model."_). It does not block the workflow or claim unauthored prose exists.
+- **Network errors:** Transport failures set status to `error`, showing an alert message and an accessible "Retry" action. Closing or cancelling the dialog returns focus cleanly to the invoking element.

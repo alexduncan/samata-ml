@@ -4,27 +4,37 @@ import { buttonStyles } from '../styles/button.styles';
 
 /** Column definition for the virtual table. */
 export interface VirtualTableColumn {
+	/** Unique key matching data record key. */
 	key: string;
+	/** Human-readable column header label. */
 	label: string;
 }
 
 /** Row window slice supplied by the consumer. */
 export interface VirtualTableWindow {
+	/** Zero-based starting row index of this slice. */
 	startIndex: number;
+	/** Ordered row cell values matching column order. */
 	rows: readonly (readonly string[])[];
 }
 
 /** Row range requested from the consumer. */
 export interface VirtualTableRange {
+	/** Zero-based start index of requested row window. */
 	startIndex: number;
+	/** Maximum number of rows requested. */
 	limit: number;
 }
 
 /** Viewport scroll position emitted by the table. */
 export interface VirtualTablePosition {
+	/** Zero-based data row index at viewport top. */
 	rowIndex: number;
+	/** Pixel offset within the top row. */
 	offset: number;
+	/** Non-negative distance from inline start. */
 	inlineOffset: number;
+	/** Logical top offset: rowIndex * measuredRowHeight + offset. */
 	top: number;
 }
 
@@ -36,6 +46,10 @@ const OVERSCAN = 5;
 /**
  * Presentational virtualised data table with bounded row geometry.
  * Follows specification/plans/virtual-table-component.md.
+ *
+ * @fires ui-virtual-table-range-change - Emits requested row range.
+ * @fires ui-virtual-table-position-change - Emits scroll position.
+ * @fires ui-virtual-table-column-select - Emits selected column key.
  */
 @customElement('ui-virtual-table')
 export class UiVirtualTable extends LitElement {
@@ -45,7 +59,11 @@ export class UiVirtualTable extends LitElement {
 			:host {
 				display: block;
 				box-sizing: border-box;
-				width: 100%;
+				inline-size: 100%;
+			}
+
+			:host([hidden]) {
+				display: none;
 			}
 
 			.table-viewport {
@@ -157,7 +175,7 @@ export class UiVirtualTable extends LitElement {
 			.rail-spacer-top,
 			.rail-spacer-bottom {
 				display: block;
-				width: 100%;
+				inline-size: 100%;
 			}
 		`
 	];
@@ -185,6 +203,7 @@ export class UiVirtualTable extends LitElement {
 	private measuredRowHeight = DEFAULT_ROW_HEIGHT;
 	private viewportHeight = 400;
 	@state() private accessor currentSegment = 0;
+	@state() private accessor renderedRange: VirtualTableRange = { startIndex: 0, limit: 0 };
 
 	private resizeObserver: ResizeObserver | null = null;
 	private rafId: number | null = null;
@@ -196,7 +215,11 @@ export class UiVirtualTable extends LitElement {
 
 	override connectedCallback(): void {
 		super.connectedCallback();
-		this.setupObserver();
+		if (this.hasUpdated) {
+			this.setupObserver();
+			this.measureGeometry();
+			this.computeAndEmitRange();
+		}
 	}
 
 	override disconnectedCallback(): void {
@@ -209,27 +232,35 @@ export class UiVirtualTable extends LitElement {
 	}
 
 	override firstUpdated(): void {
+		this.setupObserver();
 		this.measureGeometry();
-		this.emitRangeChange();
+		this.computeAndEmitRange();
 	}
 
 	override updated(changedProperties: PropertyValues): void {
 		super.updated(changedProperties);
-		if (changedProperties.has('totalRows')) {
+		if (changedProperties.has('totalRows') || changedProperties.has('columns')) {
 			this.lastRequestedRange = null;
-			this.emitRangeChange();
+			this.computeAndEmitRange();
 		}
 	}
 
 	private setupObserver(): void {
 		if (typeof ResizeObserver === 'undefined') return;
+		if (this.resizeObserver) return;
 		this.resizeObserver = new ResizeObserver((entries) => {
 			for (const entry of entries) {
 				const height = Math.round(entry.contentRect.height);
 				if (height > 0 && Math.abs(height - this.viewportHeight) > 2) {
 					this.viewportHeight = height;
-					this.emitRangeChange();
 				}
+				const sampleRow = this.renderRoot?.querySelector(
+					'.table-row'
+				) as HTMLElement | null;
+				if (sampleRow && sampleRow.offsetHeight > 0) {
+					this.measuredRowHeight = sampleRow.offsetHeight;
+				}
+				this.computeAndEmitRange();
 			}
 		});
 		if (this.viewportEl) {
@@ -302,12 +333,15 @@ export class UiVirtualTable extends LitElement {
 			})
 		);
 
-		this.emitRangeChange();
+		this.computeAndEmitRange();
 	}
 
-	private emitRangeChange(): void {
-		const effectiveRows = Math.min(this.totalRows, MAX_PREVIEW_ROWS);
-		if (effectiveRows === 0) return;
+	private computeAndEmitRange(): void {
+		const effectiveRows = Math.min(Math.max(0, this.totalRows), MAX_PREVIEW_ROWS);
+		if (effectiveRows === 0) {
+			this.renderedRange = { startIndex: 0, limit: 0 };
+			return;
+		}
 
 		const vp = this.viewportEl;
 		const r = this.measuredRowHeight;
@@ -323,6 +357,8 @@ export class UiVirtualTable extends LitElement {
 		const visibleRows = Math.ceil(h / r);
 		const endIndex = Math.min(segmentEnd, first + visibleRows + OVERSCAN + 1);
 		const limit = Math.max(1, endIndex - startIndex);
+
+		this.renderedRange = { startIndex, limit };
 
 		if (
 			this.lastRequestedRange &&
@@ -346,8 +382,9 @@ export class UiVirtualTable extends LitElement {
 	 * Programmatically scrolls the table to an absolute zero-based row index.
 	 */
 	async scrollToRow(index: number, offset = 0, inlineOffset = 0): Promise<void> {
-		const effectiveRows = Math.min(this.totalRows, MAX_PREVIEW_ROWS);
-		const clampedIndex = Math.max(0, Math.min(index, effectiveRows - 1));
+		const effectiveRows = Math.min(Math.max(0, this.totalRows), MAX_PREVIEW_ROWS);
+		const maxIndex = Math.max(0, effectiveRows - 1);
+		const clampedIndex = Math.max(0, Math.min(index, maxIndex));
 		const targetSegment = Math.floor(clampedIndex / SEGMENT_SIZE);
 
 		if (targetSegment !== this.currentSegment) {
@@ -360,7 +397,8 @@ export class UiVirtualTable extends LitElement {
 		if (vp) {
 			const localRow = clampedIndex % SEGMENT_SIZE;
 			vp.scrollTop = localRow * this.measuredRowHeight + offset;
-			vp.scrollLeft = inlineOffset;
+			const isRtl = getComputedStyle(this).direction === 'rtl';
+			vp.scrollLeft = isRtl ? -Math.abs(inlineOffset) : Math.abs(inlineOffset);
 		}
 
 		this.onScrollTick();
@@ -388,28 +426,38 @@ export class UiVirtualTable extends LitElement {
 	}
 
 	override render(): TemplateResult {
-		const effectiveRows = Math.min(this.totalRows, MAX_PREVIEW_ROWS);
+		const effectiveRows = Math.min(Math.max(0, this.totalRows), MAX_PREVIEW_ROWS);
 		const segmentStart = this.currentSegment * SEGMENT_SIZE;
 		const segmentEnd = Math.min(segmentStart + SEGMENT_SIZE, effectiveRows);
-		const segmentRows = Math.max(0, segmentEnd - segmentStart);
-
 		const r = this.measuredRowHeight;
-		const windowStart = this.window.startIndex;
-		const windowRows = this.window.rows;
 
-		// Calculate rail spacing above and below the rendered window within this segment
-		const localWindowStart = Math.max(0, windowStart - segmentStart);
-		const topSpacerHeight = localWindowStart * r;
-		const renderedCount = windowRows.length;
-		const bottomSpacerHeight = Math.max(
-			0,
-			(segmentRows - localWindowStart - renderedCount) * r
+		const { startIndex: reqStart, limit: reqLimit } = this.renderedRange;
+		const clampedReqStart = Math.max(segmentStart, Math.min(reqStart, segmentEnd));
+		const clampedReqEnd = Math.min(
+			segmentEnd,
+			Math.max(clampedReqStart, clampedReqStart + reqLimit)
 		);
+
+		const topSpacerHeight = Math.max(0, (clampedReqStart - segmentStart) * r);
+		const bottomSpacerHeight = Math.max(0, (segmentEnd - clampedReqEnd) * r);
+
+		const rowsToRender: { index: number; values: readonly string[] | null }[] = [];
+		if (effectiveRows > 0) {
+			for (let i = clampedReqStart; i < clampedReqEnd; i++) {
+				const windowOffset = i - this.window.startIndex;
+				const values =
+					windowOffset >= 0 && windowOffset < this.window.rows.length
+						? (this.window.rows[windowOffset] ?? null)
+						: null;
+				rowsToRender.push({ index: i, values });
+			}
+		}
 
 		return html`
 			<div
 				class="table-viewport"
 				tabindex="0"
+				role="region"
 				aria-label=${this.label || 'Dataset preview'}
 				@scroll=${this.handleScroll}>
 				<div
@@ -442,20 +490,26 @@ export class UiVirtualTable extends LitElement {
 									class="rail-spacer-top"
 									style="block-size: ${topSpacerHeight}px; height: ${topSpacerHeight}px;"></div>`
 							: nothing}
-						${windowRows.map((rowValues, i) => {
-							const absoluteRowIndex = windowStart + i;
+						${rowsToRender.map(({ index: absoluteRowIndex, values: rowValues }) => {
 							return html`
 								<div
-									class="table-row"
+									class="table-row ${rowValues ? '' : 'placeholder'}"
 									role="row"
-									aria-rowindex=${absoluteRowIndex + 2}>
-									${rowValues.map(
-										(cellVal) => html`
-											<div class="table-cell" role="cell" title=${cellVal}>
-												${cellVal}
+									aria-rowindex=${absoluteRowIndex + 2}
+									?aria-busy=${!rowValues && this.loading}>
+									${this.columns.map((col, colIdx) => {
+										const cellVal = rowValues ? (rowValues[colIdx] ?? '') : '';
+										return html`
+											<div
+												class="table-cell ${rowValues
+													? ''
+													: 'placeholder-cell'}"
+												role="cell"
+												title=${cellVal}>
+												${cellVal || (rowValues ? '' : nothing)}
 											</div>
-										`
-									)}
+										`;
+									})}
 								</div>
 							`;
 						})}

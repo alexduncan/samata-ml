@@ -295,5 +295,95 @@ export const parityMap: ParityEntry[] = [
 		appRoute: '/target',
 		appSelector: 'app-target-view .notification.notification-alert',
 		properties: ['background-color', 'border-top-color', 'border-radius', 'color']
+	},
+	{
+		id: 'models-disabled-alert',
+		mockupPage: '03-1_train-models-disabled.html',
+		mockupSelector: '.notification.notification-alert',
+		appRoute: '/models',
+		appSelector: 'app-models-view .notification.notification-alert',
+		properties: ['background-color', 'border-top-color', 'border-radius', 'color']
+	},
+	{
+		id: 'models-disabled-h1',
+		mockupPage: '03-1_train-models-disabled.html',
+		mockupSelector: '.page-header > h1',
+		appRoute: '/models',
+		appSelector: 'app-models-view .page-header > h1',
+		properties: ['font-size', 'font-weight', 'color']
+	},
+	{
+		id: 'models-disabled-p',
+		mockupPage: '03-1_train-models-disabled.html',
+		mockupSelector: '.page-header > p',
+		appRoute: '/models',
+		appSelector: 'app-models-view .page-header > p',
+		properties: ['color', 'line-height']
+	},
+	{
+		id: 'models-step-active',
+		mockupPage: '03-2_train-models-1-choose-model.html',
+		mockupSelector: 'li.train-step.train-step-active',
+		appRoute: '/models/1',
+		appSelector: 'app-model-builder-view li.train-step[aria-current="step"]',
+		properties: ['background-color', 'border-top-color', 'border-bottom-color']
+	},
+	{
+		id: 'models-step-active-h2',
+		mockupPage: '03-2_train-models-1-choose-model.html',
+		mockupSelector: 'li.train-step.train-step-active .train-step-header h2',
+		appRoute: '/models/1',
+		appSelector:
+			'app-model-builder-view li.train-step[aria-current="step"] .train-step-header h2',
+		properties: ['font-size', 'font-weight', 'color']
+	},
+	{
+		id: 'models-step-pending',
+		mockupPage: '03-2_train-models-1-choose-model.html',
+		mockupSelector: 'li.train-step.train-step-pending',
+		appRoute: '/models/1',
+		appSelector: 'app-model-builder-view li.train-step.train-step-pending',
+		properties: ['background-color', 'border-top-color']
+	},
+	{
+		id: 'models-card',
+		mockupPage: '03-2_train-models-1-choose-model.html',
+		mockupSelector: 'article.card',
+		appRoute: '/models/1',
+		appSelector: 'app-model-builder-view app-model-card article.card',
+		properties: ['display', 'flex-direction', 'border-radius', 'background-color']
+	},
+	{
+		id: 'models-features-step-active',
+		mockupPage: '03-3_train-models-2-select-features.html',
+		mockupSelector: 'li.train-step.train-step-active',
+		appRoute: '/models/1',
+		appSelector: 'app-model-builder-view li.train-step[aria-current="step"]',
+		properties: ['background-color', 'border-top-color', 'border-bottom-color']
+	},
+	{
+		id: 'models-features-step-active-h2',
+		mockupPage: '03-3_train-models-2-select-features.html',
+		mockupSelector: 'li.train-step.train-step-active .train-step-header h2',
+		appRoute: '/models/1',
+		appSelector:
+			'app-model-builder-view li.train-step[aria-current="step"] .train-step-header h2',
+		properties: ['font-size', 'font-weight', 'color']
+	},
+	{
+		id: 'models-features-table',
+		mockupPage: '03-3_train-models-2-select-features.html',
+		mockupSelector: 'table.table',
+		appRoute: '/models/1',
+		appSelector: 'app-model-builder-view table.table',
+		properties: ['border-collapse', 'width']
+	},
+	{
+		id: 'models-features-table-th',
+		mockupPage: '03-3_train-models-2-select-features.html',
+		mockupSelector: 'table.table thead th',
+		appRoute: '/models/1',
+		appSelector: 'app-model-builder-view table.table thead th',
+		properties: ['background-color', 'font-weight']
 	}
 ];

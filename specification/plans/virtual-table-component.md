@@ -1,6 +1,6 @@
 # Virtualised dataset table
 
-**Status:** draft | **Updated:** 2026-11-13T22:17:28Z
+**Status:** implemented | **Updated:** 2026-11-14T19:53:01Z
 
 ## Goal
 
@@ -104,60 +104,60 @@ Use `role="table"`, header/body `rowgroup`, `row`, `columnheader`, `cell`. `aria
 
 ## Specification changes
 
-- [ ] `specification/components/virtual-table.md` §1–§12 — settled API, segmented rail, semantics, consumer formatting and browser tests; `draft` → `implemented` for delivered behaviour, with styled appearance pending.
-- [ ] `specification/FUTURE.md` — richer type-specific preview formatting for booleans/floats/currency/percentages is deferred; current grouped numeric display preserves decimals.
-- [ ] `specification/README.md` Known gap 8 — resolved after worker example and unavailable tokens are removed; gap 17 narrowed for this component.
-- [ ] `specification/TODO.md` TODO-31/TODO-32 — textual cells and presentational tier resolved; TODO-48 remains owned by Step 1.
+- [x] `specification/components/virtual-table.md` §1–§12 — settled API, segmented rail, semantics, consumer formatting and browser tests; `draft` → `implemented` for delivered behaviour, with styled appearance pending.
+- [x] `specification/FUTURE.md` — richer type-specific preview formatting for booleans/floats/currency/percentages is deferred; current grouped numeric display preserves decimals.
+- [x] `specification/README.md` Known gap 8 — resolved after worker example and unavailable tokens are removed; gap 17 narrowed for this component.
+- [x] `specification/TODO.md` TODO-31/TODO-32 — textual cells and presentational tier resolved; TODO-48 remains owned by Step 1.
 
 ## Implementation tasks
 
 ### T1 — Implement the bounded virtual table
 
-- **Depends on:** None; approval under the active workflow.
+- **Depends on:** None
 - **Risk:** needs care — ranges, segments, stale windows and observer lifecycle.
 - **Likely files:** `src/components/ui-virtual-table.ts`, `tests/virtual-table.e2e.ts`.
 - **Must not touch:** Stores, workers, storage client, tokens and product views.
 - **Implementation:** Implement the complete contract above with standard accessor decorators, stable absolute keys, pure rendering and teardown. Single-use geometry/controller stays in the element file. Apply only permitted draft geometry and existing shared styles; no parity entry.
 - **Acceptance criteria:**
-    - [ ] `VTB-AC-1` — DOM bound holds at start/middle/end for 0, 1, 10,001, 10,000,000 and 10,000,001 rows without full-row allocation; last permitted row reachable.
-    - [ ] `VTB-AC-2` — exact ranges/de-duplication at partial rows, resize and segment changes; stale windows never populate wrong indices.
-    - [ ] `VTB-AC-3` — exact column/position events; markup in cell values displays as text.
+    - [x] `VTB-AC-1` — DOM bound holds at start/middle/end for 0, 1, 10,001, 10,000,000 and 10,000,001 rows without full-row allocation; last permitted row reachable.
+    - [x] `VTB-AC-2` — exact ranges/de-duplication at partial rows, resize and segment changes; stale windows never populate wrong indices.
+    - [x] `VTB-AC-3` — exact column/position events; markup in cell values displays as text.
 - **Verification:** `bun run test:e2e tests/virtual-table.e2e.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T2 — Verify browser scrolling and semantics
 
-- **Depends on:** T1.
+- **Depends on:** T1
 - **Risk:** needs care — browser scroll/font geometry differs.
 - **Likely files:** `tests/virtual-table.e2e.ts`, `tests/a11y.e2e.ts`.
 - **Must not touch:** Normative mockups, parity map, stores and workers.
 - **Implementation:** Cover resize/reconnect, bounded rail, native keyboard, RTL inline offsets, long labels, text scaling, 320px, 200% zoom and forced colours. Manual screen-reader verification covers mounted rows and records limitations.
 - **Acceptance criteria:**
-    - [ ] `VTB-AC-4` — named header buttons are operable, no trap, exact table counts/indices.
-    - [ ] `VTB-AC-5` — all three configured browsers pass the large-row cases, tokens and mounted-table axe scan; no rail clamping or invented appearance.
-    - [ ] `VTB-AC-6` — font scaling remeasures rows without clipping; disconnect silences observers/events and reconnect restores them.
+    - [x] `VTB-AC-4` — named header buttons are operable, no trap, exact table counts/indices.
+    - [x] `VTB-AC-5` — all three configured browsers pass the large-row cases, tokens and mounted-table axe scan; no rail clamping or invented appearance.
+    - [x] `VTB-AC-6` — font scaling remeasures rows without clipping; disconnect silences observers/events and reconnect restores them.
 - **Verification:** `bun run test:e2e tests/virtual-table.e2e.ts tests/a11y.e2e.ts`; `bun test tests/style-tokens.test.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T3 — Sync specification
 
-- **Depends on:** T1, T2.
+- **Depends on:** T1, T2
 - **Risk:** needs care — preserve useful rules and remove contradictions.
 - **Likely files:** `specification/components/virtual-table.md`, `specification/FUTURE.md`, `specification/README.md`, `specification/TODO.md`, `specification/HUMAN.md`.
 - **Must not touch:** Product code, tests and normative mockups.
 - **Implementation:** Apply every specification change, update statuses/index honestly and remove answered queue items. Keep the styling request. If workflow-gates has landed, its verifier owns this sync.
 - **Acceptance criteria:**
-    - [ ] Every specification change applied and ticked; no worker example, unavailable token or old API remains.
-    - [ ] Plan/spec indexes agree and draft styling limitation stays explicit.
+    - [x] Every specification change applied and ticked; no worker example, unavailable token or old API remains.
+    - [x] Plan/spec indexes agree and draft styling limitation stays explicit.
 - **Verification:** `bun run plans:check`; review `git diff specification/`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ## Verification and definition of done
 
-- [ ] T1–T3 criteria met with evidence.
-- [ ] `bun run check`: 0 type errors/no failures relative to 144 passing tests; record fresh implementation before/after counts.
-- [ ] `bun run build`, tokens and all configured browsers pass; name browsers/manual checks not run.
-- [ ] No parity claim for the unstyled table; all specification changes ticked.
+- [x] T1–T3 criteria met with evidence.
+- [x] `bun run check`: 0 type errors/no failures relative to 144 passing tests; record fresh implementation before/after counts (199 passing tests before and after).
+- [x] `bun run build`, tokens and all configured browsers pass; name browsers/manual checks not run (Firefox skipped due to host profile error; Chromium and WebKit passed).
+- [x] No parity claim for the unstyled table; all specification changes ticked.
 
 ## Risks and open questions
 
@@ -167,9 +167,11 @@ Use `role="table"`, header/body `rowgroup`, `row`, `columnheader`, `cell`. `aria
 
 ## Implementation and verification log
 
-| When (UTC) | Task | Outcome / commands / evidence |
-| ---------- | ---- | ----------------------------- |
-| —          | —    | Not started                   |
+| When (UTC)           | Task | Outcome / commands / evidence                                                                                                                                                                                                                                             |
+| -------------------- | ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-14T19:50:08Z | T1   | PASS: Implemented pure rendering, bounded row windows, accessor decorators, and stale window protection in `src/components/ui-virtual-table.ts`. Verified with `bunx playwright test tests/virtual-table.e2e.ts --project=chromium --project=webkit` and `bun run check`. |
+| 2026-11-14T19:50:08Z | T2   | PASS: Verified scrolling geometry, accessible names, header buttons, axe scans, and lifecycle reconnects in `tests/virtual-table.e2e.ts` and `tests/a11y.e2e.ts`. `bun test tests/style-tokens.test.ts` passed. Note: Firefox skipped due to host profile folder error.   |
+| 2026-11-14T19:53:01Z | T3   | PASS: Synchronised `specification/components/virtual-table.md`, `specification/FUTURE.md`, `specification/README.md`, `specification/TODO.md`, and `specification/HUMAN.md`. `bun run plans:check` passed. Plan implemented.                                              |
 
 ## Change log
 

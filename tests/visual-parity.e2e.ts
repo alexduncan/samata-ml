@@ -100,6 +100,115 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 						.waitFor({ state: 'visible', timeout: 5000 });
 				}
 			}
+			if (entry.id.startsWith('models-')) {
+				if (entry.id.startsWith('models-disabled-')) {
+					await page.goto('/models');
+					await page
+						.locator('app-models-view .notification.notification-alert')
+						.waitFor({ state: 'attached', timeout: 5000 });
+				} else if (entry.mockupPage === '03-2_train-models-1-choose-model.html') {
+					await page.goto('/data');
+					const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
+					try {
+						await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
+						await getStartedBtn.click();
+					} catch {}
+					const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
+					await irisCard.waitFor({ state: 'visible', timeout: 5000 });
+					await irisCard.locator('button.btn-primary').click();
+					await page
+						.locator('app-dataset-preview')
+						.waitFor({ state: 'attached', timeout: 5000 });
+					await page.goto('/target');
+					await page
+						.locator('app-target-view [data-testid="target-ready"]')
+						.waitFor({ state: 'visible', timeout: 5000 });
+					await page.locator('tbody tr:has(th:has-text("class")) button').click();
+					await page.evaluate(() => {
+						const s = window.__appState!.get();
+						window.__appState!.set({
+							...s,
+							models: [
+								{
+									num: 1,
+									createdAt: Date.now(),
+									status: 'draft',
+									completedSteps: [],
+									modelId: null,
+									features: [],
+									modelOptions: {},
+									hyperparameters: { mode: 'manual', values: {} },
+									multiclass: null,
+									trainingSetup: null,
+									progress: null,
+									error: null,
+									timings: null,
+									durationMs: null,
+									metrics: null,
+									ui: {}
+								}
+							]
+						});
+					});
+					await page.goto('/models/1');
+					await page
+						.locator('app-model-builder-view app-model-card')
+						.waitFor({ state: 'attached', timeout: 5000 });
+				} else if (entry.mockupPage === '03-3_train-models-2-select-features.html') {
+					await page.goto('/data');
+					const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
+					try {
+						await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
+						await getStartedBtn.click();
+					} catch {}
+					const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
+					await irisCard.waitFor({ state: 'visible', timeout: 5000 });
+					await irisCard.locator('button.btn-primary').click();
+					await page
+						.locator('app-dataset-preview')
+						.waitFor({ state: 'attached', timeout: 5000 });
+					await page.goto('/target');
+					await page
+						.locator('app-target-view [data-testid="target-ready"]')
+						.waitFor({ state: 'visible', timeout: 5000 });
+					await page.locator('tbody tr:has(th:has-text("class")) button').click();
+					await page.evaluate(() => {
+						const s = window.__appState!.get();
+						window.__appState!.set({
+							...s,
+							models: [
+								{
+									num: 1,
+									createdAt: Date.now(),
+									status: 'draft',
+									completedSteps: ['choose-model'],
+									modelId: 'logistic-regression',
+									features: [
+										'sepal length',
+										'sepal width',
+										'petal length',
+										'petal width'
+									],
+									modelOptions: {},
+									hyperparameters: { mode: 'manual', values: {} },
+									multiclass: null,
+									trainingSetup: null,
+									progress: null,
+									error: null,
+									timings: null,
+									durationMs: null,
+									metrics: null,
+									ui: { featureSelectionInitialised: true }
+								}
+							]
+						});
+					});
+					await page.goto('/models/1');
+					await page
+						.locator('app-model-builder-view table.table')
+						.waitFor({ state: 'attached', timeout: 5000 });
+				}
+			}
 			const appEl = page.locator(entry.appSelector).first();
 			await appEl.waitFor({ state: 'attached', timeout: 5000 });
 

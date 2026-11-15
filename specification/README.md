@@ -50,12 +50,12 @@ These rules apply whenever a spec changes, whether in a plan's `Sync specificati
 
 Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only where it says so.
 
-| Spec                                            | Status      | Tier                                                |
-| ----------------------------------------------- | ----------- | --------------------------------------------------- |
-| [button.md](components/button.md)               | draft       | Style primitive `.btn`                              |
-| [card.md](components/card.md)                   | partial     | Presentational `app-dataset-card`, `app-model-card` |
-| [virtual-table.md](components/virtual-table.md) | draft       | `ui-virtual-table` (tier disputed, see gaps)        |
-| [sidepanel.md](components/sidepanel.md)         | implemented | Presentational `app-column-details`                 |
+| Spec                                            | Status      | Tier                                                          |
+| ----------------------------------------------- | ----------- | ------------------------------------------------------------- |
+| [button.md](components/button.md)               | draft       | Style primitive `.btn`                                        |
+| [card.md](components/card.md)                   | implemented | Presentational `app-dataset-card`, `app-model-card`           |
+| [virtual-table.md](components/virtual-table.md) | implemented | Presentational `ui-virtual-table` (styled appearance pending) |
+| [sidepanel.md](components/sidepanel.md)         | implemented | Presentational `app-column-details`                           |
 
 ### Backlog
 
@@ -80,7 +80,7 @@ Known conflicts between specs, and between specs and code, as of 2026-11-13. A p
 5. **Component test environment.** testing.md says to use happy-dom for Lit components. COMPONENTS §9 forbids a simulated DOM for components and requires Playwright, which is what the code does: happy-dom is used only for non-component DOM tests. Storybook and Vitest are not installed (COMPONENTS §10 defers the Storybook rules until they are).
 6. **Service worker specified but not installed.** ARCHITECTURE describes offline-first service-worker caching; no service worker is present. `testing.md` mentions Comlink as an option, but the application uses its own worker protocol and does not depend on Comlink.
 7. **Linting.** standards-and-documentation says `eslint-plugin-tsdoc` is enforced in CI. The plugin is installed, but there is no ESLint config, no `lint` script and no CI.
-8. **Virtual table.** components/virtual-table.md says Tier 2 presentational; an earlier stub said connected component (TODO-32). Its §5 uses `--color-bg-surface` and `--color-border-subtle`, which are not in `css/root.css` (visual-design §2), and its §4 example creates a `Worker` inside a component (COMPONENTS §5).
+8. _Resolved._
 9. _Resolved._
 10. **Product name.** VISION and `wrangler.jsonc` say `web-ml-app`; the repository and UI say `samata-ml`/`samatā.ml`.
 11. **`npx` vs Bun.** The vendored `modern-web-guidance` skill runs `npx`; this repo uses Bun only, so run its commands with `bunx`.
@@ -89,5 +89,5 @@ Known conflicts between specs, and between specs and code, as of 2026-11-13. A p
 14. **State, storage and navigation remaining undelivered scope.** Conformance plan [state-navigation-conformance](plans/state-navigation-conformance.md) resolved persister ownership, schema validation, read-only mode, discrete write triggers, progress throttling, blocked reasons, sidebar `aria-current`, `underlayPath`, focus management, scroll saving and invalidation, unchanged-edit no-ops and action validation. Remaining undelivered scope: stored-results deletion in IndexedDB (`model_results`), save-failure notifications, and full multi-tab sync.
 15. _Resolved._
 16. _Resolved._
-17. **Where Playwright component tests live.** COMPONENTS §9, button.md, card.md and virtual-table.md put Playwright tests in `*.test.ts` beside the source. `playwright.config.ts` runs tests in `tests/*.e2e.ts`, `tests/journeys/*.e2e.ts` and `tests/app-shell.test.ts`, avoiding collision with `bun test` in `src/`.
+17. **Where Playwright component tests live.** COMPONENTS §9, button.md and card.md put Playwright tests in `*.test.ts` beside the source. `playwright.config.ts` runs tests in `tests/*.e2e.ts`, `tests/journeys/*.e2e.ts` and `tests/app-shell.test.ts`, avoiding collision with `bun test` in `src/`. Tests for `ui-virtual-table` live in `tests/virtual-table.e2e.ts`.
 18. _Resolved._

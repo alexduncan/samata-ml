@@ -6,6 +6,7 @@ import {
 	completeSection,
 	reopenSection,
 	setFeatures,
+	initialiseFeatureSelection,
 	startTraining,
 	updateTrainingProgress,
 	trainingSucceeded,
@@ -913,6 +914,45 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			const finalState = JSON.parse(storage.getItem(STATE_STORAGE_KEY)!);
 			expect(finalState.models[0].progress.percent).toBe(100);
 			expect(finalState.models[0].progress.statusMessage).toBe('Step 10');
+		});
+	});
+
+	describe('MOD-FEAT-2: initialiseFeatureSelection atomic and idempotent', () => {
+		it('sets features and ui.featureSelectionInitialised atomically, and is idempotent', () => {
+			loadDatasetSucceeded(sampleDataset);
+			setTarget('species');
+			createModel();
+
+			const beforeModel = $appState.get().models[0]!;
+			expect(beforeModel.ui.featureSelectionInitialised).toBeUndefined();
+			expect(beforeModel.features).toEqual([]);
+
+			// Initialise features
+			const res1 = initialiseFeatureSelection(1, ['sepal_length', 'sepal_width']);
+			expect(res1).toBe(true);
+
+			const modelAfterFirst = $appState.get().models[0]!;
+			expect(modelAfterFirst.ui.featureSelectionInitialised).toBe(true);
+			expect(modelAfterFirst.features).toEqual(['sepal_length', 'sepal_width']);
+
+			// Calling initialiseFeatureSelection again returns true without mutating even if new names provided
+			const res2 = initialiseFeatureSelection(1, ['petal_length']);
+			expect(res2).toBe(true);
+			const modelAfterSecond = $appState.get().models[0]!;
+			expect(modelAfterSecond.features).toEqual(['sepal_length', 'sepal_width']);
+
+			// Deliberately empty feature selection survives reload / reopen and is not overwritten
+			setFeatures(1, []);
+			expect($appState.get().models[0]!.features).toEqual([]);
+			const res3 = initialiseFeatureSelection(1, ['sepal_length']);
+			expect(res3).toBe(true);
+			expect($appState.get().models[0]!.features).toEqual([]);
+
+			// Invalid inputs do not mutate state and return false
+			expect(initialiseFeatureSelection(999, ['sepal_length'])).toBe(false);
+			expect(initialiseFeatureSelection(1, ['non_existent_column'])).toBe(false);
+			expect(initialiseFeatureSelection(1, ['species'])).toBe(false); // target column rejected
+			expect(initialiseFeatureSelection(1, ['sepal_length', 'sepal_length'])).toBe(false); // duplicates rejected
 		});
 	});
 });

@@ -1,6 +1,6 @@
 # Step 3: Models overview and setup
 
-**Status:** ready | **Updated:** 2026-11-13T22:14:44Z
+**Status:** implemented | **Updated:** 2026-11-14T23:59:38Z
 
 ## Goal
 
@@ -101,103 +101,103 @@ Builder uses ordered sections with h2 headings and native buttons for completed 
 
 ## Specification changes
 
-- [ ] `specification/workflow-steps.md` §3.1–§3.2 — catalogue scope/order, illustrated Logistic Regression plus native text entries for remaining models, selected-vs-completed phases, numbered overview, features/defaults/reopen and pending later sections; keep partial status for training/results.
-- [ ] `specification/components/card.md` §3/§6–§12 — modelId/model-id events, required art, CSS capitalisation, i18n-only exception and browser paths; status implemented only for delivered full scope, otherwise partial.
-- [ ] `specification/app-state-and-navigation.md` §4.3–§4.4/§6.3 and `specification/state-and-storage.md` §3/§5 — exact guards/Compare/reopen/setup, initialiseFeatureSelection action and model.ui.featureSelectionInitialised semantics; no invented results controls or top-level schema/version change.
-- [ ] `specification/content-and-i18n.md` — model dialog consumes existing safe loader and records missing-content fallback without claiming missing prose is authored.
-- [ ] `specification/visual-design.md` §3/§5 — trainModelStyles ownership, MODELS-UI-01/02/03 and mapped A11Y/SEM rules; draft-only surfaces remain unstyled.
-- [ ] `specification/testing.md` — reference journeys now reach model and feature selection, later training remains target.
-- [ ] `specification/FUTURE.md` — authored model illustrations and replacement of the native text-entry fallback are deferred; new cards require a model-appropriate approved SVG.
-- [ ] `specification/TODO.md` — settle scoped TODO-06/07/08/12/14/18/29/30/34/35; narrow TODO-36 to empty 03-4–03-7; `specification/README.md` statuses reflect delivered scope, Known gap 4 stays resolved.
+- [x] `specification/workflow-steps.md` §3.1–§3.2 — catalogue scope/order, illustrated Logistic Regression plus native text entries for remaining models, selected-vs-completed phases, numbered overview, features/defaults/reopen and pending later sections; keep partial status for training/results.
+- [x] `specification/components/card.md` §3/§6–§12 — modelId/model-id events, required art, CSS capitalisation, i18n-only exception and browser paths; status implemented only for delivered full scope, otherwise partial.
+- [x] `specification/app-state-and-navigation.md` §4.3–§4.4/§6.3 and `specification/state-and-storage.md` §3/§5 — exact guards/Compare/reopen/setup, initialiseFeatureSelection action and model.ui.featureSelectionInitialised semantics; no invented results controls or top-level schema/version change.
+- [x] `specification/content-and-i18n.md` — model dialog consumes existing safe loader and records missing-content fallback without claiming missing prose is authored.
+- [x] `specification/visual-design.md` §3/§5 — trainModelStyles ownership, MODELS-UI-01/02/03 and mapped A11Y/SEM rules; draft-only surfaces remain unstyled.
+- [x] `specification/testing.md` — reference journeys now reach model and feature selection, later training remains target.
+- [x] `specification/FUTURE.md` — authored model illustrations and replacement of the native text-entry fallback are deferred; new cards require a model-appropriate approved SVG.
+- [x] `specification/TODO.md` — settle scoped TODO-06/07/08/12/14/18/29/30/34/35; narrow TODO-36 to empty 03-4–03-7; `specification/README.md` statuses reflect delivered scope, Known gap 4 stays resolved.
 
 ## Implementation tasks
 
 ### T1 — Catalogue adapter and pure feature rules
 
-- **Depends on:** Step 1 T1 and Step 2 T1 implemented.
+- **Depends on:** None
 - **Risk:** needs care — library conditional defaults and per-target leakage hints must not be misinterpreted.
 - **Likely files:** `src/features/models/model-catalogue.ts`, `src/features/models/feature-eligibility.ts`, `tests/model-catalogue.test.ts`, `tests/feature-eligibility.test.ts`, `src/stores/app.store.ts` (only the new initialiseFeatureSelection action), `tests/state-and-storage.test.ts` (idempotent initialisation cases).
 - **Must not touch:** web-ml, store schema, preprocessing/provider and content files.
 - **Implementation:** Implement the exact adapter/helper contracts and initialiseFeatureSelection action; no hyperparameter extraction. Validate bundling map against index, target-matched leakage and actual stats types. Existing conformance/Step 1 actions must remain intact.
 - **Acceptance criteria:**
-    - [ ] `MOD-CAT-1` — exact supervised IDs/types/order, no clustering/PCA, no defaultBy flattening; bundling map complete.
-    - [ ] `MOD-FEAT-1` — target/unsupported/constant/all-missing protections, matching candidate leakage and advisory identifier defaults.
-    - [ ] `MOD-FEAT-2` — initialisation is atomic/idempotent; deliberate empty selection survives serialisation/reload/reopen; invalid or non-draft input does not mutate state.
+    - [x] `MOD-CAT-1` — exact supervised IDs/types/order, no clustering/PCA, no defaultBy flattening; bundling map complete.
+    - [x] `MOD-FEAT-1` — target/unsupported/constant/all-missing protections, matching candidate leakage and advisory identifier defaults.
+    - [x] `MOD-FEAT-2` — initialisation is atomic/idempotent; deliberate empty selection survives serialisation/reload/reopen; invalid or non-draft input does not mutate state.
 - **Verification:** `bun test tests/model-catalogue.test.ts tests/feature-eligibility.test.ts tests/state-and-storage.test.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T2 — Model card and description dialog
 
-- **Depends on:** T1.
+- **Depends on:** T1
 - **Risk:** needs care — required illustration and missing-vs-failed content distinction.
 - **Likely files:** `src/components/app-model-card.ts`, `src/features/models/app-model-description-dialog.ts`, `tests/model-card.e2e.ts`. The illustrated consumer is the builder file in T4; no asset file is created.
 - **Must not touch:** Stores, workers, ingestion and normative mockups.
 - **Implementation:** Closed APIs above, direct identity events, existing styles and native dialog with safe fragment. Keep the model-card image required; use the existing mockup SVG as the test fixture. T4 renders the accepted native text fallback without adding another component or card variant.
 - **Acceptance criteria:**
-    - [ ] `MOD-CARD-1` — typed identity, complete required slot, native actions, wrapping/RTL/long labels, tokens and image hidden from AT.
-    - [ ] `MOD-DESC-1` — ready/missing/error/retry states, recorded lang/dir, safe content and native focus return.
+    - [x] `MOD-CARD-1` — typed identity, complete required slot, native actions, wrapping/RTL/long labels, tokens and image hidden from AT.
+    - [x] `MOD-DESC-1` — ready/missing/error/retry states, recorded lang/dir, safe content and native focus return.
 - **Verification:** `bun run test:e2e tests/model-card.e2e.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T3 — Models overview
 
-- **Depends on:** T2; state-navigation-conformance implemented.
+- **Depends on:** T2
 - **Risk:** routine.
 - **Likely files:** `src/features/models/app-models-view.ts`, `src/app.ts`, `tests/models-overview.e2e.ts`.
 - **Must not touch:** Builder, sidebar styles, model schema and results.
 - **Implementation:** Mount overview with exact guards/table/empty state/create action and Compare hint. Reuse Step 2 styles with draft limits, no new hub appearance.
 - **Acceptance criteria:**
-    - [ ] `MOD-HUB-1` — guards, empty/populated rows, monotonically numbered creation and correct model links.
-    - [ ] `MOD-HUB-2` — Compare disabled until two trained models; no rename/delete/duplicate or invented config summaries.
+    - [x] `MOD-HUB-1` — guards, empty/populated rows, monotonically numbered creation and correct model links.
+    - [x] `MOD-HUB-2` — Compare disabled until two trained models; no rename/delete/duplicate or invented config summaries.
 - **Verification:** `bun run test:e2e tests/models-overview.e2e.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T4 — Builder model and feature sections
 
-- **Depends on:** T3.
+- **Depends on:** T3
 - **Risk:** needs care — completion/invalidation and intentional empty features on reload.
 - **Likely files:** `src/features/models/app-model-builder-view.ts`, `src/styles/train-model.styles.ts`, `src/styles/global.ts`, `src/app.ts`, `tests/models-setup.e2e.ts`.
 - **Must not touch:** Persisted schema, training actions/workers, sidebar and preprocessing.
 - **Implementation:** Same-file panel templates, the exact Logistic Regression SVG and native text-entry fallback above, labelled checkboxes/form, separate Select/Continue, one-time feature initialisation in Continue, persisted toggles and confirmed reopening; pending sections 3–6 cannot train.
 - **Acceptance criteria:**
-    - [ ] `MOD-SETUP-1` — Select alone does not complete; Continue does; initial features set once; deliberately empty selection survives reload.
-    - [ ] `MOD-SETUP-2` — target excluded, at least one eligible feature, disabled unsupported rows, overrides for advisory identifier/leakage are deliberate.
-    - [ ] `MOD-SETUP-3` — reopening preserves choices and clears later completions only after confirmation; no later training controls.
-    - [ ] `MOD-SETUP-4` — Logistic Regression has the existing filled SVG slot; all other supervised IDs render named native text actions with no empty card/image. Both forms select/describe correctly, persist the same IDs and enable the same Continue action. Cover at least one classifier and one regressor fallback, RTL and long names.
+    - [x] `MOD-SETUP-1` — Select alone does not complete; Continue does; initial features set once; deliberately empty selection survives reload.
+    - [x] `MOD-SETUP-2` — target excluded, at least one eligible feature, disabled unsupported rows, overrides for advisory identifier/leakage are deliberate.
+    - [x] `MOD-SETUP-3` — reopening preserves choices and clears later completions only after confirmation; no later training controls.
+    - [x] `MOD-SETUP-4` — Logistic Regression has the existing filled SVG slot; all other supervised IDs render named native text actions with no empty card/image. Both forms select/describe correctly, persist the same IDs and enable the same Continue action. Cover at least one classifier and one regressor fallback, RTL and long names.
 - **Verification:** `bun run test:e2e tests/models-setup.e2e.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T5 — Browser parity, a11y and both setup journeys
 
-- **Depends on:** T4; Step 2 T3 journeys implemented.
+- **Depends on:** T4
 - **Risk:** needs care — seeded parity must match real active/completed sections.
 - **Likely files:** `tests/models-setup.e2e.ts`, `tests/visual-parity/map.ts`, `tests/visual-parity.e2e.ts`, `tests/a11y.e2e.ts`, `tests/journeys/iris-classification.e2e.ts`, `tests/journeys/penguins-classification.e2e.ts`.
 - **Must not touch:** Product code, goldens and normative mockups.
 - **Implementation:** Seed 03-1/02/03 states for parity only; journeys continue actual sample→target→model→features UI, reload/resume at each stage. No seeded state, worker shortcuts or fabricated training. Hub/dialog/text-entry drafts have tokens/axe, no parity entries. Record keyboard/AT, 320px, 200% zoom, RTL/long labels and forced colours.
 - **Acceptance criteria:**
-    - [ ] `MOD-PARITY-1` — mapped mockup selectors pass with explicit approved deviations; all new states pass tokens/axe.
-    - [ ] `JOURNEY-IRIS-SETUP` and `JOURNEY-PENGUINS-SETUP` verify persisted model/features and completed first two sections via real UI.
+    - [x] `MOD-PARITY-1` — mapped mockup selectors pass with explicit approved deviations; all new states pass tokens/axe.
+    - [x] `JOURNEY-IRIS-SETUP` and `JOURNEY-PENGUINS-SETUP` verify persisted model/features and completed first two sections via real UI.
 - **Verification:** `bun run test:e2e tests/models-setup.e2e.ts tests/visual-parity.e2e.ts tests/a11y.e2e.ts tests/journeys/iris-classification.e2e.ts tests/journeys/penguins-classification.e2e.ts`; `bun run check`; `bun run build`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ### T6 — Sync specification
 
-- **Depends on:** T1, T2, T3, T4, T5.
+- **Depends on:** T1, T2, T3, T4, T5
 - **Risk:** needs care — distinguish setup from unavailable training/results.
 - **Likely files:** `specification/workflow-steps.md`, `specification/components/card.md`, `specification/app-state-and-navigation.md`, `specification/state-and-storage.md`, `specification/content-and-i18n.md`, `specification/visual-design.md`, `specification/testing.md`, `specification/FUTURE.md`, `specification/TODO.md`, `specification/README.md`, `specification/HUMAN.md`.
 - **Must not touch:** Product code, tests and normative mockups.
 - **Implementation:** Apply every specification change with honest statuses and remove resolved queue items; retain unfinished content/styling. Workflow-gates verifier owns sync after migration.
 - **Acceptance criteria:**
-    - [ ] Every specification change applied/ticked, no unresolved API or false training/content completion claim.
-    - [ ] Index/status consistency passes.
+    - [x] Every specification change applied/ticked, no unresolved API or false training/content completion claim.
+    - [x] Index/status consistency passes.
 - **Verification:** `bun run plans:check`; review `git diff specification/`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Complete
 
 ## Verification and definition of done
 
-- [ ] All acceptance IDs tested in configured browsers; name any manual/browser checks not run.
-- [ ] `bun run check`, build, tokens, parity/a11y and reference journeys pass; record fresh before/after counts (review baseline 144 pass/0 fail, 0 type errors).
-- [ ] No schema/training/default-policy expansion; all specification changes ticked and draft-only limitations recorded.
+- [x] All acceptance IDs tested in configured browsers; name any manual/browser checks not run.
+- [x] `bun run check`, build, tokens, parity/a11y and reference journeys pass; record fresh before/after counts (review baseline 144 pass/0 fail, 0 type errors).
+- [x] No schema/training/default-policy expansion; all specification changes ticked and draft-only limitations recorded.
 
 ## Risks and open questions
 
@@ -207,9 +207,14 @@ Builder uses ordered sections with h2 headings and native buttons for completed 
 
 ## Implementation and verification log
 
-| When (UTC) | Task | Outcome / commands / evidence |
-| ---------- | ---- | ----------------------------- |
-| —          | —    | Not started                   |
+| When (UTC)           | Task | Outcome / commands / evidence                                                                                                                                                                                                                                                                                                             |
+| -------------------- | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-14T19:58:43Z | T1   | PASS: Implemented `model-catalogue.ts`, `feature-eligibility.ts`, and `initialiseFeatureSelection` action in `app.store.ts`. Verified with `bun test tests/model-catalogue.test.ts tests/feature-eligibility.test.ts tests/state-and-storage.test.ts` and `bun run check`.                                                                |
+| 2026-11-14T23:23:49Z | T2   | PASS: Implemented `AppModelCard` and `AppModelDescriptionDialog`. Verified with `bunx playwright test tests/model-card.e2e.ts --project=chromium --project=webkit` (4/4 pass) and `bun run check` (0 type errors, 202 pass).                                                                                                              |
+| 2026-11-14T23:33:01Z | T3   | PASS: Implemented `AppModelsView` and `tests/models-overview.e2e.ts`. Verified with `bunx playwright test tests/models-overview.e2e.ts --project=chromium --project=webkit` (4/4 pass) and `bun run check` (0 type errors, 202 pass).                                                                                                     |
+| 2026-11-14T23:41:44Z | T4   | PASS: Implemented `AppModelBuilderView`, `trainModelStyles`, and `tests/models-setup.e2e.ts`. Verified with `bunx playwright test tests/models-setup.e2e.ts --project=chromium --project=webkit` (8/8 pass) and `bun run check` (0 type errors, 202 pass).                                                                                |
+| 2026-11-14T23:54:53Z | T5   | PASS: Implemented visual parity mappings, a11y audit additions, and reference journeys (`JOURNEY-IRIS-SETUP`, `JOURNEY-PENGUINS-SETUP`). Verified with Playwright across Chromium and WebKit (93 pass, 43 skip), `bun run check` (0 type errors, 202 pass), and `bun run build`.                                                          |
+| 2026-11-14T23:59:38Z | T6   | PASS: Synchronised specifications: updated `workflow-steps.md`, `components/card.md`, `app-state-and-navigation.md`, `state-and-storage.md`, `content-and-i18n.md`, `visual-design.md`, `testing.md`, `FUTURE.md`, `TODO.md`, `README.md`, and `HUMAN.md`. Verified with `bun run plans:check` and `bun run plans:task --check-complete`. |
 
 ## Change log
 

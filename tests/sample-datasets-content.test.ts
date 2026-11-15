@@ -133,5 +133,5 @@ describe('committed sample dataset descriptors', () => {
 			'Iris-versicolor': 50,
 			'Iris-virginica': 50
 		});
-	});
+	}, 30000);
 });

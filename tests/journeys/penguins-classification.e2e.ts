@@ -123,4 +123,89 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		await expect(speciesRow.locator('button')).toBeDisabled();
 		await expect(continueLink).toBeVisible();
 	});
+
+	test('JOURNEY-PENGUINS-SETUP: navigate to /models, train new model, select logistic regression and features on penguins, verify resume on reload', async ({
+		page
+	}) => {
+		await page.goto('/data');
+		await loadSampleDataset(page, 'palmer-penguins');
+
+		// 1. Navigate to /target and select species
+		await page.locator('app-sidebar a[href="/target"]').click();
+		await expect(page).toHaveURL(/\/target/);
+		const targetView = page.locator('app-target-view');
+		const readySection = targetView.locator('[data-testid="target-ready"]');
+		await expect(readySection).toBeVisible({ timeout: 10000 });
+		const speciesRow = readySection.locator('tbody tr:has(th:has-text("species"))');
+		await speciesRow.locator('button').click();
+		await expect(speciesRow.locator('button')).toHaveText('Current Target');
+
+		// 2. Navigate to /models via target continue link
+		const continueToModels = targetView.locator('header a[href="/models"]');
+		await expect(continueToModels).toBeVisible();
+		await continueToModels.click();
+		await expect(page).toHaveURL(/\/models$/);
+
+		const modelsView = page.locator('app-models-view');
+		await expect(modelsView).toBeVisible();
+
+		// 3. Train New Model -> navigates to /models/1
+		const trainNewBtn = modelsView.locator('button.btn-primary:has-text("Train New Model")');
+		await expect(trainNewBtn).toBeVisible();
+		await trainNewBtn.click();
+		await expect(page).toHaveURL(/\/models\/1$/);
+
+		const builder = page.locator('app-model-builder-view');
+		await expect(builder).toBeVisible();
+
+		// 4. Section 1 (Choose Model) is active
+		const step1 = builder.locator('.train-step').nth(0);
+		await expect(step1).toHaveAttribute('aria-current', 'step');
+
+		// Select Logistic Regression
+		const lrCard = step1.locator('app-model-card[model-id="logistic-regression"]');
+		await expect(lrCard).toBeVisible();
+		await lrCard.locator('button.btn-primary').click();
+
+		// Click Continue in Section 1
+		const continueStep1Btn = step1.locator('.section-actions button:has-text("Continue")');
+		await continueStep1Btn.click();
+
+		// 5. Section 2 (Select Features) is now active
+		const step2 = builder.locator('.train-step').nth(1);
+		await expect(step2).toHaveAttribute('aria-current', 'step');
+
+		// Verify target species is excluded (has Target chiclet and no checkbox)
+		const targetRow = step2.locator('tbody tr:has(th:has-text("species"))');
+		await expect(targetRow.locator('.chiclet')).toHaveText('Target');
+		await expect(targetRow.locator('input[type="checkbox"]')).toHaveCount(0);
+
+		// Click Continue in Section 2
+		const continueStep2Btn = step2.locator('.section-actions button:has-text("Continue")');
+		await expect(continueStep2Btn).toBeEnabled();
+		await continueStep2Btn.click();
+
+		// 6. Section 2 is now completed; Section 3 is active and pending
+		await expect(step2).not.toHaveAttribute('aria-current', 'step');
+		const step3 = builder.locator('.train-step').nth(2);
+		await expect(step3).toHaveAttribute('aria-current', 'step');
+		await expect(step3.locator('.pending-notice')).toHaveText('Not available yet.');
+
+		// 7. Reload page and verify state resumes cleanly
+		await page.reload();
+		await expect(page).toHaveURL(/\/models\/1$/);
+		await expect(builder).toBeVisible();
+		await expect(step1).toContainText('Selected model: Logistic Regression');
+		await expect(step3).toHaveAttribute('aria-current', 'step');
+		await expect(step3.locator('.pending-notice')).toHaveText('Not available yet.');
+
+		// 8. Navigate back to /models via sidebar
+		await page.locator('app-sidebar a[href="/models"]').click();
+		await expect(page).toHaveURL(/\/models$/);
+		await expect(modelsView).toBeVisible();
+		const table = modelsView.locator('table.table');
+		await expect(table).toBeVisible();
+		await expect(table.locator('tbody tr')).toHaveCount(1);
+		await expect(table).toContainText('Model 1 — Logistic Regression');
+	});
 });

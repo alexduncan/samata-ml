@@ -18,33 +18,30 @@ Open questions and missing specification found by reviewing every Markdown and H
     - How the available multiclass strategies are discovered.
     - Mockup `03-4` is empty.
 - **TODO-06 — Select Features** ([workflow-steps §3.2](workflow-steps.md)):
-    - The list "includes the target variable". Can the target ever be ticked as a feature? It should probably be shown but disabled, to avoid leakage.
-    - Which column types can be selected.
-    - Where model-specific options (one-hot encoding, regularisation) are defined, and how they map to the `IndexedDBDatasetProvider` preprocessing pipeline ([data-ingestion §6](data-ingestion.md)).
-    - Mockup `03-3` is empty.
+    - _Resolved for Step 3:_ Implemented in `feature-eligibility.ts` and `app-model-builder-view.ts`: target column displayed with Target badge and no checkbox (never selectable); unsupported (text, datetime), constant, and all-missing columns disabled with explanatory note codes; identifiers and target-candidate leaky columns default unticked with advisory notes and deliberate selection override; at least one feature required; initial features populated once on Choose Model completion via `initialiseFeatureSelection`.
 - **TODO-07 — Choose Model** ([workflow-steps §3.1](workflow-steps.md)):
-    - How the model list and task types are read from `web-ml`.
-    - Where each card's SVG illustration and description come from. Only `content/en/models/logistic-regression.md` exists.
-    - The badge lists "Clustering", but only classifiers and regressors are offered. Are clustering models in scope?
-- **TODO-08 — Models table on `/models`** ([workflow-steps §3](workflow-steps.md)): how models are named and numbered; what the Configuration and Training Setup columns show; and whether a model can be deleted or duplicated.
+    - _Resolved for Step 3:_ Supervised models filtered by active target type from `web-ml` library index (`model-catalogue.ts`); clustering/PCA excluded; `logistic-regression` rendered as illustrated card (`03-2`); remaining 13 supervised models rendered via accessible native text entries (`03-9`); authored prose loaded via safe content loader with fallback to library JSON description for unauthored models.
+- **TODO-08 — Models table on `/models`** ([workflow-steps §3](workflow-steps.md)):
+    - _Resolved for Step 3:_ Monotonically numbered sequentially (Model 1, Model 2); Model Name displays `Model {num} — {Library Name}` or `Model {num}`; features listed in dataset order or "Not selected"; configuration and training setup show plain persisted values or "Not configured"; duration shows formatted seconds or "Not trained"; Action links to `/models/{num}` ("View Results" if trained, "Continue" if draft); renaming/deleting/duplicating excluded; empty state displays clear guidance; Compare Results disabled with visible hint until ≥ 2 models trained.
 - **TODO-09 — Custom dataset upload** ([workflow-steps §1](workflow-steps.md)):
     - _Resolved for Step 1:_ Upload dialog (`app-upload-dataset-dialog`), progress phases, error mappings, cancellation lifecycle, and data-quality reporting implemented.
 - **TODO-10 — Column details panel** ([workflow-steps §1 Preview](workflow-steps.md)):
     - _Resolved for Step 1:_ Delivered in `app-column-details` and [components/sidepanel.md](components/sidepanel.md) (stored statistics, discrete histogram bin table, categorical expansion, UTC datetimes, text identifier candidate, Escape/close focus return).
 - **TODO-11 — Set Target rules** ([workflow-steps §2](workflow-steps.md)):
     - _Resolved for Step 2:_ Implemented in `src/features/target/target-eligibility.ts` and `app-target-view.ts`: unsupported (text, datetime), constant, and all-missing columns disabled with exact notes; identifier, missing values count, high cardinality, and descriptor candidate hints are advisory.
-- **TODO-12 — Modal content:** Dataset datasheets are rendered via safe sanitized Markdown in `app-datasheet-dialog`; welcome modal text is in place. Model description articles remain for Step 3.
+- **TODO-12 — Modal content:**
+    - _Resolved:_ Datasheets rendered via `app-datasheet-dialog`; Model descriptions rendered via `app-model-description-dialog` using safe loader and missing-prose fallback.
 
 ## 2. Open questions in existing specs
 
 ### [app-state-and-navigation.md §12](app-state-and-navigation.md)
 
 - **TODO-13** — _Resolved:_ **Change Dataset** button opens a modal confirmation dialog before clearing dataset, target, and models via `clearDataset()`.
-- **TODO-14** — Can completed model sections be re-opened and edited before training? (§6.3)
+- **TODO-14** — _Resolved for Step 3:_ Completed model sections in draft models display an "Edit" button; clicking it prompts native modal confirmation before reopening and clearing downstream completions while preserving choices (§6.3).
 - **TODO-15** — Add a **Cancel training** control? (§7)
 - **TODO-16** — _Resolved for Step 2:_ Replaced "warning bar" with shared `.notification.notification-alert` with `/data` link in blocked view (§4.3).
 - **TODO-17** — _Resolved for Step 2:_ Confirm and discard modal dialog whenever any model exists (`models.length > 0`) on selecting a different target; current target is a no-op (§6.4).
-- **TODO-18** — Restore an open Datasheet or Model Description dialog on reload? (Currently no.)
+- **TODO-18** — _Resolved:_ Open Datasheet and Model Description dialogs are transient UI state; they are not restored on reload.
 - **TODO-19** — Is scroll memory "latest per step" (proposed) or per history entry acceptable? (§8.4)
 - **TODO-20** — Give `terms-and-conditions.md` a route?
 
@@ -67,8 +64,8 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 ### [components/virtual-table.md §12](components/virtual-table.md)
 
-- **TODO-31** — Render cells with a `renderCell` template per column, or strings only?
-- **TODO-32** — Is the component presentational (this spec) or connected (the old stub)? See Known gap 8.
+- **TODO-31** — _Resolved:_ Cells render as consumer-supplied strings escaped by Lit; type-specific rich formatting is deferred ([FUTURE.md](FUTURE.md)).
+- **TODO-32** — _Resolved:_ Presentational Tier 2 component (`ui-virtual-table`); consumer owns data fetching, worker integration, and stores (Known gap 8 resolved).
 
 ### [machine-learning-orchestrator.md](machine-learning-orchestrator.md)
 
@@ -84,7 +81,7 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 [app-state-and-navigation §3](app-state-and-navigation.md) says each component needs a spec in `components/` before implementation (COMPONENTS.md §12). None of these has one:
 
-- **TODO-34** — Transient dialogs for datasheets and CSV upload, and `app-column-details`, delivered in Step 1. `<app-sidebar>`, `<app-welcome-modal>`, and `<app-content-modal>` remain owned by storybook-component-library.
+- **TODO-34** — Transient dialogs for datasheets and CSV upload, and `app-column-details`, delivered in Step 1. Presentational card elements (`app-model-card`) and description dialog (`app-model-description-dialog`) delivered in Step 3. `<app-sidebar>`, `<app-welcome-modal>`, and `<app-content-modal>` remain owned by storybook-component-library.
 - **TODO-35** — Patterns that appear in the mockup CSS but have no spec:
     - `.notification` (`notifications.css`) — alert variant implemented in `src/styles/notification.styles.ts` and adopted globally.
     - The badge or chiclet. Its rules live inside card.md; consider moving them to `components/chiclet.md`.
@@ -92,14 +89,14 @@ Open questions and missing specification found by reviewing every Markdown and H
     - The modal and dialog styles (`modal.css`) — used in Step 1 dialogs.
     - The sidebar step list (`steps.css`, `sidebar.css`).
     - The data tables on `/target` and `/models` (`table.css`) — table style module implemented in `src/styles/table.styles.ts` and adopted globally.
-    - The `.train-step` sections (`train-model.css`).
+    - The `.train-step` sections (`train-model.css`) — implemented in `src/styles/train-model.styles.ts` and adopted globally.
     - The status dot (`dot.css`).
     - The training progress bar.
     - The histogram chart.
 
 ## 4. Mockups missing or out of date ([mockups/ui-scaffold/](mockups/ui-scaffold/))
 
-- **TODO-36** — `03-3` to `03-7` are empty files, and `04_compare-results.html` contains only a placeholder.
+- **TODO-36** — `03-3` is delivered via `03-3_train-models-2-select-features.html` and draft `03-9`; `03-4` to `03-7` remain empty files, and `04_compare-results.html` contains only a placeholder.
 - **TODO-37** — `01-3` still has a "Paste url to dataset" input; excluded from implemented `app-upload-dataset-dialog`. Human styling queue owns mockup cleanup.
 - **TODO-38** — The step lists render the current step as a non-link `<div>`, which [app-state-and-navigation §4.4](app-state-and-navigation.md) supersedes.
 - **TODO-39** — `01-4` has page title "Pen" and lacks column details panel; resolved for application code with DATA-UI-01/02/03.

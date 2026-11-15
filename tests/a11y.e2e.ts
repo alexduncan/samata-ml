@@ -241,4 +241,287 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 
 		await assertNoUnexpectedViolations(page);
 	});
+
+	test('A11Y-E2E-10: Route /models in blocked state', async ({ page }) => {
+		await page.goto('/models');
+		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
+		try {
+			await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
+			await getStartedBtn.click();
+			await page
+				.locator('app-welcome-modal dialog')
+				.waitFor({ state: 'hidden', timeout: 2000 });
+		} catch {}
+
+		await expect(page.locator('app-models-view [data-testid="models-blocked"]')).toBeVisible();
+		await assertNoUnexpectedViolations(page);
+	});
+
+	test('A11Y-E2E-11: Route /models in empty state', async ({ page }) => {
+		await page.goto('/data');
+		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
+		try {
+			await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
+			await getStartedBtn.click();
+			await page
+				.locator('app-welcome-modal dialog')
+				.waitFor({ state: 'hidden', timeout: 2000 });
+		} catch {}
+
+		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
+		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
+		await irisCard.locator('button.btn-primary').click();
+		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+
+		await page.goto('/target');
+		const targetView = page.locator('app-target-view');
+		await expect(targetView.locator('[data-testid="target-ready"]')).toBeVisible({
+			timeout: 10000
+		});
+		await targetView.locator('tbody tr:has(th:has-text("class")) button').click();
+
+		await page.goto('/models');
+		const modelsView = page.locator('app-models-view');
+		await expect(modelsView.locator('[data-testid="models-empty"]')).toBeVisible({
+			timeout: 10000
+		});
+		await expect(modelsView).toContainText('No models yet. Train a new model to get started.');
+
+		await assertNoUnexpectedViolations(page);
+	});
+
+	test('A11Y-E2E-12: Route /models in populated state', async ({ page }) => {
+		await page.goto('/data');
+		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
+		try {
+			await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
+			await getStartedBtn.click();
+			await page
+				.locator('app-welcome-modal dialog')
+				.waitFor({ state: 'hidden', timeout: 2000 });
+		} catch {}
+
+		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
+		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
+		await irisCard.locator('button.btn-primary').click();
+		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+
+		await page.goto('/target');
+		const targetView = page.locator('app-target-view');
+		await expect(targetView.locator('[data-testid="target-ready"]')).toBeVisible({
+			timeout: 10000
+		});
+		await targetView.locator('tbody tr:has(th:has-text("class")) button').click();
+
+		await page.evaluate(() => {
+			const s = window.__appState!.get();
+			window.__appState!.set({
+				...s,
+				models: [
+					{
+						num: 1,
+						createdAt: Date.now(),
+						status: 'draft',
+						completedSteps: ['choose-model', 'select-features'],
+						modelId: 'logistic-regression',
+						features: ['sepal length', 'sepal width'],
+						modelOptions: {},
+						hyperparameters: { mode: 'manual', values: {} },
+						multiclass: null,
+						trainingSetup: null,
+						progress: null,
+						error: null,
+						timings: null,
+						durationMs: null,
+						metrics: null,
+						ui: { featureSelectionInitialised: true }
+					}
+				]
+			});
+		});
+
+		await page.goto('/models');
+		const modelsView = page.locator('app-models-view');
+		await expect(modelsView.locator('table.table')).toBeVisible({ timeout: 10000 });
+
+		await assertNoUnexpectedViolations(page);
+	});
+
+	test('A11Y-E2E-13: Route /models/:num in Choose Model active state', async ({ page }) => {
+		await page.goto('/data');
+		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
+		try {
+			await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
+			await getStartedBtn.click();
+			await page
+				.locator('app-welcome-modal dialog')
+				.waitFor({ state: 'hidden', timeout: 2000 });
+		} catch {}
+
+		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
+		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
+		await irisCard.locator('button.btn-primary').click();
+		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+
+		await page.goto('/target');
+		const targetView = page.locator('app-target-view');
+		await expect(targetView.locator('[data-testid="target-ready"]')).toBeVisible({
+			timeout: 10000
+		});
+		await targetView.locator('tbody tr:has(th:has-text("class")) button').click();
+
+		await page.evaluate(() => {
+			const s = window.__appState!.get();
+			window.__appState!.set({
+				...s,
+				models: [
+					{
+						num: 1,
+						createdAt: Date.now(),
+						status: 'draft',
+						completedSteps: [],
+						modelId: null,
+						features: [],
+						modelOptions: {},
+						hyperparameters: { mode: 'manual', values: {} },
+						multiclass: null,
+						trainingSetup: null,
+						progress: null,
+						error: null,
+						timings: null,
+						durationMs: null,
+						metrics: null,
+						ui: {}
+					}
+				]
+			});
+		});
+
+		await page.goto('/models/1');
+		const builder = page.locator('app-model-builder-view');
+		await expect(builder.locator('.train-step[aria-current="step"]')).toBeVisible({
+			timeout: 10000
+		});
+
+		await assertNoUnexpectedViolations(page);
+	});
+
+	test('A11Y-E2E-14: Route /models/:num in Select Features active state', async ({ page }) => {
+		await page.goto('/data');
+		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
+		try {
+			await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
+			await getStartedBtn.click();
+			await page
+				.locator('app-welcome-modal dialog')
+				.waitFor({ state: 'hidden', timeout: 2000 });
+		} catch {}
+
+		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
+		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
+		await irisCard.locator('button.btn-primary').click();
+		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+
+		await page.goto('/target');
+		const targetView = page.locator('app-target-view');
+		await expect(targetView.locator('[data-testid="target-ready"]')).toBeVisible({
+			timeout: 10000
+		});
+		await targetView.locator('tbody tr:has(th:has-text("class")) button').click();
+
+		await page.evaluate(() => {
+			const s = window.__appState!.get();
+			window.__appState!.set({
+				...s,
+				models: [
+					{
+						num: 1,
+						createdAt: Date.now(),
+						status: 'draft',
+						completedSteps: ['choose-model'],
+						modelId: 'logistic-regression',
+						features: ['sepal length', 'sepal width', 'petal length', 'petal width'],
+						modelOptions: {},
+						hyperparameters: { mode: 'manual', values: {} },
+						multiclass: null,
+						trainingSetup: null,
+						progress: null,
+						error: null,
+						timings: null,
+						durationMs: null,
+						metrics: null,
+						ui: { featureSelectionInitialised: true }
+					}
+				]
+			});
+		});
+
+		await page.goto('/models/1');
+		const builder = page.locator('app-model-builder-view');
+		await expect(builder.locator('table.table')).toBeVisible({ timeout: 10000 });
+
+		await assertNoUnexpectedViolations(page);
+	});
+
+	test('A11Y-E2E-15: Route /models/:num with model description dialog open', async ({ page }) => {
+		await page.goto('/data');
+		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
+		try {
+			await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
+			await getStartedBtn.click();
+			await page
+				.locator('app-welcome-modal dialog')
+				.waitFor({ state: 'hidden', timeout: 2000 });
+		} catch {}
+
+		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
+		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
+		await irisCard.locator('button.btn-primary').click();
+		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+
+		await page.goto('/target');
+		const targetView = page.locator('app-target-view');
+		await expect(targetView.locator('[data-testid="target-ready"]')).toBeVisible({
+			timeout: 10000
+		});
+		await targetView.locator('tbody tr:has(th:has-text("class")) button').click();
+
+		await page.evaluate(() => {
+			const s = window.__appState!.get();
+			window.__appState!.set({
+				...s,
+				models: [
+					{
+						num: 1,
+						createdAt: Date.now(),
+						status: 'draft',
+						completedSteps: [],
+						modelId: null,
+						features: [],
+						modelOptions: {},
+						hyperparameters: { mode: 'manual', values: {} },
+						multiclass: null,
+						trainingSetup: null,
+						progress: null,
+						error: null,
+						timings: null,
+						durationMs: null,
+						metrics: null,
+						ui: {}
+					}
+				]
+			});
+		});
+
+		await page.goto('/models/1');
+		const builder = page.locator('app-model-builder-view');
+		const descBtn = builder.locator('app-model-card button:has-text("Model Description")');
+		await expect(descBtn).toBeVisible({ timeout: 10000 });
+		await descBtn.click();
+
+		const dialog = builder.locator('app-model-description-dialog dialog[open]');
+		await expect(dialog).toBeVisible({ timeout: 5000 });
+
+		await assertNoUnexpectedViolations(page);
+	});
 });

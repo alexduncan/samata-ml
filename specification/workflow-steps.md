@@ -1,6 +1,6 @@
 # Steps
 
-**Status:** partial — Step 1 Load Data and Step 2 Set Target are implemented. Steps 3–4 remain target.
+**Status:** partial — Steps 1–2 and Step 3 setup (overview, Choose Model, Select Features) are implemented. Model configuration, training execution, and Step 4 Results remain target.
 
 This web application has four sections.
 
@@ -109,54 +109,56 @@ The user chooses the target variable to predict from their loaded dataset. Visua
 
 **url:** `/models`
 
-This step allows the user to train models on the dataset to predict the target variable. Multiple models can be trained and each model has six steps. The steps will appear as series of sections down the page.
+This step allows the user to train models on the dataset to predict the target variable. Multiple models can be trained sequentially, each with six accordion steps.
 
-If the user visits `/models` before they have selected a dataset or set the target variable. This step will show an alert notification telling the user they must first load a dataset and set the target variable before they can train a model.
+If the user visits `/models` before selecting a dataset or setting a target variable, an alert notification displays informing the user they must complete earlier steps (`data-testid="models-blocked"`).
 
-Once the dataset and target variable have been configured `/models` will display a table of the trained models and columns for:
+Once a dataset and target are configured:
 
-- Model Name
-- Features (list of features used)
-- Configuration (hyperparameters)
-- Training Setup (validation and folding strategy etc.)
-- Duration (time taken to train the model)
-- View Results (button which opens the detailed results for that model)
+- If no models exist, `/models` displays the empty notice _"No models yet. Train a new model to get started."_ (`data-testid="models-empty"`).
+- A primary button "Train New Model" creates a new model record with monotonic numbering (Model 1, Model 2, etc.) and navigates to `/models/{num}`.
+- If models exist, `/models` renders a table (`data-testid="models-list"`) with columns:
+    - **Model Name:** Displays `Model {num} — {Library Name}` (e.g. "Model 1 — Logistic Regression") or `Model {num}` if no model is selected yet. Models cannot be renamed, deleted, or duplicated.
+    - **Features:** A comma-separated list of selected features in dataset column order, or "Not selected".
+    - **Configuration:** Hyperparameter settings or "Not configured".
+    - **Training Setup:** Validation and splitting options or "Not configured".
+    - **Duration:** Training duration formatted via i18n (e.g. "1.2s") or "Not trained".
+    - **Action:** An action button linking to `/models/{num}`, labelled "View Results" if trained or "Continue" if draft.
+- The header includes a "Compare Results" button (`<a href="/results">`). It is disabled with a visible hint until at least two models have completed training (`$canCompare`).
 
-If a model hasn't finished training the "View Results" button will display "Continue" and take the user to the model and display the current active step.
-
-In the header of `/models` will be a button "Compare Results" which will navigate to `/results`. This button should be disabled until more than one model has been trained.
-
-Each model will have a url `/models/{num}`.
+Each individual model builder view is routed at `/models/{num}`. Navigating to an invalid or unallocated model number safely redirects to `/models` with a `MODEL_NOT_FOUND` error notification.
 
 ### 1. Choose Model
 
-Select the model from the list available in the web-ml library. This list will be limited to models which are suitable for training to predict the target variable:
+The catalogue adapter (`model-catalogue.ts`) exposes supervised algorithms from `web-ml` suitable for predicting the active target:
 
-- Classifiers for Boolean or Categorical columnns
-- Regressors for numeric columns
+- Categorical or Boolean target: Classification algorithms.
+- Numeric target: Regression algorithms.
+- Clustering and PCA algorithms are excluded. Supervised models preserve library index order.
 
-The UI will show cards for each of the models available in the `web-ml` machine learning library. Each card will contain:
+The UI renders candidate models:
 
-- `.badge` showing the type of model (Classification | Regression | Clustering)
-- An `<svg>` graphic representation of how the model works.
-- Name of the model (e.g. "Logistic Regression")
-- Short description of the model.
-- "Model Description" button which displays a modal containing detailed information about the model.
-- "Select Model" button which allows the user to choose the model before they proceed to the next step.
-
-After the user has clicked "Select Model" the "Continue" button in the `<header>` of the section will change from disabled to `.btn-primary`. The `<h2>` in the `<header>` of the section will change to display the name of the selected model. After the user clicks the "Continue" button, the button will be replaced with an `<svg><use href="#check" /></svg>` and the class `.train-step-complete` is added to the `.train-step` element.
+- **Illustrated card:** `logistic-regression` renders as an `<app-model-card>` with an approved SVG illustration (`03-2_train-models-1-choose-model.html`) using semantic tokens.
+- **Native text-entry fallback:** Remaining supervised models without custom artwork render as semantic list items (`03-9_choose-model-text-entries.html`) displaying the model name, description, an accessible "Model Description: {name}" button, and a "Select Model: {name}" button.
+- Selecting a model updates `model.modelId` in app state and visually highlights the selection, but does **not** advance the workflow.
+- A primary "Continue" button in `.section-actions` completes Section 1, initialises candidate features once via `initialiseFeatureSelection`, and activates Section 2.
+- The "Model Description" button opens an `<app-model-description-dialog>` presenting authored Markdown content or falling back to library JSON metadata if unauthored.
+- Once completed, the section header displays an "Edit" button (`reopen-btn`). Clicking "Edit" prompts a native modal confirmation; confirming clears downstream completions while preserving selections.
 
 ### 2. Select Features
 
-Displays a list of all columns in the dataset including the target variable. Each feature which is able to be selected will have a checkbox allowing the user to include that feature.
+Displays a tabular selection of all dataset columns in canonical dataset order:
 
-Depending on the model selected there will be additional options — for example "One-Hot Encoding" or "Regularization".
+- **Target column:** Rendered with a "Target" chiclet badge and no checkbox cell. The target variable is never selectable as a feature.
+- **Ineligible columns:** Columns of type `text`, `datetime`, all-missing, or constant are disabled with visible note badges explaining why they cannot be included.
+- **Advisory columns:** Identifier columns and target candidate leaky columns default unticked with an advisory note, but the user may deliberately override and check them.
+- **Selection rules:** At least one feature must be selected to proceed. Initial features default to all eligible columns once on completing Section 1; intentional empty or subset selections persist across page reload.
+- Clicking "Continue" completes Section 2 and records `completedSteps: ['choose-model', 'select-features']`.
+- Once completed, an "Edit" button allows reopening Section 2 after native modal confirmation.
 
-Once one feature has been selected the "Continue" button in the `<header>` of the section will change from disabled to `.btn-primary`. The `<h2>` in the `<header>` of the section will change to display the number of features selected. After the user clicks the "Continue" button, the button will be replaced with an `<svg><use href="#check" /></svg>` and the class `.train-step-complete` is added to the `.train-step` element.
+### 3–6. Subsequent Sections (Pending)
 
-### 3. Configure Model
-
-This step allows the user to either directly choose each hyperparameter or to choose hyperparameter tuning and set values for each hyperparameter to tune.
+Sections 3 (Configure Model), 4 (Configure Training), 5 (Training), and 6 (Results) display "Not available yet." and cannot be activated or completed in this version.
 
 If the target variable is Categorical containing more than two categories and depending on the options available in the `web-ml` library the user will have to select:
 

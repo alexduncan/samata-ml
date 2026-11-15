@@ -1,5 +1,9 @@
 import { html, render } from 'lit';
+import './components/app-model-card';
 import './features/data/app-data-view';
+import './features/models/app-model-builder-view';
+import './features/models/app-model-description-dialog';
+import './features/models/app-models-view';
 import './features/navigation/app-content-modal';
 import './features/navigation/app-sidebar';
 import './features/onboarding/app-welcome-modal';
@@ -42,15 +46,7 @@ function renderWorkflowView(route: ParsedRoute) {
 		case '/target':
 			return html` <app-target-view></app-target-view> `;
 		case '/models':
-			return html`
-				<div class="page-header">
-					<h1 tabindex="-1">Train Models</h1>
-					<p class="description">Configure features and train machine learning models.</p>
-				</div>
-				<section class="page-body" data-testid="models-view">
-					<p>Model training table placeholder.</p>
-				</section>
-			`;
+			return html` <app-models-view></app-models-view> `;
 		case '/results':
 			return html`
 				<div class="page-header">
@@ -64,16 +60,7 @@ function renderWorkflowView(route: ParsedRoute) {
 		default:
 			if (route.modelNum !== undefined) {
 				return html`
-					<div class="page-header">
-						<h1 tabindex="-1">Model ${route.modelNum}</h1>
-						<p class="description">
-							Configure architecture, features, and hyperparameters for Model
-							${route.modelNum}.
-						</p>
-					</div>
-					<section class="page-body" data-testid="model-detail-view">
-						<p>Model ${route.modelNum} builder placeholder.</p>
-					</section>
+					<app-model-builder-view model-num=${route.modelNum}></app-model-builder-view>
 				`;
 			}
 			return html``;

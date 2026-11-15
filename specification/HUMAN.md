@@ -25,15 +25,10 @@ This is the human's work queue: decisions, plan review, missing content and mock
 Seven active plans were reviewed on 2026-11-13. All retain valid `draft` metadata: the current validator does not support `ready-for-review`. The two formerly ready plans had substantive corrections, so their previous approvals remain history only. Product answers already given remain accepted.
 
 - [ ] **Review renewed workflow bootstrap (agent-workflow-gates):** Approve the revised gate/closure/migration contract under the current workflow so its tooling can be implemented. Blocks workflow T1 and formal ready-for-review submission. Recommended: review the legacy Sync specification exclusion, escalation triage, dirty-tree preservation and stale-approval safeguards, then approve this revision. → [plan](plans/agent-workflow-gates.md#risks-and-open-questions)
-- [ ] **Review table contract (virtual-table-component):** Review the settled presentational/text-cell API and segmented 10,000-row rail, reaching up to 10,000,000 preview rows without an enormous CSS spacer. Blocks implementation until approval; styling is non-blocking. Recommended: accept the contract; keep the useful component spec and replace its conflicting examples during sync. → [plan](plans/virtual-table-component.md#interfaces-and-behaviour)
-- [ ] **Review Storybook and shell plan (storybook-component-library):** Approve the Storybook 10 stack, the Vite 7 pin for standard decorators, the naming, test-location and native-CSS standards, and the shell remediation it absorbs (Known gap 13). No blocking questions. Blocks all of its tasks; T1 also waits for conformance T8. Recommended: approve as written. → [plan](plans/storybook-component-library.md#technical-decisions)
-- [ ] **Align draft UI plans with the new conventions (storybook-component-library):** Once that plan is approved, revise step-1, step-3 and virtual-table so that they:
-    - add stories (Storybook is no longer deferred);
-    - move `app-dataset-card` and `app-model-card` into their feature folders;
-    - reuse `dialogStyles`, `.modal-header` and `.btn-icon`;
-    - share one `src/i18n.ts`.
 
-    Non-blocking until those plans start. Recommended: one planning pass over the three drafts after approval. → [risks](plans/storybook-component-library.md#risks-and-open-questions)
+The Storybook and shell plan was reviewed and approved as `ready` on 2026-11-14 at the user's explicit request. Its tasks preserve the implemented data/target screens and existing i18n instance, repair sidebar/workflow fidelity, and add blocking visual checks. Conformance is implemented and no longer blocks T1. → [approved plan](plans/storybook-component-library.md#implementation-tasks)
+
+- [ ] **Extend component stories after shell delivery (storybook-component-library):** Commission a focused follow-up for existing data/target/virtual-table states, and align model setup with the installed workbench and feature placement when it is next revised. Non-blocking for the approved shell port; do not reopen implemented feature plans. Recommended: use the real components and shared styles, with their existing acceptance contracts. → [scope and risks](plans/storybook-component-library.md#risks-and-open-questions)
 
 - [ ] **Review reference regression suite (reference-dataset-regression-tests):** Review the refreshed implemented pipeline/protocol seams and corrected startup-database assumption. No product blockers. Recommended: approve after independent review; all ingestion prerequisites are implemented. → [plan](plans/reference-dataset-regression-tests.md#risks-and-open-questions)
 
@@ -44,7 +39,6 @@ The earlier request to refresh Steps 1–3, add journey stages and run online we
 No unanswered product decisions remain in these three plans. The user accepted the Step 1–2 defaults, supervised Step 3 scope and plain text entries for missing artwork, and chose review-complete drafts under current tooling. Those answers are recorded in each plan's contract, risks and change log. Specification wording is updated during the plans' final sync tasks; the source TODOs must not be re-asked.
 
 - [ ] **Review load/preview plan (step-1-load-data-and-preview):** Review the complete contract with accepted upload/progress/cancel/errors, transient safe datasheets and stored-stat panel. No product blockers; awaits plan review/approval, not another defaults decision. Recommended: review-complete draft for independent verification after workflow migration. → [plan](plans/step-1-load-data-and-preview.md#risks-and-open-questions)
-- [ ] **Review model setup plan (step-3-train-models-overview-and-setup):** Review accepted supervised scope, feature defaults, missing-description fallback and the exact Logistic Regression/native-text entry split. No product blockers; awaits plan review/approval. Recommended: review-complete draft for independent verification after migration. → [plan](plans/step-3-train-models-overview-and-setup.md#risks-and-open-questions)
 
 Already answered and incorporated: dataset-id/model-id identity convention; app prefix; compact card counts; wrapping title/text/stats; required model image; CSS capitalisation; Load Dataset copy; deferred repeated-card aria-describedby; i18n-only presentational exception; Change Dataset with confirmation/removal; confirm-and-discard; reopen/cancel training; latest-per-step scroll. Do not ask these again. Their plan sync tasks update the still-stale source questions after implementation.
 
@@ -88,14 +82,6 @@ Only the human changes normative mockups. Drafts are structure only and use exis
 - [ ] **Style model descriptions (step-3-train-models-overview-and-setup):** Style description/loading/missing/error states. Non-blocking. → [draft](mockups/ui-scaffold/drafts/03-8_model-description.html)
 - [ ] **Style model text entries (step-3-train-models-overview-and-setup):** Style the accepted native text-entry chooser and its selected/loading/error/empty states. Non-blocking; artwork is not required to implement this fallback. → [draft](mockups/ui-scaffold/drafts/03-9_choose-model-text-entries.html)
 - [ ] **Optional model illustrations (step-3-train-models-overview-and-setup):** Commission model-appropriate SVGs and a follow-up plan when illustrated cards should replace text entries. Non-blocking; do not delay current implementation. → [accepted contract](plans/step-3-train-models-overview-and-setup.md#interfaces-and-behaviour)
-- [ ] **Shell design calls (storybook-component-library):** These choices are not in the mockups:
-    - below 50rem the sidebar stacks above the content, for 320px width and 200% zoom;
-    - the welcome tagline becomes a paragraph (proposed SEM-12);
-    - the `aria-label` that overrode "Get Started" is removed (proposed SEM-13);
-    - the project-settings button and the sidebar's next-step dot are not built, because no behaviour spec defines them.
-
-    Non-blocking. Recommended: accept, then restyle through the mockups if wanted. → [decisions](plans/storybook-component-library.md#technical-decisions)
-
 - [ ] **Style content modal (static-content-pipeline):** Style compiled prose/error state and promote. Non-blocking. → [draft](mockups/ui-scaffold/drafts/00-2_content-modal.html)
       The normative later mockups remain empty/placeholders (TODO-36), but the four classification drafts above now supply structure for the proposed behaviour. Their promotion and styling remain human work.
 - [ ] **Remove obsolete URL field (TODO-37):** Update 01-3; UI plans already exclude it. Non-blocking. → [mockup](mockups/ui-scaffold/01-3_upload-dataset.html)
