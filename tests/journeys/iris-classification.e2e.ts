@@ -24,9 +24,8 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		// 3. Verify sidebar reflects loaded dataset
 		const sidebarItem = page.locator('app-sidebar a[href="/data"]');
 		await expect(sidebarItem).toBeVisible();
-		await expect(page.locator('app-sidebar')).toContainText(
-			'Iris Flower Species (150 rows, 5 cols)'
-		);
+		await expect(sidebarItem.locator('.step-value')).toHaveText('Iris Flower Species');
+		await expect(sidebarItem.locator('.chiclet')).toHaveText(['150 rows', '5 columns']);
 
 		// 4. Verify virtual table column headers
 		const table = preview.locator('ui-virtual-table');
@@ -77,9 +76,8 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 			'Preview Dataset: Iris Flower Species'
 		);
 		await expect(preview.locator('.page-header p')).toContainText('150 rows | 5 columns');
-		await expect(page.locator('app-sidebar')).toContainText(
-			'Iris Flower Species (150 rows, 5 cols)'
-		);
+		await expect(sidebarItem.locator('.step-value')).toHaveText('Iris Flower Species');
+		await expect(sidebarItem.locator('.chiclet')).toHaveText(['150 rows', '5 columns']);
 		await expect(
 			preview.locator('.table-row').first().locator('.table-cell').last()
 		).toHaveText('Iris-setosa');

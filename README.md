@@ -58,7 +58,7 @@ The source inputs are:
 
 - `src/app.ts` for browser JavaScript.
 - `css/style.css` for browser CSS.
-- `public/index.html` for the HTML template.
+- `index.html` for the HTML template.
 - Any other files in `public/`, which are copied into the output directory.
 
 The generated output directories are:
@@ -68,7 +68,7 @@ The generated output directories are:
 
 ## Template Variables
 
-The HTML template in `public/index.html` can use either `{{ TOKEN }}` or `%TOKEN%` syntax.
+The HTML template in `index.html` can use either `{{ TOKEN }}` or `%TOKEN%` syntax.
 
 Available variables:
 

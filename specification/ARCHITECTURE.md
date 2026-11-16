@@ -1,6 +1,6 @@
 # System Architecture
 
-**Status:** partial — the directory layout, history router, stores, hydration order, root-absolute asset URLs, Markdown-driven reserved routes and single-page fallback are implemented. The service worker, dynamically imported views, per-model configuration and no-inlining are target (see [Known gaps](README.md#known-gaps) 1–3, 6).
+**Status:** partial — feature/component placement, development-only Storybook, history router, stores, hydration, root-absolute assets, Markdown reserved routes and single-page fallback are implemented. Service-worker caching, dynamically imported views, per-model configuration and no-inlining remain target (see [Known gaps](README.md#known-gaps) 3, 6).
 
 This document defines the target system shape and the architectural invariants that changes must preserve.
 
@@ -21,24 +21,29 @@ This repository MUST NOT contain actual training algorithms. The only responsibi
 
 The repository strictly adheres to a domain-driven, feature-based directory structure to keep related logic (UI, state, workers) co-located. Agents must not create generic horizontal directories like `/views` or `/controllers`.
 
-- `/index.html`: Root entry point referencing `/src/main.ts`.
+- `/index.html`: Source HTML template referencing `/app.js` and `/style.css`; the build compiles `src/app.ts` and rewrites asset URLs to their emitted hashes.
 - `/public/`: Static assets served unchanged (fonts, favicons, manifest, `_headers`, `robots.txt`).
 - `/src/`: All application source code.
-- `/src/common/`: Highly reusable UI building blocks and shared utilities. Component tiers and implementation rules are defined in [COMPONENTS.md](COMPONENTS.md).
-- `/src/features/`: Domain-specific modules representing the four workflow sections (e.g., `/src/features/data/`, `/src/features/target/`, `/src/features/models/`, `/src/features/results/`). Feature-specific UI and worker code stays co-located; component rules are defined in [COMPONENTS.md](COMPONENTS.md), and state rules in [state-and-storage.md](state-and-storage.md).
+- `/src/common/`: Framework-free utilities, content/storage/worker boundaries; no Lit imports.
+- `/src/components/`: Reusable feature-agnostic `ui-*` elements, named after their tags.
+- `/src/features/`: Domain-specific `app-*` elements and related logic in `data/`, `target/`, `models/` and `shell/`. The shell owns sidebar/onboarding/reserved-content presentation; dataset/model cards stay with their domains. Component rules are in [COMPONENTS.md](COMPONENTS.md), and state rules in [state-and-storage.md](state-and-storage.md).
+- `/src/styles/`: Shared Lit CSSResult modules, adopted in document and consuming shadow roots; no duplicate document CSS copies.
+- `/src/types/`: Shared TypeScript contracts.
 - `/src/router/`: History-API router, route table, scroll memory and reserved-route (modal) handling. Framework-free.
 - `/src/stores/`: Nanostores, actions, the persister and hydration/reconciliation ([COMPONENTS.md §5](COMPONENTS.md), [state-and-storage.md](state-and-storage.md)).
 - `/src/config/`: Static configuration: `locales.ts` and per-model chart configuration (`models/{model-name}.ts`), per [workflow-steps.md](workflow-steps.md). Sample datasets come from the generated catalogue, not this directory.
 - `/content/{locale}/`: Authored Markdown documentation organised by locale (default base `en`) and domain (`pages`, `models`, `glossary`), compiled at build time into `{outDir}/content/`.
 - `/content/datasets/`: Locale-neutral sample dataset directories (`descriptor.ts`, `datasheet.md`, and either `data.csv` or an approved remote source), per [sample-datasets.md](sample-datasets.md).
 - `/datasets/` (build output): `index.json` catalogue and, per sample, `descriptor.json` and compiled `datasheet.html`; bundled samples also have `data.csv`, while remote samples do not.
-- `/tests/`: `bun:test` specifications and Playwright E2E tests.
+- `/tests/`: Non-component `bun:test` files (`*.test.ts`) and Playwright acceptance/E2E files (`*.e2e.ts`). Co-located `src/**/*.stories.ts` run in the separate Vitest browser project.
+- `/.storybook/`: Development preview/configuration and test-only fixtures. Generated CEM and built Storybook are ignored artifacts, never production entry points.
 - `/specification/`: System architecture rules.
 
 ## Delivery and Caching
 
 - **No Inlining:** Compiled JavaScript and CSS MUST NOT be inlined into `index.html`. Use standard `<script type="module">` and `<link rel="stylesheet">`.
-- **Root-absolute asset URLs:** Because workflow pages have real paths (`/models/3`), `index.html` MUST reference assets with root-absolute URLs (`/styles.css`, `/app.js`). Relative references break on nested paths.
+- **Root-absolute asset URLs:** Because workflow pages have real paths (`/models/3`), the template references `/style.css` and `/app.js`; emitted production references retain the leading slash and include content hashes. Relative references break on nested paths.
+- **Style/workbench boundary:** `css/style.css` imports only root tokens and document base rules. `src/styles/global.ts` adopts shared primitive sheets. Component-local styles remain in their owning shadow root. Storybook/Vitest/CEM are development tooling and do not affect production bundling, caching, CSP or worker delivery.
 - **Single-page fallback:** Every workflow and reserved path (`/`, `/data`, `/target`, `/models`, `/models/{num}`, `/results`, `/about`, `/privacy`, `/help`) MUST return the app shell. Production uses `"not_found_handling": "single-page-application"` in `wrangler.jsonc`; the dev server (`scripts/static-server.ts`) MUST fall back only for extension-less paths so a missing `.js`/`.css` still returns 404.
 - **Content and dataset fragments:** `/content/*` and `/datasets/*` carry `X-Robots-Tag: noindex, nofollow` in `public/_headers`, are never `Disallow`ed in `robots.txt`, and are never linked directly with `<a href>`. Compiled fragments contain no inline scripts or third-party images (compatible with the production CSP).
 - **Remote sample CSVs:** the sole production `connect-src` exception is `https://raw.githubusercontent.com/propublica/compas-analysis/`. It must match the `REMOTE_CSV_PREFIXES` allow-list in `scripts/generate-datasets.ts`; the worker verifies remote bytes against the descriptor SHA-256 before parsing.

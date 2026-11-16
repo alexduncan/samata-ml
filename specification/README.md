@@ -50,12 +50,18 @@ These rules apply whenever a spec changes, whether in a plan's `Sync specificati
 
 Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only where it says so.
 
-| Spec                                            | Status      | Tier                                                          |
-| ----------------------------------------------- | ----------- | ------------------------------------------------------------- |
-| [button.md](components/button.md)               | draft       | Style primitive `.btn`                                        |
-| [card.md](components/card.md)                   | implemented | Presentational `app-dataset-card`, `app-model-card`           |
-| [virtual-table.md](components/virtual-table.md) | implemented | Presentational `ui-virtual-table` (styled appearance pending) |
-| [sidepanel.md](components/sidepanel.md)         | implemented | Presentational `app-column-details`                           |
+| Spec                                            | Status      | Tier                                                                                         |
+| ----------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------- |
+| [button.md](components/button.md)               | draft       | Style primitive `.btn`                                                                       |
+| [chiclet.md](components/chiclet.md)             | implemented | Style primitive `.chiclet`                                                                   |
+| [dialog.md](components/dialog.md)               | implemented | Shared native-dialog style primitive                                                         |
+| [page-header.md](components/page-header.md)     | implemented | Page-header/focus style primitive                                                            |
+| [sidebar.md](components/sidebar.md)             | implemented | Connected `app-sidebar`                                                                      |
+| [welcome-modal.md](components/welcome-modal.md) | implemented | Connected `app-welcome-modal`                                                                |
+| [content-modal.md](components/content-modal.md) | implemented | Connected `app-content-modal` and presentational `app-content-dialog`; prose styling pending |
+| [card.md](components/card.md)                   | implemented | Presentational `app-dataset-card`, `app-model-card`                                          |
+| [virtual-table.md](components/virtual-table.md) | implemented | Presentational `ui-virtual-table` (styled appearance pending)                                |
+| [sidepanel.md](components/sidepanel.md)         | implemented | Presentational `app-column-details`                                                          |
 
 ### Backlog
 
@@ -71,23 +77,23 @@ Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only wh
 
 ## Known gaps
 
-Known conflicts between specs, and between specs and code, as of 2026-11-13. A plan that touches one of these must decide it explicitly. Numbers are stable because plans cite them: when an entry is resolved, replace its text with _Resolved._ rather than renumbering.
+Known conflicts between specs, and between specs and code, as of 2026-11-16. A plan that touches one of these must decide it explicitly. Numbers are stable because plans cite them: when an entry is resolved, replace its text with _Resolved._ rather than renumbering.
 
-1. **Directory structure.** ARCHITECTURE names the entry `/src/main.ts`; the code's entry is `src/app.ts` (`scripts/build-assets.ts`). ARCHITECTURE's directory list omits `src/types/`.
-2. **HTML template.** The repository README says the template is `public/index.html`, which does not exist; the build copies the root `index.html`. ARCHITECTURE's example asset URL is `/styles.css`; the real file is `/style.css`.
+1. _Resolved._
+2. _Resolved._
 3. **CSS inlining.** The production build inlines CSS as well as linking it (`scripts/build-assets.ts`, `scripts/html.ts`, README). ARCHITECTURE says "No Inlining".
 4. _Resolved._
-5. **Component test environment.** testing.md says to use happy-dom for Lit components. COMPONENTS §9 forbids a simulated DOM for components and requires Playwright, which is what the code does: happy-dom is used only for non-component DOM tests. Storybook and Vitest are not installed (COMPONENTS §10 defers the Storybook rules until they are).
-6. **Service worker specified but not installed.** ARCHITECTURE describes offline-first service-worker caching; no service worker is present. `testing.md` mentions Comlink as an option, but the application uses its own worker protocol and does not depend on Comlink.
-7. **Linting.** standards-and-documentation says `eslint-plugin-tsdoc` is enforced in CI. The plugin is installed, but there is no ESLint config, no `lint` script and no CI.
+5. _Resolved._
+6. **Service worker specified but not installed.** ARCHITECTURE's offline-first service-worker caching remains target; no service worker is present. Worker tests exercise the application's own typed protocol, without Comlink.
+7. **Linting.** TSDoc lint/CI enforcement remains target. The plugin is installed, but there is no ESLint config, `lint` script or CI.
 8. _Resolved._
 9. _Resolved._
 10. **Product name.** VISION and `wrangler.jsonc` say `web-ml-app`; the repository and UI say `samata-ml`/`samatā.ml`.
 11. **`npx` vs Bun.** The vendored `modern-web-guidance` skill runs `npx`; this repo uses Bun only, so run its commands with `bunx`.
 12. _Resolved._
-13. **Mockups versus WCAG and the Lit scaffold.** The mockups contain contrast and semantic failures (registers A11Y and SEM in [mockup-visual-fidelity](plans/mockup-visual-fidelity.md)); A11Y-01, A11Y-02, A11Y-09 and SEM-01–02 are not yet applied (SEM-03 is applied). The scaffold shell (`src/app.ts`, `src/features/**`) uses 21 tokens that are not in `css/root.css`, 83 `var()` fallbacks and literal colours, does not match the mockups, and breaks COMPONENTS §4, §6.3, §7 and §8 in places; `tests/style-tokens.test.ts` passes only because these files are listed in `KNOWN_DRIFT`. The `css/` copies of button, card, badges and modal are still loaded, and the token guard does not check literal colours in `css/*.css`. Owned by [storybook-component-library](plans/storybook-component-library.md) (draft), which also owns gaps 1, 2, 5 and 17.
-14. **State, storage and navigation remaining undelivered scope.** Conformance plan [state-navigation-conformance](plans/state-navigation-conformance.md) resolved persister ownership, schema validation, read-only mode, discrete write triggers, progress throttling, blocked reasons, sidebar `aria-current`, `underlayPath`, focus management, scroll saving and invalidation, unchanged-edit no-ops and action validation. Remaining undelivered scope: stored-results deletion in IndexedDB (`model_results`), save-failure notifications, and full multi-tab sync.
+13. **Remaining feature accessibility/style coverage.** Shell tokens, mockup layout, semantic translations and document CSS consolidation are verified without token/parity exemptions. Existing data/model contrast findings remain: 24 exact elements across five feature owners, measured in [a11y-feature-findings.ts](../tests/a11y-feature-findings.ts) and separately queued in HUMAN.md. Feature-story migration and wider private-style consolidation are follow-up work. The static literal-colour checker covers TypeScript declarations/fallbacks; direct CSS declaration scanning remains narrower than the normative prohibition, so passing it alone does not establish complete token use. Mockup accessibility defects remain governed by visual-design's registers; strict shell scans never inherit feature allowances.
+14. **State, storage and navigation remaining undelivered scope.** Router decisions and cancellable component-owned route-heading focus, including nested preview delegation, are implemented and browser verified; the accepted T1 Safari/VoiceOver evidence covers heading/dialog focus. Remaining scope is stored-results deletion in IndexedDB (`model_results`), save-failure notifications and full multi-tab sync. Final shell manual display/assistive-technology checks remain explicitly unverified in the delivery plan, rather than a claim of complete WCAG validation.
 15. _Resolved._
 16. _Resolved._
-17. **Where Playwright component tests live.** COMPONENTS §9, button.md and card.md put Playwright tests in `*.test.ts` beside the source. `playwright.config.ts` runs tests in `tests/*.e2e.ts`, `tests/journeys/*.e2e.ts` and `tests/app-shell.test.ts`, avoiding collision with `bun test` in `src/`. Tests for `ui-virtual-table` live in `tests/virtual-table.e2e.ts`.
+17. _Resolved._
 18. _Resolved._

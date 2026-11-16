@@ -1,6 +1,6 @@
 # Engineering Conventions for Components
 
-**Status:** partial — binding on all UI code. The shared style modules (`src/styles/`) follow it; the minimal `src/i18n.ts` UI instance and formatter are implemented; the scaffold shell (`src/app.ts`, `src/features/**`) does not yet meet §4, §6.1, §6.3, §7 or §8 ([Known gap](README.md#known-gaps) 13). Storybook (§10) does not exist yet.
+**Status:** partial — the shared primitives, shell, base-locale i18n, CEM workbench and three-browser story runner are implemented. Existing data/target/model/virtual-table story coverage and wider feature-style consolidation remain follow-up work; exact outstanding feature contrast findings are tracked in [Known gap](README.md#known-gaps) 13.
 
 Applies to every component, style primitive and store in this repository. Agents MUST read this file before implementing any spec in `specification/components/`.
 
@@ -19,7 +19,7 @@ When a spec is ambiguous or seems wrong, the agent MUST stop and list the questi
 | Browser support            | Evergreen browsers; Baseline "widely available" features only. CSS nesting is permitted.                                                                                                                                                              |
 | Accessibility target       | WCAG 2.2 level AA                                                                                                                                                                                                                                     |
 | Component acceptance tests | Playwright in Chromium, Firefox and WebKit                                                                                                                                                                                                            |
-| Docs                       | Storybook (`@storybook/web-components-vite`) with the a11y and Vitest addons. **Not installed yet**; see §10.                                                                                                                                         |
+| Docs                       | Storybook 10.6.7 (`@storybook/web-components-vite`), Vite 7.3.8, a11y/Docs/Vitest addons and Vitest 5.1.0; development only (§10).                                                                                                                    |
 | Decorators                 | TypeScript standard decorators (`experimentalDecorators` is off). See §4 for what this requires.                                                                                                                                                      |
 
 ### Web platform rules
@@ -57,6 +57,7 @@ The public API of a block is everything its spec lists under **Public API**: tag
 **Elements and members**
 
 - One element per file. File name matches the tag name (`app-dataset-picker.ts`).
+- TypeScript/CSS filenames use kebab-case with established role suffixes (`.store`, `.styles`, `.worker`, `.stories`, `.test`, `.e2e`, `.d`). Reusable `ui-*` elements live in `src/components/`; domain `app-*` elements live directly in their `src/features/<feature>/` folder, including `shell`, `data` and `models`. The class is PascalCase of its tag. `src/common/` contains framework-free utilities and MUST NOT import Lit or `@nanostores/lit`. CONV-1–4 enforce these boundaries; story-only test hosts are not production elements.
 - Register with `@customElement('app-…')` or `@customElement('ui-…')`, as specified, and augment `HTMLElementTagNameMap`.
 - Public reactive properties use `@property`; internal state uses `@state` and is `private`. Reflect attributes only when CSS needs them.
 - Domain identity convention: Elements that represent a specific dataset or model entity reflect their domain key as a typed, hyphenated attribute (e.g. `dataset-id="iris"`), never an untyped generic `id` or raw DOM ID.
@@ -109,8 +110,9 @@ The public API of a block is everything its spec lists under **Public API**: tag
 - Mutations go through exported action functions in the store module. Components call actions; they do not call `store.set()` directly.
 - Components MUST NOT call `history.*` or read `location`. Navigation is an `<a href>` (intercepted by the router) or a router action; the current route is read from the router's store. See [app-state-and-navigation.md §5](app-state-and-navigation.md).
 - Any user-controlled UI state that is not a transient overlay and must survive a reload (selected column, step completion, chosen options, etc.) lives in a store with an action, not in a component's private `@state`. Presentational components receive it as a property and emit an event; the connected component calls the action. See [state-and-storage.md §5](state-and-storage.md).
-- Modal overlays use a native `<dialog>` opened with `showModal()`. Do not add `role="dialog"`, `aria-modal`, a focus trap or an `Esc` handler. Do not lock page scroll with `overflow: hidden` / `position: fixed` on `html` or `body` (it disturbs remembered scroll positions); use `overscroll-behavior: contain` on `dialog:modal` and `overflow: hidden; overscroll-behavior: contain` on `dialog::backdrop`. Modals that represent a URL (`/about`, `/privacy`, `/help`) close through the router (every dismissal path calls `closeReserved()`).
+- Modal overlays use a native `<dialog>` opened with `showModal()`. Do not add `role="dialog"`, `aria-modal`, a focus trap or an `Esc` handler. Do not lock page scroll with `overflow: hidden` / `position: fixed` on `html` or `body` (it disturbs remembered scroll positions); use `overscroll-behavior: contain` on `dialog:modal` and `overflow: hidden; overscroll-behavior: contain` on `dialog::backdrop`. User dismissal of a reserved-route modal reaches `closeReserved()` through its connected owner; property/route-driven closing suppresses the queued native close intent and never changes history again.
 - A route view exposes `whenSettled(): Promise<void>`, resolved once its layout height is stable, so the router can restore scroll position.
+- Requested heading focus is a separate capability: `focusHeading(signal: AbortSignal): Promise<void>` on data, target, models overview, model builder and nested dataset preview. Already-aborted/disconnected calls are no-ops. Each method awaits its own Lit render, rechecks cancellation/connection, then queries only its own `.page-header > h1` and focuses with `preventScroll: true`. The data view delegates preview focus through the preview's method. It never waits for metadata, rows or `whenSettled()`, returns internal nodes, crosses a shadow boundary or requests focus on an ordinary resource update. The shell cancels pending requests on every render; the router retains ownership of whether focus is requested ([navigation §5.6](app-state-and-navigation.md#56-document-title-and-focus)).
 
 ## 6. Styles and design tokens
 
@@ -135,6 +137,7 @@ Styling crosses shadow boundaries in exactly two sanctioned ways.
 - Component styles live only in `static override styles`, never in a `<style>` element in `render()`.
 - Every component's styles include `:host { display: …; }` (whatever display the host needs) and `:host([hidden]) { display: none; }`.
 - Use logical properties (`padding-inline`, `border-block-end`, `margin-inline-start`) so layouts work in right-to-left locales.
+- Do not use `!important` or `:host-context()`. TOK-5/6 inspect CSS declarations and Lit CSS templates, not unrelated JavaScript coordinate objects.
 - All transitions and animations sit inside `@media (prefers-reduced-motion: no-preference)`.
 - Every focusable thing has a `:focus-visible` style using `outline` (not `box-shadow`, which disappears in forced-colours mode), at least 2px, colour from a token.
 - Form controls set `font-family: inherit` (browsers do not inherit fonts into controls).
@@ -164,20 +167,25 @@ Styling crosses shadow boundaries in exactly two sanctioned ways.
 - The locale store takes its supported locales and base locale from `src/config/locales.ts`, and drives `lang` and `dir` on `<html>`.
 - Layouts MUST tolerate labels roughly 40% longer than English and right-to-left direction: no fixed widths on text, no clipping, logical properties only.
 - Presentational component exception: Tier 2 presentational components do not import store subscriptions or `src/i18n.ts`. Instead, they accept pre-translated strings through a typed `labels` property object with explicit default fallbacks, or render consumer-supplied content directly.
+- The two presentational cards retain the explicit i18n-only exception in [card.md](components/card.md); it grants no access to domain stores and is not a general Tier 2 exception.
 - A block that renders only consumer-supplied text owns no strings and its spec MUST say so.
 
 ## 9. Testing
 
 - Every acceptance criterion has an ID (e.g. `BTN-AC-3`). Every ID has at least one test whose name starts with that ID. A criterion without a test is not done.
-- Component acceptance criteria MUST run in real browsers through Playwright; do not use jsdom or a lightweight DOM simulator for component behavior. Use `bun:test` for unit tests of non-DOM logic such as store actions and pure utilities.
+- Component acceptance criteria MUST run in real browsers through Playwright; do not use jsdom or a lightweight DOM simulator for component behaviour. Tests live under `tests/**/*.e2e.ts`, including `tests/journeys/`; `bun:test` collects `*.test.ts` non-component logic such as store actions and pure utilities. Happy-dom supports non-component DOM utilities only.
 - Test observable behaviour (rendered output, computed styles, events, accessibility tree). Do not assert private state or snapshot shadow DOM markup.
-- Stories are smoke tests: every story runs with an axe scan, and axe violations fail the run. Use the Storybook Vitest addon for story smoke and axe checks; it does not replace Playwright tests for acceptance criteria or browser emulation. Put interactions in `play` functions where possible, so fixtures are not duplicated. Criteria that need browser emulation (reduced motion, forced colours) go in a Playwright `*.test.ts` file.
+- Stories are smoke tests: every story runs with an axe scan, and axe violations fail the run. `bun run test:stories` uses the Storybook Vitest addon and Playwright provider in Chromium, Firefox and WebKit; it does not replace Playwright acceptance, history, emulation or screenshot tests. Put interactions in `play` functions where possible. Reduced motion and forced colours belong in Playwright `*.e2e.ts` files. Bun, Vitest and Playwright collection boundaries do not overlap.
 - Every block is tested with `dir="rtl"` and with a long label.
 - History, scroll restoration and `<dialog>` behaviour (back/forward, reload, new-tab resume, viewport-width invalidation) are tested in Playwright, never in a simulated DOM. Pure routing/hydration/reconciliation logic is tested with `bun:test` and an in-memory `Storage`.
 
 ## 10. Storybook
 
-**Not installed yet** ([Known gaps](README.md#known-gaps) 5). Until a plan installs it, this section, the story and axe rules in §9 and the story items in §11 do not apply. Plans list them as deferred instead of writing stories or inventing Storybook commands.
+The installed workbench previews production components and their actual shared styles. Current coverage is Button, Chiclet, Dialog, Page Header, Sidebar, Welcome and Content Dialog. Existing feature stories remain a scoped backlog, not a reason to defer stories for new work.
+
+- `bun run storybook` generates the CEM then serves port 6006 with telemetry disabled; `bun run storybook:build` writes ignored `storybook-static/`; `bun run storybook:manifest` regenerates ignored `custom-elements.json`. These tools do not enter the production bundle.
+- Vite/esbuild lowers standard decorators; `experimentalDecorators` stays off. The decorated test-only button host lives in `.storybook/fixtures/`, imported by its story, so the story parser does not have to parse an auto-accessor declaration.
+- Preview imports document tokens/base CSS and adopts shared sheets. Each story receives a fresh cloned store/route fixture and English/LTR document attributes; cleanup restores previous values and listeners. Stories never bootstrap routing, persistence or storage. Same-origin story links log to Actions instead of navigating the workbench, while modified/external/target/download/hash links retain native behaviour. Docs stories use isolated iframes.
 
 - One `*.stories.ts` per block, co-located with its source, including style primitives.
 - Required stories: each variant, each state the spec lists, Long label, RTL. Components also need a story per slot configuration the spec lists.

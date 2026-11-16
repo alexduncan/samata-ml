@@ -119,4 +119,7 @@
 	--surface: #fff;
 	--focus-ring: var(--blue-700);
 	--shadow-panel: -2px 0 5px rgba(0, 0, 0, 0.1);
+	--backdrop: rgb(30 25 22 / 55%);
+	--shadow-sidebar:
+		-0.2rem 0 0.25rem 0.2rem rgb(73 57 47 / 0.15), -0.5rem 0 0.75rem 0.5rem rgb(73 57 47 / 0.2);
 }

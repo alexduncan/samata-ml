@@ -9,7 +9,7 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		const modal = page.locator('app-content-modal dialog');
 		await expect(modal).toBeVisible();
 
-		const heading = modal.locator('h1');
+		const heading = modal.locator('h2');
 		await expect(heading).toHaveText('Privacy Policy');
 		await expect(heading).toHaveAttribute('lang', 'en');
 		await expect(heading).toHaveAttribute('dir', 'ltr');
@@ -29,7 +29,7 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 
 		const modal = page.locator('app-content-modal dialog');
 		await expect(modal).toBeVisible();
-		await expect(modal.locator('h1')).toHaveText('Help & Guide');
+		await expect(modal.locator('h2')).toHaveText('Help & Guide');
 
 		const items = modal.locator('.modal-body ol > li');
 		await expect(items).toHaveCount(4);
@@ -47,13 +47,14 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 			});
 		});
 
-		await modal.locator('button.close-btn').click();
+		await modal.locator('button.btn-icon').click();
 		await expect(modal).not.toBeVisible();
+		await expect(page).toHaveURL(/\/data$/);
 
 		const welcomeBtn = page.locator('app-welcome-modal button.btn-primary');
-		if (await welcomeBtn.isVisible({ timeout: 1000 }).catch(() => false)) {
-			await welcomeBtn.click();
-		}
+		await expect(welcomeBtn).toBeVisible();
+		await welcomeBtn.click();
+		await expect(welcomeBtn).not.toBeVisible();
 
 		await page.locator('app-sidebar footer a[href="/about"]').click();
 		await expect(modal).toBeVisible();
@@ -67,9 +68,9 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 	}) => {
 		await page.goto('/models');
 		const welcomeBtn = page.locator('app-welcome-modal button.btn-primary');
-		if (await welcomeBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
-			await welcomeBtn.click();
-		}
+		await expect(welcomeBtn).toBeVisible();
+		await welcomeBtn.click();
+		await expect(welcomeBtn).not.toBeVisible();
 
 		await page.route('**/content/en/pages/index.json', (route) =>
 			route.fulfill({ status: 404 })
@@ -86,9 +87,9 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 			'This content could not be loaded. Check your connection, then close this dialog and try again.'
 		);
 
-		await modal.locator('button.close-btn').click();
+		await modal.locator('button.btn-icon').click();
 		await expect(modal).not.toBeVisible();
-		expect(page.url()).toContain('/models');
+		await expect(page).toHaveURL(/\/models$/);
 		await expect(page.locator('#content h1')).toHaveText('Train Models');
 	});
 
@@ -105,25 +106,26 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 
 		await page.goto('/data');
 		const welcomeBtn = page.locator('app-welcome-modal button.btn-primary');
-		if (await welcomeBtn.isVisible({ timeout: 1500 }).catch(() => false)) {
-			await welcomeBtn.click();
-		}
+		await expect(welcomeBtn).toBeVisible();
+		await welcomeBtn.click();
+		await expect(welcomeBtn).not.toBeVisible();
 
 		// Open /about (delayed), then quickly close and navigate to /privacy
 		await page.locator('app-sidebar footer a[href="/about"]').click();
-		await page.locator('app-content-modal dialog button.close-btn').click();
+		await page.locator('app-content-modal dialog button.btn-icon').click();
+		await expect(page).toHaveURL(/\/data$/);
 		await page.locator('app-sidebar footer a[href="/privacy"]').click();
 
 		const modal = page.locator('app-content-modal dialog');
 		await expect(modal).toBeVisible();
-		await expect(modal.locator('h1')).toHaveText('Privacy Policy');
+		await expect(modal.locator('h2')).toHaveText('Privacy Policy');
 		await expect(modal.locator('.modal-body')).toContainText(
 			'Complete privacy is the only option.'
 		);
 
 		// Wait past the delayed /about response to confirm it does not overwrite /privacy
 		await page.waitForTimeout(450);
-		await expect(modal.locator('h1')).toHaveText('Privacy Policy');
+		await expect(modal.locator('h2')).toHaveText('Privacy Policy');
 		await expect(modal.locator('.modal-body')).not.toContainText(
 			'browser-first machine learning pipeline'
 		);
@@ -132,14 +134,14 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		await page.goto('/about');
 		await page.goto('/privacy');
 		await expect(modal).toBeVisible();
-		await expect(modal.locator('h1')).toHaveText('Privacy Policy');
+		await expect(modal.locator('h2')).toHaveText('Privacy Policy');
 
 		delayAbout = true;
 		await page.goBack(); // back to /about (about.html fetch delayed)
 		await page.goForward(); // immediately forward to /privacy
 		await page.waitForTimeout(450);
 		await expect(modal).toBeVisible();
-		await expect(modal.locator('h1')).toHaveText('Privacy Policy');
+		await expect(modal.locator('h2')).toHaveText('Privacy Policy');
 		await expect(modal.locator('.modal-body')).toContainText(
 			'Complete privacy is the only option.'
 		);
@@ -150,7 +152,7 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		delayAbout = false;
 		await page.goBack(); // back to /about settles cleanly
 		await expect(modal).toBeVisible();
-		await expect(modal.locator('h1')).toHaveText('About samatā.ml');
+		await expect(modal.locator('h2')).toHaveText('About samatā.ml');
 		await expect(modal.locator('.modal-body')).toContainText(
 			'browser-first machine learning pipeline'
 		);

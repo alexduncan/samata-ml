@@ -8,6 +8,7 @@ import { $canCompare, blockedReason } from '../../stores/predicates';
 import { buttonStyles } from '../../styles/button.styles';
 import { notificationStyles } from '../../styles/notification.styles';
 import { tableStyles } from '../../styles/table.styles';
+import { headingFocusStyles } from '../../styles/heading-focus.styles';
 import type { ModelRecord } from '../../types/state';
 import { SUPERVISED_MODELS } from './model-catalogue';
 
@@ -19,6 +20,7 @@ import { SUPERVISED_MODELS } from './model-catalogue';
 @customElement('app-models-view')
 export class AppModelsView extends LitElement {
 	static override readonly styles = [
+		headingFocusStyles,
 		buttonStyles,
 		tableStyles,
 		notificationStyles,
@@ -123,6 +125,20 @@ export class AppModelsView extends LitElement {
 				this.loadPromise = loadDatasetResources(datasetId);
 			}
 		}
+	}
+
+	/**
+	 * Focuses this route's heading after rendering, unless cancelled or disconnected.
+	 *
+	 * @param signal - Cancels a superseded navigation's focus request.
+	 */
+	async focusHeading(signal: AbortSignal): Promise<void> {
+		if (signal.aborted || !this.isConnected) return;
+		await this.updateComplete;
+		if (signal.aborted || !this.isConnected) return;
+		this.renderRoot.querySelector<HTMLElement>('.page-header > h1')?.focus({
+			preventScroll: true
+		});
 	}
 
 	/**

@@ -1,6 +1,6 @@
 # Visual Design Specification
 
-**Status:** partial — the token vocabulary (§2), the shared style modules (§3) and the checks (§6) are in force. The shell does not yet match the mockups (§1), the `css/` copies of button, card, badges and modal remain (§3), and A11Y-01, A11Y-02, A11Y-09 and SEM-01–02 (§5) are not yet applied (SEM-03 is applied; [Known gap](README.md#known-gaps) 13).
+**Status:** partial — tokens, shared primitives, shell mockup mappings, document CSS consolidation and blocking parity/screenshots are implemented. Draft-only prose/features await human styling; exact data/model contrast findings and broader feature-style coverage remain follow-up work ([Known gap](README.md#known-gaps) 13). Mockup accessibility defects remain governed by the registers below.
 
 This specification defines the visual standards, token architecture, mockup mappings, translation rules, and deviation registers for the application.
 
@@ -45,6 +45,8 @@ The closed token vocabulary is defined in [`css/root.css`](../css/root.css). It 
 - `--surface: #fff` (replaces mockup `#fff` and `white`)
 - `--focus-ring: var(--blue-700)`
 - `--shadow-panel: -2px 0 5px rgba(0, 0, 0, 0.1)` (overlay panel shadow, added in Step 1 T4)
+- `--backdrop: rgb(30 25 22 / 55%)` (native dialog backdrop)
+- `--shadow-sidebar: -0.2rem 0 0.25rem 0.2rem rgb(73 57 47 / 0.15), -0.5rem 0 0.75rem 0.5rem rgb(73 57 47 / 0.2)` (reference sidebar shadow)
 
 Adding any token requires an explicit plan decision and an entry in this section.
 
@@ -52,7 +54,7 @@ Rules:
 
 - Reference global tokens as `var(--name)`, with no fallback.
 - Never use a literal colour (`#hex`, `rgb()`, `hsl()`, or named colours), including inside a `var()` fallback.
-- Mockup literals map to tokens: `#fff` and `white` become `--surface`, and `rgb(30 25 22 / 55%)` becomes the backdrop token added by the remediation plan.
+- Mockup literals map to tokens: `#fff` and `white` become `--surface`, and `rgb(30 25 22 / 55%)` becomes `--backdrop`.
 
 ## 3. Where mockup CSS lives in the app
 
@@ -61,18 +63,20 @@ Mockup CSS files map to application locations as follows:
 | Mockup file                                                                                                                                               | App location                                                                                                            |
 | :-------------------------------------------------------------------------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------- |
 | [`mockups/ui-scaffold/css/root.css`](mockups/ui-scaffold/css/root.css)                                                                                    | [`css/root.css`](../css/root.css) (document)                                                                            |
-| [`mockups/ui-scaffold/css/base.css`](mockups/ui-scaffold/css/base.css)                                                                                    | [`css/base.css`](../css/base.css), for the light-DOM document, `main` and `.page-header`                                |
+| [`mockups/ui-scaffold/css/base.css`](mockups/ui-scaffold/css/base.css)                                                                                    | [`css/base.css`](../css/base.css), for document/main; `.page-header` → `src/styles/page-header.styles.ts`               |
 | [`mockups/ui-scaffold/css/button.css`](mockups/ui-scaffold/css/button.css)                                                                                | [`src/styles/button.styles.ts`](../src/styles/button.styles.ts) only                                                    |
 | [`mockups/ui-scaffold/css/badges.css`](mockups/ui-scaffold/css/badges.css)                                                                                | [`src/styles/chiclet.styles.ts`](../src/styles/chiclet.styles.ts) only; mockup `.badge-*` maps to `.chiclet-*` (SEM-11) |
 | [`mockups/ui-scaffold/css/card.css`](mockups/ui-scaffold/css/card.css)                                                                                    | [`src/styles/card.styles.ts`](../src/styles/card.styles.ts)                                                             |
 | [`mockups/ui-scaffold/css/modal.css`](mockups/ui-scaffold/css/modal.css)                                                                                  | [`src/styles/dialog.styles.ts`](../src/styles/dialog.styles.ts)                                                         |
-| [`mockups/ui-scaffold/css/sidebar.css`](mockups/ui-scaffold/css/sidebar.css) and [`mockups/ui-scaffold/css/steps.css`](mockups/ui-scaffold/css/steps.css) | [`app-sidebar`](../src/features/navigation/app-sidebar.ts) `static styles`                                              |
+| [`mockups/ui-scaffold/css/sidebar.css`](mockups/ui-scaffold/css/sidebar.css) and [`mockups/ui-scaffold/css/steps.css`](mockups/ui-scaffold/css/steps.css) | [`app-sidebar`](../src/features/shell/app-sidebar.ts) `static styles`                                                   |
 | [`mockups/ui-scaffold/css/table.css`](mockups/ui-scaffold/css/table.css)                                                                                  | [`src/styles/table.styles.ts`](../src/styles/table.styles.ts) (adopted in `global.ts` and consuming shadow roots)       |
 | [`mockups/ui-scaffold/css/notifications.css`](mockups/ui-scaffold/css/notifications.css)                                                                  | [`src/styles/notification.styles.ts`](../src/styles/notification.styles.ts) alert variant only (adopted in `global.ts`) |
 | [`mockups/ui-scaffold/css/train-model.css`](mockups/ui-scaffold/css/train-model.css)                                                                      | [`src/styles/train-model.styles.ts`](../src/styles/train-model.styles.ts) (adopted in `global.ts` and builder view)     |
-| `dot.css`, `dropzone.css`                                                                                                                                 | Location decided by the feature plan that first uses them                                                               |
+| `dot.css`, `dropzone.css`                                                                                                                                 | Sidebar-local dot and feature-owned upload/dropzone rules; no document copies                                           |
 
-A rule used inside any shadow root lives only in a shared module ([COMPONENTS.md §6.2](COMPONENTS.md#62-shared-style-modules)). Its `css/` copy is removed by the remediation plan.
+A rule used across roots lives in a shared module ([COMPONENTS.md §6.2](COMPONENTS.md#62-shared-style-modules)); a feature-private rule remains with its owner. `css/style.css` imports only root/base. Obsolete document copies of badges/button/card/dot/dropzone/loading/modal/notifications/sidebar/steps/table/train-model are absent. Table, notification and train-model sheets retain document adoption and feature consumers. Page Header owns the shared header grid and composes `headingFocusStyles`; existing feature-private headers retain their appearance and adopt only the heading outline. Sidebar rules live in `src/features/shell/app-sidebar.ts`; its local static dot has no general dot-primitive API. Upload/dropzone rules remain feature-owned.
+
+Below 50rem the sidebar becomes static above main, with auto inline/min-block sizes and reset fixed insets; main has zero sidebar margin. There is one navigation tree. At desktop, main retains content-box sizing, 2rem padding, sidebar-width margin and viewport-minus-4rem minimum block size; document scrolling remains the restoration owner.
 
 ## 4. Translation rules (allowed without a register entry)
 
@@ -114,19 +118,23 @@ Disabled controls are exempt from 1.4.3, but they must stay legible ([button.md 
 
 Measured by DOM audit of the mockups.
 
-| ID     | Mockup defect                                                                          | App rule                                                                                                                                                                                                                                              |
-| :----- | :------------------------------------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| SEM-01 | Two `<h1>` per page (the sidebar brand and the page title)                             | The brand is `<p class="brand">` styled as the mockup `.sidebar h1`. The page title is the only `<h1>` (it is the focus target, [app-state-and-navigation.md §5.6](app-state-and-navigation.md#56-focus-management-after-navigation)).                |
-| SEM-02 | Project box uses `<h4>` straight after `<h1>` (skipped levels)                         | `<h2>` styled as the mockup `.project h4`.                                                                                                                                                                                                            |
-| SEM-03 | Current step is a non-link `<div>`                                                     | `<a href>` with `aria-current="page"` ([app-state-and-navigation.md §4.4](app-state-and-navigation.md#44-sidebar-and-shortcuts)). Set the value with an attribute binding (`aria-current=${…}` with `nothing`), never a `?` boolean binding. Applied. |
-| SEM-04 | `<dialog class="modal">` has no accessible name (00, 01-2, 01-3)                       | `aria-labelledby` pointing to the dialog's heading. The modal heading is `<h2>`, styled as the mockup `.modal-header h1`.                                                                                                                             |
-| SEM-05 | URL `<input>` labelled only by a placeholder (01-3)                                    | A visible `<label>`. The placeholder is optional.                                                                                                                                                                                                     |
-| SEM-06 | Feature checkboxes have no label, and there are duplicate ids (03-3, work in progress) | Each checkbox is labelled by its column name; ids are unique per row.                                                                                                                                                                                 |
-| SEM-07 | Tables have no accessible name (02-1, 02-2, 03-3)                                      | `<caption>` (it may be visually hidden) or `aria-labelledby` to the section heading. Column headers are `<th scope="col">`.                                                                                                                           |
-| SEM-08 | Decorative SVGs                                                                        | `aria-hidden="true"`. Icon-only buttons take their accessible name from a localised string ([COMPONENTS.md §8](COMPONENTS.md#8-internationalisation-nanostoresi18n)).                                                                                 |
-| SEM-09 | Status shown by colour (`.dot`, `.train-step-status`)                                  | Status also shown as text (a visually hidden span counts), as `03-2` "Completed" already does.                                                                                                                                                        |
-| SEM-10 | `select`: `appearance: base-select`                                                    | Progressive enhancement only. Every select has a `<label>` and a `name`.                                                                                                                                                                              |
-| SEM-11 | `.badge` and `.badge-*` (mockup) and `.chiclet` (app)                                  | One primitive, `.chiclet`, with variants. Text is never `text-transform`-only meaning. The remediation plan decides the badge look ([card.md](components/card.md) already defers this).                                                               |
+| ID     | Mockup defect                                                                          | App rule                                                                                                                                                                                                                                                                                                |
+| :----- | :------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| SEM-01 | Two `<h1>` per page (the sidebar brand and the page title)                             | The brand is `<p class="brand">` styled as the mockup `.sidebar h1`. The page title is the only `<h1>` (it is the focus target, [app-state-and-navigation.md §5.6](app-state-and-navigation.md#56-focus-management-after-navigation)).                                                                  |
+| SEM-02 | Project box uses `<h4>` straight after `<h1>` (skipped levels)                         | `<h2>` styled as the mockup `.project h4`.                                                                                                                                                                                                                                                              |
+| SEM-03 | Current step is a non-link `<div>`                                                     | `<a href>` with `aria-current="page"` ([app-state-and-navigation.md §4.4](app-state-and-navigation.md#44-sidebar-and-shortcuts)). Set the value with an attribute binding (`aria-current=${…}` with `nothing`), never a `?` boolean binding. Applied.                                                   |
+| SEM-04 | `<dialog class="modal">` has no accessible name (00, 01-2, 01-3)                       | `aria-labelledby` pointing to the dialog's heading. The modal heading is `<h2>`, styled as the mockup `.modal-header h1`.                                                                                                                                                                               |
+| SEM-05 | URL `<input>` labelled only by a placeholder (01-3)                                    | A visible `<label>`. The placeholder is optional.                                                                                                                                                                                                                                                       |
+| SEM-06 | Feature checkboxes have no label, and there are duplicate ids (03-3, work in progress) | Each checkbox is labelled by its column name; ids are unique per row.                                                                                                                                                                                                                                   |
+| SEM-07 | Tables have no accessible name (02-1, 02-2, 03-3)                                      | `<caption>` (it may be visually hidden) or `aria-labelledby` to the section heading. Column headers are `<th scope="col">`.                                                                                                                                                                             |
+| SEM-08 | Decorative SVGs                                                                        | `aria-hidden="true"`. Icon-only buttons take their accessible name from a localised string ([COMPONENTS.md §8](COMPONENTS.md#8-internationalisation-nanostoresi18n)).                                                                                                                                   |
+| SEM-09 | Status shown by colour (`.dot`, `.train-step-status`)                                  | Status also shown as text (a visually hidden span counts), as `03-2` "Completed" already does.                                                                                                                                                                                                          |
+| SEM-10 | `select`: `appearance: base-select`                                                    | Progressive enhancement only. Every select has a `<label>` and a `name`.                                                                                                                                                                                                                                |
+| SEM-11 | `.badge` and `.badge-*` (mockup) and `.chiclet` (app)                                  | One [chiclet](components/chiclet.md) primitive: default inline outlined counts, solid inline-block variants with transparent border, start padding/tracking/uppercase badge treatment. Text retains its semantic meaning. The solid beta border permits the recorded 1px welcome title-flow difference. |
+| SEM-12 | Welcome tagline is an h2 despite being descriptive copy                                | Paragraph with the original h2's computed weight, size, normal line-height and margins.                                                                                                                                                                                                                 |
+| SEM-13 | Get Started has an aria-label different from visible text                              | Native button accessible name comes from visible translated Get Started text.                                                                                                                                                                                                                           |
+
+Shell brand/project/current-link/dialog/status/decorative-icon rules apply as SEM-01/02/03/04/08/09. Shared buttons, footer/current labels and amber badge apply A11Y-01/02/04/09/10. These completed shell translations do not claim all feature/mockup defects are repaired.
 
 ### 5.3 Behaviour-driven UI deviations
 
@@ -140,27 +148,37 @@ Measured by DOM audit of the mockups.
 | MODELS-UI-02 | Select features (03-3)      | `aria-selected` on plain rows; missing labels    | Removed invalid `aria-selected` on non-interactive rows; unique form labels and `input[aria-label]` per feature row            | Conformance with WCAG 4.1.2 and SEM-06.                                                                                   |
 | MODELS-UI-03 | Choose model (03-2, 03-9)   | Only one illustrated Logistic Regression card    | Illustrated card for `logistic-regression`; native text entries (`03-9`) for remaining 13 supervised models without artwork    | User-approved scope for models lacking authored SVG art; draft text entries have no parity entries.                       |
 
+| ID          | Where                    | App behaviour                                                                                                      | Reason                                                                                                         |
+| ----------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------- |
+| SHELL-UI-01 | Project settings         | Omit the unimplemented settings control; preserve its 2.5rem grid track and project geometry.                      | No settings behaviour is specified.                                                                            |
+| SHELL-UI-02 | Next-step dot            | Omit the undefined next-step hint.                                                                                 | No next-step guidance contract exists.                                                                         |
+| SHELL-UI-03 | Models in step 3         | Keyed sibling model list inside the third li, after its anchor; preserve horizontal columns and local row styling. | Valid list/link semantics without interactive nesting; group vertical placement follows the sibling structure. |
+| SHELL-UI-04 | Long text/narrow screens | Shrink/wrap names and chiclets; below 50rem stack static sidebar above main, zero main sidebar margin.             | Readable 320px/RTL layouts without a new drawer or duplicate navigation.                                       |
+
 ## 6. Verification
 
-Visual fidelity is verified continuously through three automated checks and one manual inspection procedure:
+Visual fidelity uses static guards, computed styles/geometry, reviewed screenshot regression and accessibility checks, complemented by manual inspection:
 
 1. **Token use static guard (`bun test tests/style-tokens.test.ts`):**
    Parses `css/root.css` to determine the canonical token set. Scans `src/**/*.ts` and `css/**/*.css` to assert:
     - Every `var(--name)` references a known global or local token.
-    - No literal colour values exist in declarations or in `var()` fallbacks (outside `css/root.css`).
+    - TOK-2 checks literal colours in TypeScript style declarations and var fallbacks outside css/root.css. Direct CSS declaration coverage remains limited (Known gap 13); the normative token-only rule still applies to every style and requires review beyond the guard.
     - No `<style>` tags appear inside HTML templates (`render()`).
-    - Any file in `KNOWN_DRIFT` that starts passing must be removed from the drift list.
+    - `KNOWN_DRIFT` is empty; TOK-4 prevents repaired shell exemptions returning.
+    - TOK-5/6 reject physical inline-direction CSS, `!important` and `:host-context()` in actual CSS/template declarations, without treating JavaScript scroll coordinates as styles.
 
 2. **Visual parity test harness (`bun run test:e2e tests/visual-parity.e2e.ts`):**
    A Playwright test running in Chromium at a 1440×900 viewport. It compares computed CSS styles between clean mockup pages served by `bun run serve:mockups` (`http://localhost:3333`) and the running application routes (`https://localhost:3000`).
     - Mapped elements are defined in `tests/visual-parity/map.ts`.
-    - Checks properties such as background colours, borders, font weights, and spacing.
+    - Checks background, borders, typography, spacing, explicit grid areas/tracks and fixture-relative numeric geometry within at most 1 CSS px. Content-dependent tracks are compared numerically rather than as identical strings.
     - Deviations are validated against the approved deviation registers.
-    - Drift under active remediation is tracked with `test.fail()` so it cannot regress silently.
+    - No mapped surface has knownDrift; PARITY-contract prevents exemptions returning. Existing feature mappings remain blocking.
     - Full-page screenshots of both the mockup and the app are captured and attached to the test run.
+    - Empty/Models sidebar fixtures have platform-specific `toHaveScreenshot` baselines after paired reference review, with animations disabled, caret hidden and zero allowed changed pixels at the default colour threshold. Never update baselines to hide unexpected differences. A temporary 4px workflow-gap mutation must fail geometry/screenshot checks before restoration passes.
+    - Reference fixtures may normalise text/counts/current state only; CSS, wrappers and dimensions remain unchanged. Draft-only content has paired structure captures, no appearance mapping or baseline approval claim.
 
 3. **Accessibility scan (`bun run test:e2e tests/a11y.e2e.ts`):**
-   Uses `@axe-core/playwright` to scan application routes against WCAG 2.0, 2.1, and 2.2 Level A and AA tags (`wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa`). Known pre-remediation violations are isolated in `KNOWN_A11Y_DRIFT` and wrapped in `test.fail()`.
+   Uses `@axe-core/playwright` with `wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa`. Shell-scoped scans have zero violations and no exclusions. Broad audits match only separately owned exact feature elements and measured evidence in `tests/a11y-feature-findings.ts`; no global rule mask remains. Unlisted rules/elements fail. Twenty-four existing data/model contrast targets remain follow-up work, not a whole-app conformance pass.
 
 4. **Static mockup audit (`bun run audit:mockups [relative-path ...] [--port 3333]`):**
    With `bun run serve:mockups` running, audits selected non-empty HTML files or all eligible files at a 1440×900 viewport using Chromium and `@axe-core/playwright`. It uses `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa` without rule exclusions. JSON and escaped HTML reports are written to `test-results/mockup-a11y/`. Violations, navigation/runtime errors, skipped empty files and incomplete checks remain distinct. A zero exit status means only that no automated violations were found; static markup cannot prove interactive states or replace manual keyboard, screen-reader, responsive, zoom, forced-colours and motion checks. The catalogue scan has separate browser coverage in `tests/mockup-review.e2e.ts`.
@@ -178,3 +196,4 @@ Visual fidelity is verified continuously through three automated checks and one 
     bun run server
     ```
     Open Chromium at a 1440×900 viewport side by side with the mockup page and the application route. Inspect visual alignment, fonts, colours, and interactive states. Attach screenshots of both views to the task report.
+    Review keyboard journeys, screen-reader current links/dialog/control names, real 200% browser zoom, 320px/RTL/long text, forced colours and reduced motion separately. Browser emulation is automated evidence, not a claim of native assistive-technology or real zoom testing. Production component stories provide the editing/review surface after porting; mockups remain normative.

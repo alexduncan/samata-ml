@@ -1,6 +1,6 @@
 # Human tasks
 
-**Updated:** 2026-11-14
+**Updated:** 2026-11-16
 
 This is the human's work queue: decisions, plan review, missing content and mockup styling. Detail lives in the linked plan/spec. TODO IDs refer to [TODO.md](TODO.md); Known gaps refer to [the index](README.md#known-gaps).
 
@@ -26,9 +26,17 @@ Seven active plans were reviewed on 2026-11-13. All retain valid `draft` metadat
 
 - [ ] **Review renewed workflow bootstrap (agent-workflow-gates):** Approve the revised gate/closure/migration contract under the current workflow so its tooling can be implemented. Blocks workflow T1 and formal ready-for-review submission. Recommended: review the legacy Sync specification exclusion, escalation triage, dirty-tree preservation and stale-approval safeguards, then approve this revision. → [plan](plans/agent-workflow-gates.md#risks-and-open-questions)
 
-The Storybook and shell plan was reviewed and approved as `ready` on 2026-11-14 at the user's explicit request. Its tasks preserve the implemented data/target screens and existing i18n instance, repair sidebar/workflow fidelity, and add blocking visual checks. Conformance is implemented and no longer blocks T1. → [approved plan](plans/storybook-component-library.md#implementation-tasks)
+T1–T8 of the Storybook and shell plan are complete, including the full three-browser regression suite. All 22 specification-sync items are applied. The approved model-card move, D19 focus repair, D20 fixture move and the user's T1 Safari/VoiceOver evidence remain accepted. The plan stays `ready`; only T9 final manual verification remains outstanding. → [plan](plans/storybook-component-library.md#implementation-tasks)
+
+Firefox verification on this workstation now passes with the isolated scratch-home env file named in the plan log; no browser dependency, project coverage or OS privacy permission changed. The earlier launch blocker is resolved for those recorded commands.
 
 - [ ] **Extend component stories after shell delivery (storybook-component-library):** Commission a focused follow-up for existing data/target/virtual-table states, and align model setup with the installed workbench and feature placement when it is next revised. Non-blocking for the approved shell port; do not reopen implemented feature plans. Recommended: use the real components and shared styles, with their existing acceptance contracts. → [scope and risks](plans/storybook-component-library.md#risks-and-open-questions)
+
+- [ ] **Repair data and model contrast (storybook-component-library follow-up):** T8's complete audit inventory found 24 existing colour-contrast targets in five feature owners: the remote dataset notice, datasheet subtitle, upload picker/help text, models comparison hint and model-builder hints/inactive feature table. Ratios range from 2.61:1 to 4.10:1 against 4.5:1. Non-blocking under the approved T8 provision for separately owned feature findings; shell audits remain strict. Recommended: commission focused data/models repairs, then remove the matching exact entries. → [exact targets, source owners and measurements](../tests/a11y-feature-findings.ts) · [evidence](plans/storybook-component-library.md#implementation-and-verification-log)
+
+- [ ] **Complete literal-colour guard coverage (Known gap 13):** TOK-2's existing scanner covers TypeScript declarations and var fallbacks, but not every direct CSS colour declaration. Current document styles were reviewed; this does not block the verified shell scope. Recommended: commission a focused guard improvement with negative CSS fixtures; retain the token-only rule throughout. → [verification limits](visual-design.md#6-verification)
+
+- [ ] **Final keyboard, VoiceOver and zoom evidence (storybook-component-library):** The user cannot perform these checks now. On the finished shell, verify keyboard journeys in Chromium/Firefox, Safari/VoiceOver current-link/dialog/disabled-button names, real 200% browser zoom, 320px, RTL/long text, forced-colours focus and reduced motion. Automated browser/emulation checks pass; manual observations remain unverified and block T9 final closure. Recommended: review the finished shell once available; preserve the accepted T1 heading/dialog focus evidence. Browser emulation is not real zoom or assistive-technology evidence. → [definition of done](plans/storybook-component-library.md#verification-and-definition-of-done)
 
 - [ ] **Review reference regression suite (reference-dataset-regression-tests):** Review the refreshed implemented pipeline/protocol seams and corrected startup-database assumption. No product blockers. Recommended: approve after independent review; all ingestion prerequisites are implemented. → [plan](plans/reference-dataset-regression-tests.md#risks-and-open-questions)
 
@@ -46,7 +54,7 @@ Already answered and incorporated: dataset-id/model-id identity convention; app 
 
 - [ ] **Navigation overlays/routes (TODO-18, TODO-20):** Reconcile stale questions with the existing transient-dialog policy and implemented help/terms pages; promote only agreed sections, keeping unresolved behaviour explicit. Non-blocking for the scoped UI plans, which retain transient dialogs. Recommended: retain no dialog restoration on reload and the existing reserved-route mapping. → [navigation questions](app-state-and-navigation.md#12-open-questions), [content rules](content-and-i18n.md#static-content)
 - [ ] **Upload identity (TODO-22):** Decide whether identical uploaded bytes preserve downstream work. Non-blocking; current behaviour uses a new ID per upload. Recommended: keep current identity until a separate content-hash plan defines it. → [storage questions](state-and-storage.md#11-open-questions)
-- [ ] **Button questions (TODO-26, TODO-27):** Settle remaining disabled/hover/wrapping/pressed/touch/primary-button policy and correct the stale contrast claim. Non-blocking for plans reusing existing buttonStyles. Recommended: keep the existing approved A11Y-01 text colour; Change Dataset needs no new danger variant. → [questions](components/button.md#12-open-questions-human-to-answer-agents-must-not-resolve)
+- [ ] **Button questions (TODO-26):** Settle remaining disabled/hover/wrapping/pressed/touch/primary-button policy. Default-text contrast is resolved by A11Y-01. Non-blocking for plans reusing existing buttonStyles. Recommended: keep the existing approved text colour; Change Dataset needs no new danger variant. → [questions](components/button.md#12-open-questions-human-to-answer-agents-must-not-resolve)
 - [ ] **Promote agreed draft specs:** After outstanding decisions are resolved, review statuses rather than treating all old draft questions as blockers. Non-blocking for explicitly settled plan contracts. → [status rules](README.md#status)
 
 ## 4. Missing later specifications and content
@@ -54,7 +62,7 @@ Already answered and incorporated: dataset-id/model-id identity convention; app 
 The classification subsets of TODO-01–05, TODO-21 and TODO-33 are now designed in the [classification integration draft](plans/web-ml-classification-integration.md#interfaces-and-behaviour), awaiting the review item above. Its final sync task replaces the orchestrator stub and updates the workflow/storage specs after implementation. This is a proposed contract, not completed product work. The existing production COOP/COEP and compiled-library answers (TODO-50/51) are incorporated; development delivery is owned by its T1.
 
 - [ ] **Author remaining model articles (TODO-12):** Add locale content for models beyond Logistic Regression. Non-blocking: the Step 3 missing-description fallback is accepted. → [content layout](content-and-i18n.md#static-content)
-- [ ] **Component documentation (TODO-34, TODO-35):** Remaining shell/notification/dropzone/table/stepper/status/progress component specs need reconciliation. Non-blocking where these reviewed plans provide closed contracts and explicit sync owners; later components still need a specification. → [template](COMPONENTS.md#12-component-spec-template)
+- [ ] **Component documentation (TODO-34, TODO-35):** Shell, chiclet, dialog and page-header specs are delivered. Remaining transient-feature/notification/dropzone/table/stepper/status/progress specs need reconciliation. Non-blocking where reviewed plans provide closed contracts and explicit sync owners. → [template](COMPONENTS.md#12-component-spec-template)
 
 The obsolete preview spec (TODO-48/Gap 16) is owned by Step 1 T7. The remaining sample-dataset note has been reviewed and claimed by that plan; no new commission is needed. Its sync task retains durable/deferred ideas, updates the inbox and deletes the note.
 
@@ -92,7 +100,7 @@ Only the human changes normative mockups. Drafts are structure only and use exis
 
 TODO-50/51 are answered and claimed by the classification integration plan: preserve production isolation, supply it in development, and consume precompiled `web-ml` assets. No native toolchain belongs here; no further decision is requested.
 
-- [ ] **Remaining Known gaps 3, 6, 7, 10:** Commission reconciliation of CSS inlining, worker/service-worker and lint/CI rules, and the product name. Gap 4 is resolved; gap 18 is owned by conformance; gaps 1, 2, 5, 13 and 17 are owned by storybook-component-library. Non-blocking for scoped plans with explicit decisions. → [gaps](README.md#known-gaps)
+- [ ] **Remaining Known gaps 3, 6, 7, 10:** Commission reconciliation of CSS inlining, worker/service-worker and lint/CI rules, and the product name. Gaps 1, 2, 4, 5, 17 and 18 are resolved. Gap 13 now names remaining exact feature contrast findings and broader feature coverage. Non-blocking for scoped plans with explicit decisions. → [gaps](README.md#known-gaps)
 - [ ] **Close stale scaffolding process item (TODO-52):** Scaffolding plans are implemented; reconcile its old ready/draft wording during workflow spec sync. Non-blocking. → [TODO](TODO.md#7-process)
 
 ## 8. Later vision work

@@ -17,7 +17,8 @@ import { loadSampleCatalogue, loadSampleDatasheet } from './sample-datasets';
 import type { SampleDatasetIndex } from '../../types/sample-dataset';
 import { buttonStyles } from '../../styles/button.styles';
 import { dialogStyles } from '../../styles/dialog.styles';
-import '../../components/app-dataset-card';
+import { headingFocusStyles } from '../../styles/heading-focus.styles';
+import './app-dataset-card';
 import './app-datasheet-dialog';
 import './app-upload-dataset-dialog';
 import './app-dataset-preview';
@@ -66,6 +67,7 @@ function formatPreviewRows(
 @customElement('app-data-view')
 export class AppDataView extends LitElement {
 	static override readonly styles = [
+		headingFocusStyles,
 		dialogStyles,
 		buttonStyles,
 		css`
@@ -295,6 +297,25 @@ export class AppDataView extends LitElement {
 	}
 
 	/**
+	 * Focuses the current page heading after rendering, unless cancelled or disconnected.
+	 *
+	 * @param signal - Cancels a superseded navigation's focus request.
+	 */
+	async focusHeading(signal: AbortSignal): Promise<void> {
+		if (signal.aborted || !this.isConnected) return;
+		await this.updateComplete;
+		if (signal.aborted || !this.isConnected) return;
+		const preview = this.previewEl;
+		if (preview) {
+			await preview.focusHeading(signal);
+		} else {
+			this.renderRoot.querySelector<HTMLElement>('.page-header > h1')?.focus({
+				preventScroll: true
+			});
+		}
+	}
+
+	/**
 	 * Waits for active catalogue, rendering and resource operations to settle.
 	 */
 	async whenSettled(): Promise<void> {
@@ -475,7 +496,7 @@ export class AppDataView extends LitElement {
 
 		return html`
 			<header class="page-header">
-				<h1>Select Data</h1>
+				<h1 tabindex="-1">Select Data</h1>
 				<p>
 					Training an AI model needs data. Get started by choosing one of the sample
 					datasets below or uploading your own custom dataset.

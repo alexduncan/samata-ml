@@ -25,5 +25,15 @@
 		"noUnusedLocals": false,
 		"noUnusedParameters": false,
 		"noPropertyAccessFromIndexSignature": false
-	}
+	},
+	"include": [
+		"*.ts",
+		"*.mjs",
+		"src/**/*",
+		"tests/**/*",
+		"scripts/**/*",
+		"content/**/*",
+		".storybook/**/*"
+	],
+	"exclude": ["node_modules", "dist", "dev", "storybook-static"]
 }

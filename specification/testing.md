@@ -1,26 +1,31 @@
 # Testing Strategy
 
-**Status:** partial — `bun:test` with a happy-dom preload (`tests/setup.ts`), Playwright (Chromium, Firefox, WebKit), visual parity, application accessibility audits, mockup review browser coverage and per-file mockup audits are implemented. The Load Data, Target Selection, and Model/Feature Setup stages of both reference journeys are implemented; later training execution and comparison stages remain target.
+**Status:** partial — non-component Bun tests, Vitest story smoke/axe in three browsers, Playwright acceptance/history/emulation, computed parity, sidebar screenshots and application/mockup audits are implemented. Feature-story migration and later reference-journey training/comparison stages remain target; exact outstanding data/model contrast findings remain separately tracked.
 
 All functionality must be created alongside a comprehensive test setup. Code submitted without tests will be rejected.
 
 ## Unit and Component Testing
 
-- **Runner:** `bun:test` MUST be used for all unit tests due to speed requirements for AI iteration.
-- **DOM Environment:** `happy-dom` (or equivalent lightweight DOM simulator) must be configured within `bun:test` to test Lit components and state logic in the terminal.
+- **Non-component units:** `bun:test` runs `*.test.ts` store, routing, storage and utility tests. `tests/setup.ts` supplies happy-dom for non-component DOM utilities; it does not establish Lit lifecycle, focus, dialog or layout behaviour.
+- **Component acceptance:** Playwright runs `tests/**/*.e2e.ts` in Chromium, Firefox and WebKit. Acceptance IDs map to browser tests independently of stories. Test visible output, native events, computed styles and accessibility rather than private state.
+- **Story smoke:** `bun run test:stories` generates the CEM and runs only co-located CSF stories through the Storybook Vitest addon and Playwright provider in all three engines. Every story runs interactions/hooks and axe with violations failing the command. Vitest does not collect unit/E2E files; Bun does not collect stories or Playwright files.
+- **Coverage boundary:** Button, Chiclet, Dialog, Page Header and shell stories use production modules. Existing data/target/model/virtual-table story migration is follow-up work. Successful smoke tests do not replace acceptance criteria, real app navigation or manual accessibility checks.
 
 ## End-to-End (E2E) Testing
 
 - **Runner:** Playwright MUST be used for integration and E2E testing.
 - Playwright is mandatory for verifying features that cannot be perfectly mocked in a terminal, specifically:
     - Writing raw CSV data to the actual browser IndexedDB.
-    - Verifying Web Worker initialization and Comlink communication.
+    - Verifying Web Worker initialisation and the application's typed request/response protocol.
+- The shell suite covers cancellable component-owned heading focus independently of scroll restoration, native modal intent/history, responsive/RTL layouts and reduced-motion/forced-colours emulation. Real browser zoom and screen-reader observations are recorded separately from emulation.
+- `tests/visual-parity.e2e.ts` compares clean reference/app styles and relative geometry at Chromium 1440×900, with reviewed Empty/Models sidebar screenshot baselines and a negative layout probe. Parity is intentionally Chromium-only; component acceptance remains three-browser. No mapped surface has a drift exemption.
+- Shell-scoped axe scans allow no rule exclusions. Broad app audits accept only the exact separately owned feature findings in `tests/a11y-feature-findings.ts`, including measured colours/type and canonical node identity; unlisted elements or rules fail. These existing findings do not constitute a whole-app WCAG pass.
 
 ### Mockup review checks
 
 - `bun run test:e2e tests/mockup-review.e2e.ts` covers the server-rendered catalogue and preview helper in Chromium, Firefox and WebKit as configured. It checks semantic structure, GET search/history, no-JavaScript filtering, source safety, byte-identical clean previews, explicit preview navigation, narrow reflow, native focus and the full configured axe tag set without exclusions. Browser execution failures must be reported separately from product assertions.
 - `bun run audit:mockups [relative-path ...] [--port 3333]` runs a static Chromium/axe audit against the running mockup server. Explicit paths audit those non-empty HTML files; no paths selects all non-empty HTML files. Reports are overwritten at `test-results/mockup-a11y/latest.json` and `latest.html` and preserve violations, skipped empty files, execution errors and incomplete results separately.
-- The mockup audit and catalogue axe scan do not prove WCAG conformance. Static pages do not exercise application interactions; incomplete axe results and keyboard, screen-reader, zoom/reflow, forced-colours, reduced-motion and relevant focus checks need human review. Application-state accessibility remains covered by `tests/a11y.e2e.ts` and feature-specific tests; its existing drift list is independent of mockup reports.
+- The mockup audit and catalogue axe scan do not prove WCAG conformance. Static pages do not exercise application interactions; incomplete axe results and keyboard, screen-reader, zoom/reflow, forced-colours, reduced-motion and relevant focus checks need human review. Application-state accessibility is covered independently by `tests/a11y.e2e.ts` and feature-specific tests; exact feature findings never suppress mockup reports.
 
 ## Reference Journey Testing
 

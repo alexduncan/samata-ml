@@ -12,26 +12,261 @@ export interface ParityEntry {
 	properties: string[];
 	deviations?: Record<string, ParityDeviation>;
 	knownDrift?: string;
+	fixture?: 'empty' | 'models';
+	/** Compare numeric boxes relative to the surface, within one CSS pixel. */
+	geometry?: {
+		mockupOrigin: string;
+		appOrigin: string;
+		axes: ('x' | 'y' | 'width' | 'height')[];
+	};
 }
 
 export const parityMap: ParityEntry[] = [
+	...(
+		[
+			[
+				'workflow',
+				'.workflow',
+				[
+					'display',
+					'flex-grow',
+					'margin-top',
+					'margin-right',
+					'margin-bottom',
+					'margin-left'
+				],
+				'empty',
+				['x', 'y', 'width']
+			],
+			[
+				'steps',
+				'.steps',
+				[
+					'margin-top',
+					'margin-bottom',
+					'padding-left',
+					'list-style-type',
+					'list-style-position'
+				],
+				'empty',
+				['x', 'y', 'width', 'height']
+			],
+			[
+				'step-first',
+				'.step:first-child',
+				[
+					'border-top-width',
+					'border-top-color',
+					'border-top-left-radius',
+					'border-top-right-radius',
+					'overflow'
+				],
+				'empty',
+				['x', 'y', 'width', 'height']
+			],
+			[
+				'step-adjacent',
+				'.step:nth-child(2)',
+				['margin-top', 'border-top-width', 'border-top-color'],
+				'empty',
+				['x', 'y', 'width', 'height']
+			],
+			[
+				'step-last',
+				'.step:last-child',
+				['border-bottom-left-radius', 'border-bottom-right-radius'],
+				'empty',
+				['x', 'y', 'width', 'height']
+			],
+			[
+				'step-number',
+				'.step:first-child .step-num',
+				[
+					'grid-area',
+					'align-self',
+					'font-size',
+					'line-height',
+					'text-align',
+					'border-radius',
+					'background-color'
+				],
+				'empty',
+				['x', 'y', 'width', 'height']
+			],
+			[
+				'step-label',
+				'.step:nth-child(2) .step-label',
+				['grid-area', 'line-height', 'font-size', 'font-weight'],
+				'empty',
+				['x', 'y', 'width', 'height']
+			],
+			[
+				'project-title',
+				'.project h4',
+				[
+					'grid-area',
+					'margin-top',
+					'margin-bottom',
+					'font-size',
+					'font-weight',
+					'line-height',
+					'color'
+				],
+				'empty',
+				['x', 'y', 'width', 'height']
+			],
+			[
+				'project-name',
+				'.project-name',
+				['grid-area', 'margin-top', 'margin-bottom', 'font-size', 'line-height', 'color'],
+				'empty',
+				['x', 'y', 'width', 'height']
+			],
+			[
+				'summary-label',
+				'.step:first-child .step-label-small',
+				['grid-area', 'padding-top', 'font-size', 'font-weight'],
+				'models',
+				['x', 'y', 'width', 'height']
+			],
+			[
+				'summary-value',
+				'.step:first-child .step-value',
+				['grid-area', 'padding-bottom', 'font-size', 'font-weight'],
+				'models',
+				['x', 'y', 'width', 'height']
+			],
+			[
+				'summary-chiclets',
+				'.step:first-child .step-chiclets',
+				['grid-area', 'padding-right', 'font-size'],
+				'models',
+				['x', 'y', 'width', 'height']
+			],
+			[
+				'summary-badge',
+				'.step:first-child .chiclet',
+				[
+					'font-family',
+					'font-size',
+					'font-weight',
+					'line-height',
+					'padding-top',
+					'padding-right',
+					'border-radius',
+					'border-top-color',
+					'color'
+				],
+				'models',
+				['x', 'y', 'width', 'height']
+			],
+			[
+				'model-row',
+				'.step-model:first-child .step-model-link',
+				[
+					'display',
+					'position',
+					'border-top-width',
+					'border-top-color',
+					'border-radius',
+					'background-color',
+					'padding-top',
+					'padding-right',
+					'padding-bottom',
+					'padding-left',
+					'font-size',
+					'color'
+				],
+				'models',
+				['x', 'width', 'height']
+			],
+			[
+				'model-current',
+				'.step-model:nth-child(2) .step-model-link',
+				['border-top-color', 'background-color', 'color'],
+				'models',
+				['x', 'width', 'height']
+			],
+			[
+				'footer-link',
+				'footer a',
+				['color', 'font-size', 'line-height', 'text-decoration-line'],
+				'empty',
+				['x', 'y', 'width', 'height']
+			]
+		] satisfies [
+			string,
+			string,
+			string[],
+			'empty' | 'models',
+			('x' | 'y' | 'width' | 'height')[]
+		][]
+	).map(
+		([id, selector, properties, fixture, axes]): ParityEntry => ({
+			id: `sidebar-${id}`,
+			mockupPage:
+				fixture === 'empty'
+					? '01-1_select-data.html'
+					: '03-2_train-models-1-choose-model.html',
+			mockupSelector: `.sidebar ${selector}`,
+			appRoute: '/data',
+			appSelector: `app-sidebar ${selector.replace('.project h4', '.project h2')}`,
+			properties,
+			fixture,
+			geometry: { mockupOrigin: '.sidebar', appOrigin: 'app-sidebar', axes },
+			...(id === 'summary-badge'
+				? {
+						deviations: {
+							'border-top-color': { value: 'rgb(136, 123, 113)', register: 'SEM-11' }
+						}
+					}
+				: {})
+		})
+	),
 	{
 		id: 'sidebar',
 		mockupPage: '00_first-load.html',
 		mockupSelector: '.sidebar',
 		appRoute: '/data',
 		appSelector: 'app-sidebar',
-		properties: ['background-color', 'width', 'box-shadow'],
-		knownDrift: 'scaffolding-visual-remediation'
+		properties: [
+			'background-color',
+			'width',
+			'box-shadow',
+			'position',
+			'z-index',
+			'min-height',
+			'overflow-y'
+		],
+		fixture: 'empty',
+		geometry: {
+			mockupOrigin: '.sidebar',
+			appOrigin: 'app-sidebar',
+			axes: ['x', 'y', 'width', 'height']
+		}
 	},
 	{
 		id: 'sidebar-h1',
 		mockupPage: '00_first-load.html',
 		mockupSelector: '.sidebar h1',
 		appRoute: '/data',
-		appSelector: 'app-sidebar h1',
-		properties: ['font-size', 'font-weight', 'color'],
-		knownDrift: 'scaffolding-visual-remediation'
+		appSelector: 'app-sidebar .brand',
+		properties: [
+			'font-size',
+			'font-weight',
+			'color',
+			'line-height',
+			'margin-top',
+			'margin-right',
+			'margin-bottom',
+			'margin-left'
+		],
+		fixture: 'empty',
+		geometry: {
+			mockupOrigin: '.sidebar',
+			appOrigin: 'app-sidebar',
+			axes: ['x', 'y', 'width', 'height']
+		}
 	},
 	{
 		id: 'sidebar-tagline',
@@ -39,8 +274,22 @@ export const parityMap: ParityEntry[] = [
 		mockupSelector: '.sidebar .tagline',
 		appRoute: '/data',
 		appSelector: 'app-sidebar .tagline',
-		properties: ['font-size', 'font-weight', 'color'],
-		knownDrift: 'scaffolding-visual-remediation'
+		properties: [
+			'font-size',
+			'font-weight',
+			'color',
+			'line-height',
+			'margin-top',
+			'margin-right',
+			'margin-bottom',
+			'margin-left'
+		],
+		fixture: 'empty',
+		geometry: {
+			mockupOrigin: '.sidebar',
+			appOrigin: 'app-sidebar',
+			axes: ['x', 'y', 'width', 'height']
+		}
 	},
 	{
 		id: 'sidebar-project',
@@ -48,8 +297,23 @@ export const parityMap: ParityEntry[] = [
 		mockupSelector: '.sidebar .project',
 		appRoute: '/data',
 		appSelector: 'app-sidebar .project',
-		properties: ['background-color', 'border-top-color', 'border-radius'],
-		knownDrift: 'scaffolding-visual-remediation'
+		properties: [
+			'display',
+			'grid-template-areas',
+			'background-color',
+			'border-top-color',
+			'border-radius',
+			'padding-top',
+			'padding-right',
+			'padding-bottom',
+			'padding-left'
+		],
+		fixture: 'empty',
+		geometry: {
+			mockupOrigin: '.sidebar',
+			appOrigin: 'app-sidebar',
+			axes: ['x', 'y', 'width', 'height']
+		}
 	},
 	{
 		id: 'step-links',
@@ -57,8 +321,21 @@ export const parityMap: ParityEntry[] = [
 		mockupSelector: '.step:nth-child(2) .step-link',
 		appRoute: '/data',
 		appSelector: 'app-sidebar li.step:nth-child(2) a',
-		properties: ['font-size', 'font-weight', 'color'],
-		knownDrift: 'scaffolding-visual-remediation'
+		properties: [
+			'font-size',
+			'font-weight',
+			'color',
+			'display',
+			'grid-template-areas',
+			'align-items',
+			'text-decoration-line'
+		],
+		fixture: 'empty',
+		geometry: {
+			mockupOrigin: '.sidebar',
+			appOrigin: 'app-sidebar',
+			axes: ['x', 'y', 'width', 'height']
+		}
 	},
 	{
 		id: 'step-current',
@@ -66,8 +343,8 @@ export const parityMap: ParityEntry[] = [
 		mockupSelector: '.step[aria-current] .step-link',
 		appRoute: '/data',
 		appSelector: 'app-sidebar li.step:nth-child(1) a',
-		properties: ['font-weight', 'color'],
-		knownDrift: 'scaffolding-visual-remediation'
+		properties: ['font-weight', 'color', 'background-color'],
+		fixture: 'empty'
 	},
 	{
 		id: 'sidebar-footer',
@@ -79,7 +356,12 @@ export const parityMap: ParityEntry[] = [
 		deviations: {
 			color: { value: 'rgb(109, 96, 86)', register: 'A11Y-02' }
 		},
-		knownDrift: 'scaffolding-visual-remediation'
+		fixture: 'empty',
+		geometry: {
+			mockupOrigin: '.sidebar',
+			appOrigin: 'app-sidebar',
+			axes: ['x', 'y', 'width', 'height']
+		}
 	},
 	{
 		id: 'main',
@@ -87,14 +369,21 @@ export const parityMap: ParityEntry[] = [
 		mockupSelector: 'main',
 		appRoute: '/data',
 		appSelector: 'main',
-		properties: ['margin-left', 'padding-top'],
-		knownDrift: 'scaffolding-visual-remediation'
+		properties: [
+			'margin-left',
+			'padding-top',
+			'padding-right',
+			'padding-bottom',
+			'padding-left',
+			'min-height',
+			'box-sizing'
+		]
 	},
 	{
 		id: 'page-header-h1',
 		mockupPage: '00_first-load.html',
 		mockupSelector: '.page-header > h1',
-		appRoute: '/data',
+		appRoute: '/results',
 		appSelector: '.page-header > h1',
 		properties: ['font-size', 'font-weight', 'color']
 	},
@@ -102,7 +391,7 @@ export const parityMap: ParityEntry[] = [
 		id: 'page-header-p',
 		mockupPage: '00_first-load.html',
 		mockupSelector: '.page-header > p',
-		appRoute: '/data',
+		appRoute: '/results',
 		appSelector: '.page-header > p',
 		properties: ['font-size', 'color']
 	},
@@ -113,13 +402,15 @@ export const parityMap: ParityEntry[] = [
 		appRoute: '/data',
 		appSelector: 'app-welcome-modal dialog',
 		properties: [
+			'width',
+			'height',
+			'min-height',
 			'background-color',
 			'border-top-color',
 			'border-radius',
 			'box-shadow',
 			'padding-top'
-		],
-		knownDrift: 'scaffolding-visual-remediation'
+		]
 	},
 	{
 		id: 'btn-primary',
@@ -200,6 +491,74 @@ export const parityMap: ParityEntry[] = [
 			'text-align'
 		]
 	},
+	...(
+		[
+			[
+				'header',
+				'.modal-header',
+				'.modal-header',
+				['display', 'justify-content', 'align-items', 'padding-bottom']
+			],
+			[
+				'title',
+				'.modal-header h1',
+				'.modal-header h2',
+				['margin-top', 'margin-bottom', 'font-size', 'font-weight', 'line-height', 'color']
+			],
+			[
+				'lead',
+				'dialog.modal > h2',
+				'p.lead',
+				['margin-top', 'margin-bottom', 'font-size', 'font-weight', 'line-height', 'color']
+			],
+			[
+				'body',
+				'dialog.modal > p',
+				'p.body',
+				['margin-top', 'margin-bottom', 'font-size', 'font-weight', 'line-height', 'color']
+			],
+			[
+				'action',
+				'dialog.modal > button',
+				'.modal-actions button',
+				[
+					'width',
+					'height',
+					'margin-top',
+					'margin-bottom',
+					'font-size',
+					'font-weight',
+					'line-height',
+					'color'
+				]
+			],
+			[
+				'badge',
+				'.badge-amber',
+				'.chiclet-amber',
+				[
+					'background-color',
+					'font-size',
+					'font-weight',
+					'letter-spacing',
+					'text-transform',
+					'color'
+				]
+			]
+		] satisfies [string, string, string, string[]][]
+	).map(
+		([id, mockupSelector, selector, properties]): ParityEntry => ({
+			id: `welcome-${id}`,
+			mockupPage: '00_first-load.html',
+			mockupSelector,
+			appRoute: '/data',
+			appSelector: `app-welcome-modal ${selector}`,
+			properties,
+			...(id === 'badge'
+				? { deviations: { color: { value: 'rgb(51, 41, 35)', register: 'A11Y-04' } } }
+				: {})
+		})
+	),
 	{
 		id: 'upload-file-picker',
 		mockupPage: '01-3_upload-dataset.html',

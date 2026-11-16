@@ -14,7 +14,8 @@ test-results/
 playwright-report/
 blob-report/
 playwright/.cache/
-storybook-static/
+/storybook-static/
+/custom-elements.json
 
 # Logs
 logs/

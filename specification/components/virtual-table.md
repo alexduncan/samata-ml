@@ -102,7 +102,7 @@ Structure follows draft `specification/mockups/ui-scaffold/drafts/01-6_virtual-t
 
 ## 9. Stories
 
-Deferred pending Storybook installation (Known gap 5). Acceptance tests run via Playwright in `tests/virtual-table.e2e.ts`.
+Feature-story migration remains a separate follow-up; the installed Storybook workbench currently covers primitives and shell. Acceptance tests continue through Playwright in `tests/virtual-table.e2e.ts`. This boundary does not change the table contract, tier or styles.
 
 ## 10. Files
 

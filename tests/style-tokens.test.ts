@@ -2,12 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
 
-export const KNOWN_DRIFT = [
-	'src/app.ts',
-	'src/features/navigation/app-sidebar.ts',
-	'src/features/navigation/app-content-modal.ts',
-	'src/features/onboarding/app-welcome-modal.ts'
-];
+export const KNOWN_DRIFT: string[] = [];
 
 const KNOWN_DRIFT_SET = new Set(KNOWN_DRIFT);
 
@@ -104,13 +99,6 @@ export function checkLiteralColours(filePath: string): Array<{ issue: string; li
 
 		// 2. In TypeScript styles (src/**/*.ts), check for literal colours in colour declarations
 		if (filePath.endsWith('.ts')) {
-			// Exception per visual-design.md §2: backdrop token to be added in remediation
-			if (
-				filePath === 'src/styles/dialog.styles.ts' &&
-				lineText.includes('rgb(30 25 22 / 55%)')
-			) {
-				return;
-			}
 			const declMatch = lineText.match(
 				/^\s*(color|background(-color)?|border(-color)?|outline(-color)?)\s*:\s*([^;]+);/
 			);
@@ -161,7 +149,35 @@ export function checkStyleInTemplate(filePath: string): Array<{ issue: string; l
 	return violations;
 }
 
-describe('Static Style and Token Guards (TOK-1 .. TOK-4)', () => {
+function cssText(content: string, extension: '.css' | '.ts'): string {
+	const styles =
+		extension === '.css'
+			? content
+			: [...content.matchAll(/\bcss\s*`((?:\\[\s\S]|[^`])*)`/g)]
+					.map((match) => match[1])
+					.join('\n');
+	return styles
+		.replace(/\/\*[\s\S]*?\*\//g, ' ')
+		.replace(/"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'/g, '');
+}
+
+function physicalDeclarations(content: string, extension: '.css' | '.ts'): string[] {
+	const styles = cssText(content, extension);
+	const properties =
+		/(?:^|[;{}])\s*((?:left|right)|(?:(?:scroll-)?(?:margin|padding)|border)-(?:left|right)(?:-(?:width|style|color))?|border-(?:top|bottom)-(?:left|right)-radius)\s*:/gm;
+	const values = /(?:^|[;{}])\s*(?:text-align|float|clear)\s*:\s*(?:left|right)\b/gm;
+	return [...styles.matchAll(properties), ...styles.matchAll(values)].map((match) =>
+		match[0].trim()
+	);
+}
+
+function forbiddenCss(content: string, extension: '.css' | '.ts'): string[] {
+	return [...cssText(content, extension).matchAll(/!\s*important\b|:host-context\s*\(/gi)].map(
+		(match) => match[0]
+	);
+}
+
+describe('Static Style and Token Guards (TOK-1 .. TOK-6)', () => {
 	const globalTokens = getRootTokens();
 	const allFiles = [...getSourceFiles('src', ['.ts']), ...getSourceFiles('css', ['.css'])];
 
@@ -243,16 +259,69 @@ describe('Static Style and Token Guards (TOK-1 .. TOK-4)', () => {
 		expect(failures.length).toBe(0);
 	});
 
-	it('TOK-4: all files in KNOWN_DRIFT fail at least one guard (drift files must not pass)', () => {
-		for (const file of KNOWN_DRIFT) {
-			const unknownTokens = checkUnknownTokens(file, globalTokens);
-			const literalColours = checkLiteralColours(file);
-			const styleInTemplate = checkStyleInTemplate(file);
+	it('TOK-4: the repaired shell has no token exemptions', () => {
+		expect(KNOWN_DRIFT).toEqual([]);
+	});
 
-			const totalViolations =
-				unknownTokens.length + literalColours.length + styleInTemplate.length;
+	it('TOK-5: CSS declarations use logical inline directions', () => {
+		const failures = allFiles
+			.filter((file) => !KNOWN_DRIFT_SET.has(file))
+			.flatMap((file) =>
+				physicalDeclarations(
+					fs.readFileSync(file, 'utf8'),
+					file.endsWith('.css') ? '.css' : '.ts'
+				).map((issue) => `${file}: ${issue}`)
+			);
+		expect(failures).toEqual([]);
+	});
 
-			expect(totalViolations).toBeGreaterThan(0);
-		}
+	it('TOK-5: rejects physical style probes and accepts non-CSS scroll coordinates', () => {
+		expect(
+			physicalDeclarations('a { margin-left: 1rem; right: 0; text-align: left; }', '.css')
+		).toHaveLength(3);
+		expect(
+			physicalDeclarations(
+				'const styles = css`a { border-right-color: var(--stone-700); }`;',
+				'.ts'
+			)
+		).toHaveLength(1);
+		expect(
+			physicalDeclarations(
+				'const position = { top: 1, left: 2 }; const label = "right: 0;";',
+				'.ts'
+			)
+		).toEqual([]);
+		expect(
+			physicalDeclarations(
+				'a { margin-inline-start: 1rem; content: "x; left: 1px;"; /* right: 1px; */ }',
+				'.css'
+			)
+		).toEqual([]);
+	});
+
+	it('TOK-6: styles contain neither important overrides nor host-context selectors', () => {
+		const failures = allFiles
+			.filter((file) => !KNOWN_DRIFT_SET.has(file))
+			.flatMap((file) =>
+				forbiddenCss(
+					fs.readFileSync(file, 'utf8'),
+					file.endsWith('.css') ? '.css' : '.ts'
+				).map((issue) => `${file}: ${issue}`)
+			);
+		expect(failures).toEqual([]);
+	});
+
+	it('TOK-6: rejects forbidden CSS probes and ignores comments and JavaScript strings', () => {
+		expect(
+			forbiddenCss(
+				'const styles = css`:host-context(.dark) { display: block !important; }`;',
+				'.ts'
+			)
+		).toHaveLength(2);
+		expect(forbiddenCss('a { display: block ! important; }', '.css')).toHaveLength(1);
+		expect(forbiddenCss('const text = "!important :host-context()";', '.ts')).toEqual([]);
+		expect(
+			forbiddenCss('/* !important :host-context() */ a { content: "!important"; }', '.css')
+		).toEqual([]);
 	});
 });

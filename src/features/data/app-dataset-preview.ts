@@ -1,6 +1,7 @@
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { buttonStyles } from '../../styles/button.styles';
+import { headingFocusStyles } from '../../styles/heading-focus.styles';
 import '../../components/ui-virtual-table';
 import type {
 	UiVirtualTable,
@@ -37,6 +38,7 @@ const MAX_PREVIEW_ROWS = 10_000_000;
 @customElement('app-dataset-preview')
 export class AppDatasetPreview extends LitElement {
 	static override readonly styles = [
+		headingFocusStyles,
 		buttonStyles,
 		css`
 			:host {
@@ -197,6 +199,20 @@ export class AppDatasetPreview extends LitElement {
 	}
 
 	/**
+	 * Focuses this preview's heading after rendering, unless cancelled or disconnected.
+	 *
+	 * @param signal - Cancels a superseded navigation's focus request.
+	 */
+	async focusHeading(signal: AbortSignal): Promise<void> {
+		if (signal.aborted || !this.isConnected) return;
+		await this.updateComplete;
+		if (signal.aborted || !this.isConnected) return;
+		this.renderRoot.querySelector<HTMLElement>('.page-header > h1')?.focus({
+			preventScroll: true
+		});
+	}
+
+	/**
 	 * Restores logical scroll position in the underlying virtual table.
 	 */
 	async restorePosition(position: { top: number; left: number }): Promise<void> {
@@ -329,7 +345,7 @@ export class AppDatasetPreview extends LitElement {
 
 		return html`
 			<header class="page-header">
-				<h1>Preview Dataset: ${name}</h1>
+				<h1 tabindex="-1">Preview Dataset: ${name}</h1>
 				<p>
 					${formatCount(totalRows)} rows &nbsp;|&nbsp; ${formatCount(columnsCount)}
 					columns

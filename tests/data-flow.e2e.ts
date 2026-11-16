@@ -73,7 +73,7 @@ test.describe('Data Flow, Route & Scroll Integration (DATA-FLOW-1 .. DATA-FLOW-3
 		await expect(aboutModal).toBeVisible();
 
 		// Close modal and ensure underlay and focus are intact
-		await aboutModal.locator('button.close-btn').click();
+		await aboutModal.locator('button.btn-icon').click();
 		await expect(aboutModal).not.toBeVisible();
 		await expect(preview).toBeVisible();
 	});
@@ -89,7 +89,7 @@ test.describe('Data Flow, Route & Scroll Integration (DATA-FLOW-1 .. DATA-FLOW-3
 		await expect(preview).toBeVisible({ timeout: 10000 });
 
 		// Verify sidebar step 1 shows dataset details
-		const sidebarStep = page.locator('app-sidebar li.step:has-text("Load Data")');
+		const sidebarStep = page.locator('app-sidebar a[href="/data"]');
 		await expect(sidebarStep).toContainText('Iris Flower Species');
 
 		// 1. Click Change Dataset -> modal opens

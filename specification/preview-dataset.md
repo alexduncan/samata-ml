@@ -47,4 +47,5 @@ $appState.get().dataset !== null && $appState.get().data.mode === 'preview';
 
 - On scroll, logical table position is recorded in the active route's scroll snapshot under `regions['data-table'] = { top, left }`.
 - When navigating back or reloading, `restoreScroll` awaits `app-data-view.whenSettled()`, verifies matching viewport width, and delegates restoration to `previewEl.restorePosition(tableRegion)`.
+- A router-requested heading focus uses `app-data-view.focusHeading(signal)`, which delegates to `app-dataset-preview.focusHeading(signal)` in preview mode. Each owner awaits only its own Lit render, checks cancellation/connection and focuses its own h1 with `preventScroll: true`. This is independent of metadata/row readiness, `whenSettled()` and column-header focus. Later loading/ready/error updates do not request focus again.
 - Selecting a column opens `<app-column-details>` without stealing document scroll. Closing the inspector restores focus to the column header.

@@ -1,6 +1,6 @@
 # Specification TODO
 
-**Updated:** 2026-11-12
+**Updated:** 2026-11-16
 
 Open questions and missing specification found by reviewing every Markdown and HTML file in `specification/`. Each item names its source. These are **decisions for a human**: agents must not resolve them silently. When one is answered, update the source spec and delete the item here. Plans can cite items by ID (e.g. "decides TODO-05").
 
@@ -52,9 +52,9 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 ### [components/button.md §12](components/button.md)
 
-- **TODO-25** — Q1 primary background token: [card.md](components/card.md) Q1 answered `--surface: #fff`, so adopt that in button.md.
-- **TODO-26** — Q2–Q8: focus-ring token; disabled colours; hover transition (add `color`? is 500 ms intended?); long labels wrap or not; a pressed `:active` style; hover only under `@media (hover: hover)`; how many primary buttons a view may have.
-- **TODO-27** — card.md Q2 found that button.md's claim that `--stone-600` on `--stone-50` reaches 4.5:1 is wrong (3.97:1). Recheck it.
+- **TODO-25** — _Resolved:_ Primary background uses the agreed surface token; button Q1 is answered.
+- **TODO-26** — Q3–Q8 remain open: disabled colours; hover transition (add `color`? is 500 ms intended?); long labels wrap or not; a pressed `:active` style; hover only under `@media (hover: hover)`; how many primary buttons a view may have. Q2's shared focus-ring token is answered and implemented.
+- **TODO-27** — _Resolved:_ Default button text uses stone-700 on stone-50 (5.88:1, A11Y-01), with strict three-browser axe and BTN-AC-1 acceptance. Q3–Q8 remain separate policy questions.
 - **TODO-28** — _Resolved for Step 1:_ No `.btn-red` style primitive added; Change Dataset opens a confirmation dialog with a `.btn-danger` confirm button.
 
 ### [components/card.md §12](components/card.md)
@@ -79,18 +79,16 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 ## 3. Components with no spec
 
-[app-state-and-navigation §3](app-state-and-navigation.md) says each component needs a spec in `components/` before implementation (COMPONENTS.md §12). None of these has one:
+[COMPONENTS.md §12](COMPONENTS.md#12-component-spec-template) defines the component-spec format. Closed shell contracts are documented; the remaining feature/pattern backlog follows.
 
-- **TODO-34** — Transient dialogs for datasheets and CSV upload, and `app-column-details`, delivered in Step 1. Presentational card elements (`app-model-card`) and description dialog (`app-model-description-dialog`) delivered in Step 3. `<app-sidebar>`, `<app-welcome-modal>`, and `<app-content-modal>` remain owned by storybook-component-library.
+- **TODO-34** — _Resolved for shell/cards/column details:_ [sidebar](components/sidebar.md), [welcome](components/welcome-modal.md), [content modal/dialog](components/content-modal.md), [card](components/card.md) and [sidepanel](components/sidepanel.md) have specs. Separate transient datasheet/upload/model-description specs remain backlog; existing behaviour remains covered by feature plans/tests. Feature stories are a follow-up, not a missing Storybook installation.
 - **TODO-35** — Patterns that appear in the mockup CSS but have no spec:
     - `.notification` (`notifications.css`) — alert variant implemented in `src/styles/notification.styles.ts` and adopted globally.
-    - The badge or chiclet. Its rules live inside card.md; consider moving them to `components/chiclet.md`.
+    - _Resolved:_ [chiclet](components/chiclet.md), [shared dialog](components/dialog.md), [page header](components/page-header.md) and [sidebar workflow/status](components/sidebar.md) have closed specs and scoped stories/acceptance.
     - The upload dropzone (`dropzone.css`) — used in `app-upload-dataset-dialog`.
-    - The modal and dialog styles (`modal.css`) — used in Step 1 dialogs.
-    - The sidebar step list (`steps.css`, `sidebar.css`).
     - The data tables on `/target` and `/models` (`table.css`) — table style module implemented in `src/styles/table.styles.ts` and adopted globally.
     - The `.train-step` sections (`train-model.css`) — implemented in `src/styles/train-model.styles.ts` and adopted globally.
-    - The status dot (`dot.css`).
+    - Any general status-dot primitive beyond the sidebar-local implementation.
     - The training progress bar.
     - The histogram chart.
 
@@ -124,9 +122,9 @@ Open questions and missing specification found by reviewing every Markdown and H
 ## 8. Accessibility (WCAG 2.2 AA)
 
 - **TODO-53 — Mockup styles WCAG 2.2 AA violations** ([mockups/ui-scaffold/css/](mockups/ui-scaffold/css/)):
-  The CSS styles in `specification/mockups/ui-scaffold/` (and mirrored into `css/`) contain several violations of WCAG 2.2 Level AA requirements that require remediation before production release:
+  Normative mockup CSS still contains the defects below; it is not imported or mirrored wholesale into production. Shared default buttons, shell footer/current state, amber chiclets, named headings/dialogs, keyboard outlines and sidebar status/motion are repaired in the app under the visual-design registers. Remaining feature findings include the 24 exact data/model contrast elements in `tests/a11y-feature-findings.ts`, separately owned in HUMAN.md. This list remains open for feature repairs and human mockup cleanup:
     1. **SC 1.4.3 Contrast (Minimum) — Text**:
-        - `.badge-amber` (`badges.css`): White text (`#ffffff`) on `--amber-500` (`#f59e0b`) background achieves only a 2.15:1 contrast ratio (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-900` (`#332923`) to achieve 10.36:1 contrast (consistent with `chiclet.styles.ts`).
+        - `.badge-amber` (`badges.css`): White on amber-500 is 2.15:1. App chiclet/welcome uses stone-900 (6.60:1, A11Y-04); mockup cleanup remains human work.
         - `.btn` default secondary button (`button.css`): Text colour `--stone-600` (`#887b71`) on `--stone-50` (`#fcfbfa`) achieves only 3.97:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (`#6d6056`) for 5.88:1 contrast.
         - `.card-text` (`card.css`): Text colour `--stone-600` (`#887b71`) on `#fff` achieves only 4.10:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (`#6d6056`, 6.07:1) or `--stone-800` (`#4d413b`, 9.84:1), as implemented in `card.styles.ts`.
         - `.file-picker-button` (`base.css`): Text colour `--stone-600` (`#887b71`) on `--stone-150` (`#f3f2ef`) achieves 3.66:1, and on hover with `--blue-100` (`#dbeafe`) achieves 3.36:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (5.42:1) or `--stone-800` (8.79:1).

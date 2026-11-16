@@ -1,11 +1,16 @@
 import { expect, test } from '@playwright/test';
 import { parityMap, type ParityEntry } from './visual-parity/map';
+import { prepareSidebarFixture, prepareSidebarReference } from './visual-parity/fixtures';
 
 test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 	test.use({ viewport: { width: 1440, height: 900 } });
 
 	test.beforeEach(async ({ browserName }) => {
 		test.skip(browserName !== 'chromium', 'Visual parity is asserted on Chromium only');
+	});
+
+	test('PARITY-contract: mapped surfaces have no drift exemptions', () => {
+		expect(parityMap.filter((entry) => entry.knownDrift)).toEqual([]);
 	});
 
 	for (const entry of parityMap) {
@@ -22,11 +27,13 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 			await mockupPage.goto(
 				`http://localhost:3333/files/ui-scaffold/${encodeURIComponent(entry.mockupPage)}?clean=1`
 			);
+			if (entry.fixture) await prepareSidebarReference(mockupPage, entry.fixture);
 			const mockupEl = mockupPage.locator(entry.mockupSelector).first();
 			await mockupEl.waitFor({ state: 'attached', timeout: 5000 });
 
 			// Open app route on app server (https://localhost:3000) with fresh state
 			await page.goto(entry.appRoute);
+			if (entry.fixture) await prepareSidebarFixture(page, entry.fixture);
 			if (entry.id.startsWith('preview-')) {
 				const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
 				try {
@@ -244,6 +251,29 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 				return result;
 			}, entry.properties);
 
+			if (entry.geometry) {
+				const appBox = await appEl.boundingBox();
+				const referenceBox = await mockupEl.boundingBox();
+				const appOrigin = await page.locator(entry.geometry.appOrigin).boundingBox();
+				const referenceOrigin = await mockupPage
+					.locator(entry.geometry.mockupOrigin)
+					.boundingBox();
+				expect(appBox).not.toBeNull();
+				expect(referenceBox).not.toBeNull();
+				expect(appOrigin).not.toBeNull();
+				expect(referenceOrigin).not.toBeNull();
+				for (const axis of entry.geometry.axes) {
+					const actual =
+						appBox![axis] - (axis === 'x' || axis === 'y' ? appOrigin![axis] : 0);
+					const expected =
+						referenceBox![axis] -
+						(axis === 'x' || axis === 'y' ? referenceOrigin![axis] : 0);
+					expect(
+						Math.abs(actual - expected),
+						`${entry.id} relative ${axis}`
+					).toBeLessThanOrEqual(1);
+				}
+			}
 			await mockupPage.close();
 
 			// Compare properties
@@ -262,4 +292,91 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 			}
 		});
 	}
+
+	test('SIDE-AC-10: paired empty and populated sidebar reference review', async ({
+		page,
+		context
+	}, testInfo) => {
+		for (const fixture of ['empty', 'models'] as const) {
+			await prepareSidebarFixture(page, fixture);
+			const reference = await context.newPage();
+			await prepareSidebarReference(reference, fixture);
+			await reference.screenshot({
+				path: testInfo.outputPath(`sidebar-${fixture}-reference.png`)
+			});
+			await page.screenshot({ path: testInfo.outputPath(`sidebar-${fixture}-app.png`) });
+			await expect(page.locator('app-sidebar')).toHaveScreenshot(`sidebar-${fixture}.png`, {
+				animations: 'disabled',
+				caret: 'hide',
+				maxDiffPixels: 0
+			});
+			await reference.close();
+		}
+	});
+
+	test('SIDE-AC-11: a temporary workflow gap fails the blocking geometry assertion and restoration passes', async ({
+		page,
+		context
+	}) => {
+		await prepareSidebarFixture(page, 'empty');
+		const reference = await context.newPage();
+		await prepareSidebarReference(reference, 'empty');
+		const referenceBox = await reference.locator('.sidebar .steps').boundingBox();
+		const assertHeight = async () => {
+			const actual = await page.locator('app-sidebar .steps').boundingBox();
+			expect(
+				Math.abs(actual!.height - referenceBox!.height),
+				'joined workflow height'
+			).toBeLessThanOrEqual(1);
+		};
+		await assertHeight();
+		await page.locator('app-sidebar').evaluate((host) => {
+			const sheet = new CSSStyleSheet();
+			sheet.replaceSync('.steps { display: flex; flex-direction: column; gap: 4px; }');
+			host.shadowRoot!.adoptedStyleSheets = [...host.shadowRoot!.adoptedStyleSheets, sheet];
+		});
+		try {
+			await expect(assertHeight()).rejects.toThrow('joined workflow height');
+		} finally {
+			await page.locator('app-sidebar').evaluate((host) => {
+				host.shadowRoot!.adoptedStyleSheets = host.shadowRoot!.adoptedStyleSheets.slice(
+					0,
+					-1
+				);
+			});
+		}
+		await assertHeight();
+		await reference.close();
+	});
+
+	test('SIDE-AC-10: hover matches the reference and focus remains inset in both directions', async ({
+		page,
+		context
+	}) => {
+		await prepareSidebarFixture(page, 'empty');
+		const reference = await context.newPage();
+		await prepareSidebarReference(reference, 'empty');
+		const actual = page.locator('app-sidebar .step:nth-child(2) .step-link');
+		const expected = reference.locator('.sidebar .step:nth-child(2) .step-link');
+		await actual.hover();
+		await expected.hover();
+		for (const property of ['color', 'background-color', 'border-top-color']) {
+			await expect(actual).toHaveCSS(
+				property,
+				await expected.evaluate(
+					(el, prop) => getComputedStyle(el).getPropertyValue(prop),
+					property
+				)
+			);
+		}
+		for (const direction of ['ltr', 'rtl']) {
+			await page.evaluate((dir) => (document.documentElement.dir = dir), direction);
+			await actual.focus();
+			await page.keyboard.press('Tab');
+			await page.keyboard.press('Shift+Tab');
+			await expect(actual).toHaveCSS('outline-width', '2px');
+			await expect(actual).toHaveCSS('outline-offset', '-2px');
+		}
+		await reference.close();
+	});
 });

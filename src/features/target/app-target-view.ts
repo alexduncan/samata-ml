@@ -5,6 +5,7 @@ import { $appState, confirmDiscardModels, setTarget } from '../../stores/app.sto
 import { $datasetResources, loadDatasetResources } from '../../stores/dataset.store';
 import { buttonStyles } from '../../styles/button.styles';
 import { dialogStyles } from '../../styles/dialog.styles';
+import { headingFocusStyles } from '../../styles/heading-focus.styles';
 import { notificationStyles } from '../../styles/notification.styles';
 import { tableStyles } from '../../styles/table.styles';
 import type { ColumnStats, DatasetMetadata } from '../../types/dataset';
@@ -22,6 +23,7 @@ import {
 @customElement('app-target-view')
 export class AppTargetView extends LitElement {
 	static override readonly styles = [
+		headingFocusStyles,
 		dialogStyles,
 		buttonStyles,
 		tableStyles,
@@ -171,6 +173,20 @@ export class AppTargetView extends LitElement {
 				this.loadPromise = loadDatasetResources(datasetId);
 			}
 		}
+	}
+
+	/**
+	 * Focuses this route's heading after rendering, unless cancelled or disconnected.
+	 *
+	 * @param signal - Cancels a superseded navigation's focus request.
+	 */
+	async focusHeading(signal: AbortSignal): Promise<void> {
+		if (signal.aborted || !this.isConnected) return;
+		await this.updateComplete;
+		if (signal.aborted || !this.isConnected) return;
+		this.renderRoot.querySelector<HTMLElement>('.page-header > h1')?.focus({
+			preventScroll: true
+		});
 	}
 
 	/**

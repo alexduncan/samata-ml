@@ -1,29 +1,77 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
-
-/**
- * Known accessibility violations to be fixed by the follow-up
- * remediation plan (scaffolding-visual-remediation).
- */
-export const KNOWN_A11Y_DRIFT: string[] = ['color-contrast'];
+import { featureA11yFindings } from './a11y-feature-findings';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
 async function assertNoUnexpectedViolations(page: import('@playwright/test').Page) {
 	const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
-
-	const unexpectedViolations = results.violations.filter((v) => !KNOWN_A11Y_DRIFT.includes(v.id));
-	const knownViolations = results.violations.filter((v) => KNOWN_A11Y_DRIFT.includes(v.id));
-
-	if (KNOWN_A11Y_DRIFT.length > 0 && knownViolations.length > 0) {
-		expect(knownViolations.length).toBeGreaterThan(0);
+	const unexpected = [];
+	for (const violation of results.violations) {
+		for (const node of violation.nodes) {
+			const known = featureA11yFindings.find(
+				(finding) =>
+					finding.rule === violation.id &&
+					(JSON.stringify(finding.target) === JSON.stringify(node.target) ||
+						finding.alternateTargets?.some(
+							(target) => JSON.stringify(target) === JSON.stringify(node.target)
+						))
+			);
+			if (known) {
+				const canonical = page.locator(known.target[0]!.join(' '));
+				await expect(canonical, known.owner).toHaveCount(1);
+				const reportedPath = node.target[0];
+				if (Array.isArray(reportedPath)) {
+					// Firefox's axe selector can omit a qualifying attribute and match
+					// several cells. Bind its exact HTML snapshot to the unique canonical
+					// element rather than allowing every match of that selector.
+					expect(
+						await canonical.evaluate(
+							(element, selector) => element.matches(selector),
+							reportedPath.at(-1)!
+						),
+						known.owner
+					).toBe(true);
+					const actual = (await canonical.evaluate((element) => element.outerHTML))
+						.replace(/<!--[\s\S]*?-->/g, '')
+						.replace(/\s+/g, ' ')
+						.trim();
+					const reported = node.html
+						.replace(/<!--[\s\S]*?-->/g, '')
+						.replace(/\s+/g, ' ')
+						.trim();
+					expect(actual, known.owner).toBe(reported);
+				}
+				expect(
+					node.any.find((check) => check.id === known.rule)?.data,
+					known.owner
+				).toMatchObject(known.data);
+			} else
+				unexpected.push({
+					rule: violation.id,
+					target: node.target,
+					summary: node.failureSummary
+				});
+		}
 	}
 
 	expect(
-		unexpectedViolations,
-		`Unexpected a11y violations found: ${JSON.stringify(unexpectedViolations, null, 2)}`
+		unexpected,
+		`Unexpected accessibility violations found: ${JSON.stringify(unexpected, null, 2)}`
 	).toEqual([]);
 }
+
+test('A11Y-E2E-CONTENT: the ready reserved-route dialog passes scoped WCAG checks including contrast', async ({
+	page
+}) => {
+	await page.goto('/privacy');
+	await expect(page.locator('app-content-modal h2')).toHaveText('Privacy Policy');
+	const results = await new AxeBuilder({ page })
+		.include('app-content-modal')
+		.withTags(AXE_TAGS)
+		.analyze();
+	expect(results.violations).toEqual([]);
+});
 
 test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 	test.describe.configure({ mode: 'serial' });

@@ -1,6 +1,6 @@
 # Architecture Specification: Application State & Navigation (Hybrid Router + Store)
 
-**Status:** draft — open questions in §12 (Q1b, Q1c, Q2 and Q4 answered). Implemented: route parsing and types, router history and titles, reserved-route modals, availability predicates, §4.3 blocked reasons, §4.4 sidebar aria-current, §5.1 click interception (including shadow roots), §5.3 underlayPath, §5.6 focus rules, §6.1/§6.3/§6.4 unchanged-edit rule and action validation, §8.4 scroll saving and invalidation, the §10 store actions, and scroll keys and the width rule. Target: route views, the Compare Results control, confirm dialogs, whenSettled (§5.5, §8.4), dynamic view mounting, the training lock and the service worker. Code that differs from this spec is listed in [Known gaps](README.md#known-gaps) 14.
+**Status:** draft — open questions in §12 remain (Q1b, Q1c, Q2 and Q4 answered). Router/history/underlay/current links, shell components, cancellable owner-local heading focus, existing route-view whenSettled contracts and conformance actions/scroll rules are implemented. Later training/results, dynamic imports, training lock and service-worker behaviour remain target. Remaining storage/navigation delivery is listed in [Known gap](README.md#known-gaps) 14.
 
 > **History:** Replaces the previous five-step, single-FSM design (formerly `plans/finite-state-machine.md`; moved and renamed 2026-11-12).
 >
@@ -83,12 +83,12 @@ The layout has three regions plus overlays. There is **no `<app-root>` wrapper**
     transient modals      datasheet, upload, model description (no URL, not persisted)
 ```
 
-- **`<app-sidebar>`** (connected component): application title, `<nav aria-label="Workflow"><ol>` with the four steps, the list of models under step 3 (one link to `/models/{num}` per model, as in `mockups/ui-scaffold/03-2`), and the footer links to the reserved routes. Each step shows a summary of its choice once made (dataset name and size, target name and type) as in the scaffold.
-- **`<main>`** (native element): the router mounts the active route view here. Views are dynamically imported (ARCHITECTURE.md → code splitting).
-- **`<app-welcome-modal>`** (connected): shown when `onboarding.welcomeDismissed === false` and the current route is a workflow route. "Get Started" closes it and persists the flag. It has no URL and creates no history entry.
-- **`<app-content-modal>`** (connected): renders static Markdown content for a reserved route (§5.4).
+- **[`<app-sidebar>`](components/sidebar.md)** (connected): brand paragraph, Project h2, named workflow nav/ol, four steps, keyed sibling model links inside step 3 and reserved-route footer. The read-only computed `$sidebarState` projects dataset/counts, target/type, model/status and current-link values from app state and route; messages/formatting remain component-owned. No domain state is written.
+- **`<main>`** (native element): the shell mounts the active route view here; current route elements are statically imported. Dynamic imports remain target (ARCHITECTURE.md → code splitting).
+- **[`<app-welcome-modal>`](components/welcome-modal.md)** (connected): shown while undismissed on root/workflow routes. Get Started or native dismissal persists once; reserved-route hiding/disconnection suppresses the queued close and never dismisses onboarding. It has no URL or history entry.
+- **[`<app-content-modal>`](components/content-modal.md)** (connected): retains safe-content loading and route ownership, composing the store-free presentational `<app-content-dialog>` (§5.4).
 
-Component names above are proposals that follow the `app-` prefix rule in [COMPONENTS.md §1](COMPONENTS.md); each still needs its own component spec under `specification/components/` before implementation (COMPONENTS.md §3, §12).
+The three shell owners have closed component specs linked above and live in `src/features/shell/`. Their public API is tag-only; the content dialog's seven properties, typed labels and user-close event are specified separately in the same content spec. Main's current feature elements mount through `src/app.ts`; dynamic imports remain target architecture.
 
 ---
 
@@ -229,15 +229,15 @@ Notes:
 1. Parse `location.pathname`.
 2. Workflow route → mount its view (§5.5), restore its remembered scroll (§8.4).
 3. Reserved route → read `history.state.underlayPath` (fall back to the persisted resume path), ensure the underlay is mounted, open the modal.
-4. Arriving at a non-reserved route while a modal is open → call `dialog.close()` **without** triggering `closeReserved` (guard with an `isSyncingFromHistory` flag so `close` does not push or pop history again).
+4. Arriving at a non-reserved route while a modal is open synchronises/closes the child **without** user-close intent. Suppress its queued native close inside the component; a short-lived router history-sync flag cannot guard a later asynchronous event. No second push/pop occurs.
 5. Never call `pushState` from the `popstate` handler.
 
 ### 5.4 Reserved routes as modals
 
 - Content is rendered in a native `<dialog>` opened with `showModal()` (not `show()` or the `open` attribute). Invoker commands (`command="show-modal"`) are _not_ Baseline Widely available, so they are not used; the router opens the dialog from script. No `role="dialog"`, `aria-modal`, focus trap or `Esc` handler is added; the platform provides them.
-- The dialog is named with `aria-labelledby` pointing at its heading (`<h1>`, carrying the entry's `lang` and `dir` once loaded) and contains a visible, natively labelled close button. If the page fails to load, the dialog body displays an alert (`role="alert"`) while keeping the close button working.
+- The dialog is named with `aria-labelledby` pointing at its visible `<h2>`. Heading/body receive entry lang/dir only when ready. A native `.btn-icon` Close has translated aria-label and decorative SVG. Loading sets body aria-busy; error displays one labelled alert while Close stays usable.
 - Dismissal: `Esc` and the mobile back gesture (modal default) and the close button. Light-dismiss (`closedby="any"`) is permitted as progressive enhancement only (Safari lacks it).
-- Every dismissal path funnels into the dialog's `close` event, which calls `closeReserved()` per §5.2. This matters for the back gesture on Android, where the browser closes the dialog _instead of_ navigating: without the router calling `history.back()` the stale `/about` entry would be left on the stack.
+- Native user dismissal produces one `app-content-dialog-close` intent; the connected owner calls closeReserved only for the corresponding active reserved route (§5.2). Property/history-driven closing emits no intent. Route-keyed child instances and abort/sequence/path load guards prevent an old queued close or response from affecting a newer reserved route. This keeps native dismissal and the URL aligned without echoing Back/Forward navigation.
 - The page underneath is **not** scroll-locked with `overflow: hidden` / `position: fixed` on `html` or `body` (that would reset or jump the scroll position this spec is trying to preserve). Use `overscroll-behavior: contain` on `dialog:modal` and `overflow: hidden; overscroll-behavior: contain` on `dialog::backdrop`.
 - The underlay view stays mounted while the modal is open, so the workflow page's DOM, scroll position and focus return are unaffected.
 - A reload while a reserved route is open reopens the modal over the persisted resume path (§9.2). The reserved path itself is **never** written to persisted state.
@@ -252,14 +252,16 @@ Notes:
 
 - On every route change the router sets `document.title` to `samatā.ml | {Page}` (e.g. `samatā.ml | Train Models`, `samatā.ml | Model 3`, `samatā.ml | About`), so history entries are distinguishable in the browser's history list and by screen readers.
 - After a workflow route change initiated by the user, focus moves to the `<h1>` in `.page-header` (`tabindex="-1"`, `focus({ preventScroll: true })`). It does **not** move on hydration/reload or while restoring scroll, and never when `popstate` was caused by closing a modal (the dialog returns focus to its invoker itself).
+- The router decides whether to request focus. The shell consumes that request once and delegates it to the rendered route element's `focusHeading(signal)`; it aborts the previous pending request at every shell render, including route/data-mode replacement and reserved-route opening. Data, target, models overview and model builder each await their own Lit render, recheck cancellation/connection and query only their own heading. In preview mode data delegates to the nested preview's method, which performs the same checks. Native results-placeholder h1 uses the document-owned fallback. No shell query crosses Shadow DOM.
+- Focus readiness is independent of whenSettled, metadata/network/rows and the scroll-restoration algorithm. Ordinary resource renders, duplicate current links, hydration/reload and reserved open/close create no extra request. Already-aborted/disconnected calls resolve without action; removed targets cannot steal focus, and a new call after reattachment works. Loading/ready/error body updates do not refocus. The shared 2px token outline changes no normal heading geometry; preventScroll preserves document/table offsets while scroll restoration retains its independent decisions.
 
 ### 5.7 Hosting and asset URLs
 
 Because step URLs are real paths, deep links and reloads request e.g. `/models/3` from the server:
 
 - Production (`wrangler.jsonc`) already uses `"not_found_handling": "single-page-application"`; keep it.
-- The dev/static server (`scripts/static-server.ts`) falls back to `index.html` for any missing file. Acceptable for routes, but it also returns HTML for a missing `.js`/`.css`; restrict the fallback to extension-less paths.
-- `index.html` MUST reference assets with root-absolute URLs (`/styles.css`, `/app.js`). The current relative references (`styles.css`, `app.js`) break at `/models/3`.
+- The dev/static server (`scripts/static-server.ts`) falls back to index.html only for extension-less paths; missing script/style files return 404.
+- The index.html template references `/style.css` and `/app.js`; emitted production references retain root-absolute URLs with content hashes, including on nested model routes.
 - The Service Worker (ARCHITECTURE.md) MUST answer navigation requests for any workflow or reserved path with the cached `index.html` app shell.
 
 ---

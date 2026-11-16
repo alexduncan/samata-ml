@@ -24,9 +24,8 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		// 3. Verify sidebar reflects loaded dataset
 		const sidebarItem = page.locator('app-sidebar a[href="/data"]');
 		await expect(sidebarItem).toBeVisible();
-		await expect(page.locator('app-sidebar')).toContainText(
-			'Palmer Archipelago Penguins (344 rows, 8 cols)'
-		);
+		await expect(sidebarItem.locator('.step-value')).toHaveText('Palmer Archipelago Penguins');
+		await expect(sidebarItem.locator('.chiclet')).toHaveText(['344 rows', '8 columns']);
 
 		// 4. Verify virtual table column headers
 		const table = preview.locator('ui-virtual-table');
@@ -80,9 +79,8 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 			'Preview Dataset: Palmer Archipelago Penguins'
 		);
 		await expect(preview.locator('.page-header p')).toContainText('344 rows | 8 columns');
-		await expect(page.locator('app-sidebar')).toContainText(
-			'Palmer Archipelago Penguins (344 rows, 8 cols)'
-		);
+		await expect(sidebarItem.locator('.step-value')).toHaveText('Palmer Archipelago Penguins');
+		await expect(sidebarItem.locator('.chiclet')).toHaveText(['344 rows', '8 columns']);
 		await expect(
 			preview.locator('.table-row').first().locator('.table-cell').first()
 		).toHaveText('Adelie');

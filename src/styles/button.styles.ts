@@ -1,8 +1,8 @@
 import { css, type CSSResult } from 'lit';
 
 /**
- * Shared styles for standard and primary buttons (.btn, .btn-primary).
- * Follows specification/components/button.md §5.4.
+ * Shared native text-button (.btn, .btn-primary) and icon-button (.btn-icon) styles.
+ * Follows specification/components/button.md §5.
  */
 export const buttonStyles: CSSResult = css`
 	.btn {
@@ -12,7 +12,7 @@ export const buttonStyles: CSSResult = css`
 		border-block-end-width: 3px;
 		background-color: var(--stone-50);
 		padding: 0.5rem;
-		color: var(--stone-600);
+		color: var(--stone-700);
 		font-weight: 500;
 		font-size: 1rem;
 		font-family: inherit;
@@ -44,6 +44,31 @@ export const buttonStyles: CSSResult = css`
 			&:hover:not(:disabled) {
 				background-color: var(--blue-100);
 			}
+		}
+	}
+
+	.btn-icon {
+		cursor: pointer;
+		border: none;
+		border-radius: 0.5rem;
+		background-color: var(--stone-200);
+		padding: 0.5rem;
+		color: var(--stone-900);
+		line-height: 0;
+		font-family: inherit;
+
+		> svg {
+			display: block;
+			inline-size: 1.5rem;
+			block-size: 1.5rem;
+		}
+
+		&:hover {
+			background-color: var(--stone-300);
+		}
+		&:focus-visible {
+			outline: 2px solid var(--focus-ring);
+			outline-offset: 2px;
 		}
 	}
 

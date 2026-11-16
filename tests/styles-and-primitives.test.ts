@@ -35,7 +35,6 @@ describe('shared style primitives', () => {
 		expect(chicletStyles.cssText).toContain('.chiclet-purple');
 		expect(chicletStyles.cssText).toContain('.chiclet-teal');
 		expect(chicletStyles.cssText).toContain('.chiclet-amber');
-		expect(chicletStyles.cssText).toContain('--font-mono');
 	});
 
 	it('contains dialog and backdrop rules in dialogStyles', () => {

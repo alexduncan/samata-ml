@@ -10,29 +10,44 @@
 		"audit:mockups": "bun run scripts/audit-mockups.ts",
 		"test": "bun test",
 		"test:e2e": "playwright test",
+		"storybook:manifest": "custom-elements-manifest analyze",
+		"storybook": "bun run storybook:manifest && storybook dev --port 6006 --ci",
+		"storybook:build": "bun run storybook:manifest && storybook build --output-dir storybook-static",
+		"test:stories": "bun run storybook:manifest && vitest run --project storybook",
 		"typecheck": "tsc --noEmit",
 		"check": "bun run typecheck && bun test",
 		"format": "prettier --write",
 		"format:check": "prettier --check",
-		"plans:check": "python3 .agents/skills/planning/scripts/validate_plan.py",
-		"plans:task": "python3 .agents/skills/implementation/scripts/task_gate.py",
+		"plans:check": "python3 \"$HOME/.agents/skills/create-plan/scripts/validate_plan.py\"",
+		"plans:task": "python3 \"$HOME/.agents/skills/implement/scripts/task_gate.py\"",
 		"now": "date -u +%Y-%m-%dT%H:%M:%SZ"
 	},
 	"devDependencies": {
 		"@axe-core/playwright": "^4.14.0",
 		"@custom-elements-manifest/analyzer": "^0.10.4",
 		"@playwright/test": "^1.50.0",
+		"@storybook/addon-a11y": "10.6.7",
+		"@storybook/addon-docs": "10.6.7",
+		"@storybook/addon-vitest": "10.6.7",
+		"@storybook/web-components": "10.6.7",
+		"@storybook/web-components-vite": "10.6.7",
 		"@types/bun": "latest",
 		"@types/marked": "^6.0.0",
 		"@types/papaparse": "^5.5.2",
+		"@vitest/browser": "5.1.0",
+		"@vitest/browser-playwright": "5.1.0",
 		"eslint-plugin-tsdoc": "^0.5.4",
 		"fake-indexeddb": "6.2.6",
 		"gray-matter": "^4.0.3",
 		"happy-dom": "^17.1.6",
 		"marked": "^18.1.1",
+		"playwright": "1.65.0",
 		"prettier": "3.8.3",
 		"prettier-plugin-css-order": "^2.2.0",
-		"typescript": "^7.0.2"
+		"storybook": "10.6.7",
+		"typescript": "^7.0.2",
+		"vite": "7.3.8",
+		"vitest": "5.1.0"
 	},
 	"dependencies": {
 		"@nanostores/i18n": "^0.10.0",
@@ -42,5 +57,6 @@
 		"nanostores": "^0.11.4",
 		"papaparse": "^5.7.0",
 		"web-ml": "file:../web-ml"
-	}
+	},
+	"customElements": "custom-elements.json"
 }

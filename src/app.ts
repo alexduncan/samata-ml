@@ -1,12 +1,12 @@
 import { html, render } from 'lit';
-import './components/app-model-card';
+import './features/models/app-model-card';
 import './features/data/app-data-view';
 import './features/models/app-model-builder-view';
 import './features/models/app-model-description-dialog';
 import './features/models/app-models-view';
-import './features/navigation/app-content-modal';
-import './features/navigation/app-sidebar';
-import './features/onboarding/app-welcome-modal';
+import './features/shell/app-content-modal';
+import './features/shell/app-sidebar';
+import './features/shell/app-welcome-modal';
 import './features/target/app-target-view';
 import { parseRoute } from './router/route-parser';
 import { $route, initRouter, takeFocusRequest } from './router/router';
@@ -19,6 +19,13 @@ import { initGlobalStyles } from './styles/global';
 import type { ParsedRoute, WorkflowPath } from './types/routes';
 
 let lastRestoredScrollKey: string | null = null;
+let pendingHeadingFocus: AbortController | undefined;
+
+type WorkflowFocusView = HTMLElementTagNameMap[
+	| 'app-data-view'
+	| 'app-target-view'
+	| 'app-models-view'
+	| 'app-model-builder-view'];
 
 declare global {
 	interface Window {
@@ -49,10 +56,10 @@ function renderWorkflowView(route: ParsedRoute) {
 			return html` <app-models-view></app-models-view> `;
 		case '/results':
 			return html`
-				<div class="page-header">
+				<header class="page-header">
 					<h1 tabindex="-1">Compare Results</h1>
-					<p class="description">Compare performance metrics across trained models.</p>
-				</div>
+					<p>Compare performance metrics across trained models.</p>
+				</header>
 				<section class="page-body" data-testid="results-view">
 					<p>Model comparison view placeholder.</p>
 				</section>
@@ -86,41 +93,16 @@ function getActiveWorkflowRoute(currentRoute: ParsedRoute): ParsedRoute {
  * Renders the application shell into the container.
  */
 export function renderAppShell(container: HTMLElement): void {
+	pendingHeadingFocus?.abort();
+	pendingHeadingFocus = undefined;
 	const currentRoute = $route.get();
 	const activeWorkflowRoute = getActiveWorkflowRoute(currentRoute);
 
 	const template = html`
-		<style>
-			#app-container {
-				display: flex;
-				min-height: 100vh;
-			}
-			#content {
-				flex: 1;
-				box-sizing: border-box;
-				margin-left: var(--sidebar-width, 260px);
-				padding: var(--space-6, 1.5rem) var(--space-8, 2rem);
-				min-height: 100vh;
-			}
-			.page-header h1 {
-				margin-top: 0;
-				outline: none;
-				color: var(--color-primary, #0f172a);
-				font-weight: 700;
-				font-size: var(--text-2xl, 1.75rem);
-			}
-			.page-header .description {
-				margin: var(--space-1, 0.25rem) 0 var(--space-6, 1.5rem) 0;
-				color: var(--color-text-muted, #64748b);
-			}
-		</style>
-
-		<div id="app-container">
-			<app-sidebar></app-sidebar>
-			<main id="content" role="main">${renderWorkflowView(activeWorkflowRoute)}</main>
-			<app-welcome-modal></app-welcome-modal>
-			<app-content-modal></app-content-modal>
-		</div>
+		<app-sidebar></app-sidebar>
+		<main id="content">${renderWorkflowView(activeWorkflowRoute)}</main>
+		<app-welcome-modal></app-welcome-modal>
+		<app-content-modal></app-content-modal>
 	`;
 
 	render(template, container);
@@ -128,9 +110,20 @@ export function renderAppShell(container: HTMLElement): void {
 	// Focus handling on user workflow navigation per §5.6
 	const requestedFocus = takeFocusRequest();
 	if (requestedFocus && currentRoute.kind === 'workflow') {
-		const h1 = container.querySelector<HTMLElement>('#content h1');
-		if (h1) {
-			h1.focus({ preventScroll: true });
+		const controller = new AbortController();
+		pendingHeadingFocus = controller;
+		const view = container.querySelector<WorkflowFocusView>(
+			'#content > app-data-view, #content > app-target-view, #content > app-models-view, #content > app-model-builder-view'
+		);
+		if (view) {
+			void view.focusHeading(controller.signal).finally(() => {
+				if (pendingHeadingFocus === controller) pendingHeadingFocus = undefined;
+			});
+		} else {
+			container.querySelector<HTMLElement>('#content > .page-header > h1')?.focus({
+				preventScroll: true
+			});
+			pendingHeadingFocus = undefined;
 		}
 	}
 

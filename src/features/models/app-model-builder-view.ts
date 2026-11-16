@@ -20,12 +20,13 @@ import { dialogStyles } from '../../styles/dialog.styles';
 import { notificationStyles } from '../../styles/notification.styles';
 import { tableStyles } from '../../styles/table.styles';
 import { trainModelStyles } from '../../styles/train-model.styles';
+import { headingFocusStyles } from '../../styles/heading-focus.styles';
 import type { ColumnType, ModelRecord, ModelSectionId } from '../../types/state';
 import { buildFeatureRows, formatFeatureNote, type FeatureRow } from './feature-eligibility';
 import { modelsForTarget, SUPERVISED_MODELS, type ModelCatalogueEntry } from './model-catalogue';
 import type { ModelDescriptionStatus } from './app-model-description-dialog';
 import './app-model-description-dialog';
-import '../../components/app-model-card';
+import './app-model-card';
 
 /**
  * Connected root workflow view for Step 3: Model Builder (/models/:num).
@@ -36,6 +37,7 @@ import '../../components/app-model-card';
 @customElement('app-model-builder-view')
 export class AppModelBuilderView extends LitElement {
 	static override readonly styles = [
+		headingFocusStyles,
 		dialogStyles,
 		buttonStyles,
 		cardStyles,
@@ -252,6 +254,20 @@ export class AppModelBuilderView extends LitElement {
 	override disconnectedCallback(): void {
 		super.disconnectedCallback();
 		this.contentAbortController.abort();
+	}
+
+	/**
+	 * Focuses this route's heading after rendering, unless cancelled or disconnected.
+	 *
+	 * @param signal - Cancels a superseded navigation's focus request.
+	 */
+	async focusHeading(signal: AbortSignal): Promise<void> {
+		if (signal.aborted || !this.isConnected) return;
+		await this.updateComplete;
+		if (signal.aborted || !this.isConnected) return;
+		this.renderRoot.querySelector<HTMLElement>('.page-header > h1')?.focus({
+			preventScroll: true
+		});
 	}
 
 	/**

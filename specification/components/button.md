@@ -1,11 +1,11 @@
 # Spec: Button (`.btn`)
 
-Status: Draft — `buttonStyles` is built from this draft, except the A11Y-01 text colour; Q1 and Q2 are answered, Q3–Q8 are open · Tier: **Style primitive** (conventions §2) · Criterion prefix: `BTN`
+**Status:** draft — default/primary/icon styling, A11Y-01 contrast and three-browser acceptance/stories are implemented; Q1/Q2 are answered, Q3–Q8 remain unresolved policy questions. · Tier: **Style primitive** (conventions §2) · Criterion prefix: `BTN`
 
 ## 1. Summary
 
 A visual style for native `<button>` elements, in two variants: **default** and
-**primary**. Delivered as a shared style module usable in the document and inside
+**primary**, plus an independent icon-only `.btn-icon` treatment. Delivered as a shared style module usable in the document and inside
 any component's shadow root.
 
 ## 2. Decision and rationale
@@ -26,11 +26,12 @@ state with an announced status). That requires a new spec, not an agent's judgem
 
 ## 3. Public API (closed)
 
-| Item                      | Description                                                 |
-| ------------------------- | ----------------------------------------------------------- |
-| `class="btn"`             | Default variant. Valid only on `<button>`.                  |
-| `class="btn btn-primary"` | Primary variant. `btn-primary` has no effect without `btn`. |
-| `buttonStyles`            | `CSSResult` exported from `src/styles/button.styles.ts`.    |
+| Item                      | Description                                                                                                          |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `class="btn"`             | Default variant. Valid only on `<button>`.                                                                           |
+| `class="btn btn-primary"` | Primary variant. `btn-primary` has no effect without `btn`.                                                          |
+| `class="btn-icon"`        | Independent native icon button, without `.btn`; direct decorative SVG and a translated accessible name are required. |
+| `buttonStyles`            | `CSSResult` exported from `src/styles/button.styles.ts`.                                                             |
 
 Nothing else is public. No other classes, modifiers, custom properties or exports.
 
@@ -66,6 +67,7 @@ Usage rules:
   `type` inside a form submits it.
 - MUST NOT add `role` or `tabindex`.
 - Disable with the native `disabled` attribute, not `aria-disabled` or a class.
+- Icon controls supply a translated `aria-label` (for example Close) and direct `svg[aria-hidden="true"][focusable="false"]`. They remain native buttons with explicit type; do not invent a custom icon component.
 
 ## 5. Visual specification
 
@@ -140,7 +142,9 @@ This is the implementation. Values marked `/* Qn */` wait on Open questions.
 }
 ```
 
-Changes from the original CSS, for the reviewer:
+The same module also defines independent `.btn-icon`: no border, 0.5rem radius/padding, stone-200 background, stone-900 text, pointer cursor, line-height zero and inherited font. Its direct SVG is display-block and 1.5rem square (24px at the default root size), giving a 40px square button. Hover uses stone-300; keyboard focus has the same 2px focus-ring outline/2px offset. This treatment maps to the close control in `01-3_upload-dataset.html`; it adds no pressed/disabled/touch policy beyond the unresolved questions below. The normative icon declarations live in [button.styles.ts](../../src/styles/button.styles.ts).
+
+Changes from the original CSS:
 `font-family: inherit` added (controls don't inherit fonts); `border-bottom-width` became
 `border-block-end-width`; hover is limited to enabled buttons; focus-visible and disabled
 states added; literal `white` replaced by a token.
@@ -149,7 +153,7 @@ states added; literal `white` replaced by a token.
 
 Beyond conventions §7:
 
-- Accessible name is the button's text content. Icon-only buttons are out of scope.
+- Text controls take their name from visible text. Icon-only controls use translated aria-label with decorative SVG (SEM-08).
 - These colour pairs MUST meet 4.5:1, verified against the actual token values:
   stone-700 on stone-50 (5.88:1, A11Y-01); stone-700 on stone-200; blue-700 on surface; blue-700 on blue-100.
 - The focus ring MUST be at least 3:1 against the page background(s) it appears on.
@@ -165,7 +169,7 @@ Manual checks (record results in the PR):
 
 - This primitive owns **no strings**. Labels are supplied by the consuming component's
   `i18n()` messages.
-- Width is determined by content. No fixed or minimum width.
+- Text-button width is determined by content. Icon glyph size/padding follow the explicit treatment above.
 - Long labels wrap onto further lines rather than overflowing or truncating (see Q5).
 - Renders correctly with `dir="rtl"` (the style is symmetric; logical properties keep it so).
 
@@ -185,9 +189,10 @@ Manual checks (record results in the PR):
 | BTN-AC-10 | With `forced-colors: active` emulated, a keyboard-focused button still has a visible outline.                                                     |
 | BTN-AC-11 | Rendered height is at least 24 CSS px.                                                                                                            |
 | BTN-AC-12 | `btn-primary` without `btn` applies no button styles.                                                                                             |
+| BTN-AC-13 | Icon control has the supplied accessible name, decorative SVG and reference/shared styles.                                                        |
+| BTN-AC-14 | Icon target is at least 24px, actual default button 40px with a 24px glyph.                                                                       |
 
-AC-1, 2, 4, 9 SHOULD be `play` functions on stories. AC-5 and AC-10 need browser
-emulation and go in `button.test.ts`.
+BTN-AC-1–14 run independently in `tests/app-shell.e2e.ts` in Chromium, Firefox and WebKit. Story play functions provide additional smoke coverage; reduced-motion and forced-colours emulation stays in Playwright, not Bun or simulated DOM.
 
 ## 9. Stories
 
@@ -200,22 +205,24 @@ emulation and go in `button.test.ts`.
 - **Long label**: 60-character label in a 200px container
 - **RTL**: both variants with `dir="rtl"` and an Arabic or Hebrew label
 - **In shadow root**: both variants inside a minimal Lit element using `buttonStyles`
+- **Icon**: translated-name fixture with decorative SVG and the independent `.btn-icon` treatment
+
+The decorated test host is imported from `.storybook/fixtures/storybook-button-host.ts`; it stays outside production/CEM globs. Stories preview the production sheet and run strict axe in all three engines.
 
 Story labels are fixtures, not app strings, and may be literals.
 Docs page: purpose, the usage rules from §4 as Do / Don't, and the rationale in §2.
 
 ## 10. Files
 
-- Create `src/styles/button.styles.ts`
-- Create or modify `src/styles/global.ts` to adopt `buttonStyles` into the document
-- Modify `css/root.css` only to add a token decided in Q3 (visual-design §2 governs additions)
-- Create `src/styles/button.stories.ts`
-- Create `src/styles/button.test.ts`
+- `src/styles/button.styles.ts`, `src/styles/global.ts`
+- `src/styles/button.stories.ts`, `.storybook/fixtures/storybook-button-host.ts`
+- `tests/app-shell.e2e.ts` (BTN-AC-1–14)
+- `css/root.css` is the closed token source; additions require an explicit plan decision.
 
 ## 11. Non-goals
 
-Do not build any of these: an `<app-button>` element; sizes; icon support or
-icon-only buttons; loading or busy state; toggle buttons (`aria-pressed`); button groups;
+Do not build any of these: an `<app-button>` element; size variants; a generic icon system;
+loading or busy state; toggle buttons (`aria-pressed`); button groups;
 danger, ghost or other variants; links styled as buttons; dark-mode values
 (handled by tokens, if at all); a pressed/active style (unless Q6 says otherwise).
 

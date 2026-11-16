@@ -6,10 +6,12 @@
 
 - Supported locales (`LOCALES` mapping BCP 47 codes to `{ dir: 'ltr' | 'rtl' }`) and `BASE_LOCALE` (`'en'`) are declared in `src/config/locales.ts`.
 - The base UI i18n instance is implemented in `src/i18n.ts`:
-    - Exports `$locale` atom initialized to `BASE_LOCALE` (`'en'`).
-    - Exports `$format` computed store wrapping `@nanostores/i18n` formatter for localized numbers, dates, times and relative lists.
+    - Exports the existing writable `$locale` atom initialised to `BASE_LOCALE` (`'en'`); no new setter or persistence contract.
+    - Exports `$format`, the library formatter store for localised numbers, dates, times and lists, and the shared `i18n` instance for base-locale component dictionaries.
     - Connected views consume `$format` for display formatting; presentational components receive pre-translated strings via typed `labels` property dictionaries with explicit default fallbacks.
 - Language switcher UI, locale persistence across reload, and translation catalogs for additional locales beyond `en` remain target.
+- Connected shell elements own their dictionaries: sidebar navigation/summaries/status, welcome copy/action, and reserved-route fallback titles/close/error. They subscribe through `StoreController`. Sidebar plural messages compose `params(count(...))`, receiving formatted parameters first and the raw numeric count second, so grouped display numbers never choose plural forms. `app-content-dialog` owns no subscriptions and receives typed `ContentDialogLabels`; loaded article titles retain consumer text. The cards retain only their explicitly documented i18n exception.
+- `$locale` drives the document's `lang` and `dir`. The shipped supported locale remains English; RTL story fixtures exercise layout without adding a locale or language switcher.
 
 ## Static Content
 
