@@ -16,6 +16,16 @@
 	color: var(--amber-700);
 }
 
+.notification-error {
+	border: 1px solid var(--red-700);
+	background-color: var(--red-100);
+	color: var(--red-700);
+
+	.notification-text strong {
+		color: var(--red-700);
+	}
+}
+
 .notification-info {
 	background-color: #e5f1ff;
 	color: #0050b3;

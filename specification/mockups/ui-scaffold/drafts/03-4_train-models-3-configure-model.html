@@ -4,6 +4,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<link rel="stylesheet" href="../style.css" />
+		<link rel="stylesheet" href="../mockups.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>samatā.ml | Train Models</title>
 	</head>
@@ -116,65 +117,320 @@
 				<p>Choose a model to predict your target variable.</p>
 			</header>
 
+			<section class="page-body" data-testid="model-builder">
+				<ol class="train-model" aria-label="Model training steps">
+					<li class="train-step">
+						<section class="train-step-panel" aria-labelledby="step-1-title">
+							<header class="train-step-header">
+								<h2 id="step-1-title">1. {Model Name}</h2>
+
+								<span class="train-step-action train-step-status">
+									<button
+										type="button"
+										class="btn reopen-btn"
+										aria-label="Reopen Choose Model">
+										Edit
+									</button>
+									<span class="visually-hidden">Completed</span>
+									<svg
+										aria-hidden="true"
+										width="20"
+										height="20"
+										viewBox="0 0 24 24"
+										fill="currentColor">
+										<path
+											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									</svg>
+								</span>
+							</header>
+
+							<div class="train-step-content" hidden="">
+								<div class="completed-summary">
+									<p>
+										Selected model:
+										<strong>Gaussian Naive Bayes</strong>
+									</p>
+								</div>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step">
+						<section class="train-step-panel" aria-labelledby="step-2-title">
+							<header class="train-step-header">
+								<h2 id="step-2-title">2. {number_of_features} Features Selected</h2>
+
+								<span class="train-step-action train-step-status">
+									<button
+										type="button"
+										class="btn reopen-btn"
+										aria-label="Reopen Select Features">
+										Edit
+									</button>
+									<span class="visually-hidden">Completed</span>
+									<svg
+										aria-hidden="true"
+										width="20"
+										height="20"
+										viewBox="0 0 24 24"
+										fill="currentColor">
+										<path
+											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									</svg>
+								</span>
+							</header>
+
+							<div class="train-step-content" hidden="">
+								<div class="completed-summary">
+									<p>
+										Selected features (24):
+										<strong
+											>sex, age, age_cat, race, juv_fel_count, juv_misd_count,
+											juv_other_count, priors_count, days_b_screening_arrest,
+											c_days_from_compas, c_charge_degree, is_recid,
+											r_charge_degree, r_days_from_arrest, priors_count_1,
+											start, end, event, v_score_text, v_decile_score,
+											score_text, decile_score_1, vr_charge_degree,
+											is_violent_recid</strong
+										>
+									</p>
+								</div>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step step-active" aria-current="step">
+						<section class="train-step-panel" aria-labelledby="step-3-title">
+							<header class="train-step-header">
+								<h2 id="step-3-title">
+									3. Configure Model
+									<a href="/help/configure-model" class="help-link"
+										>What do these settings mean?
+									</a>
+								</h2>
+							</header>
+							<div class="train-step-content">
+								<form aria-labelledby="configuration-heading">
+									<!-- Mode -->
+									<div class="field">
+										<label for="mode" class="field-name">Mode</label>
+
+										<select
+											id="mode"
+											name="mode"
+											class="field-control"
+											aria-describedby="mode-help">
+											<option value="manual">Manual</option>
+											<!-- disabled until Phase 5 -->
+											<option value="tuning" disabled>
+												Random Search (advanced)
+											</option>
+										</select>
+										<div id="mode-help" class="field-description">
+											<p>
+												Selects the optimisation algorithm used to train the
+												model.
+											</p>
+										</div>
+									</div>
+
+									<!-- Solver -->
+									<div class="field">
+										<label for="solver" class="field-name">Solver</label>
+
+										<select
+											id="solver"
+											name="solver"
+											class="field-control"
+											aria-describedby="solver-help">
+											<option value="adam">adam</option>
+											<option value="sgd">sgd</option>
+											<option value="lbfgs">lbfgs</option>
+											<option value="coordinate_descent">
+												coordinate_descent
+											</option>
+										</select>
+
+										<div id="solver-help" class="field-description">
+											<p>
+												Selects the optimisation algorithm used to train the
+												model.
+											</p>
+											<p class="field-dependent">
+												Adam uses a fixed learning rate of 0.001. Select SGD
+												to adjust the rate.
+											</p>
+											<p class="field-dependent">
+												Learning rate: 0.001 (fixed by Adam)
+											</p>
+										</div>
+									</div>
+
+									<!-- Penalty -->
+									<div class="field">
+										<label for="penalty" class="field-name">Penalty</label>
+
+										<select
+											id="penalty"
+											name="penalty"
+											class="field-control"
+											aria-describedby="penalty-help">
+											<option value="none">none</option>
+											<option value="l1">l1</option>
+											<option value="l2">l2</option>
+											<option value="elasticnet">elasticnet</option>
+										</select>
+
+										<div id="penalty-help" class="field-description">
+											<p>
+												Controls the regularisation applied to the model to
+												help prevent overfitting.
+											</p>
+										</div>
+									</div>
+
+									<!-- Fit intercept -->
+									<div class="field">
+										<label for="intercept" class="field-name">
+											Fit an intercept
+										</label>
+
+										<input
+											id="intercept"
+											name="fitIntercept"
+											type="checkbox"
+											class="field-control"
+											aria-describedby="intercept-help"
+											checked />
+
+										<div id="intercept-help" class="field-description">
+											<p>
+												Includes an intercept (bias) term in the model,
+												allowing predictions to have a non-zero baseline.
+											</p>
+										</div>
+									</div>
+
+									<!-- Maximum iterations -->
+									<div class="field">
+										<label
+											id="iterations-label"
+											for="iterations-range"
+											class="field-name">
+											Maximum iterations
+										</label>
+
+										<div
+											class="field-controls"
+											role="group"
+											aria-labelledby="iterations-label">
+											<input
+												id="iterations-range"
+												type="range"
+												min="1"
+												max="5000"
+												step="1"
+												value="1000"
+												aria-describedby="iterations-help" />
+
+											<label class="visually-hidden" for="iterations-number">
+												Maximum iterations (exact value)
+											</label>
+
+											<input
+												id="iterations-number"
+												name="maxIter"
+												type="number"
+												min="1"
+												max="5000"
+												step="1"
+												value="1000"
+												aria-describedby="iterations-help" />
+										</div>
+
+										<div id="iterations-help" class="field-description">
+											<p>
+												Sets the maximum number of iterations the solver can
+												perform before stopping.
+											</p>
+										</div>
+									</div>
+
+									<!-- Tolerance -->
+									<div class="field">
+										<label for="tolerance" class="field-name">
+											Tolerance
+										</label>
+
+										<div class="field-controls field-controls--with-action">
+											<input
+												id="tolerance"
+												name="tol"
+												type="number"
+												min="0"
+												step="any"
+												value="0.000001"
+												aria-describedby="tolerance-help" />
+
+											<button type="button" class="btn">
+												Reset tolerance
+											</button>
+										</div>
+
+										<div id="tolerance-help" class="field-description">
+											<p>
+												Controls the stopping threshold used to determine
+												when the optimisation algorithm has converged.
+											</p>
+										</div>
+									</div>
+
+									<button type="button" class="btn btn-primary">
+										Save & Continue
+									</button>
+								</form>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step train-step-pending">
+						<section class="train-step-panel" aria-labelledby="step-4-title">
+							<header class="train-step-header">
+								<h2 id="step-4-title">4. Training Setup</h2>
+							</header>
+							<div class="train-step-content" hidden="">
+								<p class="pending-notice">Not available yet.</p>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step train-step-pending">
+						<section class="train-step-panel" aria-labelledby="step-5-title">
+							<header class="train-step-header">
+								<h2 id="step-5-title">5. Train Model</h2>
+							</header>
+							<div class="train-step-content" hidden="">
+								<p class="pending-notice">Not available yet.</p>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step train-step-pending">
+						<section class="train-step-panel" aria-labelledby="step-6-title">
+							<header class="train-step-header">
+								<h2 id="step-6-title">6. Model Results</h2>
+							</header>
+							<div class="train-step-content" hidden="">
+								<p class="pending-notice">Not available yet.</p>
+							</div>
+						</section>
+					</li>
+				</ol>
+			</section>
+
 			<section>
 				<h2>3. Configure Model — Logistic Regression</h2>
 				<p>Palmer Penguins · Target: species · One-vs-Rest classification</p>
-				<form aria-labelledby="configuration-heading">
-					<h3 id="configuration-heading">Model options</h3>
-					<fieldset>
-						<legend>Configuration mode</legend>
-						<input id="manual" type="radio" name="mode" value="manual" checked /><label
-							for="manual"
-							>Manual</label
-						>
-						<input id="tuning" type="radio" name="mode" value="tuning" /><label
-							for="tuning"
-							>Random Search (advanced)</label
-						>
-					</fieldset>
-					<p>Defaults come from the model specification. Reset removes your override.</p>
-					<label for="solver">Solver</label
-					><select id="solver" name="solver" aria-describedby="solver-help">
-						<option>adam</option>
-						<option>sgd</option>
-						<option>lbfgs</option>
-						<option>coordinate_descent</option>
-					</select>
-					<p id="solver-help">
-						Adam uses a fixed learning rate of 0.001. Select SGD to adjust the rate.
-					</p>
-					<p>Learning rate: 0.001 (fixed by Adam)</p>
-					<label for="penalty">Penalty</label
-					><select id="penalty" name="penalty">
-						<option>none</option>
-						<option>l1</option>
-						<option>l2</option>
-						<option>elasticnet</option>
-					</select>
-					<input id="intercept" name="fitIntercept" type="checkbox" checked /><label
-						for="intercept"
-						>Fit an intercept</label
-					>
-					<label for="iterations">Maximum iterations</label
-					><input
-						id="iterations"
-						name="maxIter"
-						type="number"
-						min="1"
-						step="1"
-						value="1000" />
-					<label for="tolerance">Tolerance</label
-					><input
-						id="tolerance"
-						name="tol"
-						type="number"
-						min="0"
-						step="any"
-						value="0.000001" />
-					<button type="button" class="btn">Reset tolerance</button>
-					<p>Single-label classification is fixed. Multiclass strategy: One-vs-Rest.</p>
-					<button type="button" class="btn btn-primary">Continue</button>
-				</form>
 			</section>
 			<section>
 				<h2>SGD rate and bounded fractions</h2>

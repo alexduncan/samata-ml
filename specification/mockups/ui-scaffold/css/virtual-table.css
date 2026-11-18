@@ -1,0 +1,128 @@
+.ui-virtual-table {
+	.table-viewport {
+		position: relative;
+		box-sizing: border-box;
+		outline: medium;
+		/* Removed max-block-size so the <body> handles the scroll length */
+	}
+
+	.table-container {
+		border: 1px solid var(--stone-300);
+		background-color: var(--surface);
+		/* Removed display: table; let it act as a standard block */
+		min-inline-size: 100%;
+	}
+
+	.table-header {
+		display: flex;
+		position: sticky;
+		z-index: 2;
+		/* Offset this by your .page-header height to prevent overlapping */
+		inset-block-start: 4rem;
+		border-block-end: 2px solid var(--stone-300);
+		background-color: var(--stone-150);
+
+		.table-header-row {
+			display: flex;
+			width: 100%;
+
+			.table-header-cell {
+				display: flex;
+				/* Enforce rigid width via flex since display: table is gone */
+				flex: 0 0 auto;
+				box-sizing: border-box;
+				border-inline-end: 1px solid var(--stone-200);
+				min-inline-size: 12rem;
+				color: var(--stone-800);
+				font-weight: 600;
+				text-align: start;
+
+				.header-btn {
+					justify-content: space-between;
+					align-items: center;
+					cursor: pointer;
+					border: medium;
+					background: none;
+					padding: 0.25rem 0.5rem;
+					inline-size: 100%;
+					color: inherit;
+					font-weight: inherit;
+					font-size: inherit;
+					line-height: inherit;
+					text-align: start;
+
+					&:hover {
+						background-color: var(--stone-300);
+					}
+				}
+
+				.header-edit-btn {
+					display: flex;
+					justify-content: center;
+					align-items: center;
+					cursor: pointer;
+					border: medium;
+					background: none;
+					padding: 0.25rem 0.5rem;
+					inline-size: 100%;
+					color: inherit;
+					font-weight: inherit;
+					font-size: inherit;
+					line-height: inherit;
+					text-align: start;
+
+					&:hover {
+						background-color: var(--stone-300);
+					}
+				}
+			}
+		}
+	}
+
+	.table-body {
+		/* Acts as the sizing canvas. Height injected via inline style */
+		position: relative;
+		width: 100%;
+
+		.table-row {
+			display: flex;
+			position: absolute; /* Crucial for O(1) recycling */
+			top: 0;
+			left: 0;
+			will-change: transform;
+
+			box-sizing: border-box;
+			border-block-end: 1px solid var(--stone-200);
+			width: 100%;
+			block-size: 2rem;
+
+			.table-cell {
+				flex: 0 0 auto;
+				box-sizing: border-box;
+				border-inline-end: 1px solid var(--stone-200);
+				padding: 0 0.5rem;
+				min-inline-size: 10rem;
+				overflow: hidden;
+				color: var(--stone-800);
+				font-size: 0.75rem;
+				line-height: 2rem;
+				text-overflow: ellipsis;
+				white-space: nowrap;
+
+				/* Fixed nesting for cell variants */
+				&.table-cell-num {
+					font-variant-numeric: tabular-nums;
+					text-align: end;
+				}
+
+				&.table-cell-text {
+					text-align: start;
+				}
+
+				&.table-cell-categorical {
+					text-align: start;
+				}
+			}
+		}
+	}
+}

@@ -4,6 +4,7 @@
 	<head>
 		<meta charset="UTF-8" />
 		<link rel="stylesheet" href="../style.css" />
+		<link rel="stylesheet" href="../mockups.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>samatā.ml | Train Models</title>
 	</head>
@@ -115,6 +116,310 @@
 				<h1>Train Models</h1>
 				<p>Choose a model to predict your target variable.</p>
 			</header>
+
+			<section class="page-body" data-testid="model-builder">
+				<ol class="train-model" aria-label="Model training steps">
+					<li class="train-step">
+						<section class="train-step-panel" aria-labelledby="step-1-title">
+							<header class="train-step-header">
+								<h2 id="step-1-title">1. {Model Name}</h2>
+
+								<span class="train-step-action train-step-status">
+									<button
+										type="button"
+										class="btn reopen-btn"
+										aria-label="Reopen Choose Model">
+										Edit
+									</button>
+									<span class="visually-hidden">Completed</span>
+									<svg
+										aria-hidden="true"
+										width="20"
+										height="20"
+										viewBox="0 0 24 24"
+										fill="currentColor">
+										<path
+											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									</svg>
+								</span>
+							</header>
+
+							<div class="train-step-content" hidden="">
+								<div class="completed-summary">
+									<p>
+										Selected model:
+										<strong>Gaussian Naive Bayes</strong>
+									</p>
+								</div>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step">
+						<section class="train-step-panel" aria-labelledby="step-2-title">
+							<header class="train-step-header">
+								<h2 id="step-2-title">2. {number_of_features} Features Selected</h2>
+
+								<span class="train-step-action train-step-status">
+									<button
+										type="button"
+										class="btn reopen-btn"
+										aria-label="Reopen Select Features">
+										Edit
+									</button>
+									<span class="visually-hidden">Completed</span>
+									<svg
+										aria-hidden="true"
+										width="20"
+										height="20"
+										viewBox="0 0 24 24"
+										fill="currentColor">
+										<path
+											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									</svg>
+								</span>
+							</header>
+
+							<div class="train-step-content" hidden="">
+								<div class="completed-summary">
+									<p>
+										Selected features (24):
+										<strong
+											>sex, age, age_cat, race, juv_fel_count, juv_misd_count,
+											juv_other_count, priors_count, days_b_screening_arrest,
+											c_days_from_compas, c_charge_degree, is_recid,
+											r_charge_degree, r_days_from_arrest, priors_count_1,
+											start, end, event, v_score_text, v_decile_score,
+											score_text, decile_score_1, vr_charge_degree,
+											is_violent_recid</strong
+										>
+									</p>
+								</div>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step">
+						<section class="train-step-panel" aria-labelledby="step-3-title">
+							<header class="train-step-header">
+								<h2 id="step-3-title">3. Model Configured</h2>
+
+								<span class="train-step-action train-step-status">
+									<button
+										type="button"
+										class="btn reopen-btn"
+										aria-label="Reopen Choose Model">
+										Edit
+									</button>
+									<span class="visually-hidden">Completed</span>
+									<svg
+										aria-hidden="true"
+										width="20"
+										height="20"
+										viewBox="0 0 24 24"
+										fill="currentColor">
+										<path
+											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									</svg>
+								</span>
+							</header>
+							<div class="train-step-content" hidden>
+								<!-- .table summary of model configuration -->
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step step-active" aria-current="step">
+						<section class="train-step-panel" aria-labelledby="step-4-title">
+							<header class="train-step-header">
+								<h2 id="step-4-title">
+									4. Training Setup
+									<a href="/help/configure-model" class="help-link"
+										>What is this?
+									</a>
+								</h2>
+							</header>
+							<div class="train-step-content">
+								<form aria-labelledby="training-setup-heading">
+									<!-- Random Seed -->
+									<div class="field">
+										<label for="random-seed" class="field-name"
+											>Random Seed</label
+										>
+
+										<input
+											id="random-seed"
+											name="randomSeed"
+											type="number"
+											class="field-control"
+											aria-describedby="random-seed-help"
+											value="42" />
+
+										<div id="random-seed-help" class="field-description">
+											<p>
+												Stops numbers from changing and ensures the training
+												process is reproducible.
+											</p>
+										</div>
+									</div>
+
+									<!-- After Phase 5: Add support for missing Values -->
+									<div class="field">
+										<label for="missing-values" class="field-name"
+											>Missing Values</label
+										>
+
+										<select
+											id="missing-values"
+											name="missingValues"
+											class="field-control"
+											aria-describedby="missing-values-help">
+											<option value="ignore">Ignore</option>
+											<option value="impute">Impute</option>
+										</select>
+
+										<div id="missing-values-help" class="field-description">
+											<p>
+												Specify how to handle missing values in the dataset.
+											</p>
+										</div>
+									</div>
+
+									<!-- Strategy -->
+									<div class="field">
+										<label for="strategy" class="field-name"
+											>TrainingStrategy</label
+										>
+
+										<select
+											id="strategy"
+											name="strategy"
+											class="field-control"
+											aria-describedby="strategy-help">
+											<option value="manual">One-Shot</option>
+											<!-- disabled until Phase 2 -->
+											<option value="tuning" disabled>
+												Cross-Validation
+											</option>
+										</select>
+										<div id="strategy-help" class="field-description">
+											<p>
+												Choose the training strategy for the model.
+												<strong>"One-Shot"</strong>
+												trains once on the development data, while
+												<strong>"Cross-Validation"</strong> trains the model
+												multiple times on different chunks of the data.
+												<a href="/help/training-strategy" target="_blank"
+													>Learn more</a
+												>
+											</p>
+										</div>
+									</div>
+
+									<!-- If Cross-Validation is selected, show additional settings for folds -->
+
+									<div class="field">
+										<label
+											id="folds-label"
+											for="folds-range"
+											class="field-name">
+											Cross-validation folds
+										</label>
+
+										<div
+											class="field-controls field-controls--folds"
+											role="group"
+											aria-labelledby="folds-label">
+											<input
+												id="folds-range"
+												type="range"
+												min="2"
+												max="10"
+												step="1"
+												value="5"
+												aria-describedby="folds-help" />
+
+											<label class="visually-hidden" for="folds-number">
+												Number of folds (exact value)
+											</label>
+
+											<input
+												id="folds-number"
+												name="folds"
+												type="number"
+												min="2"
+												max="10"
+												step="1"
+												value="5"
+												aria-describedby="folds-help" />
+
+											<div class="fold-distribution">
+												<output
+													id="folds-summary"
+													for="folds-range folds-number"
+													class="fold-distribution-labels">
+													<span class="fold-distribution-train">
+														Training:
+														<strong id="folds-train">80%</strong>
+													</span>
+													<span class="fold-distribution-validation">
+														Validation:
+														<strong id="folds-validation">20%</strong>
+													</span>
+												</output>
+
+												<progress
+													id="folds-progress"
+													max="100"
+													value="80"
+													aria-label="Training data percentage"
+													aria-describedby="folds-summary"></progress>
+											</div>
+										</div>
+
+										<div id="folds-help" class="field-description">
+											<p>
+												Divides the dataset into multiple folds. The model
+												trains on all but one fold and validates against the
+												remaining fold.
+											</p>
+											<p class="field-dependent">
+												Each fold is used for validation once.
+											</p>
+										</div>
+									</div>
+
+									<button type="button" class="btn btn-primary">
+										Train Model
+									</button>
+								</form>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step train-step-pending">
+						<section class="train-step-panel" aria-labelledby="step-5-title">
+							<header class="train-step-header">
+								<h2 id="step-5-title">5. Train Model</h2>
+							</header>
+							<div class="train-step-content" hidden="">
+								<p class="pending-notice">Not available yet.</p>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step train-step-pending">
+						<section class="train-step-panel" aria-labelledby="step-6-title">
+							<header class="train-step-header">
+								<h2 id="step-6-title">6. Model Results</h2>
+							</header>
+							<div class="train-step-content" hidden="">
+								<p class="pending-notice">Not available yet.</p>
+							</div>
+						</section>
+					</li>
+				</ol>
+			</section>
 
 			<section>
 				<h2>4. Configure Training</h2>

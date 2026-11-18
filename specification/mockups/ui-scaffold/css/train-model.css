@@ -56,6 +56,12 @@
 				h2 {
 					color: var(--stone-900);
 					font-size: 1.25rem;
+
+					.help-link {
+						margin-left: 0.5rem;
+						font-weight: 400;
+						font-size: 0.875rem;
+					}
 				}
 			}
 		}

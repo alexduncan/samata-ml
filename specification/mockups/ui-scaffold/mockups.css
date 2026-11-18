@@ -1,0 +1,109 @@
+:root {
+	--mockup-review-helper-height: 60px;
+}
+
+body {
+	margin-top: var(--mockup-review-helper-height) !important;
+}
+
+.page-header {
+	top: var(--mockup-review-helper-height) !important;
+}
+
+.sidebar {
+	top: var(--mockup-review-helper-height) !important;
+	min-height: calc(100dvh - var(--mockup-review-helper-height)) !important;
+}
+
+#__mockup-review-helper-host {
+	display: flex;
+	position: fixed;
+	align-items: center;
+	z-index: 10000;
+	inset: 0 0 auto 0;
+	background-color: #222;
+	padding: 0.25rem;
+	height: var(--mockup-review-helper-height);
+	max-height: var(--mockup-review-helper-height);
+	color: #ddd;
+	font-family:
+		-apple-system,
+		BlinkMacSystemFont,
+		avenir next,
+		avenir,
+		segoe ui,
+		helvetica neue,
+		Adwaita Sans,
+		Cantarell,
+		Ubuntu,
+		roboto,
+		noto,
+		helvetica,
+		arial,
+		sans-serif;
+}
+
+#mockup-details {
+	flex: 3 3 auto;
+	padding: 0.5rem 0.75rem;
+
+	h4.mockup-name {
+		margin: 0;
+		font-size: 1rem;
+		line-height: 1.25rem;
+
+		.mockup-status {
+			font-size: 0.75rem;
+			&.mockup-status-draft {
+			}
+
+			&.mockup-status-ready {
+			}
+
+			&.mockup-status-implemented {
+			}
+		}
+	}
+
+	p.mockup-description {
+		margin: 0;
+		color: #999;
+		font-size: 0.75rem;
+		line-height: 1rem;
+	}
+}
+
+#mockup-controls {
+	display: flex;
+	flex: 1 1 auto;
+	justify-content: end;
+	gap: 0.5rem;
+	padding-right: 0.5rem;
+
+	.index-link {
+		display: flex;
+		align-items: center;
+		border: 1px solid #fff;
+		border-radius: 0.5rem;
+		padding: 0.25rem 0.5rem 0.25rem 0;
+		color: #fff;
+		font-size: 0.75rem;
+		letter-spacing: 1.5px;
+		text-decoration: none;
+		text-transform: uppercase;
+
+		.index-link-icon {
+			margin: 0 0.25rem;
+		}
+	}
+}
+
+#preview-page {
+	border-radius: 0.325rem;
+	max-width: 20rem;
+	font-size: 0.875rem;
+}
+
+[for="preview-page"] {
+	display: none;
+}

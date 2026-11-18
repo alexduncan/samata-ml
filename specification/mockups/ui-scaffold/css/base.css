@@ -1,50 +1,13 @@
 html,
 body {
 	margin: 0;
-	overscroll-behavior-y: none;
+	overscroll-behavior: none;
 }
 
 main {
 	margin-left: var(--sidebar-width);
 	background-color: var(--stone-50);
-	padding: 2rem 2rem 2rem 2rem;
 	min-height: calc(100dvh - 4rem);
-
-	overflow-y: scroll;
-}
-
-.page-header {
-	display: grid;
-	position: sticky;
-	top: 0;
-	grid-template-columns: minmax(0, 1fr) auto;
-	grid-template-areas:
-		"title       action"
-		"description action";
-	column-gap: 2rem;
-	row-gap: 0.5rem;
-	align-items: center;
-	margin-bottom: 1.5rem;
-
-	> h1 {
-		grid-area: title;
-		margin: 0;
-		color: var(--stone-900);
-		font-weight: 500;
-		font-size: 1.5rem;
-	}
-
-	> p {
-		grid-area: description;
-		margin: 0;
-		color: var(--stone-700);
-		line-height: 1.75rem;
-	}
-
-	> button {
-		grid-area: action;
-		justify-self: end;
-	}
 }
 
 h3 {

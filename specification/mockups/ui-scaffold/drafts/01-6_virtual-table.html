@@ -4,8 +4,10 @@
 	<head>
 		<meta charset="UTF-8" />
 		<link rel="stylesheet" href="../style.css" />
+		<!-- Mockup-specific styles -->
+		<link rel="stylesheet" href="../mockups.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Pen</title>
+		<title>{Simple Plain English Name of Mockup}</title>
 	</head>
 	<body>
 		<svg style="display: none" aria-hidden="true" focusable="false">
@@ -42,6 +44,22 @@
 			<symbol id="question" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
 				<path
 					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m0 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2m0-10.2A3 3 0 0 0 8.8 9a.8.8 0 0 0 1.4 0q.2-1.6 1.8-1.7T13.8 9q0 .6-.8 1.5l-.3.3-1 1.2a4 4 0 0 0-.4 2 .7.7 0 1 0 1.4 0q0-1.2 1.1-2.2l.3-.3q1.2-1.2 1.2-2.5c0-2-1.4-3.2-3.3-3.2" />
+			</symbol>
+
+			<symbol id="error" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m0 12.75a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5M12 5.5a1 1 0 0 0-.891.546C11 6.26 11 6.54 11 7.1v4.8c0 .56 0 .84.109 1.054a1 1 0 0 0 1.782 0C13 12.74 13 12.46 13 11.9V7.1c0-.56 0-.84-.109-1.054A1 1 0 0 0 12 5.5" />
+			</symbol>
+
+			<symbol
+				id="edit"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<path d="M4 20h4L18.5 9.5a2.828 2.828 0 1 0-4-4L4 16zM13.5 6.5l4 4" />
 			</symbol>
 		</svg>
 
@@ -102,66 +120,1050 @@
 
 		<main>
 			<header class="page-header">
-				<h1>Preview Dataset: Palmer Penguins</h1>
-				<p>344 rows | 8 columns</p>
+				<h1>{Dataset Name} Preview</h1>
+				<p>{Dataset Rows} rows | {Dataset Columns} columns</p>
 				<button class="btn">Change Dataset</button>
 			</header>
-			<section>
-				<h2>Dataset rows</h2>
-				<p>Rows 1–10 of 344. Up to 10,000,000 rows can be previewed.</p>
-				<button class="btn" disabled>Previous segment</button
-				><button class="btn" disabled>Next segment</button>
-				<form>
-					<label for="row-number">Go to row</label
-					><input
-						id="row-number"
-						name="row-number"
-						type="number"
-						min="1"
-						max="344"
-						value="1" /><button class="btn" type="submit">Go</button>
-				</form>
-				<table>
-					<caption>
-						Palmer Penguins preview
-					</caption>
-					<thead>
-						<tr>
-							<th scope="col"><button>species</button></th>
-							<th scope="col"><button>island</button></th>
-							<th scope="col"><button>bill_length_mm</button></th>
-							<th scope="col"><button>body_mass_g</button></th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<td>Adelie</td>
-							<td>Torgersen</td>
-							<td>39.1</td>
-							<td>3,750</td>
-						</tr>
-						<tr>
-							<td>Adelie</td>
-							<td>Torgersen</td>
-							<td>39.5</td>
-							<td>3,800</td>
-						</tr>
-					</tbody>
-				</table>
-			</section>
-			<section>
-				<h2>Loading</h2>
-				<p role="status">Loading rows…</p>
-			</section>
-			<section>
-				<h2>Empty</h2>
-				<p>No rows to preview.</p>
-			</section>
-			<section>
-				<h2>Error</h2>
-				<p role="alert">The preview could not be loaded.</p>
-				<button class="btn">Retry</button>
-			</section>
+			<div
+				class="ui-virtual-table"
+				total-rows="7214"
+				label="ProPublica COMPAS Two-Year Recidivism preview">
+				<div
+					class="table-container"
+					role="table"
+					aria-label="ProPublica COMPAS Two-Year Recidivism preview"
+					aria-rowcount="7215"
+					aria-colcount="53"
+					style="height: 2000px; width: 5000px">
+					<div class="table-header" role="rowgroup">
+						<div class="table-header-row" role="row" aria-rowindex="1">
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="id">
+									<span>id</span>
+								</button>
+								<button class="header-btn" data-col-key="id">
+									<span class="edit-label" visually-hidden="true">Edit</span>
+									<svg class="icon" aria-hidden="true">
+										<use href="#edit"></use>
+									</svg>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="name">
+									<span>name</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="first">
+									<span>first</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="last">
+									<span>last</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="compas_screening_date">
+									<span>compas_screening_date</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="sex">
+									<span>sex</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="dob">
+									<span>dob</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="age">
+									<span>age</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="age_cat">
+									<span>age_cat</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="race">
+									<span>race</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="juv_fel_count">
+									<span>juv_fel_count</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="decile_score">
+									<span>decile_score</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="juv_misd_count">
+									<span>juv_misd_count</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="juv_other_count">
+									<span>juv_other_count</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="priors_count">
+									<span>priors_count</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="days_b_screening_arrest">
+									<span>days_b_screening_arrest</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="c_jail_in">
+									<span>c_jail_in</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="c_jail_out">
+									<span>c_jail_out</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="c_case_number">
+									<span>c_case_number</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="c_offense_date">
+									<span>c_offense_date</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="c_arrest_date">
+									<span>c_arrest_date</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="c_days_from_compas">
+									<span>c_days_from_compas</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="c_charge_degree">
+									<span>c_charge_degree</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="c_charge_desc">
+									<span>c_charge_desc</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="is_recid">
+									<span>is_recid</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="r_case_number">
+									<span>r_case_number</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="r_charge_degree">
+									<span>r_charge_degree</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="r_days_from_arrest">
+									<span>r_days_from_arrest</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="r_offense_date">
+									<span>r_offense_date</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="r_charge_desc">
+									<span>r_charge_desc</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="r_jail_in">
+									<span>r_jail_in</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="r_jail_out">
+									<span>r_jail_out</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="violent_recid">
+									<span>violent_recid</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="is_violent_recid">
+									<span>is_violent_recid</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="vr_case_number">
+									<span>vr_case_number</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="vr_charge_degree">
+									<span>vr_charge_degree</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="vr_offense_date">
+									<span>vr_offense_date</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="vr_charge_desc">
+									<span>vr_charge_desc</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="type_of_assessment">
+									<span>type_of_assessment</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="decile_score_1">
+									<span>decile_score_1</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="score_text">
+									<span>score_text</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="screening_date">
+									<span>screening_date</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="v_type_of_assessment">
+									<span>v_type_of_assessment</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="v_decile_score">
+									<span>v_decile_score</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="v_score_text">
+									<span>v_score_text</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="v_screening_date">
+									<span>v_screening_date</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="in_custody">
+									<span>in_custody</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="out_custody">
+									<span>out_custody</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="priors_count_1">
+									<span>priors_count_1</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="start">
+									<span>start</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="end">
+									<span>end</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button type="button" class="header-btn" data-col-key="event">
+									<span>event</span>
+								</button>
+							</div>
+							<div class="table-header-cell" role="columnheader">
+								<button
+									type="button"
+									class="header-btn"
+									data-col-key="two_year_recid">
+									<span>two_year_recid</span>
+								</button>
+							</div>
+						</div>
+					</div>
+
+					<div class="table-body" role="rowgroup">
+						<div
+							role="row"
+							class="table-row"
+							aria-rowindex="2"
+							style="transform: translateY(0px)">
+							<div role="cell" class="table-cell table-cell-num" title="1">1</div>
+							<div
+								role="cell"
+								class="table-cell table-cell-text"
+								title="miguel hernandez">
+								miguel hernandez
+							</div>
+							<div role="cell" class="table-cell table-cell-text" title="miguel">
+								miguel
+							</div>
+							<div role="cell" class="table-cell table-cell-text" title="hernandez">
+								hernandez
+							</div>
+							<div
+								role="cell"
+								class="table-cell table-cell-date"
+								title="2013-08-14T00:00:00.000Z">
+								2013-08-14T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell table-cell-categorical" title="Male">
+								Male
+							</div>
+							<div
+								role="cell"
+								class="table-cell table-cell-date"
+								title="1947-04-18T00:00:00.000Z">
+								1947-04-18T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell table-cell-num" title="69">69</div>
+							<div
+								role="cell"
+								class="table-cell table-cell-categorical"
+								title="Greater than 45">
+								Greater than 45
+							</div>
+							<div
+								role="cell"
+								class="table-cell table-cell-categorical"
+								title="Other">
+								Other
+							</div>
+							<div role="cell" class="table-cell table-cell-boolean" title="false">
+								false
+							</div>
+							<div role="cell" class="table-cell table-cell-num" title="1">1</div>
+							<div role="cell" class="table-cell table-cell-boolean" title="false">
+								false
+							</div>
+							<div role="cell" class="table-cell table-cell-num" title="0">0</div>
+							<div role="cell" class="table-cell table-cell-num" title="0">0</div>
+							<div role="cell" class="table-cell table-cell-num" title="-1">-1</div>
+							<div
+								role="cell"
+								class="table-cell table-cell-date"
+								title="2013-08-13T06:03:42.000Z">
+								2013-08-13T06:03:42.000Z
+							</div>
+							<div
+								role="cell"
+								class="table-cell table-cell-date"
+								title="2013-08-14T05:41:20.000Z">
+								2013-08-14T05:41:20.000Z
+							</div>
+							<div
+								role="cell"
+								class="table-cell table-cell-text"
+								title="13011352CF10A">
+								13011352CF10A
+							</div>
+							<div
+								role="cell"
+								class="table-cell table-cell-date"
+								title="2013-08-13T00:00:00.000Z">
+								2013-08-13T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell table-cell-text" title="—">—</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell table-cell-text" title="F">F</div>
+							<div
+								role="cell"
+								class="table-cell table-cell-text"
+								title="Aggravated Assault w/Firearm">
+								Aggravated Assault w/Firearm
+							</div>
+							<div role="cell" class="table-cell table-cell-boolean" title="false">
+								false
+							</div>
+							<div role="cell" class="table-cell table-cell-text" title="—">—</div>
+							<div role="cell" class="table-cell table-cell-text" title="—">—</div>
+							<div role="cell" class="table-cell table-cell-text" title="—">—</div>
+							<div role="cell" class="table-cell table-cell-text" title="—">—</div>
+							<div role="cell" class="table-cell table-cell-text" title="—">—</div>
+							<div role="cell" class="table-cell table-cell-text" title="—">—</div>
+							<div role="cell" class="table-cell table-cell-text" title="—">—</div>
+							<div role="cell" class="table-cell table-cell-text" title="—">—</div>
+							<div role="cell" class="table-cell table-cell-boolean" title="false">
+								false
+							</div>
+							<div role="cell" class="table-cell table-cell-text" title="—">—</div>
+							<div role="cell" class="table-cell table-cell-text" title="—">—</div>
+							<div role="cell" class="table-cell table-cell-text" title="—">—</div>
+							<div role="cell" class="table-cell table-cell-text" title="—">—</div>
+							<div
+								role="cell"
+								class="table-cell table-cell-text"
+								title="Risk of Recidivism">
+								Risk of Recidivism
+							</div>
+							<div role="cell" class="table-cell table-cell-num" title="1">1</div>
+							<div role="cell" class="table-cell table-cell-categorical" title="Low">
+								Low
+							</div>
+							<div
+								role="cell"
+								class="table-cell table-cell-date"
+								title="2013-08-14T00:00:00.000Z">
+								2013-08-14T00:00:00.000Z
+							</div>
+							<div
+								role="cell"
+								class="table-cell table-cell-categorical"
+								title="Risk of Violence">
+								Risk of Violence
+							</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="Low">Low</div>
+							<div role="cell" class="table-cell" title="2013-08-14T00:00:00.000Z">
+								2013-08-14T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="2014-07-07T00:00:00.000Z">
+								2014-07-07T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="2014-07-14T00:00:00.000Z">
+								2014-07-14T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="327">327</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+						</div>
+
+						<div
+							role="row"
+							class="table-row"
+							aria-rowindex="3"
+							style="transform: translateY(32px)">
+							<div role="cell" class="table-cell" title="3">3</div>
+							<div role="cell" class="table-cell" title="kevon dixon">
+								kevon dixon
+							</div>
+							<div role="cell" class="table-cell" title="kevon">kevon</div>
+							<div role="cell" class="table-cell" title="dixon">dixon</div>
+							<div role="cell" class="table-cell" title="2013-01-27T00:00:00.000Z">
+								2013-01-27T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="Male">Male</div>
+							<div role="cell" class="table-cell" title="1982-01-22T00:00:00.000Z">
+								1982-01-22T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="34">34</div>
+							<div role="cell" class="table-cell" title="25 - 45">25 - 45</div>
+							<div role="cell" class="table-cell" title="African-American">
+								African-American
+							</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="3">3</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="-1">-1</div>
+							<div role="cell" class="table-cell" title="2013-01-26T03:45:27.000Z">
+								2013-01-26T03:45:27.000Z
+							</div>
+							<div role="cell" class="table-cell" title="2013-02-05T05:36:53.000Z">
+								2013-02-05T05:36:53.000Z
+							</div>
+							<div role="cell" class="table-cell" title="13001275CF10A">
+								13001275CF10A
+							</div>
+							<div role="cell" class="table-cell" title="2013-01-26T00:00:00.000Z">
+								2013-01-26T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="F">F</div>
+							<div
+								role="cell"
+								class="table-cell"
+								title="Felony Battery w/Prior Convict">
+								Felony Battery w/Prior Convict
+							</div>
+							<div role="cell" class="table-cell" title="true">true</div>
+							<div role="cell" class="table-cell" title="13009779CF10A">
+								13009779CF10A
+							</div>
+							<div role="cell" class="table-cell" title="(F3)">(F3)</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="2013-07-05T00:00:00.000Z">
+								2013-07-05T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="Felony Battery (Dom Strang)">
+								Felony Battery (Dom Strang)
+							</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="true">true</div>
+							<div role="cell" class="table-cell" title="13009779CF10A">
+								13009779CF10A
+							</div>
+							<div role="cell" class="table-cell" title="(F3)">(F3)</div>
+							<div role="cell" class="table-cell" title="2013-07-05T00:00:00.000Z">
+								2013-07-05T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="Felony Battery (Dom Strang)">
+								Felony Battery (Dom Strang)
+							</div>
+							<div role="cell" class="table-cell" title="Risk of Recidivism">
+								Risk of Recidivism
+							</div>
+							<div role="cell" class="table-cell" title="3">3</div>
+							<div role="cell" class="table-cell" title="Low">Low</div>
+							<div role="cell" class="table-cell" title="2013-01-27T00:00:00.000Z">
+								2013-01-27T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="Risk of Violence">
+								Risk of Violence
+							</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="Low">Low</div>
+							<div role="cell" class="table-cell" title="2013-01-27T00:00:00.000Z">
+								2013-01-27T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="2013-01-26T00:00:00.000Z">
+								2013-01-26T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="2013-02-05T00:00:00.000Z">
+								2013-02-05T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="9">9</div>
+							<div role="cell" class="table-cell" title="159">159</div>
+							<div role="cell" class="table-cell" title="true">true</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+						</div>
+
+						<div
+							role="row"
+							class="table-row"
+							aria-rowindex="4"
+							style="transform: translateY(64px)">
+							<div role="cell" class="table-cell" title="4">4</div>
+							<div role="cell" class="table-cell" title="ed philo">ed philo</div>
+							<div role="cell" class="table-cell" title="ed">ed</div>
+							<div role="cell" class="table-cell" title="philo">philo</div>
+							<div role="cell" class="table-cell" title="2013-04-14T00:00:00.000Z">
+								2013-04-14T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="Male">Male</div>
+							<div role="cell" class="table-cell" title="1991-05-14T00:00:00.000Z">
+								1991-05-14T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="24">24</div>
+							<div role="cell" class="table-cell" title="Less than 25">
+								Less than 25
+							</div>
+							<div role="cell" class="table-cell" title="African-American">
+								African-American
+							</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="4">4</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="4">4</div>
+							<div role="cell" class="table-cell" title="-1">-1</div>
+							<div role="cell" class="table-cell" title="2013-04-13T04:58:34.000Z">
+								2013-04-13T04:58:34.000Z
+							</div>
+							<div role="cell" class="table-cell" title="2013-04-14T07:02:04.000Z">
+								2013-04-14T07:02:04.000Z
+							</div>
+							<div role="cell" class="table-cell" title="13005330CF10A">
+								13005330CF10A
+							</div>
+							<div role="cell" class="table-cell" title="2013-04-13T00:00:00.000Z">
+								2013-04-13T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="F">F</div>
+							<div role="cell" class="table-cell" title="Possession of Cocaine">
+								Possession of Cocaine
+							</div>
+							<div role="cell" class="table-cell" title="true">true</div>
+							<div role="cell" class="table-cell" title="13011511MM10A">
+								13011511MM10A
+							</div>
+							<div role="cell" class="table-cell" title="(M1)">(M1)</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="2013-06-16T00:00:00.000Z">
+								2013-06-16T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="Driving Under The Influence">
+								Driving Under The Influence
+							</div>
+							<div role="cell" class="table-cell" title="2013-06-16T00:00:00.000Z">
+								2013-06-16T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="2013-06-16T00:00:00.000Z">
+								2013-06-16T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="Risk of Recidivism">
+								Risk of Recidivism
+							</div>
+							<div role="cell" class="table-cell" title="4">4</div>
+							<div role="cell" class="table-cell" title="Low">Low</div>
+							<div role="cell" class="table-cell" title="2013-04-14T00:00:00.000Z">
+								2013-04-14T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="Risk of Violence">
+								Risk of Violence
+							</div>
+							<div role="cell" class="table-cell" title="3">3</div>
+							<div role="cell" class="table-cell" title="Low">Low</div>
+							<div role="cell" class="table-cell" title="2013-04-14T00:00:00.000Z">
+								2013-04-14T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="2013-06-16T00:00:00.000Z">
+								2013-06-16T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="2013-06-16T00:00:00.000Z">
+								2013-06-16T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="4">4</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="63">63</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+						</div>
+
+						<div
+							role="row"
+							class="table-row"
+							aria-rowindex="5"
+							style="transform: translateY(96px)">
+							<div role="cell" class="table-cell" title="5">5</div>
+							<div role="cell" class="table-cell" title="marcu brown">
+								marcu brown
+							</div>
+							<div role="cell" class="table-cell" title="marcu">marcu</div>
+							<div role="cell" class="table-cell" title="brown">brown</div>
+							<div role="cell" class="table-cell" title="2013-01-13T00:00:00.000Z">
+								2013-01-13T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="Male">Male</div>
+							<div role="cell" class="table-cell" title="1993-01-21T00:00:00.000Z">
+								1993-01-21T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="23">23</div>
+							<div role="cell" class="table-cell" title="Less than 25">
+								Less than 25
+							</div>
+							<div role="cell" class="table-cell" title="African-American">
+								African-American
+							</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="8">8</div>
+							<div role="cell" class="table-cell" title="true">true</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="13000570CF10A">
+								13000570CF10A
+							</div>
+							<div role="cell" class="table-cell" title="2013-01-12T00:00:00.000Z">
+								2013-01-12T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="F">F</div>
+							<div role="cell" class="table-cell" title="Possession of Cannabis">
+								Possession of Cannabis
+							</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="Risk of Recidivism">
+								Risk of Recidivism
+							</div>
+							<div role="cell" class="table-cell" title="8">8</div>
+							<div role="cell" class="table-cell" title="High">High</div>
+							<div role="cell" class="table-cell" title="2013-01-13T00:00:00.000Z">
+								2013-01-13T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="Risk of Violence">
+								Risk of Violence
+							</div>
+							<div role="cell" class="table-cell" title="6">6</div>
+							<div role="cell" class="table-cell" title="Medium">Medium</div>
+							<div role="cell" class="table-cell" title="2013-01-13T00:00:00.000Z">
+								2013-01-13T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="1,174">1,174</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+						</div>
+
+						<div
+							role="row"
+							class="table-row"
+							aria-rowindex="6"
+							style="transform: translateY(128px)">
+							<div role="cell" class="table-cell" title="6">6</div>
+							<div role="cell" class="table-cell" title="bouthy pierrelouis">
+								bouthy pierrelouis
+							</div>
+							<div role="cell" class="table-cell" title="bouthy">bouthy</div>
+							<div role="cell" class="table-cell" title="pierrelouis">
+								pierrelouis
+							</div>
+							<div role="cell" class="table-cell" title="2013-03-26T00:00:00.000Z">
+								2013-03-26T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="Male">Male</div>
+							<div role="cell" class="table-cell" title="1973-01-22T00:00:00.000Z">
+								1973-01-22T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="43">43</div>
+							<div role="cell" class="table-cell" title="25 - 45">25 - 45</div>
+							<div role="cell" class="table-cell" title="Other">Other</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="2">2</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="12014130CF10A">
+								12014130CF10A
+							</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="2013-01-09T00:00:00.000Z">
+								2013-01-09T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="76">76</div>
+							<div role="cell" class="table-cell" title="F">F</div>
+							<div role="cell" class="table-cell" title="arrest case no charge">
+								arrest case no charge
+							</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="Risk of Recidivism">
+								Risk of Recidivism
+							</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="Low">Low</div>
+							<div role="cell" class="table-cell" title="2013-03-26T00:00:00.000Z">
+								2013-03-26T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="Risk of Violence">
+								Risk of Violence
+							</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="Low">Low</div>
+							<div role="cell" class="table-cell" title="2013-03-26T00:00:00.000Z">
+								2013-03-26T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="2">2</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="1,102">1,102</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+						</div>
+
+						<div
+							role="row"
+							class="table-row"
+							aria-rowindex="7"
+							style="transform: translateY(160px)">
+							<div role="cell" class="table-cell" title="7">7</div>
+							<div role="cell" class="table-cell" title="marsha miles">
+								marsha miles
+							</div>
+							<div role="cell" class="table-cell" title="marsha">marsha</div>
+							<div role="cell" class="table-cell" title="miles">miles</div>
+							<div role="cell" class="table-cell" title="2013-11-30T00:00:00.000Z">
+								2013-11-30T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="Male">Male</div>
+							<div role="cell" class="table-cell" title="1971-08-22T00:00:00.000Z">
+								1971-08-22T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="44">44</div>
+							<div role="cell" class="table-cell" title="25 - 45">25 - 45</div>
+							<div role="cell" class="table-cell" title="Other">Other</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="2013-11-30T04:50:18.000Z">
+								2013-11-30T04:50:18.000Z
+							</div>
+							<div role="cell" class="table-cell" title="2013-12-01T12:28:56.000Z">
+								2013-12-01T12:28:56.000Z
+							</div>
+							<div role="cell" class="table-cell" title="13022355MM10A">
+								13022355MM10A
+							</div>
+							<div role="cell" class="table-cell" title="2013-11-30T00:00:00.000Z">
+								2013-11-30T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="M">M</div>
+							<div role="cell" class="table-cell" title="Battery">Battery</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="—">—</div>
+							<div role="cell" class="table-cell" title="Risk of Recidivism">
+								Risk of Recidivism
+							</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="Low">Low</div>
+							<div role="cell" class="table-cell" title="2013-11-30T00:00:00.000Z">
+								2013-11-30T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="Risk of Violence">
+								Risk of Violence
+							</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="Low">Low</div>
+							<div role="cell" class="table-cell" title="2013-11-30T00:00:00.000Z">
+								2013-11-30T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="2013-11-30T00:00:00.000Z">
+								2013-11-30T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="2013-12-01T00:00:00.000Z">
+								2013-12-01T00:00:00.000Z
+							</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+							<div role="cell" class="table-cell" title="1">1</div>
+							<div role="cell" class="table-cell" title="853">853</div>
+							<div role="cell" class="table-cell" title="false">false</div>
+							<div role="cell" class="table-cell" title="0">0</div>
+						</div>
+
+						<!-- Remaining rows will be dynamically injected here by the virtual table logic -->
+					</div>
+				</div>
+			</div>
 		</main>
+
+		<div id="__mockup-review-helper-host">
+			<div id="mockup-details">
+				<h4 class="mockup-name">
+					{Simple Plain English Name of Mockup}
+					<span class="mockup-status mockup-status-{status}">
+						{draft|ready|implemented}
+					</span>
+				</h4>
+				<p class="mockup-description">
+					{Simple description of the situation in which a user will encounter this ui.}
+				</p>
+			</div>
+			<nav id="mockup-controls" aria-label="Mockup review">
+				<label for="preview-page">Switch Mockup</label>
+				<select id="preview-page">
+					<option value="/files/basic-html-structure.html">
+						basic-html-structure.html
+					</option>
+					<!-- {remaining mockup options} -->
+				</select>
+
+				<a href="/" class="index-link">
+					<svg
+						class="index-link-icon"
+						xmlns="http://www.w3.org/2000/svg"
+						width="24"
+						height="24"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="1.5"
+						stroke-linecap="round"
+						stroke-linejoin="round">
+						<path d="M14 3v4a1 1 0 0 0 1 1h4" />
+						<path
+							d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" />
+						<path d="M9 9l1 0" />
+						<path d="M9 13l6 0" />
+						<path d="M9 17l6 0" />
+					</svg>
+					<span class="index-link-text">Index</span>
+				</a>
+			</nav>
+		</div>
 	</body>
 </html>

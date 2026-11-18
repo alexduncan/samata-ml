@@ -1,0 +1,40 @@
+.page-header {
+	display: grid;
+	position: sticky;
+	grid-template-columns: minmax(0, 1fr) auto;
+	grid-template-areas:
+		"title       action"
+		"description action";
+	column-gap: 2rem;
+	row-gap: 0;
+	align-items: center;
+	z-index: 10;
+	backdrop-filter: blur(10px);
+	inset: 0 auto auto var(--sidebar-width);
+	background-color: rgb(252 251 250 / 80%);
+	padding: 1.5rem 2rem;
+
+	> h1 {
+		grid-area: title;
+		margin: 0;
+		color: var(--stone-900);
+		font-weight: 500;
+		font-size: 1.5rem;
+	}
+
+	> p {
+		grid-area: description;
+		margin: 0;
+		color: var(--stone-700);
+		line-height: 1.75rem;
+	}
+
+	> button {
+		grid-area: action;
+		justify-self: end;
+	}
+}
+
+.page-body {
+	margin: 0 2rem 2rem 2rem;
+}
