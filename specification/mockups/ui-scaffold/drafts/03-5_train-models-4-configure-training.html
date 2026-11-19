@@ -288,7 +288,7 @@
 									<!-- Strategy -->
 									<div class="field">
 										<label for="strategy" class="field-name"
-											>TrainingStrategy</label
+											>Training Strategy</label
 										>
 
 										<select
@@ -318,12 +318,12 @@
 
 									<!-- If Cross-Validation is selected, show additional settings for folds -->
 
-									<div class="field">
+									<div class="field field--folds">
 										<label
 											id="folds-label"
 											for="folds-range"
 											class="field-name">
-											Cross-validation folds
+											Cross-validation Folds
 										</label>
 
 										<div
@@ -337,7 +337,7 @@
 												max="10"
 												step="1"
 												value="5"
-												aria-describedby="folds-help" />
+												aria-describedby="folds-help folds-visual-summary" />
 
 											<label class="visually-hidden" for="folds-number">
 												Number of folds (exact value)
@@ -351,41 +351,52 @@
 												max="10"
 												step="1"
 												value="5"
-												aria-describedby="folds-help" />
-
-											<div class="fold-distribution">
-												<output
-													id="folds-summary"
-													for="folds-range folds-number"
-													class="fold-distribution-labels">
-													<span class="fold-distribution-train">
-														Training:
-														<strong id="folds-train">80%</strong>
-													</span>
-													<span class="fold-distribution-validation">
-														Validation:
-														<strong id="folds-validation">20%</strong>
-													</span>
-												</output>
-
-												<progress
-													id="folds-progress"
-													max="100"
-													value="80"
-													aria-label="Training data percentage"
-													aria-describedby="folds-summary"></progress>
-											</div>
+												aria-describedby="folds-help folds-visual-summary" />
 										</div>
 
 										<div id="folds-help" class="field-description">
 											<p>
-												Divides the dataset into multiple folds. The model
-												trains on all but one fold and validates against the
-												remaining fold.
+												Divides the dataset into multiple chunks. Then the
+												model trains on all but one chunk and validates on
+												the remaining chunk. Each chunk is used once as the
+												validation set.
 											</p>
-											<p class="field-dependent">
-												Each fold is used for validation once.
+										</div>
+
+										<div class="field-visual">
+											<table
+												class="fold-matrix"
+												aria-describedby="folds-visual-summary">
+												<caption>
+													Cross-validation training iterations
+												</caption>
+												<thead></thead>
+												<tbody></tbody>
+											</table>
+
+											<p
+												id="folds-visual-summary"
+												class="fold-visual-summary">
+												Training on 4 folds (80%) and validating on 1 fold
+												(20%) per iteration.
 											</p>
+
+											<ul
+												class="fold-legend"
+												aria-label="Fold partition legend">
+												<li>
+													<span
+														class="fold-legend-swatch fold-legend-swatch-train"
+														aria-hidden="true"></span>
+													Training
+												</li>
+												<li>
+													<span
+														class="fold-legend-swatch fold-legend-swatch-validation"
+														aria-hidden="true"></span>
+													Validation
+												</li>
+											</ul>
 										</div>
 									</div>
 
@@ -393,6 +404,121 @@
 										Train Model
 									</button>
 								</form>
+								<script>
+									(() => {
+										const field = document.querySelector(".field--folds");
+										if (!field) return;
+
+										const range = field.querySelector("#folds-range");
+										const number = field.querySelector("#folds-number");
+										const matrix = field.querySelector(".fold-matrix");
+										const thead = matrix.querySelector("thead");
+										const tbody = matrix.querySelector("tbody");
+										const summary = field.querySelector(".fold-visual-summary");
+
+										let currentFolds = Number(range.value);
+
+										const formatPercent = (value) =>
+											`${Number(value.toFixed(1))}%`;
+
+										function updateFolds(folds, updateNumber = true) {
+											currentFolds = folds;
+											range.value = String(folds);
+
+											if (updateNumber) {
+												number.value = String(folds);
+											}
+
+											// Update training/validation percentages.
+											const training = ((folds - 1) / folds) * 100;
+											const validation = 100 / folds;
+
+											summary.textContent =
+												`Training on ${folds - 1} folds (${formatPercent(training)}) ` +
+												`and validating on 1 fold (${formatPercent(validation)}) per iteration.`;
+
+											// Generate column headers.
+											const header = document.createElement("tr");
+
+											const corner = document.createElement("th");
+											corner.scope = "col";
+											corner.textContent = "Run";
+											header.append(corner);
+
+											for (let fold = 1; fold <= folds; fold++) {
+												const th = document.createElement("th");
+												th.scope = "col";
+												th.textContent = String(fold);
+												header.append(th);
+											}
+
+											thead.replaceChildren(header);
+
+											// Generate training iteration rows.
+											const rows = document.createDocumentFragment();
+
+											for (
+												let iteration = 1;
+												iteration <= folds;
+												iteration++
+											) {
+												const tr = document.createElement("tr");
+
+												// Iteration label.
+												const rowHeader = document.createElement("th");
+												rowHeader.scope = "row";
+												rowHeader.textContent = String(iteration);
+												tr.append(rowHeader);
+
+												// Fold partitions for this iteration.
+												for (let fold = 1; fold <= folds; fold++) {
+													const isValidation = fold === iteration;
+													const td = document.createElement("td");
+
+													td.className = isValidation
+														? "fold-validation"
+														: "fold-training";
+
+													// Accessible description for screen readers.
+													const text = document.createElement("span");
+													text.className = "visually-hidden";
+													text.textContent = isValidation
+														? "Validation"
+														: "Training";
+
+													td.append(text);
+													tr.append(td);
+												}
+
+												rows.append(tr);
+											}
+
+											tbody.replaceChildren(rows);
+										}
+
+										// Slider changes immediately.
+										range.addEventListener("input", () => {
+											updateFolds(range.valueAsNumber);
+										});
+
+										// Numeric input updates only when valid.
+										number.addEventListener("input", () => {
+											if (number.value !== "" && number.validity.valid) {
+												updateFolds(number.valueAsNumber, false);
+											}
+										});
+
+										// Restore the last valid value on blur.
+										number.addEventListener("blur", () => {
+											if (number.value === "" || !number.validity.valid) {
+												number.value = String(currentFolds);
+											}
+										});
+
+										// Initialise.
+										updateFolds(currentFolds);
+									})();
+								</script>
 							</div>
 						</section>
 					</li>

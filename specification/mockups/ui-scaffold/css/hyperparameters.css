@@ -1,90 +1,4 @@
-.tabs {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: stretch;
-	gap: 0.25rem;
-
-	margin: 0;
-	border: none;
-	border-radius: 0.75rem;
-	background: var(--blue-700);
-	padding: 0.25rem;
-	width: fit-content;
-	max-width: 100%;
-	/* Hide legend visually, but retain it for screen readers */
-	legend {
-		position: absolute;
-		clip-path: inset(50%);
-		margin: -1px;
-		border: 0;
-		padding: 0;
-		width: 1px;
-		height: 1px;
-		overflow: hidden;
-		white-space: nowrap;
-	}
-	label {
-		display: flex;
-		position: relative;
-		cursor: pointer;
-	}
-
-	/* Visually hidden, but still keyboard accessible */
-	input[type="radio"] {
-		position: absolute;
-		opacity: 0;
-		width: 1px;
-		height: 1px;
-	}
-
-	.tab-label {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		transition:
-			background-color 150ms ease,
-			color 150ms ease,
-			box-shadow 150ms ease;
-		border-radius: 0.5rem;
-		padding: 0.65rem 1rem;
-		color: #fff;
-		font-weight: 500;
-		text-align: center;
-	}
-
-	/* Hover */
-	label:hover .tab-label {
-		background: var(--blue-600);
-	}
-
-	/* Selected tab */
-	input:checked + .tab-label {
-		box-shadow: 0 1px 3px rgb(0 0 0 / 10%);
-		background: #fff;
-		color: var(--blue-700);
-	}
-
-	/* Keyboard focus */
-	input:focus-visible + .tab-label {
-		outline: 2px solid var(--blue-500);
-		outline-offset: 2px;
-	}
-
-	/* Disabled option */
-	input:disabled + .tab-label {
-		opacity: 0.5;
-		cursor: not-allowed;
-	}
-}
-
-@media (prefers-reduced-motion: reduce) {
-	.tabs .tab-label {
-		transition: none;
-	}
-}
-
 /* Form field layout */
-
 .field {
 	display: grid;
 	grid-template-rows: max-content minmax(0, 1fr);
@@ -120,10 +34,10 @@
 	}
 
 	/* Single control */
-
 	.field-control {
 		box-sizing: border-box;
 		width: 100%;
+		min-width: 0;
 	}
 
 	.field-control[type="checkbox"] {
@@ -135,7 +49,6 @@
 	}
 
 	/* Multiple controls */
-
 	.field-controls {
 		display: flex;
 		align-items: center;
@@ -144,6 +57,7 @@
 	}
 
 	.field-controls > input[type="range"] {
+		flex: 1 1 0;
 		margin: 0;
 		width: 100%;
 		min-width: 0;
@@ -167,7 +81,6 @@
 	}
 
 	/* Descriptions and dependencies */
-
 	.field-description {
 		grid-area: description;
 		align-self: center;
@@ -188,15 +101,140 @@
 	.field-dependent {
 		color: var(--neutral-700);
 	}
-}
 
-.form-note {
-	color: var(--neutral-600);
-	font-size: 0.875rem;
+	/* Cross-validation field layout */
+	&.field--folds {
+		grid-template-rows: max-content max-content minmax(0, 1fr);
+		grid-template-areas:
+			"label visual"
+			"control visual"
+			"description visual";
+
+		.field-description {
+			align-self: start;
+		}
+	}
+
+	/* Right-column visual */
+	.field-visual {
+		display: grid;
+		grid-area: visual;
+		align-content: start;
+		gap: 0.75rem;
+		border: 1px solid var(--stone-200);
+		border-radius: 0.75rem;
+		background: var(--neutral-50);
+		padding: 1rem;
+		min-width: 0;
+	}
+
+	/* Training iteration matrix */
+	.fold-matrix {
+		border-collapse: separate;
+		border-spacing: 0.25rem;
+		width: 100%;
+		table-layout: fixed;
+
+		caption {
+			padding-bottom: 0.5rem;
+			caption-side: top;
+			color: var(--neutral-800);
+			font-weight: 600;
+			font-size: 0.875rem;
+			text-align: left;
+		}
+
+		th {
+			padding: 0;
+			color: var(--neutral-600);
+			font-weight: 500;
+			font-size: 0.75rem;
+			text-align: center;
+		}
+
+		thead th:first-child {
+			width: 3.5rem;
+			text-align: left;
+		}
+
+		tbody th {
+			text-align: left;
+			white-space: nowrap;
+		}
+
+		td {
+			box-sizing: border-box;
+			border: 1px solid transparent;
+			border-radius: 0.25rem;
+			padding: 0;
+			height: 1.75rem;
+		}
+
+		/* Training fold */
+		.fold-training {
+			border-color: var(--blue-300);
+			background: var(--blue-100);
+		}
+
+		/* Validation fold */
+		.fold-validation {
+			border-color: var(--green-500);
+			background: var(--green-100);
+		}
+
+		/* Highlight rows when inspecting the matrix */
+		tbody tr:hover td {
+			filter: brightness(0.95);
+		}
+	}
+
+	/* Distribution summary */
+	.fold-visual-summary {
+		margin: 0;
+		color: var(--neutral-600);
+		font-size: 0.875rem;
+		line-height: 1.5;
+	}
+
+	/* Legend */
+	.fold-legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1rem;
+		margin: 0;
+		padding: 0;
+		color: var(--neutral-700);
+		font-size: 0.8125rem;
+		list-style: none;
+
+		li {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+	}
+
+	.fold-legend-swatch {
+		display: inline-block;
+		flex: 0 0 0.875rem;
+		border: 1px solid;
+		border-radius: 0.25rem;
+		width: 0.875rem;
+		height: 0.875rem;
+	}
+
+	.fold-legend-swatch-train {
+		border-color: var(--blue-300);
+		background: var(--blue-100);
+	}
+
+	.fold-legend-swatch-validation {
+		border-color: var(--green-500);
+		background: var(--green-100);
+	}
 }
 
 /* Accessibility */
-
 .visually-hidden {
 	position: absolute;
 	margin: -1px;
@@ -210,95 +248,23 @@
 }
 
 /* Responsive layout */
-
 @media (max-width: 700px) {
 	.field {
+		grid-template-rows: auto;
 		grid-template-columns: minmax(0, 1fr);
 		grid-template-areas:
 			"label"
 			"control"
 			"description";
-
 		row-gap: 0.75rem;
+
+		&.field--folds {
+			grid-template-rows: auto;
+			grid-template-areas:
+				"label"
+				"control"
+				"description"
+				"visual";
+		}
 	}
-}
-
-/* Cross-validation control layout */
-
-.field-controls--folds {
-	grid-template-columns: minmax(0, 1fr) 7rem;
-	grid-template-areas:
-		"range number"
-		"distribution distribution";
-
-	align-items: center;
-	gap: 0.75rem 1rem;
-}
-
-.field-controls--folds > input[type="range"] {
-	grid-area: range;
-}
-
-.field-controls--folds > input[type="number"] {
-	grid-area: number;
-}
-
-/* Distribution visualisation */
-
-.fold-distribution {
-	display: grid;
-	grid-area: distribution;
-	gap: 0.5rem;
-	min-width: 0;
-}
-
-.fold-distribution-labels {
-	display: flex;
-	flex-wrap: wrap;
-	justify-content: space-between;
-	gap: 1rem;
-	font-size: 0.875rem;
-}
-
-.fold-distribution-labels strong {
-	font-weight: 600;
-}
-
-.fold-distribution-train {
-	color: var(--blue-600);
-}
-
-.fold-distribution-validation {
-	color: var(--green-600);
-}
-
-/* Two-colour native progress element */
-.fold-distribution progress {
-	display: block;
-
-	appearance: none;
-	-webkit-appearance: none;
-	border: 0;
-	border-radius: 1rem;
-
-	background: var(--green-500);
-	width: 100%;
-	height: 0.75rem;
-	overflow: hidden;
-}
-
-/* Chromium and Safari */
-.fold-distribution progress::-webkit-progress-bar {
-	border-radius: 1rem;
-	background: var(--green-500);
-}
-
-.fold-distribution progress::-webkit-progress-value {
-	border-radius: 1rem 0 0 1rem;
-	background: var(--blue-500);
-}
-
-/* Firefox */
-.fold-distribution progress::-moz-progress-bar {
-	background: var(--blue-500);
 }
