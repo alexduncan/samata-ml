@@ -51,6 +51,12 @@ export const trainModelStyles: CSSResult = css`
 		font-size: 1.125rem;
 	}
 
+	.train-step-header h2 .help-link {
+		margin-inline-start: 0.5rem;
+		font-weight: 400;
+		font-size: 0.875rem;
+	}
+
 	.train-step-header .train-step-action {
 		margin-inline: 0.875rem;
 		margin-block: 0.75rem;
