@@ -66,8 +66,8 @@ export type ModelSectionId =
 	| 'training'
 	| 'results';
 
-/** Primitive and array hyperparameter values. */
-export type HyperparameterValue = number | string | boolean | number[];
+/** Primitive, `null` and number-array hyperparameter values. `null` means an explicit "no limit" or "disabled" option such as `maxDepth`. */
+export type HyperparameterValue = number | string | boolean | null | number[];
 
 /** Hyperparameter configuration for manual settings or tuning search space. */
 export interface HyperparameterConfig {
