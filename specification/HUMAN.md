@@ -1,6 +1,6 @@
 # Human tasks
 
-**Updated:** 2026-11-16
+**Updated:** 2026-11-17
 
 This is the human's work queue: decisions, plan review, missing content and mockup styling. Detail lives in the linked plan/spec. TODO IDs refer to [TODO.md](TODO.md); Known gaps refer to [the index](README.md#known-gaps).
 
@@ -20,7 +20,7 @@ This is the human's work queue: decisions, plan review, missing content and mock
 
 ## 1. Workflow and plan review
 
-- [ ] **Review classification integration (web-ml-classification-integration):** Approve the saved contract for all eight classifiers, JSON-generated native controls/results, manual default plus advanced Random Search, stratified holdout with train-fitted preprocessing and explicit final refit, progress/cancellation, worker/WASM deployment and durable results. Blocks implementation. Recommended: adopt this initial scope; defer regression, nested CV, Hyperband, threshold tuning and interactive charts. The new classification-only request supersedes the earlier setup catalogue's regression scope at integration. → [plan](plans/web-ml-classification-integration.md#technical-decisions)
+- [ ] **Resolve remaining cross-phase questions and apply upstream `web-ml` plans (web-ml-phase-1..5):** Confirmed in `samata-ml` plans: single fold-count input mapped to `outerFolds`/`innerFolds` (#2), fixed 80/20 `one_shot` holdout split (#4), widened `HyperparameterValue` + presentation policy (#5), and `<details>`/`<summary>` log in `$trainingSession` + IndexedDB (#7). Upstream `web-ml` plans are drafted for `crossValidate` (#1) and `HyperparameterDomain<T>` / `TrainingClient.train` narrowing (#8). Remaining decisions: (#3) worker/refit division between `samata-ml` and `web-ml` for CV runs, and (#6) 8 classifiers vs 14 supervised models and task+modality catalogue exports in `web-ml`. → [overview & contradictions](plans/web-ml-classification-integration.md#risks-and-open-questions)
 
 Seven active plans were reviewed on 2026-11-13. All retain valid `draft` metadata: the current validator does not support `ready-for-review`. The two formerly ready plans had substantive corrections, so their previous approvals remain history only. Product answers already given remain accepted.
 
@@ -59,7 +59,7 @@ Already answered and incorporated: dataset-id/model-id identity convention; app 
 
 ## 4. Missing later specifications and content
 
-The classification subsets of TODO-01–05, TODO-21 and TODO-33 are now designed in the [classification integration draft](plans/web-ml-classification-integration.md#interfaces-and-behaviour), awaiting the review item above. Its final sync task replaces the orchestrator stub and updates the workflow/storage specs after implementation. This is a proposed contract, not completed product work. The existing production COOP/COEP and compiled-library answers (TODO-50/51) are incorporated; development delivery is owned by its T1.
+The classification subsets of TODO-01–05, TODO-21 and TODO-33 are now designed in the [classification integration draft](plans/web-ml-classification-integration.md#interfaces-and-behaviour), awaiting the verification item above. Its final sync task replaces the orchestrator stub and updates the workflow/storage specs after implementation. This is a proposed contract, not completed product work. The production COOP/COEP and compiled-library answers (TODO-50/51) are incorporated; development delivery is owned by its T1, and TODO.md closes both entries in its final sync task.
 
 - [ ] **Author remaining model articles (TODO-12):** Add locale content for models beyond Logistic Regression. Non-blocking: the Step 3 missing-description fallback is accepted. → [content layout](content-and-i18n.md#static-content)
 - [ ] **Component documentation (TODO-34, TODO-35):** Shell, chiclet, dialog and page-header specs are delivered. Remaining transient-feature/notification/dropzone/table/stepper/status/progress specs need reconciliation. Non-blocking where reviewed plans provide closed contracts and explicit sync owners. → [template](COMPONENTS.md#12-component-spec-template)
@@ -98,7 +98,9 @@ Only the human changes normative mockups. Drafts are structure only and use exis
 
 ## 7. Other spec conflicts and process backlog
 
-TODO-50/51 are answered and claimed by the classification integration plan: preserve production isolation, supply it in development, and consume precompiled `web-ml` assets. No native toolchain belongs here; no further decision is requested.
+TODO-50/51 are answered and claimed by the classification integration plan: send isolation headers in production and development (for shared-memory performance; `web-ml` trains without them), and consume precompiled `web-ml` assets. No native toolchain belongs here; no further decision is requested. TODO.md still lists both as open until that plan's final sync task.
+
+- [ ] **Report web-ml public documentation conflicts (web-ml-classification-integration):** Raise these with `web-ml`: (1) Logistic JSON applies `learningRate` under Adam, but `hyperparameters.md` says Adam's rate is fixed, and neither says whether a supplied Adam rate is rejected or ignored; (2) the class order of NB custom priors is undefined; (3) the default positive label is `classes_[1]` in the declarations but the second `classLabels` entry in the prose; (4) `durationMs` start point differs between `timing.md` and the declarations; (5) `CombinedDatasetProvider` row order is undocumented. Non-blocking: the plan avoids every affected path. Recommended: file one upstream issue; once it is answered, a follow-up plan can unlock per-class prior entry and threshold editing. → [plan context](plans/web-ml-classification-integration.md#codebase-context)
 
 - [ ] **Remaining Known gaps 3, 6, 7, 10:** Commission reconciliation of CSS inlining, worker/service-worker and lint/CI rules, and the product name. Gaps 1, 2, 4, 5, 17 and 18 are resolved. Gap 13 now names remaining exact feature contrast findings and broader feature coverage. Non-blocking for scoped plans with explicit decisions. → [gaps](README.md#known-gaps)
 - [ ] **Close stale scaffolding process item (TODO-52):** Scaffolding plans are implemented; reconcile its old ready/draft wording during workflow spec sync. Non-blocking. → [TODO](TODO.md#7-process)
