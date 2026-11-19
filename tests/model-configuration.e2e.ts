@@ -38,10 +38,21 @@ async function resetApp(page: Page): Promise<void> {
 	}
 }
 
-/** Loads Iris, targets `class`, builds Model 1 with Logistic Regression and completes Sections 1 and 2. */
-async function openConfigure(page: Page, target = 'class'): Promise<Locator> {
+async function dismissWelcome(page: Page): Promise<void> {
+	const getStarted = page.locator('app-welcome-modal button.btn-primary');
+	try {
+		await getStarted.waitFor({ state: 'visible', timeout: 1500 });
+		await getStarted.click();
+		await page.locator('app-welcome-modal dialog').waitFor({ state: 'hidden', timeout: 2000 });
+	} catch {
+		// Not shown
+	}
+}
+
+/** Loads a sample dataset (Iris by default), targets `class`, builds Model 1 with Logistic Regression and completes Sections 1 and 2. */
+async function openConfigure(page: Page, target = 'class', dataset = 'iris'): Promise<Locator> {
 	await resetApp(page);
-	const iris = page.locator('app-dataset-card[dataset-id="iris"]');
+	const iris = page.locator(`app-dataset-card[dataset-id="${dataset}"]`);
 	await iris.waitFor({ state: 'visible', timeout: 5000 });
 	await iris.locator('button.btn-primary').click();
 	await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
@@ -401,7 +412,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		await expect(form.locator('#C-number')).toHaveValue('1');
 		await expect(form.locator('#C-error')).toHaveCount(0);
 
-		// With a later section complete, Edit asks first
+		// With a later section complete, Edit asks first (from persisted state, after a reload)
 		await form.locator('select#penalty').selectOption('none');
 		await form.getByRole('button', { name: 'Save & Continue' }).click();
 		await page.evaluate(() => {
@@ -414,8 +425,47 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 				}))
 			});
 		});
-		await step3.getByRole('button', { name: 'Edit Configure Model' }).click();
-		await expect(builder.locator('dialog.confirm-dialog')).toBeVisible();
+		await page.waitForTimeout(500);
+		await page.reload();
+		await dismissWelcome(page);
+		const reloaded = page.locator('app-model-builder-view .train-step').nth(2);
+		await expect(reloaded.locator('h2')).toContainText('3. Model Configured');
+		expect(
+			await page.evaluate(() => window.__appState!.get().models[0]!.completedSteps)
+		).toContain('configure-training');
+		await reloaded.getByRole('button', { name: 'Edit Configure Model' }).click();
+		await expect(page.locator('app-model-builder-view dialog.confirm-dialog')).toBeVisible();
+	});
+
+	test('WML-P1-UI-4: a binary target saves multiclass as null', async ({ page }) => {
+		const form = await openConfigure(page, 'class', 'pima-diabetes');
+		await form.locator('select#penalty').selectOption('none');
+		await form.getByRole('button', { name: 'Save & Continue' }).click();
+		await expect(
+			page.locator('app-model-builder-view .train-step').nth(2).locator('h2')
+		).toContainText('3. Model Configured');
+		const model = await page.evaluate(() => window.__appState!.get().models[0]!);
+		expect(model.completedSteps).toContain('configure-model');
+		expect(model.multiclass).toBeNull();
+		await expect(form.locator('.form-note')).toHaveCount(0);
+	});
+
+	test('WML-P1-UI-9: Edit buttons for Sections 1 to 3 have exact accessible names', async ({
+		page
+	}) => {
+		const form = await openConfigure(page);
+		await form.locator('select#penalty').selectOption('none');
+		await form.getByRole('button', { name: 'Save & Continue' }).click();
+		const builder = page.locator('app-model-builder-view');
+		await expect(builder.locator('.train-step').nth(2).locator('h2')).toContainText(
+			'3. Model Configured'
+		);
+		for (const name of ['Edit Choose Model', 'Edit Select Features', 'Edit Configure Model']) {
+			const button = builder.getByRole('button', { name, exact: true });
+			await expect(button).toHaveCount(1);
+			await expect(button).toBeVisible();
+			await expect(button.getByText('Edit', { exact: true })).toBeVisible();
+		}
 	});
 
 	test('WML-P1-UI-4: shows the read-only multiclass note for a three-class target', async ({
@@ -449,24 +499,58 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		await expect(page.locator('app-model-configuration #C-number')).toHaveValue('2');
 	});
 
-	test('WML-P1-UI-6: keyboard completion and 320 px width without horizontal overflow', async ({
-		page
+	test('WML-P1-UI-6: keyboard-only completion shows focus on every control', async ({
+		page,
+		browserName
 	}) => {
 		const form = await openConfigure(page);
-		await page.setViewportSize({ width: 320, height: 800 });
-		const overflow = await page.evaluate(
-			() => document.documentElement.scrollWidth > document.documentElement.clientWidth
-		);
-		expect(overflow).toBe(false);
 		await form.locator('select#mode').focus();
-		await page.keyboard.press('Tab');
-		await expect(form.locator('select#penalty')).toBeFocused();
-		const save = form.getByRole('button', { name: 'Save & Continue' });
-		await save.focus();
+		// Safari on macOS skips buttons and checkboxes on a plain Tab (system setting); Alt+Tab is its Tab.
+		const tabKey =
+			browserName === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab';
+		const deepActive = () =>
+			page.evaluate(() => {
+				let el: Element | null = document.activeElement;
+				while (el?.shadowRoot?.activeElement) el = el.shadowRoot.activeElement;
+				return {
+					text: el?.textContent?.replace(/\s+/g, ' ').trim() ?? '',
+					tag: el?.tagName ?? '',
+					outline: el ? getComputedStyle(el).outlineStyle : 'none'
+				};
+			});
+		let reached = false;
+		for (let press = 0; press < 40 && !reached; press += 1) {
+			await page.keyboard.press(tabKey);
+			const active = await deepActive();
+			expect(active.outline, `focus outline on ${active.tag} ${active.text}`).not.toBe(
+				'none'
+			);
+			reached = active.tag === 'BUTTON' && active.text === 'Save & Continue';
+		}
+		expect(reached).toBe(true);
 		await page.keyboard.press('Enter');
 		await expect(
 			page.locator('app-model-builder-view .train-step').nth(2).locator('h2')
 		).toContainText('3. Model Configured');
+	});
+
+	test('WML-P1-UI-6: long labels fit at 320 px without horizontal overflow', async ({ page }) => {
+		const form = await openConfigure(page);
+		await useModel(page, 'support-vector-classifier');
+		await form.locator('select#kernel').selectOption('poly');
+		await page.setViewportSize({ width: 320, height: 800 });
+		const clipped = await form
+			.locator('.field-name, .field-description, button')
+			.evaluateAll((elements) =>
+				elements
+					.filter((el) => el.clientWidth > 0 && el.scrollWidth > el.clientWidth + 1)
+					.map((el) => el.textContent?.replace(/\s+/g, ' ').trim().slice(0, 40))
+			);
+		expect(clipped).toEqual([]);
+		const overflow = await page.evaluate(
+			() => document.documentElement.scrollWidth > document.documentElement.clientWidth
+		);
+		expect(overflow).toBe(false);
 	});
 
 	test('WML-P1-UI-6: right-to-left, 200% zoom and forced colours keep content and focus visible', async ({
