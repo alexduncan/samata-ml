@@ -1,8 +1,8 @@
 # Phase 2: Configure training setup (one-shot and cross-validation)
 
-**Status:** ready-for-review | **Updated:** 2026-11-19T17:28:37Z
+**Status:** draft | **Updated:** 2026-11-19T17:35:08Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Google Antigravity (Gemini 4 Neon High), Codex (GPT-6) | **Created:** 2026-11-17T21:23:45Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -377,6 +377,7 @@ None.
 | -------------------- | --------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-11-19T15:44:17Z | Google Antigravity (Gemini 4 Neon High) | changes-requested | BLOCKER: unresolved blocking question & stale claim that web-ml lacks crossValidate (shipped in web-ml@0.1.0); BLOCKER: D1 vs §A ValidationMethodology type contradiction and unspecified STORAGE_VERSION/v1->v2 migration runner (persister/scroll); BLOCKER: unresolved Section 4 submit/completion fork and undeclared Phase 1 prerequisite; MAJOR: unspecified SetupLabels/i18n/maxFolds/blockedReason/invalid-input handling, missing app-model-builder-view.stories.ts, unaddressed models-setup.e2e.ts conflict, incomplete T1 fixtures & ACs. |
 | 2026-11-19T17:13:05Z | Codex (gpt-6.2-astra)                   | changes-requested | BLOCKER in T1: an incompatible setup can erase the active IndexedDB dataset on restart or rollback. MAJOR findings in T1–T3 cover metadata readiness, split feasibility, content error handling, accessible controls and per-model form state. T4 leaves a conflicting default. See the evidence and revision criteria below.                                                                                                                                                                                                                         |
+| 2026-11-19T17:35:08Z | Codex (gpt-6.2-astra)                   | changes-requested | MAJOR findings in T1 and T3 affect lost-result diagnostics, the form behind Help, metadata retry and the browser verification gate. T2 also names the wrong Phase 1 translation key. See the independent review below for regression cases and evidence.                                                                                                                                                                                                                                                                                              |
 
 ### Evidence for the 2026-11-19 Codex review
 
@@ -401,6 +402,21 @@ The scout checked the catalogue JSON, public declarations and prose in the prima
 | Accessible matrix and Edit name        | §§C–E, T3 UI-4/5 require visible role markers and an accessible name containing “Edit”.                          |
 | Per-model invalid draft                | §§D/E, T3 UI-8 exercise two CV models and same-count navigation.                                                 |
 | Conflicting default                    | T4 updates the normative default in navigation §6.3 and removes stale workflow text.                             |
+
+### Independent review at 17:35 UTC
+
+- **MAJOR · T1, recovery after result loss.** A trained model with an unusable setup and a missing result enters draft with a new `TRAINING_FAILED` error explaining the loss (`src/stores/reconciler.ts:203–223`, `specification/state-and-storage.md:241`). §A and T1 apply draft cleanup after reconciliation and explicitly protect only the interrupted-training error. Specify which errors survive. Add an IndexedDB test that exercises both faults together, reopens Section 4, retains the loss message on the next hydration and preserves sibling results.
+- **MAJOR · T3, model form behind Help.** §E uses the current model route to determine whether to render the form. Opening Help changes the route to reserved while the model remains its underlay (`src/router/router.ts:203–217`, `src/app.ts:78–88`). A rerender can remove the form and its focused help link. Use the underlay identity to retain the form and the actual workflow route to authorise writes. Extend UI-4 with an invalid fold draft, a rerender during Help and a close that restores the same link and draft. Verify a stale event while Help is open produces no write.
+- **MAJOR · T3, reaching Retry.** §E promises Retry for unusable ready metadata. The loader publishes non-null metadata as ready (`src/stores/dataset.store.ts:129–140,163–170`). Earlier builder sections already call `metadata.columns.find` before Section 4 renders (`src/features/models/app-model-builder-view.ts:686–688,1083–1098`). Phase 1 also does this for completed Section 3 at `9b4013c`. Define a shared guard before those reads. Exercise the mounted builder with a matching dataset ID and missing or non-array columns, then retry with valid metadata and complete Section 4. UI-7 currently tests a rejected read and a missing target.
+- **MAJOR · T3, verification.** The definition of done requires every listed E2E suite to pass in all three engines. The parity suite explicitly skips Firefox and WebKit (`tests/visual-parity.e2e.ts:9`). Phase 1 also records existing parity failures on its integration branch (`specification/HUMAN.md:25` at `9b4013c`). Specify three-engine functional and accessibility coverage, Chromium parity, and how to assess existing failures before Phase 2 starts. Any deferral needs an explicit disposition for this phase. Keep new regressions visible.
+- **MINOR · T2, existing help title.** §B names `t.configureModel`. The Phase 1 integration branch defines and reads `t.configureModelHelp` (`src/features/shell/app-content-modal.ts:18,142` at `9b4013c`). Use the existing key and verify that the Configure Model help heading survives loading and delivery failure.
+- **SUGGESTION · T2, deterministic stories.** The content loader caches successful indexes and fragments (`src/common/content/content-loader.ts:232–244,289–299`). Isolate those caches as well as fetch and route state so visiting the success story first cannot mask the delivery-failure story.
+
+The scouts checked the canonical and installed 0.1.0 schema, index, 16 model entries, public declarations and relevant prose. Only the canonical checkout supplies the fixed-CV declaration dependency. The manual fold limit, nested feasibility example and separation of configuration from execution are supported. The Phase 1 branch supplies the fourth required content page and its exact-map test. Its completion and integration remain prerequisites.
+
+The core decision checklist is covered by the T4 documentation list, the store/wire, event and route contracts in §§A–E, the positive and negative criteria in T1–T3, and the T1–T4 task scopes and commit identifiers. The remaining test and contract gaps are listed above. This checkout has no repository-specific decision checklist. New workers, model execution and IndexedDB schema changes are outside this phase.
+
+Baseline verification used an isolated copy of the tracked files at `07ab5a7` and the primary checkout’s dependencies with an identical lockfile. The review worktree itself had no local TypeScript installation. `bun run check` passed typechecking and all 220 tests in 31 files. `bun run test:e2e tests/visual-parity.e2e.ts --project=chromium --workers=1` returned 60 passes and nine failures, covering the sidebar, step links, main layout and model features table. The Phase 2 feature, its stories and its manual assistive-technology checks await implementation.
 
 ## Change log
 
