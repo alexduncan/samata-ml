@@ -1,6 +1,6 @@
 # Human tasks
 
-**Updated:** 2026-11-17
+**Updated:** 2026-11-19
 
 This is the human's work queue: decisions, plan review, missing content and mockup styling. Detail lives in the linked plan/spec. TODO IDs refer to [TODO.md](TODO.md); Known gaps refer to [the index](README.md#known-gaps).
 
@@ -16,11 +16,14 @@ This is the human's work queue: decisions, plan review, missing content and mock
 1. Review the revised workflow bootstrap plan. The grouped Step 1–3 defaults and text-entry fallback are now accepted.
 2. Bootstrap workflow-gates under renewed current-workflow approval, then submit review-complete drafts using its new tools. No agent may fabricate a reviewer/approval stamp.
 3. Execute foundations before dependent UI tasks: state-navigation; virtual table/reference helpers; Step 1; Step 2; Step 3. Tasks name exact prerequisites.
-4. Review the classification integration plan for later configuration, training and results. Draft styling is non-blocking.
+4. Commission the upstream `web-ml` changes (WR ledger), then review the classification phase plans 1–7 in order. Draft styling is non-blocking.
 
 ## 1. Workflow and plan review
 
-- [ ] **Resolve remaining cross-phase questions and apply upstream `web-ml` plans (web-ml-phase-1..5):** Confirmed in `samata-ml` plans: single fold-count input mapped to `outerFolds`/`innerFolds` (#2), fixed 80/20 `one_shot` holdout split (#4), widened `HyperparameterValue` + presentation policy (#5), and `<details>`/`<summary>` log in `$trainingSession` + IndexedDB (#7). Upstream `web-ml` plans are drafted for `crossValidate` (#1) and `HyperparameterDomain<T>` / `TrainingClient.train` narrowing (#8). Remaining decisions: (#3) worker/refit division between `samata-ml` and `web-ml` for CV runs, and (#6) 8 classifiers vs 14 supervised models and task+modality catalogue exports in `web-ml`. → [overview & contradictions](plans/web-ml-classification-integration.md#risks-and-open-questions)
+- [ ] **Commission upstream `web-ml` changes WR-1…WR-13 (web-ml-phase-3..7):** On 2026-11-19 you decided `web-ml` runs every evaluation fold and owns all metrics, curves, baselines and the ROPE test; Phases 4–7 are complete drafts that stay `draft` until these land in `web-ml`'s public API. Blocks Phases 3–7 leaving `draft`. Recommended: hand the ledger to a `web-ml` planner — amend `cross-validation-refit-and-diagnostics.md` for WR-1, WR-2, WR-8, WR-10; amend `metrics-plan-v1.md` for WR-3, WR-4, WR-5, WR-6, WR-11, WR-13; write new plans for WR-7 (per-fold preprocessing pipeline), WR-9 (Bayesian correlated t-test) and WR-12 (model internals). → [WR ledger](plans/web-ml-classification-integration.md#scope)
+- [ ] **Verify Phase 1 Configure Model plan (web-ml-phase-1-configure-model):** Run `/verify-plan` in a fresh session on Phase 1 (`ready-for-review`), covering the `.field` CSS Grid, `hyperparametersStyles`, `<ui-parameter-input>` (`linear`/`logarithmic`/`integer` scales), plain-English `<abbr>` descriptions, `/help/configure-model` reserved route, and 8-classifier catalogue scope. Blocks Phase 1 implementation. → [plan](plans/web-ml-phase-1-configure-model.md)
+- [ ] **Confirm display transforms stay in `samata-ml` (web-ml-phase-6-model-specific-results D3):** Odds ratios, weight of evidence, Fisher separability, neighbour consensus and parameter counts are closed-form re-expressions of public `web-ml` outputs, computed in `samata-ml`. Non-blocking. Recommended: keep them here; move any to WR-12 if other `web-ml` consumers need them. → [decision](plans/web-ml-phase-6-model-specific-results.md#technical-decisions)
+- [ ] **Review chart tokens (web-ml-phase-4-single-model-results D7, web-ml-phase-7-hyperparameter-tuning D11):** Nine categorical/axis tokens and five sequential tokens alias existing palette colours; the human owns colour. Non-blocking. Recommended: accept the aliases, restyle when charts are promoted. → [decision](plans/web-ml-phase-4-single-model-results.md#technical-decisions)
 
 Seven active plans were reviewed on 2026-11-13. All retain valid `draft` metadata: the current validator does not support `ready-for-review`. The two formerly ready plans had substantive corrections, so their previous approvals remain history only. Product answers already given remain accepted.
 
@@ -79,7 +82,8 @@ The obsolete preview spec (TODO-48/Gap 16) is owned by Step 1 T7. The remaining 
 - [ ] **Style generated model options (web-ml-classification-integration):** Style the proposed manual/tuning controls, structured inputs and loading/error/invalid states. Non-blocking. → [draft](mockups/ui-scaffold/drafts/03-4_train-models-3-configure-model.html)
 - [ ] **Style holdout setup (web-ml-classification-integration):** Style split/preprocessing controls, summary and blocked/browser/other-tab states. Non-blocking. → [draft](mockups/ui-scaffold/drafts/03-5_train-models-4-configure-training.html)
 - [ ] **Style training progress (web-ml-classification-integration):** Style phase-labelled native progress and queued/search/refit/evaluation/save/cancel/error/completion states. Non-blocking. → [draft](mockups/ui-scaffold/drafts/03-6_train-models-5-train.html)
-- [ ] **Style classification results and comparison (web-ml-classification-integration):** Style common scores, confusion/diagnostic/history/trial tables, comparison and unavailable/empty/error states. Non-blocking. → [draft](mockups/ui-scaffold/drafts/03-7_train-models-5-results.html)
+- [ ] **Style single-model results (web-ml-phase-4/6/7):** Style the shared results sections and charts (Phase 4), model-internals sections (Phase 6) and the Tuning section (Phase 7) once each phase updates the draft. Non-blocking. → [draft](mockups/ui-scaffold/drafts/03-7_train-models-5-results.html)
+- [ ] **Style comparison (web-ml-phase-5-model-comparison):** Style the `/results` comparison draft that Phase 5 T6 creates (controls, table lens, charts, blocked/incomparable states). Non-blocking. → [plan](plans/web-ml-phase-5-model-comparison.md#t6--connected-results-view-shell-wiring-draft-and-journeys)
 
 Only the human changes normative mockups. Drafts are structure only and use existing styles; promote them when styled. Each is non-blocking for its scoped behaviour.
 
@@ -107,8 +111,10 @@ TODO-50/51 are answered and claimed by the classification integration plan: send
 
 ## 8. Later vision work
 
+- [ ] **Commission plans for unclaimed UX note sections (user-experience-decisions):** Phases 4 and 7 claim §3–§6 and §8; §1 (defaults and reset), §2 (explanations), §7 (categorical encoding), §9 (stopping tolerance) and §10 (regularisation diagnostics) are unclaimed. Non-blocking. Recommended: fold §1, §2 and §9 into Phase 1 review; plan §7 and §10 separately. → [note](notes/user-experience-decisions.md)
+
 - [ ] **Progressive disclosure (TODO-40):** Specify definitions/glossary/formulas. Non-blocking. → [vision](VISION.md#4-progressive-disclosure-and-plain-english-guidance)
-- [ ] **Visualisations (TODO-41):** Specify decision-boundary/confusion-matrix tools and chart library. Non-blocking. → [vision](VISION.md#5-appropriate-visualisations)
+- [ ] **Visualisations (TODO-41):** Chart library chosen (Observable Plot, Phase 4) and confusion/model-specific visuals planned (Phases 4–6); decision-boundary galleries remain open. Non-blocking. → [vision](VISION.md#5-appropriate-visualisations)
 - [ ] **Further ethical samples (TODO-42):** Scope future catalogue additions; COMPAS/German Credit already exist, COMPAS remains remote. Non-blocking. → [samples](sample-datasets.md)
 - [ ] **Threshold/fairness tools (TODO-43):** Specify group metrics/calibration/prompts. Non-blocking. → [vision](VISION.md#8-probabilistic-threshold-calibration-and-fairness-auditing)
 - [ ] **Neural network choice (TODO-44):** Specify educational presentation/comparison. Non-blocking. → [vision](VISION.md#9-explainable-classical-models-contrasted-with-an-opaque-neural-network)

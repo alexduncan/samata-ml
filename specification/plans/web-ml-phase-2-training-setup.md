@@ -1,7 +1,7 @@
 # Phase 2: Configure training setup (one-shot and nested cross-validation)
 
-**Status:** draft | **Updated:** 2026-11-18T08:34:14Z
-**Authors:** Google Antigravity (Gemini 4 Argon High) | **Created:** 2026-11-17T21:23:45Z
+**Status:** draft | **Updated:** 2026-11-19T08:47:35Z
+**Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
@@ -27,7 +27,7 @@
 - User-editable test split ratio or custom fold byte/row sizes (moved to `specification/FUTURE.md`).
 - Non-nested k-fold cross-validation UI (`k_fold_cv`).
 - Executing model training or workers when clicking "Train Model" (implemented in Phase 3: `specification/plans/web-ml-phase-3-model-training.md`; until Phase 3 is wired, Section 4 saves state and completes or shows a clear pending-execution notice).
-- Hyperparameter tuning search-space configuration (moved to Phase 5: `specification/plans/web-ml-phase-5-hyperparameter-tuning.md`).
+- Hyperparameter tuning search-space configuration (moved to Phase 7: `specification/plans/web-ml-phase-7-hyperparameter-tuning.md`).
 
 **Constraints and invariants**
 
@@ -51,7 +51,7 @@
 - **Relevant implementation:** `src/types/state.ts` (L80–83: `ValidationMethodology`), `src/stores/app.store.ts` (`setTrainingSetup` L547–566, `completeSection` L571–611, `startTraining` L613–642), `src/stores/persister.ts` (`VALID_TRAINING_SETUP_TYPES` L92, `validateAppState` L264–271), `src/features/models/app-model-builder-view.ts` (L1086–1095), `src/features/models/app-models-view.ts` (L285–290).
 - **Verified `web-ml@0.1.0` contracts and contradictions affecting Phase 2:**
     1. **`nestedCrossValidate` requires BOTH `outerFolds` and `innerFolds` (`dist/src/training/cross-validation.d.ts` L47–50):** `NestedCrossValidationRequest<A>` requires `outerFolds: number` ($\ge 2$) and `innerFolds: number` ($\ge 2$). The user request specifies _"nested cross-validation with the option to choose the number of folds"_. If the UI exposes a single "Number of folds" input `folds` (e.g. default `5`, range `2..10`), the persisted state can store `{ type: 'nested_cv'; outerFolds: number; innerFolds: number; randomState: number }` (setting both `outerFolds = folds` and `innerFolds = folds`, or exposing separate outer/inner fold inputs if desired).
-    2. **`nestedCrossValidate` requires a hyperparameter tuning `searchSpace` (`dist/src/training/cross-validation.d.ts` L52–59), which is deferred to Phase 5:** `web-ml` has no standalone non-tuning `crossValidate` export. In Phase 2/3 (before Phase 5 adds hyperparameter tuning), selecting Nested Cross-Validation with manual hyperparameters from Phase 1 either requires (a) `web-ml` to add a non-tuning `crossValidate` / optional `searchSpace` path, (b) Phase 3 to synthesise a 1-trial single-point `searchSpace` from the manual `options`, or (c) Nested Cross-Validation to be disabled until tuning is enabled in Phase 5.
+    2. **`nestedCrossValidate` requires a hyperparameter tuning `searchSpace` (`dist/src/training/cross-validation.d.ts` L52–59), which is deferred to Phase 7:** `web-ml` has no standalone non-tuning `crossValidate` export. In Phase 2/3 (before Phase 7 adds hyperparameter tuning), selecting Nested Cross-Validation with manual hyperparameters from Phase 1 either requires (a) `web-ml` to add a non-tuning `crossValidate` / optional `searchSpace` path, (b) Phase 3 to synthesise a 1-trial single-point `searchSpace` from the manual `options`, or (c) Nested Cross-Validation to be disabled until tuning is enabled in Phase 7.
     3. **One-shot training requires a fixed default holdout split ratio (`testRatio: 0.2`) in `samata-ml`:** `web-ml`'s `createTrainingClient().train()` fits on 100% of the rows supplied by `data: DatasetProvider` and performs no train/test split (`dist/src/training/types.d.ts` L50–155). Moving fold/split size selection to the feature backlog means `samata-ml` must store a fixed default `testRatio: 0.2` (80% train / 20% test) and `randomState: 42` in the one-shot `ValidationMethodology` variant so Phase 3 can evaluate the trained model on unseen test rows without data leakage (`VISION.md` §10).
     4. **Minimum rows per class constraint:** Stratified splitting in Phase 3 requires at least `outerFolds` (or $\ge 2$ for one-shot) eligible rows in the rarest target class; Phase 2 validates `folds >= 2` and `folds <= 10` (and $\le$ minimum observed class count when dataset metadata is loaded).
 - **Tests and commands:** Baseline `bun run check` passes 220 tests across 31 files. Existing tests using `{ type: 'k_fold_cv', folds: 5 }` (`tests/state-and-storage.test.ts` L103, L114, L333, L362, L849, L895; `tests/dataset-resources.test.ts` L33) must be updated when `k_fold_cv` is replaced.
@@ -162,7 +162,7 @@ export type ValidationMethodology =
 ## Risks and open questions
 
 - **Blocking:** Confirm whether Phase 2 is ready to submit for `/verify-plan` once the upstream `web-ml` `crossValidate` contract (for executing fixed-hyperparameter cross-validation in Phase 3 when `trainingSetup.type === 'nested_cv'` and `hyperparameters.mode === 'manual'`) is approved.
-- **Non-blocking:** Confirmed resolutions adopted in this plan: (1) the single "Number of folds" input (`2..10`, default `5`) writes to both `outerFolds` and `innerFolds` in `ValidationMethodology` (used as `folds: outerFolds` by `crossValidate` in manual mode and as `outerFolds`/`innerFolds` by `nestedCrossValidate` in Phase 5 tuning mode); (2) One-Shot Training uses a fixed 80% train / 20% test stratified holdout split (`testRatio: 0.2, randomState: 42`), with user-configurable fold/split sizes added to `specification/FUTURE.md`.
+- **Non-blocking:** Confirmed resolutions adopted in this plan: (1) the single "Number of folds" input (`2..10`, default `5`) writes to both `outerFolds` and `innerFolds` in `ValidationMethodology` (used as `folds: outerFolds` by `crossValidate` in manual mode and as `outerFolds`/`innerFolds` by `nestedCrossValidate` in Phase 7 tuning mode); (2) One-Shot Training uses a fixed 80% train / 20% test stratified holdout split (`testRatio: 0.2, randomState: 42`), with user-configurable fold/split sizes added to `specification/FUTURE.md`.
 - **Non-blocking:** Draft `03-5_train-models-4-configure-training.html` awaits human visual styling and promotion (`specification/HUMAN.md`).
 
 ## Escalations
@@ -191,3 +191,4 @@ None.
 | -------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-11-17T21:23:45Z | Initial draft                              | Created Phase 2 plan (Step 4 Training Setup: one-shot vs nested cross-validation fold count, moving fold sizes to `FUTURE.md`) from the multi-phase split of `web-ml-classification-integration.md`. |
 | 2026-11-18T08:34:14Z | Adopt fold-count and one-shot split policy | User confirmed mapping the single fold-count option to `outerFolds`/`innerFolds` and adopting the fixed 80/20 holdout split for One-Shot Training.                                                   |
+| 2026-11-19T08:47:35Z | Renumbered cross-references                | Tuning renumbered to Phase 7; Phase 7 reuses the outer folds of manual cross-validation so tuned and manual models stay comparable. No change to this phase's contract.                              |
