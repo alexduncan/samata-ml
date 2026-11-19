@@ -259,7 +259,7 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 ## 8. Versioning & Validation
 
 - Every persisted blob has `version`. `STORAGE_VERSION` starts at `1`; the earlier `ml_app_fsm_state_v1` key and the `Pipeline` proxy design were never implemented and need no migration.
-- `STORAGE_VERSION` stays `1` for Phase 1: `HyperparameterValue` only gains `null` and `number[]` values, which no earlier release wrote, so no persisted blob changes shape.
+- `STORAGE_VERSION` stays `1` for Phase 1: `HyperparameterValue` only gains `null`, and no earlier release wrote option values because Section 3 never rendered, so no persisted blob changes shape. A bump would discard every user's state, because no migration exists.
 - Persisted `hyperparameters.values` are validated: numbers must be finite, values are `null`, string, boolean, number or finite number array, and prototype keys (`__proto__`, `constructor`, `prototype`) are rejected; a state that fails is discarded wholesale like any other shape failure.
 - Reads are wrapped in `try/catch`. JSON that fails to parse, fails the full runtime shape check, or has a version below current without a migration, is discarded wholesale (fresh defaults). A hand-written type guard is used; no new dependency is introduced for this.
 - A version **higher** than the running code understands (a stale tab after a deploy) yields fresh defaults in memory and puts the persister into **read-only mode** for that key for the lifetime of the document: the tab runs from memory and never overwrites newer data.

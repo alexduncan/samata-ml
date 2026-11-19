@@ -32,7 +32,7 @@ The maximum depth limits how many questions in a row the tree can ask. Unlimited
 
 ## Nearest neighbours
 
-A **neighbour** is one of the training rows closest to a new row. The model predicts by looking at the *k* nearest neighbours, so a larger k gives smoother predictions. It cannot use more neighbours than there are rows in your dataset.
+A **neighbour** is one of the training rows closest to a new row. The model predicts by looking at the _k_ nearest neighbours, so a larger k gives smoother predictions. It cannot use more neighbours than there are rows in your dataset.
 
 The **metric** is how distance is measured. Euclidean is straight-line distance, Manhattan adds up the distance along each feature, and Minkowski generalises both using the power p (p = 2 is Euclidean and p = 1 is Manhattan). The power applies only to the Minkowski metric.
 
