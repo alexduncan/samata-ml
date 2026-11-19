@@ -651,6 +651,7 @@ export class AppModelConfiguration extends LitElement {
 		key: string;
 		canonical: number | undefined;
 		step: string;
+		min?: string;
 		hiddenLabel?: string;
 		layerLabel?: string;
 		labelledBy?: string;
@@ -671,6 +672,7 @@ export class AppModelConfiguration extends LitElement {
 				type="number"
 				name=${args.name}
 				step=${args.step}
+				min=${args.min ?? nothing}
 				data-name=${args.name}
 				data-key=${args.key}
 				aria-labelledby=${args.labelledBy ?? nothing}
@@ -971,6 +973,7 @@ export class AppModelConfiguration extends LitElement {
 								key,
 								canonical: sizes[index],
 								step: '1',
+								min: '1',
 								invalid: this.errors[key] !== undefined,
 								describedBy: this.errors[key]
 									? `${name}-error ${name}-help`
@@ -1022,6 +1025,7 @@ export class AppModelConfiguration extends LitElement {
 						id="mode"
 						name="mode"
 						class="field-control"
+						aria-invalid="false"
 						aria-describedby="mode-help"
 						?disabled=${this.disabled}>
 						<option value="manual" selected>${this.labels.manual}</option>

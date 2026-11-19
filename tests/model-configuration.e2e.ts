@@ -85,6 +85,55 @@ async function values(page: Page): Promise<Record<string, unknown>> {
 	return page.evaluate(() => window.__appState!.get().models[0]!.hyperparameters.values);
 }
 
+const CLASSIFIERS: ReadonlyArray<{ id: string; setup?: [string, string] }> = [
+	{ id: 'logistic-regression', setup: ['penalty', 'l2'] },
+	{ id: 'mlp-classifier' },
+	{ id: 'decision-tree-classifier' },
+	{ id: 'k-neighbors-classifier', setup: ['metric', 'minkowski'] },
+	{ id: 'gaussian-nb' },
+	{ id: 'multinomial-nb' },
+	{ id: 'bernoulli-nb' },
+	{ id: 'support-vector-classifier', setup: ['kernel', 'poly'] }
+];
+
+function escapeRegExp(text: string): string {
+	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/** Asserts every range, number, select and checkbox has a name, a valid state and a description. */
+async function expectControlsAccessible(form: Locator): Promise<number> {
+	const controls = form.locator(
+		'select, input[type="range"], input[type="number"], input[type="checkbox"]'
+	);
+	const count = await controls.count();
+	expect(count).toBeGreaterThan(0);
+	for (let index = 0; index < count; index += 1) {
+		const control = controls.nth(index);
+		const facts = await control.evaluate((el) => {
+			const root = el.getRootNode() as ShadowRoot;
+			const clean = (text: string | null | undefined) =>
+				(text ?? '').replace(/\s+/g, ' ').trim();
+			const labelledBy = el.getAttribute('aria-labelledby');
+			const label =
+				el.getAttribute('aria-label') ??
+				(labelledBy ? root.getElementById(labelledBy)?.textContent : null) ??
+				root.querySelector(`label[for="${el.id}"]`)?.textContent;
+			const key = el.getAttribute('data-name') ?? el.id;
+			const helpElement = root.getElementById(`${key}-help`);
+			const help = (helpElement?.querySelector('p') ?? helpElement)?.textContent;
+			return { id: el.id, label: clean(label), help: clean(help) };
+		});
+		expect(facts.label, `${facts.id} has a label`).not.toBe('');
+		expect(facts.help, `${facts.id} has help text`).not.toBe('');
+		await expect(control, facts.id).toHaveAccessibleName(facts.label);
+		await expect(control, facts.id).toHaveAttribute('aria-invalid', 'false');
+		await expect(control, facts.id).toHaveAccessibleDescription(
+			new RegExp(escapeRegExp(facts.help))
+		);
+	}
+	return count;
+}
+
 test.describe('Configure model (WML-P1-UI-*)', () => {
 	test('WML-P1-UI-1: renders every classifier form with Mode, descriptions and dependency notes', async ({
 		page
@@ -247,15 +296,18 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		expect(await seed.evaluate((el: HTMLInputElement) => el.validity.badInput)).toBe(false);
 	});
 
-	test('WML-P1-UI-3: controls have accessible names, validity and descriptions', async ({
-		page
-	}) => {
+	test('WML-P1-UI-3: every control has a name, validity and description', async ({ page }) => {
 		const form = await openConfigure(page);
+		for (const { id, setup } of CLASSIFIERS) {
+			await useModel(page, id);
+			if (setup) await form.locator(`select#${setup[0]}`).selectOption(setup[1]);
+			await expect(form.locator('select#mode')).toBeVisible();
+			await expectControlsAccessible(form);
+		}
+
+		// Named examples from each control kind
+		await useModel(page, 'logistic-regression');
 		await form.locator('select#penalty').selectOption('l2');
-		await expect(form.getByRole('combobox', { name: 'Solver' })).toHaveAttribute(
-			'aria-invalid',
-			'false'
-		);
 		await expect(form.getByRole('checkbox', { name: 'Fit an intercept' })).toBeVisible();
 		await expect(
 			form.getByRole('slider', { name: 'Regularisation strength (C)' })
@@ -263,8 +315,24 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		await expect(
 			form.getByRole('spinbutton', { name: 'Regularisation strength (C) (exact value)' })
 		).toHaveAttribute('aria-invalid', 'false');
-		const solver = form.getByRole('combobox', { name: 'Solver' });
-		await expect(solver).toHaveAccessibleDescription(/solver is the method/);
+		await expect(form.getByRole('combobox', { name: 'Solver' })).toHaveAccessibleDescription(
+			/solver is the method/
+		);
+		await expect(form.getByRole('combobox', { name: 'Mode' })).toHaveAttribute(
+			'aria-invalid',
+			'false'
+		);
+
+		// Invalid control: the error comes first in the description
+		const number = form.locator('#C-number');
+		await number.fill('0');
+		await number.blur();
+		await expect(number).toHaveAttribute('aria-invalid', 'true');
+		const error = ((await form.locator('#C-error').textContent()) ?? '')
+			.replace(/\s+/g, ' ')
+			.trim();
+		expect(error).not.toBe('');
+		await expect(number).toHaveAccessibleDescription(new RegExp(`^${escapeRegExp(error)}`));
 
 		await useModel(page, 'decision-tree-classifier');
 		await form.getByRole('combobox', { name: 'Maximum depth' }).selectOption('limited');
@@ -274,9 +342,12 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		await expect(
 			form.getByRole('spinbutton', { name: 'Maximum depth (exact value)' })
 		).toBeVisible();
+		await expectControlsAccessible(form);
 
 		await useModel(page, 'mlp-classifier');
-		await expect(form.getByRole('spinbutton', { name: 'Layer 1 size' })).toBeVisible();
+		const layer = form.getByRole('spinbutton', { name: 'Layer 1 size' });
+		await expect(layer).toBeVisible();
+		await expect(layer).toHaveAttribute('min', '1');
 
 		const axe = await new AxeBuilder({ page })
 			.withTags(AXE_TAGS)
