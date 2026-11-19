@@ -1,6 +1,6 @@
 # Step 3: Models overview and setup
 
-**Status:** implemented | **Updated:** 2026-11-14T23:59:38Z
+**Status:** archived | **Updated:** 2026-11-19T10:40:54Z
 
 ## Goal
 

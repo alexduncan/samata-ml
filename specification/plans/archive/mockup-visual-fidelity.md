@@ -1,6 +1,6 @@
 # Mockup visual fidelity: agent instructions, visual spec and parity checks
 
-**Status:** implemented | **Updated:** 2026-11-13T08:59:43Z
+**Status:** archived | **Updated:** 2026-11-19T10:40:51Z
 
 ## Goal
 
@@ -168,7 +168,7 @@ Disabled controls are exempt from 1.4.3, but they must stay legible (`button.md`
 #### D. Instruction changes (T2 to T4)
 
 - **`AGENTS.md`**:
-    - Add a Rules bullet, **Visual fidelity**: "The mockups in `specification/mockups/ui-scaffold/` define how the app looks; markup may differ. Follow [`visual-design.md`](specification/visual-design.md): use only tokens from `css/root.css`, with no fallbacks; record every visual deviation; run the parity and token tests for any UI change."
+    - Add a Rules bullet, **Visual fidelity**: "The mockups in `specification/mockups/ui-scaffold/` define how the app looks; markup may differ. Follow `visual-design.md` (`specification/visual-design.md`): use only tokens from `css/root.css`, with no fallbacks; record every visual deviation; run the parity and token tests for any UI change."
     - In Map, change the mockups entry to "wireframes, normative for appearance".
     - Replace the baseline paragraph with: `bun run check` passes (0 type errors, 48 tests); `bun run build` fails (missing `src/models/storage/storageWorker.ts`).
 - **`specification/README.md`**:

@@ -1,10 +1,14 @@
 # Reference-dataset regression tests
 
-**Status:** draft | **Updated:** 2026-11-13T19:10:15Z
+**Status:** draft | **Updated:** 2026-11-19T10:41:19Z
+**Authors:** Codex (unrecorded) | **Created:** 2026-11-13T15:24:00Z
+**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified hash:** —
+**Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
 
-**Current behaviour:** Every test uses small synthetic inputs. `bun run check` runs 144 tests in 22 files (review baseline: 0 failures/type errors); the data tests (`tests/profiler.test.ts`, `tests/cells.test.ts`, `tests/column-eligibility.test.ts`, `tests/ingestion-source.test.ts`, `tests/storage-db.test.ts`) build their inputs inline. Playwright suites (`tests/app-shell.test.ts`, `tests/content.e2e.ts`, `tests/a11y.e2e.ts`, `tests/visual-parity.e2e.ts`) test the shell and content modals; each re-implements its own setup (for example `app-shell.test.ts` dismisses the welcome modal with a 1.5 s visibility race). No test reads a committed sample dataset, so nothing checks that the real Iris and Palmer Penguins files still produce the same types, statistics, stored rows and model inputs after a change. The [data-ingestion-and-storage](data-ingestion-and-storage.md) plan (`implemented`, all tasks complete) adds point checks on these datasets (its T9 content test, its T11 "Iris-like" provider test and its T15 browser test), but each asserts a handful of facts, not the whole output.
+**Current behaviour:** Every test uses small synthetic inputs. `bun run check` runs 144 tests in 22 files (review baseline: 0 failures/type errors); the data tests (`tests/profiler.test.ts`, `tests/cells.test.ts`, `tests/column-eligibility.test.ts`, `tests/ingestion-source.test.ts`, `tests/storage-db.test.ts`) build their inputs inline. Playwright suites (`tests/app-shell.test.ts`, `tests/content.e2e.ts`, `tests/a11y.e2e.ts`, `tests/visual-parity.e2e.ts`) test the shell and content modals; each re-implements its own setup (for example `app-shell.test.ts` dismisses the welcome modal with a 1.5 s visibility race). No test reads a committed sample dataset, so nothing checks that the real Iris and Palmer Penguins files still produce the same types, statistics, stored rows and model inputs after a change. The [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) plan (`implemented`, all tasks complete) adds point checks on these datasets (its T9 content test, its T11 "Iris-like" provider test and its T15 browser test), but each asserts a handful of facts, not the whole output.
 
 **Target behaviour:**
 
@@ -31,7 +35,7 @@
 **Out of scope**
 
 - Any change under `src/`, `scripts/` or `content/`. If a golden test exposes a product bug, the implementer records it and escalates; it is never fixed here.
-- Journey tests themselves: the first is created by whichever plan first lets a user load a sample through the UI (expected: [step-1-load-data-and-preview](step-1-load-data-and-preview.md)).
+- Journey tests themselves: the first is created by whichever plan first lets a user load a sample through the UI (expected: [step-1-load-data-and-preview](archive/step-1-load-data-and-preview.md)).
 - Training and results tests: the orchestrator is a stub ([machine-learning-orchestrator.md](../machine-learning-orchestrator.md), TODO-33). testing.md records the rule for them; no code.
 - Datasets other than Iris and Penguins (a binary-target reference such as `titanic` is a later addition; see Risks).
 - CI (Known gap 7), migrating existing suites to the new helpers, and Known gaps 5 and 17 (component-test environment and location; these tests are not component tests).
@@ -254,7 +258,7 @@ What `specification/` must say once this plan is implemented. The final task app
 ### T3 — Upload-path ingestion goldens (`REF-2`)
 
 - **Depends on:** T1
-- **Cross-plan prerequisite:** [data-ingestion-and-storage](data-ingestion-and-storage.md) T6 shows `- **Progress:** [x]`. If not, stop before changing any file and report it.
+- **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T6 shows `- **Progress:** [x]`. If not, stop before changing any file and report it.
 - **Risk:** needs care — the first goldens set the baseline; a product bug blessed here is hard to spot later.
 - **Likely files:** `tests/reference-ingestion.test.ts`, `tests/golden/ingestion/iris.upload.json`, `tests/golden/ingestion/palmer-penguins.upload.json`
 - **Must not touch:** `src/**` (escalate product bugs, do not fix them); `tests/ingestion-pipeline.test.ts` (data-ingestion's).
@@ -270,7 +274,7 @@ What `specification/` must say once this plan is implemented. The final task app
 ### T4 — Sample-path ingestion goldens through the generator (`REF-3`)
 
 - **Depends on:** T3
-- **Cross-plan prerequisite:** [data-ingestion-and-storage](data-ingestion-and-storage.md) T9 shows `- **Progress:** [x]`. If not, stop and report it.
+- **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T9 shows `- **Progress:** [x]`. If not, stop and report it.
 - **Risk:** needs care — temporary directories, a fake `fetch` that must strip `?v=` query strings, and restoring globals.
 - **Likely files:** `tests/reference-ingestion.test.ts`, `tests/golden/ingestion/iris.sample.json`, `tests/golden/ingestion/palmer-penguins.sample.json`
 - **Must not touch:** `src/**`, `scripts/**`, `content/**`; `tests/sample-datasets-content.test.ts`.
@@ -285,7 +289,7 @@ What `specification/` must say once this plan is implemented. The final task app
 ### T5 — Dataset-provider goldens (`REF-4`)
 
 - **Depends on:** T4
-- **Cross-plan prerequisite:** [data-ingestion-and-storage](data-ingestion-and-storage.md) T11 shows `- **Progress:** [x]`. If not, stop and report it.
+- **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T11 shows `- **Progress:** [x]`. If not, stop and report it.
 - **Risk:** needs care — buffer sizing and splitting the row-major buffer correctly.
 - **Likely files:** `tests/reference-provider.test.ts`, `tests/helpers/reference-ingest.ts` (if sharing ingestion setup with reference-ingestion.test.ts), `tests/reference-ingestion.test.ts` (only moving that setup), `tests/golden/provider/iris.json`, `tests/golden/provider/palmer-penguins.json`
 - **Must not touch:** `src/**`; `tests/dataset-provider.test.ts`; `../web-ml/**`.
@@ -299,7 +303,7 @@ What `specification/` must say once this plan is implemented. The final task app
 ### T6 — Cross-browser conformance with the goldens (`REF-5`)
 
 - **Depends on:** T2, T4
-- **Cross-plan prerequisite:** [data-ingestion-and-storage](data-ingestion-and-storage.md) T15 shows `- **Progress:** [x]` (worker, built catalogue and browser IndexedDB proven). If not, stop and report it.
+- **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T15 shows `- **Progress:** [x]` (worker, built catalogue and browser IndexedDB proven). If not, stop and report it.
 - **Risk:** needs care — structured-clone results across the page boundary, worker lifetime, and genuine engine differences that must be reported, not hidden.
 - **Likely files:** `tests/e2e/storage.ts` (add `ingestInWorker`), `tests/reference-conformance.e2e.ts`
 - **Must not touch:** `tests/storage-worker.e2e.ts` (data-ingestion's); `tests/helpers/golden.ts` rounding rules (raise a change instead); `playwright.config.ts`; `src/**`.
@@ -346,11 +350,24 @@ What `specification/` must say once this plan is implemented. The final task app
     - **No CI (Known gap 7).** These tests only prevent regressions if they run. `bun run check` covers the Bun goldens; the Playwright suites must be run by hand until CI exists. Owner: human.
     - **Binary-target reference.** Neither dataset has a binary target, positive class or identifier column. Add `titanic` (or similar) as a third reference when Step 4 results exist. Owner: a later plan.
 
+## Escalations
+
+None.
+
+## Review fixes
+
+None.
+
 ## Implementation and verification log
 
-| When (UTC) | Task | Outcome / commands / evidence |
-| ---------- | ---- | ----------------------------- |
-| —          | —    | Not started                   |
+| When (UTC) | Task | Agent (model) | Outcome / commands / evidence |
+| ---------- | ---- | ------------- | ----------------------------- |
+| —          | —    | —             | Not started                   |
+
+## Plan review history
+
+| Reviewed (UTC) | Agent (model) | Decision | Findings |
+| -------------- | ------------- | -------- | -------- |
 
 ## Change log
 
@@ -359,3 +376,4 @@ What `specification/` must say once this plan is implemented. The final task app
 | 2026-11-13T15:24:00Z | Initial draft                                                                                                                                       | User request: regression tests using the sample datasets (Iris, Penguins) to back up unit tests as the app grows. |
 | 2026-11-13T18:47:40Z | Reviewed implemented APIs, corrected startup-db assumption, fetch seam and worker protocol; linked owned journeys                                   | Review request; baseline now 144 passing tests.                                                                   |
 | 2026-11-13T16:38:05Z | Cross-reference only: data-ingestion-and-storage renumbered its browser e2e task from T14 to T15; every reference here updated. No change of scope. | data-ingestion-and-storage revision of 2026-11-13T16:38:05Z                                                       |
+| 2026-11-19T10:41:31Z | Migrated header to v2 (Claude Code, claude-opus-5-5)                                                                                                | Pre-v2 plan migrated to the v2 header; remains draft.                                                             |

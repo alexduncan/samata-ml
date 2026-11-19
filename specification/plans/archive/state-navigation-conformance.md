@@ -1,10 +1,10 @@
 # State and navigation conformance
 
-**Status:** implemented | **Updated:** 2026-11-13T23:00:29Z
+**Status:** archived | **Updated:** 2026-11-19T10:40:53Z
 
 ## Goal
 
-**Current behaviour:** The stores, persister, reconciler and router built by the scaffolding plans differ from [state-and-storage.md](../state-and-storage.md) and [app-state-and-navigation.md](../app-state-and-navigation.md) in the ways listed in _Known gaps_ 14 and 15 of [specification/README.md](../README.md#known-gaps). In summary:
+**Current behaviour:** The stores, persister, reconciler and router built by the scaffolding plans differ from [state-and-storage.md](../../state-and-storage.md) and [app-state-and-navigation.md](../../app-state-and-navigation.md) in the ways listed in _Known gaps_ 14 and 15 of [specification/README.md](../../README.md#known-gaps). In summary:
 
 - `src/stores/reconciler.ts:103-122` uses a shallow shape check, treats a newer `version` as corrupt and overwrites it, and writes `localStorage` directly (`:191`, `:388`).
 - `src/stores/persister.ts:114-140` debounces feature checkboxes, and its single 300 ms debounce means continuous training-progress ticks are never written while they keep arriving.

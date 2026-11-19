@@ -1,6 +1,6 @@
 # Scaffolding: Design Tokens and Shared Style Primitives
 
-**Status:** implemented | **Updated:** 2026-11-13T08:59:43Z
+**Status:** archived | **Updated:** 2026-11-19T10:40:52Z
 
 ## Goal
 

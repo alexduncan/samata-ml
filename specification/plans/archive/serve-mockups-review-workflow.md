@@ -1,6 +1,6 @@
 # Mockup catalogue and styling review workflow
 
-**Status:** implemented | **Updated:** 2026-11-14T17:11:23Z
+**Status:** archived | **Updated:** 2026-11-19T10:40:53Z
 
 ## Goal
 

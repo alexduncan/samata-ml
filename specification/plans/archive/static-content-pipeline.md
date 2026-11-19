@@ -1,6 +1,6 @@
 # Static content pipeline: Markdown fragments, content indexes and the content loader
 
-**Status:** implemented | **Updated:** 2026-11-13T15:02:20Z
+**Status:** archived | **Updated:** 2026-11-19T10:40:53Z
 
 ## Goal
 
@@ -11,7 +11,7 @@
 - 12 sample datasets were committed to `public/datasets/{id}/` (`metadata.json`, `data.csv`, `datasheet.md`). `copyDirContents(PUBLIC_DIR, …)` in `scripts/build-assets.ts` copies all of `public/` verbatim, so every authoring file (Markdown and authoring JSON) ships to production.
 - The draft plan [data-ingestion-and-storage](data-ingestion-and-storage.md) D10/R1 already decided that sample datasets are authored in `content/datasets/{id}/` and that the build writes `/datasets/manifest.json`, `descriptor.json`, `datasheet.html` and `data.csv` into the output. The committed files contradict it.
 - `public/_headers` sets security headers for `/*` only. `scripts/static-server.ts` serves `.json` and `.csv` as `application/octet-stream`.
-- Specs disagree with the code: [content-and-i18n.md](../content-and-i18n.md) says `/content-src/<locale>/` compiled to TypeScript in `src/content-compiled/`, and ARCHITECTURE lists `/content-src/` ([Known gap](../README.md#known-gaps) 4).
+- Specs disagree with the code: [content-and-i18n.md](../../content-and-i18n.md) says `/content-src/<locale>/` compiled to TypeScript in `src/content-compiled/`, and ARCHITECTURE lists `/content-src/` ([Known gap](../../README.md#known-gaps) 4).
 
 **Target behaviour:**
 
@@ -97,7 +97,7 @@ Facts the planner verified, so the implementer need not re-check them.
 
 ### Review of the input notes
 
-[build-static-content.md](../notes/build-static-content.md) (B) and [static-content-indexes.md](../notes/static-content-indexes.md) (I). What this plan keeps, changes and drops, and why.
+build-static-content.md (`../notes/build-static-content.md`, no longer present) (B) and static-content-indexes.md (`../notes/static-content-indexes.md`, no longer present) (I). What this plan keeps, changes and drops, and why.
 
 | #   | Note says                                                                                   | Assessment                                                                                                                                                                                                                | Decision                                                                                                                                                                             |
 | --- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

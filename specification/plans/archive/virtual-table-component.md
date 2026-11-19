@@ -1,6 +1,6 @@
 # Virtualised dataset table
 
-**Status:** implemented | **Updated:** 2026-11-14T19:53:01Z
+**Status:** archived | **Updated:** 2026-11-19T10:40:54Z
 
 ## Goal
 

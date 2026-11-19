@@ -1,6 +1,6 @@
 # Step 1: Load data and preview
 
-**Status:** implemented | **Updated:** 2026-11-14T13:05:46Z
+**Status:** archived | **Updated:** 2026-11-19T10:40:53Z
 
 ## Goal
 
