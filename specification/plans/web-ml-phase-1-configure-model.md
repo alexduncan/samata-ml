@@ -1,6 +1,6 @@
 # Phase 1: Configure model and manual hyperparameter selection
 
-**Status:** ready | **Updated:** 2026-11-19T19:01:21Z
+**Status:** ready | **Updated:** 2026-11-19T19:03:20Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Google Antigravity (Gemini 4 Neon High) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-19T18:56:34Z | **Verification:** approved
 **Verified hash:** sha256:0c6322f4b776a6ab7a42cbbd5f1c74372750c162c363685c3b8efdcfda74ffc9
@@ -292,12 +292,12 @@ The builder (Tier 3) declares `const messages = i18n('app-model-builder-view', {
 
 ## Specification changes
 
-- [ ] `specification/workflow-steps.md` §3.1, §3.3 — Section 1 lists the 8 classifiers and shows `No classification model available` with a link to `/target` for numeric targets; models with an unavailable `modelId` reset to Section 1 at startup; Section 3 renders the generated manual form (field types, scales, recommended slider vs valid number domain, dependency notes, solver/penalty rule, read-only multiclass note, help link) and completes as `3. Model Configured` with `Edit`; `Edit` asks for confirmation only when a later section is complete; status stays partial.
-- [ ] `specification/state-and-storage.md` §3, §8 — `HyperparameterValue` includes `null`; `values` holds sparse canonical overrides (inactive ones kept); persisted values are validated (finite numbers, no prototype keys); `STORAGE_VERSION` stays 1 with the reason; status stays draft.
-- [ ] `specification/app-state-and-navigation.md` §3.1 and `specification/content-and-i18n.md` §2 — `/help/configure-model` reserved route backed by `content/en/pages/configure-model.md`; status unchanged.
-- [ ] `specification/visual-design.md` §3 — map `hyperparameters.css` `.field` family and `base.css` `input`/`select` to `src/styles/hyperparameters.styles.ts` (scoped under `.field`, `A11Y-07`/`A11Y-08`/`SEM-10` applied, `base-select`/`::picker` dropped for native rendering) and `.help-link` to `train-model.styles.ts`; add §5.3 row `MODELS-UI-04` (`.form-note`, 03-4: the mockup CSS no longer defines it since `e5e50b2`; the app uses `color: var(--neutral-600); font-size: 0.875rem`, the last committed rule, pending human restyling); the contrast follow-up sentence ("Twenty-four existing data/model contrast targets…") counts 25, adding the Section 4 `.pending-notice` (E3); status stays partial.
-- [ ] `specification/components/model-configuration.md` (new) and `specification/README.md` — closed API, events, markup, synchronisation, validation, stories and manual checks for `app-model-configuration`; status implemented.
-- [ ] `specification/TODO.md` (TODO-05 manual subset done; TODO-53 counts 25 contrast elements, adding the Section 4 `.pending-notice`), `specification/HUMAN.md` (remove the Phase 1 re-verify item; keep the V1 release checks item and the `03-4` draft-styling item), and delete the consumed `## Hyperparamter Configuration` section (L104–269) of `specification/notes/ui-fixes.md` — the only exception to "agents never edit a note", required by `specification/notes/README.md` for claimed notes.
+- [x] `specification/workflow-steps.md` §3.1, §3.3 — Section 1 lists the 8 classifiers and shows `No classification model available` with a link to `/target` for numeric targets; models with an unavailable `modelId` reset to Section 1 at startup; Section 3 renders the generated manual form (field types, scales, recommended slider vs valid number domain, dependency notes, solver/penalty rule, read-only multiclass note, help link) and completes as `3. Model Configured` with `Edit`; `Edit` asks for confirmation only when a later section is complete; status stays partial.
+- [x] `specification/state-and-storage.md` §3, §8 — `HyperparameterValue` includes `null`; `values` holds sparse canonical overrides (inactive ones kept); persisted values are validated (finite numbers, no prototype keys); `STORAGE_VERSION` stays 1 with the reason; status stays draft.
+- [x] `specification/app-state-and-navigation.md` §3.1 and `specification/content-and-i18n.md` §2 — `/help/configure-model` reserved route backed by `content/en/pages/configure-model.md`; status unchanged.
+- [x] `specification/visual-design.md` §3 — map `hyperparameters.css` `.field` family and `base.css` `input`/`select` to `src/styles/hyperparameters.styles.ts` (scoped under `.field`, `A11Y-07`/`A11Y-08`/`SEM-10` applied, `base-select`/`::picker` dropped for native rendering) and `.help-link` to `train-model.styles.ts`; add §5.3 row `MODELS-UI-04` (`.form-note`, 03-4: the mockup CSS no longer defines it since `e5e50b2`; the app uses `color: var(--neutral-600); font-size: 0.875rem`, the last committed rule, pending human restyling); the contrast follow-up sentence ("Twenty-four existing data/model contrast targets…") counts 25, adding the Section 4 `.pending-notice` (E3); status stays partial.
+- [x] `specification/components/model-configuration.md` (new) and `specification/README.md` — closed API, events, markup, synchronisation, validation, stories and manual checks for `app-model-configuration`; status implemented.
+- [x] `specification/TODO.md` (TODO-05 manual subset done; TODO-53 counts 25 contrast elements, adding the Section 4 `.pending-notice`), `specification/HUMAN.md` (remove the Phase 1 re-verify item; keep the V1 release checks item and the `03-4` draft-styling item), and delete the consumed `## Hyperparamter Configuration` section (L104–269) of `specification/notes/ui-fixes.md` — the only exception to "agents never edit a note", required by `specification/notes/README.md` for claimed notes.
 
 ## Implementation tasks
 
@@ -388,10 +388,10 @@ The builder (Tier 3) declares `const messages = i18n('app-model-builder-view', {
 - **Must not touch:** `src/`, `tests/`, `specification/mockups/`
 - **Implementation:** Apply and tick every item under _Specification changes_.
 - **Acceptance criteria:**
-    - [ ] Every _Specification changes_ item is applied and ticked.
-    - [ ] `bun run plans:check` and `bun run plans:task specification/plans/web-ml-phase-1-configure-model.md --check-complete` pass.
+    - [x] Every _Specification changes_ item is applied and ticked.
+    - [x] `bun run plans:check` and `bun run plans:task specification/plans/web-ml-phase-1-configure-model.md --check-complete` pass.
 - **Verification:** `bun run plans:check specification/plans/web-ml-phase-1-configure-model.md`; `bun run plans:task specification/plans/web-ml-phase-1-configure-model.md --check-complete`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-19T19:03:20Z)
 
 ## Verification and definition of done
 
@@ -450,6 +450,7 @@ None.
 | 2026-11-19T18:41:51Z | —    | Claude Code (claude-sonnet-5-5)          | T5 revision delta applied; completion blocked by E3 (Section 4 `.pending-notice` contrast in the new `ConfigureModelComplete` story). Chromium+WebKit 70 pass, Firefox `--workers=1` 35 pass, `bun run check` 261 pass, build OK, `test:stories` 3 fail (that story only). Visual parity and screen-reader checks not run (deferred to V1).                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | 2026-11-19T18:49:36Z | —    | Claude Code (claude-opus-5-5)            | Revised for E3 after one `codebase-scout` pass (`featureA11yFindings` users: `a11y.e2e.ts` L12–19, `model-configuration.e2e.ts` L289–295, builder stories L10–12 and L96–99; no stale-entry or count assertion; builder entries L82–L315; `.pending-notice` L233–237, L1240; "24" only in HUMAN.md, TODO.md, visual-design.md prose). User chose to allowlist. No product code changed.                                                                                                                                                                                                                                                                                                                                                                              |
 | 2026-11-19T19:01:21Z | T5 | Claude Code (claude-sonnet-5-5) | E3 step 5: pending-notice entry in tests/a11y-feature-findings.ts, story comment updated. test:e2e (model-configuration, models-setup, iris, penguins, a11y) Chromium+WebKit 70 pass, Firefox --workers=1 35 pass; style-tokens+repository-conventions 16 pass; test:stories 159 pass; bun run check 261 pass; build OK. Visual parity/screen readers deferred to V1. |
+| 2026-11-19T19:03:20Z | T6 | Claude Code (claude-sonnet-5-5) | Applied all Specification changes: new components/model-configuration.md, README, workflow-steps, state-and-storage, app-state-and-navigation, content-and-i18n, visual-design (MODELS-UI-04, 25 contrast targets), TODO, HUMAN, notes/ui-fixes section removed. bun run check 261 pass 0 fail; prettier applied. |
 
 ## Plan review history
 

@@ -132,14 +132,14 @@ Each individual model builder view is routed at `/models/{num}`. Navigating to a
 
 The catalogue adapter (`model-catalogue.ts`) exposes supervised algorithms from `web-ml` suitable for predicting the active target:
 
-- Categorical or Boolean target: Classification algorithms.
-- Numeric target: Regression algorithms.
-- Clustering and PCA algorithms are excluded. Supervised models preserve library index order.
+- Categorical or Boolean target: the 8 classification algorithms, in library index order.
+- Numeric, text and datetime targets: no model is offered. Section 1 shows the notice `No classification model available` with a link to `/target`. Regression, clustering and PCA algorithms are excluded.
+- A model whose `modelId` is no longer available is reset to Section 1 at startup.
 
 The UI renders candidate models:
 
 - **Illustrated card:** `logistic-regression` renders as an `<app-model-card>` with an approved SVG illustration (`03-2_train-models-1-choose-model.html`) using semantic tokens.
-- **Native text-entry fallback:** Remaining supervised models without custom artwork render as semantic list items (`03-9_choose-model-text-entries.html`) displaying the model name, description, an accessible "Model Description: {name}" button, and a "Select Model: {name}" button.
+- **Native text-entry fallback:** Remaining classifiers without custom artwork render as semantic list items (`03-9_choose-model-text-entries.html`) displaying the model name, description, an accessible "Model Description: {name}" button, and a "Select Model: {name}" button.
 - Selecting a model updates `model.modelId` in app state and visually highlights the selection, but does **not** advance the workflow.
 - A primary "Continue" button in `.section-actions` completes Section 1, initialises candidate features once via `initialiseFeatureSelection`, and activates Section 2.
 - The "Model Description" button opens an `<app-model-description-dialog>` presenting authored Markdown content or falling back to library JSON metadata if unauthored.
@@ -156,21 +156,23 @@ Displays a tabular selection of all dataset columns in canonical dataset order:
 - Clicking "Continue" completes Section 2 and records `completedSteps: ['choose-model', 'select-features']`.
 - Once completed, an "Edit" button allows reopening Section 2 after native modal confirmation.
 
-### 3–6. Subsequent Sections (Pending)
+### 3. Configure Model
 
-Sections 3 (Configure Model), 4 (Configure Training), 5 (Training), and 6 (Results) display "Not available yet." and cannot be activated or completed in this version.
+Section 3 activates after Section 2 and renders `<app-model-configuration>` ([spec](components/model-configuration.md)), a manual form generated from the selected classifier's catalogue document:
 
-If the target variable is Categorical containing more than two categories and depending on the options available in the `web-ml` library the user will have to select:
+- **Fields:** every non-hidden option as a select, checkbox, range with exact number, number with Reset, compound mode select (`maxDepth`, `gamma`, `binarize`, `classWeight`) or layer editor (`hiddenLayerSizes`). Ranges show the recommended slider span; the number accepts any value in the valid domain.
+- **Mode:** Manual is selected; Random Search (advanced) is disabled until tuning is specified.
+- **Dependencies:** fields whose dependency is unmet are hidden with a dependency note; solver/penalty combinations follow the policy rule.
+- **Multiclass:** when the target has more than two classes, a read-only note states the strategy used (no choice is offered).
+- **Help:** the section heading links to `/help/configure-model` ("What do these settings mean?").
+- **Completion:** `Save & Continue` stores sparse overrides, completes Section 3 as `3. Model Configured` and shows `Edit`. A failed submit focuses the first invalid control.
+- **Edit:** confirmation is requested only when a later section is complete (Section 4 and later remain pending, so normally none).
 
-- Native multiclass
-- One-vs-Rest
-- One-vs-One
+### 4–6. Subsequent Sections (Pending)
 
-Later Error-Correcting Output Codes (ECOC) will be added as an option.
+Sections 4 (Configure Training), 5 (Training), and 6 (Results) display "Not available yet." and cannot be activated or completed in this version.
 
-The configuration of each model's hyperparameters will be fetched from the file `./src/config/models/{model-name}-hyperparameters.ts`. The specification will be used to determine which ui controls need to be rendered.
-
-Once all hyperparameters have been configured the "Continue" button in the `<header>` of the section will change from disabled to `.btn-primary`. The `<h2>` in the `<header>` of the section will change to display "Model Configured" or "Hyperparameter Tuning". After the user clicks the "Continue" button, the button will be replaced with an `<svg><use href="#check" /></svg>` and the class `.train-step-complete` is added to the `.train-step` element.
+For targets with more than two categories the multiclass strategy is fixed by the model (native, One-vs-Rest or One-vs-One as the classifier supports) and shown read-only. Selecting a strategy and Error-Correcting Output Codes remain future work.
 
 ### 4. Configure Training
 

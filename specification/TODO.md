@@ -16,7 +16,7 @@ Open questions and missing specification found by reviewing every Markdown and H
     - Where each model's hyperparameter definitions come from (ranges, types, defaults; `web-ml` or app config).
     - The hyperparameter-tuning UI: search method, how ranges are entered, and which tuning metric.
     - How the available multiclass strategies are discovered.
-    - Mockup `03-4` is empty.
+    - _Resolved for manual configuration (Phase 1):_ hyperparameter definitions come from the `web-ml` catalogue documents; the manual form is implemented ([components/model-configuration.md](components/model-configuration.md)); multiclass strategy is fixed per model and shown read-only. Still open: the hyperparameter-tuning UI (search method, range entry, tuning metric) and user-selectable multiclass strategies.
 - **TODO-06 — Select Features** ([workflow-steps §3.2](workflow-steps.md)):
     - _Resolved for Step 3:_ Implemented in `feature-eligibility.ts` and `app-model-builder-view.ts`: target column displayed with Target badge and no checkbox (never selectable); unsupported (text, datetime), constant, and all-missing columns disabled with explanatory note codes; identifiers and target-candidate leaky columns default unticked with advisory notes and deliberate selection override; at least one feature required; initial features populated once on Choose Model completion via `initialiseFeatureSelection`.
 - **TODO-07 — Choose Model** ([workflow-steps §3.1](workflow-steps.md)):
@@ -122,7 +122,7 @@ Open questions and missing specification found by reviewing every Markdown and H
 ## 8. Accessibility (WCAG 2.2 AA)
 
 - **TODO-53 — Mockup styles WCAG 2.2 AA violations** ([mockups/ui-scaffold/css/](mockups/ui-scaffold/css/)):
-  Normative mockup CSS still contains the defects below; it is not imported or mirrored wholesale into production. Shared default buttons, shell footer/current state, amber chiclets, named headings/dialogs, keyboard outlines and sidebar status/motion are repaired in the app under the visual-design registers. Remaining feature findings include the 24 exact data/model contrast elements in `tests/a11y-feature-findings.ts`, separately owned in HUMAN.md. This list remains open for feature repairs and human mockup cleanup:
+  Normative mockup CSS still contains the defects below; it is not imported or mirrored wholesale into production. Shared default buttons, shell footer/current state, amber chiclets, named headings/dialogs, keyboard outlines and sidebar status/motion are repaired in the app under the visual-design registers. Remaining feature findings include the 25 exact data/model contrast elements (including the Section 4 `.pending-notice`) in `tests/a11y-feature-findings.ts`, separately owned in HUMAN.md. This list remains open for feature repairs and human mockup cleanup:
     1. **SC 1.4.3 Contrast (Minimum) — Text**:
         - `.badge-amber` (`badges.css`): White on amber-500 is 2.15:1. App chiclet/welcome uses stone-900 (6.60:1, A11Y-04); mockup cleanup remains human work.
         - `.btn` default secondary button (`button.css`): Text colour `--stone-600` (`#887b71`) on `--stone-50` (`#fcfbfa`) achieves only 3.97:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (`#6d6056`) for 5.88:1 contrast.

@@ -15,6 +15,7 @@
 
 ## Static Content
 
+- **Reserved help pages:** `content/en/pages/configure-model.md` (`What do these settings mean?`) backs the reserved route `/help/configure-model`, opened from the Section 3 heading help link (see [app-state-and-navigation](app-state-and-navigation.md) §3).
 - **Source layout:** Authored prose lives in `content/{locale}/{domain}/{id}.md` for the domains `pages`, `models` and `glossary`, using lowercase kebab-case `id` filenames. `en` is the default, complete base locale. Translations in other supported locales are optional. Locale-neutral sample dataset directories (`descriptor.ts`, `datasheet.md`, and either bundled `data.csv` or a remote source) live in `content/datasets/{id}/`; see [sample-datasets.md](sample-datasets.md).
 - **Validation and fallback:** Every locale directory under `content/` (other than `datasets`) must appear in `LOCALES`. A translation file whose `id` is missing from the base locale fails the build. At build time, every supported locale receives a complete per-domain index: entries missing in a locale fall back to the base-locale fragment URL and record `lang: BASE_LOCALE` on the entry.
 - **Front matter:** Parsed strictly per domain:
