@@ -262,7 +262,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		}
 	});
 
-	test('MOD-SETUP-4: Logistic Regression has SVG slot; other IDs render native text actions; classifier & regressor fallbacks', async ({
+	test('MOD-SETUP-4: Logistic Regression has SVG slot; other IDs render native text actions; classifier cards and numeric-target notice', async ({
 		page
 	}) => {
 		// 1. Classification target (Iris -> class)
@@ -332,20 +332,16 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		await page.goto('/models');
 		await page.locator('app-models-view button:has-text("Train New Model")').click();
 
-		// In regression, Logistic Regression is NOT in the inventory (6 regressors, all text entries)
+		// WML-P1-CAT-2: a numeric target has no available classifier
 		await expect(step1.locator('app-model-card')).toHaveCount(0);
-		const regEntries = step1.locator('ul.text-model-entries li');
-		await expect(regEntries).toHaveCount(6);
-
-		// Linear Regression text entry exists
-		const linRegEntry = step1.locator(
-			'li.text-model-entry:has(h3:has-text("Linear Regression"))'
-		);
-		await expect(linRegEntry).toBeVisible();
-		await linRegEntry.locator('button[aria-label^="Select Model"]').click();
-
-		state = await page.evaluate(() => window.__appState!.get());
-		expect(state.models[0]?.modelId).toBe('linear-regression');
+		await expect(step1.locator('ul.text-model-entries li')).toHaveCount(0);
+		const notice = step1.locator('.no-model-notice');
+		await expect(notice.locator('h3')).toHaveText('No classification model available');
+		const targetLink = notice.locator('a[href="/target"]');
+		await expect(targetLink).toBeVisible();
+		await targetLink.click();
+		await expect(page).toHaveURL(/\/target$/);
+		await page.goBack();
 
 		// Axe check
 		const axeResults = await new AxeBuilder({ page })

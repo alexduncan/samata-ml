@@ -8,7 +8,12 @@ import {
 } from '../src/common/storage/db';
 import { MemoryStorage } from '../src/stores/persister';
 import { createDefaultIndexedDBAdapter, reconcileStartupState } from '../src/stores/reconciler';
-import { INITIAL_APP_STATE, STATE_STORAGE_KEY, type PersistedAppState } from '../src/types/state';
+import {
+	INITIAL_APP_STATE,
+	STATE_STORAGE_KEY,
+	type ModelRecord,
+	type PersistedAppState
+} from '../src/types/state';
 import type { DatasetMetadata, RawRecord } from '../src/types/dataset';
 import { installFakeIndexedDB } from './helpers/fake-indexeddb';
 
@@ -110,5 +115,90 @@ describe('IndexedDB-backed startup reconciliation', () => {
 		expect(result.data.mode).toBe('select');
 		expect(await getMetadata(db!, 'a')).toBeUndefined();
 		expect(await db!.count('raw_records')).toBe(0);
+	});
+
+	describe('WML-P1-REC-1: unavailable persisted models', () => {
+		function modelRecord(overrides: Partial<ModelRecord>): ModelRecord {
+			return {
+				num: 1,
+				createdAt: 1,
+				status: 'draft',
+				completedSteps: [],
+				modelId: null,
+				features: [],
+				modelOptions: {},
+				hyperparameters: { mode: 'manual', values: {} },
+				multiclass: null,
+				trainingSetup: null,
+				progress: null,
+				error: null,
+				timings: null,
+				durationMs: null,
+				metrics: null,
+				ui: {},
+				...overrides
+			};
+		}
+
+		function storageWithModels(models: ModelRecord[]): MemoryStorage {
+			const storage = new MemoryStorage();
+			const state: PersistedAppState = {
+				...INITIAL_APP_STATE,
+				dataset: {
+					id: 'a',
+					name: 'a',
+					source: 'upload',
+					rowCount: 10,
+					columns: [
+						{ name: 'species', type: 'categorical', missingCount: 0 },
+						{ name: 'size', type: 'numeric', missingCount: 0 }
+					]
+				},
+				target: 'species',
+				models,
+				nextModelNum: models.length + 1,
+				data: { mode: 'preview', selectedColumn: null }
+			};
+			storage.setItem(STATE_STORAGE_KEY, JSON.stringify(state));
+			return storage;
+		}
+
+		it('resets a model whose modelId is no longer in the catalogue', async () => {
+			await installDatabase();
+			await putMetadata(db!, metadata('a'));
+			const storage = storageWithModels([
+				modelRecord({
+					modelId: 'linear-regression',
+					completedSteps: ['choose-model', 'select-features'],
+					features: ['size'],
+					hyperparameters: { mode: 'manual', values: { fitIntercept: false } },
+					multiclass: 'one-vs-rest'
+				})
+			]);
+			const result = await reconcileStartupState(storage, createDefaultIndexedDBAdapter());
+			const [model] = result.models;
+			expect(model?.modelId).toBeNull();
+			expect(model?.completedSteps).toEqual([]);
+			expect(model?.hyperparameters).toEqual({ mode: 'manual', values: {} });
+			expect(model?.multiclass).toBeNull();
+			expect(model?.features).toEqual(['size']);
+		});
+
+		it('keeps classifier models and models without an id unchanged', async () => {
+			await installDatabase();
+			await putMetadata(db!, metadata('a'));
+			const classifier = modelRecord({
+				num: 1,
+				modelId: 'logistic-regression',
+				completedSteps: ['choose-model'],
+				hyperparameters: { mode: 'manual', values: { C: 2 } }
+			});
+			const blank = modelRecord({ num: 2 });
+			const result = await reconcileStartupState(
+				storageWithModels([classifier, blank]),
+				createDefaultIndexedDBAdapter()
+			);
+			expect(result.models).toEqual([classifier, blank]);
+		});
 	});
 });

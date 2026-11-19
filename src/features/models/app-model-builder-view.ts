@@ -11,6 +11,7 @@ import {
 	setFeatures,
 	toggleFeature
 } from '../../stores/app.store';
+import { i18n } from '../../i18n';
 import { $datasetResources, loadDatasetResources } from '../../stores/dataset.store';
 import { blockedReason } from '../../stores/predicates';
 import { buttonStyles } from '../../styles/button.styles';
@@ -27,6 +28,12 @@ import { modelsForTarget, SUPERVISED_MODELS, type ModelCatalogueEntry } from './
 import type { ModelDescriptionStatus } from './app-model-description-dialog';
 import './app-model-description-dialog';
 import './app-model-card';
+
+const messages = i18n('app-model-builder-view', {
+	noModelHeading: 'No classification model available',
+	noModelText: 'This target is numeric. Regression will be added later.',
+	noModelLink: 'Choose a categorical or boolean target'
+});
 
 /**
  * Connected root workflow view for Step 3: Model Builder (/models/:num).
@@ -106,12 +113,30 @@ export class AppModelBuilderView extends LitElement {
 				margin-block-start: 1rem;
 			}
 
+			.no-model-notice {
+				margin-block-start: 1.5rem;
+
+				> h3 {
+					margin: 0 0 0.5rem;
+					font-size: 1rem;
+				}
+
+				> p {
+					margin: 0 0 0.5rem;
+					color: var(--stone-700);
+				}
+			}
+
 			.text-model-entries {
 				display: grid;
 				gap: 1rem;
 				margin-block-start: 1.5rem;
 				padding: 0;
 				list-style: none;
+
+				&[hidden] {
+					display: none;
+				}
 
 				> li {
 					box-sizing: border-box;
@@ -212,6 +237,7 @@ export class AppModelBuilderView extends LitElement {
 
 	private readonly appStateController = new StoreController(this, $appState);
 	private readonly resourcesController = new StoreController(this, $datasetResources);
+	private readonly translations = new StoreController(this, messages);
 
 	/** Monotonically allocated sequential model number (e.g. 1 for /models/1). */
 	@property({ type: Number, attribute: 'model-num' })
@@ -745,6 +771,20 @@ export class AppModelBuilderView extends LitElement {
 										dataset.
 									</p>
 
+									${availableModels.length === 0
+										? html`
+												<div class="no-model-notice">
+													<h3>
+														${this.translations.value.noModelHeading}
+													</h3>
+													<p>${this.translations.value.noModelText}</p>
+													<a href="/target"
+														>${this.translations.value.noModelLink}</a
+													>
+												</div>
+											`
+										: nothing}
+
 									<!-- 1. Illustrated entry for Logistic Regression (if available for target) -->
 									${availableModels.some((m) => m.id === 'logistic-regression')
 										? html`
@@ -766,6 +806,7 @@ export class AppModelBuilderView extends LitElement {
 									<!-- 2. Native text entries fallback for remaining models -->
 									<ul
 										class="text-model-entries"
+										?hidden=${availableModels.length === 0}
 										aria-label="Available models text entries">
 										${availableModels
 											.filter((m) => m.id !== 'logistic-regression')

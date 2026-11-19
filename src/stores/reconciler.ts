@@ -13,6 +13,7 @@ import {
 	type PersistedAppState,
 	type ScrollSnapshot
 } from '../types/state';
+import { isClassifierId } from '../features/models/model-catalogue';
 import { $appState } from './app.store';
 import { getActiveStorage, persistNow, readPersistedState, type StorageAdapter } from './persister';
 import { $scrollState } from './scroll.store';
@@ -171,7 +172,18 @@ export async function reconcileStartupState(
 		);
 
 		const updatedModels: ModelRecord[] = [];
-		for (const model of state.models) {
+		for (const persistedModel of state.models) {
+			// A persisted model whose id is no longer in the catalogue returns to Section 1
+			const model: ModelRecord =
+				persistedModel.modelId !== null && !isClassifierId(persistedModel.modelId)
+					? {
+							...persistedModel,
+							modelId: null,
+							completedSteps: [],
+							hyperparameters: { mode: 'manual', values: {} },
+							multiclass: null
+						}
+					: persistedModel;
 			let droppedAnyFeature = false;
 			const validFeatures: string[] = [];
 

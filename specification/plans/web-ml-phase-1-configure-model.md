@@ -1,6 +1,6 @@
 # Phase 1: Configure model and manual hyperparameter selection
 
-**Status:** ready | **Updated:** 2026-11-19T15:27:49Z
+**Status:** ready | **Updated:** 2026-11-19T15:34:19Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Google Antigravity (Gemini 4 Neon High) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-19T15:27:49Z | **Verification:** approved
 **Verified hash:** sha256:5845dbfbd1f8799e91b117d243965c2c7f7d0c29784b8bada315d10f077a1171
@@ -309,12 +309,12 @@ The builder (Tier 3) declares `const messages = i18n('app-model-builder-view', {
 - **Must not touch:** `src/types/state.ts`, `src/stores/persister.ts`, `node_modules/`, `bun.lock`
 - **Implementation:** Apply D1, D2, D3 and Interfaces A. In the builder, add the `i18n('app-model-builder-view', …)` messages and `StoreController` with the Section 1 notice strings only, and render the 03-4 L629–633 notice (heading, text, `<a href="/target">`) in `renderChooseModelSection` when `modelsForTarget` returns `[]`. Reconciler tests go in `tests/reconciler-indexeddb.test.ts`, which drives `reconcileStartupState` with `installFakeIndexedDB` (`tests/helpers/fake-indexeddb.ts`) and `createDefaultIndexedDBAdapter()`.
 - **Acceptance criteria:**
-    - [ ] `WML-P1-CAT-1` — `SUPERVISED_MODELS` has the 8 classifier ids in index order; `modelsForTarget('numeric')`, `('text')`, `('datetime')` return `[]`; categorical and boolean return all 8; `MOD-CAT-1` is updated to match.
-    - [ ] `WML-P1-CAT-2` — `MOD-SETUP-4` (updated) shows 8 classifier cards for a categorical target and, for a numeric target, the `No classification model available` notice with a working link to `/target` and no model cards.
-    - [ ] `WML-P1-DOC-1` — `getModelDocument` returns all options for each of the 8 ids: LR includes `threshold` (`defaultKind: 'fixed'`, `default: 0.5`), `nIterations` (`aliasOf: 'maxIter'`, `aliasPrecedence: 'alias-wins'`), and conditional `defaultBy` arrays on `learningRate` and `tol`; SVC `gamma` flattens `oneOf` to `types: ['string', 'number']`, `enumValues: ['scale', 'auto']`, and `classWeight` flattens `oneOf`/`const` to `types: ['string', 'object', 'null']`, `enumValues: ['balanced']`; MLP `randomState` has `defaultKind: 'random-if-omitted'`, `default: undefined`; it throws `ModelDocumentError` for `schemaVersion: 2`, a missing `hyperparameters` array, an invalid `defaultKind`, an empty `defaultBy`, a missing `aliasPrecedence`, an invalid `oneOf` branch, and each of the three prototype keys (at root, option, `valueSchema`, or `defaultBy[].when`).
-    - [ ] `WML-P1-REC-1` — a persisted model with `modelId: 'linear-regression'` and `completedSteps: ['choose-model','select-features']` reconciles to `modelId: null`, `completedSteps: []`; a classifier model is unchanged; `modelId: null` is unchanged.
+    - [x] `WML-P1-CAT-1` — `SUPERVISED_MODELS` has the 8 classifier ids in index order; `modelsForTarget('numeric')`, `('text')`, `('datetime')` return `[]`; categorical and boolean return all 8; `MOD-CAT-1` is updated to match.
+    - [x] `WML-P1-CAT-2` — `MOD-SETUP-4` (updated) shows 8 classifier cards for a categorical target and, for a numeric target, the `No classification model available` notice with a working link to `/target` and no model cards.
+    - [x] `WML-P1-DOC-1` — `getModelDocument` returns all options for each of the 8 ids: LR includes `threshold` (`defaultKind: 'fixed'`, `default: 0.5`), `nIterations` (`aliasOf: 'maxIter'`, `aliasPrecedence: 'alias-wins'`), and conditional `defaultBy` arrays on `learningRate` and `tol`; SVC `gamma` flattens `oneOf` to `types: ['string', 'number']`, `enumValues: ['scale', 'auto']`, and `classWeight` flattens `oneOf`/`const` to `types: ['string', 'object', 'null']`, `enumValues: ['balanced']`; MLP `randomState` has `defaultKind: 'random-if-omitted'`, `default: undefined`; it throws `ModelDocumentError` for `schemaVersion: 2`, a missing `hyperparameters` array, an invalid `defaultKind`, an empty `defaultBy`, a missing `aliasPrecedence`, an invalid `oneOf` branch, and each of the three prototype keys (at root, option, `valueSchema`, or `defaultBy[].when`).
+    - [x] `WML-P1-REC-1` — a persisted model with `modelId: 'linear-regression'` and `completedSteps: ['choose-model','select-features']` reconciles to `modelId: null`, `completedSteps: []`; a classifier model is unchanged; `modelId: null` is unchanged.
 - **Verification:** `bun test tests/model-catalogue.test.ts tests/model-documents.test.ts tests/reconciler-indexeddb.test.ts`; `bun run test:e2e tests/models-setup.e2e.ts`; `bun run check`; `bun run build`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-19T15:34:19Z)
 
 ### T2 — Presentation policy, scale and description utilities, and option normaliser
 
@@ -432,6 +432,7 @@ None.
 | 2026-11-19T15:06:24Z | —    | Claude Code (claude-opus-5-5)            | Addressed the 2026-11-19T14:47:56Z review from its recorded findings; no further scouting (the one new upstream fact, `lit-html.js` L1285, is the reviewer's citation). No product code changed.                                                                                                                            |
 | 2026-11-19T15:16:34Z | —    | Claude Code (claude-opus-5-5)            | Addressed the 2026-11-19T15:12:10Z review from its recorded findings (citations from the reviewer's scout). No product code changed.                                                                                                                                                                                        |
 | 2026-11-19T15:24:46Z | —    | Claude Code (claude-opus-5-5)            | Addressed the 2026-11-19T15:19:57Z review; re-read the committed `hyperparameters.css` (`e5e50b2`), its parent's `.form-note` rule, `css/root.css` tokens and the `visual-design.md` §5.3 register. No product code changed.                                                                                                |
+| 2026-11-19T15:34:19Z | T1 | Claude Code (claude-sonnet-5-5) | bun test (3 T1 files) 15 pass; bun run check 231 pass 0 fail; bun run build OK; test:e2e models-setup.e2e.ts 8 pass on chromium+webkit (firefox browser failed to launch: profile folder error, not a test failure); changed: model-catalogue.ts, model-documents.ts, model-document.ts, reconciler.ts, app-model-builder-view.ts, 4 test files |
 
 ## Plan review history
 
