@@ -101,6 +101,24 @@ function isPlainObject(val: unknown): val is Record<string, unknown> {
 	return typeof val === 'object' && val !== null && !Array.isArray(val);
 }
 
+const FORBIDDEN_VALUE_KEYS = ['__proto__', 'constructor', 'prototype'] as const;
+
+/** Reports whether a persisted hyperparameter value is a finite number, string, boolean, null or number array. */
+function isHyperparameterValue(val: unknown): boolean {
+	if (val === null || typeof val === 'string' || typeof val === 'boolean') return true;
+	if (typeof val === 'number') return Number.isFinite(val);
+	return (
+		Array.isArray(val) && val.every((item) => typeof item === 'number' && Number.isFinite(item))
+	);
+}
+
+/** Reports whether persisted hyperparameter `values` is a plain object of valid values without prototype keys. */
+function isHyperparameterValues(val: unknown): boolean {
+	if (!isPlainObject(val)) return false;
+	if (FORBIDDEN_VALUE_KEYS.some((key) => Object.hasOwn(val, key))) return false;
+	return Object.values(val).every(isHyperparameterValue);
+}
+
 function validateAppState(
 	val: unknown
 ): { valid: true; state: PersistedAppState } | { valid: false; isNewer: boolean } {
@@ -239,7 +257,7 @@ function validateAppState(
 		if (m.hyperparameters.mode !== 'manual' && m.hyperparameters.mode !== 'tuning') {
 			return { valid: false, isNewer: false };
 		}
-		if (!isPlainObject(m.hyperparameters.values)) {
+		if (!isHyperparameterValues(m.hyperparameters.values)) {
 			return { valid: false, isNewer: false };
 		}
 		if (

@@ -66,11 +66,17 @@ describe('Content policy, locales and reserved-route map', () => {
 	});
 
 	it('CNT-P-3: RESERVED_CONTENT maps every ReservedPath to its page id', () => {
-		const expectedPaths: ReservedPath[] = ['/about', '/privacy', '/help'];
+		const expectedPaths: ReservedPath[] = [
+			'/about',
+			'/privacy',
+			'/help',
+			'/help/configure-model'
+		];
 		expect(Object.keys(RESERVED_CONTENT).sort()).toEqual(expectedPaths.sort());
 		expect(RESERVED_CONTENT['/about']).toBe('about');
 		expect(RESERVED_CONTENT['/privacy']).toBe('privacy-policy');
 		expect(RESERVED_CONTENT['/help']).toBe('help');
+		expect(RESERVED_CONTENT['/help/configure-model']).toBe('configure-model');
 	});
 
 	it('CNT-P-4: BASE_LOCALE is en and isLocale checks supported locales strictly', () => {

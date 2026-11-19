@@ -59,6 +59,8 @@ export function getDocumentTitle(route: ParsedRoute): string {
 					return `${BASE_TITLE} | Privacy`;
 				case '/help':
 					return `${BASE_TITLE} | Help`;
+				case '/help/configure-model':
+					return `${BASE_TITLE} | What do these settings mean?`;
 			}
 		case 'unknown':
 			return BASE_TITLE;

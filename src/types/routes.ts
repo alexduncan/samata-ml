@@ -2,7 +2,7 @@ import type { WorkflowPath } from './state';
 
 export type SectionNumber = 1 | 2 | 3 | 4;
 
-export type ReservedPath = '/about' | '/privacy' | '/help';
+export type ReservedPath = '/about' | '/privacy' | '/help' | '/help/configure-model';
 
 export type { WorkflowPath } from './state';
 

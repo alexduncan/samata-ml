@@ -956,3 +956,98 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 		});
 	});
 });
+
+describe('WML-P1-STATE-1: persisted hyperparameter value validation', () => {
+	const mockIdb: IndexedDBAdapter = {
+		async hasMetadata() {
+			return true;
+		},
+		async deleteOrphanDatasets() {},
+		async hasModelResults() {
+			return true;
+		}
+	};
+
+	beforeEach(() => {
+		stopPersister();
+		$appState.set({ ...INITIAL_APP_STATE });
+		$scrollState.set({ ...INITIAL_SCROLL_STATE });
+	});
+
+	/** Serialises a state whose single model holds `values`, with `PLACEHOLDER` standing for raw JSON text. */
+	function storageWithValues(values: Record<string, unknown>, raw?: string): MemoryStorage {
+		const state: PersistedAppState = {
+			...INITIAL_APP_STATE,
+			dataset: sampleDataset,
+			target: 'species',
+			nextModelNum: 2,
+			data: { mode: 'preview', selectedColumn: null },
+			models: [
+				{
+					num: 1,
+					createdAt: 1,
+					status: 'draft',
+					completedSteps: [],
+					modelId: 'decision-tree-classifier',
+					features: [],
+					modelOptions: {},
+					hyperparameters: { mode: 'manual', values: values as never },
+					multiclass: null,
+					trainingSetup: null,
+					progress: null,
+					error: null,
+					timings: null,
+					durationMs: null,
+					metrics: null,
+					ui: {}
+				}
+			]
+		};
+		let text = JSON.stringify(state);
+		if (raw !== undefined) text = text.replace('"PLACEHOLDER"', raw);
+		const storage = new MemoryStorage();
+		storage.setItem(STATE_STORAGE_KEY, text);
+		return storage;
+	}
+
+	it('WML-P1-STATE-1: keeps null, finite numbers, strings, booleans and number arrays unchanged', async () => {
+		const values = {
+			maxDepth: null,
+			C: 0.5,
+			solver: 'sgd',
+			fitIntercept: false,
+			hiddenLayerSizes: [64, 32]
+		};
+		const reconciled = await reconcileStartupState(storageWithValues(values), mockIdb);
+		expect(reconciled.models).toHaveLength(1);
+		expect(reconciled.models[0]?.hyperparameters.values).toEqual(values);
+		expect(STORAGE_VERSION).toBe(1);
+	});
+
+	it('WML-P1-STATE-1: resets state for non-finite numbers, mixed arrays, objects and prototype keys', async () => {
+		const cases: { values: Record<string, unknown>; raw: string }[] = [
+			{ values: { a: 'PLACEHOLDER' }, raw: '1e999' },
+			{ values: { a: 'PLACEHOLDER' }, raw: '-1e999' },
+			{ values: { a: 'PLACEHOLDER' }, raw: '[1, 1e999]' },
+			{ values: { a: 'PLACEHOLDER' }, raw: '[1, "2"]' },
+			{ values: { a: 'PLACEHOLDER' }, raw: '{ "a": 1 }' },
+			{ values: { __PROTO__: 'PLACEHOLDER' }, raw: '1' },
+			{ values: { CONSTRUCTOR: 'PLACEHOLDER' }, raw: '1' },
+			{ values: { PROTOTYPE: 'PLACEHOLDER' }, raw: '1' }
+		];
+		for (const { values, raw } of cases) {
+			const storage = storageWithValues(values, raw);
+			// Own prototype keys can only appear as raw JSON text
+			storage.setItem(
+				STATE_STORAGE_KEY,
+				storage
+					.getItem(STATE_STORAGE_KEY)!
+					.replace('"__PROTO__"', '"__proto__"')
+					.replace('"CONSTRUCTOR"', '"constructor"')
+					.replace('"PROTOTYPE"', '"prototype"')
+			);
+			const reconciled = await reconcileStartupState(storage, mockIdb);
+			expect(reconciled.models).toEqual([]);
+		}
+	});
+});

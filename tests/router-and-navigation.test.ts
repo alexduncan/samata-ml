@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach, afterEach } from 'bun:test';
+import { RESERVED_CONTENT } from '../src/router/reserved-content';
 import { parseRoute } from '../src/router/route-parser';
 import {
 	$route,
@@ -115,10 +116,15 @@ describe('Router & Navigation (NAV-AC-1, NAV-AC-2, NAV-AC-4)', () => {
 			expect(parseRoute('/models/01')).toEqual({ kind: 'unknown', path: '/models/01' });
 		});
 
-		it('parses reserved paths correctly', () => {
+		it('WML-P1-ROUTE-1: parses reserved paths correctly', () => {
 			expect(parseRoute('/about')).toEqual({ kind: 'reserved', path: '/about' });
 			expect(parseRoute('/privacy')).toEqual({ kind: 'reserved', path: '/privacy' });
 			expect(parseRoute('/help')).toEqual({ kind: 'reserved', path: '/help' });
+			expect(parseRoute('/help/configure-model')).toEqual({
+				kind: 'reserved',
+				path: '/help/configure-model'
+			});
+			expect(RESERVED_CONTENT['/help/configure-model']).toBe('configure-model');
 		});
 
 		it('normalises trailing slashes without breaking', () => {
@@ -224,6 +230,9 @@ describe('Router & Navigation (NAV-AC-1, NAV-AC-2, NAV-AC-4)', () => {
 				'samatā.ml | Privacy'
 			);
 			expect(getDocumentTitle({ kind: 'reserved', path: '/help' })).toBe('samatā.ml | Help');
+			expect(getDocumentTitle({ kind: 'reserved', path: '/help/configure-model' })).toBe(
+				'samatā.ml | What do these settings mean?'
+			);
 		});
 	});
 

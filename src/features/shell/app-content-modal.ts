@@ -15,6 +15,7 @@ const messages = i18n('app-content-modal', {
 	about: 'About',
 	privacy: 'Privacy',
 	help: 'Help',
+	configureModelHelp: 'What do these settings mean?',
 	close: 'Close',
 	loadError:
 		'This content could not be loaded. Check your connection, then close this dialog and try again.'
@@ -137,7 +138,9 @@ export class AppContentModal extends LitElement {
 					? t.privacy
 					: path === '/help'
 						? t.help
-						: '';
+						: path === '/help/configure-model'
+							? t.configureModelHelp
+							: '';
 		// Each reserved-route opening owns its native dialog instance. A queued event from
 		// an old route cannot dismiss a newer route after its instance is disconnected.
 		return keyed(

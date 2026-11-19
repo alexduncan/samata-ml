@@ -7,5 +7,6 @@ import type { ReservedPath } from '../types/routes';
 export const RESERVED_CONTENT = {
 	'/about': 'about',
 	'/privacy': 'privacy-policy',
-	'/help': 'help'
+	'/help': 'help',
+	'/help/configure-model': 'configure-model'
 } as const satisfies Readonly<Record<ReservedPath, string>>;

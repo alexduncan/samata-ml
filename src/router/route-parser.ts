@@ -33,7 +33,12 @@ export function parseRoute(pathname: string): ParsedRoute {
 	}
 
 	// Reserved modal routes
-	if (normalised === '/about' || normalised === '/privacy' || normalised === '/help') {
+	if (
+		normalised === '/about' ||
+		normalised === '/privacy' ||
+		normalised === '/help' ||
+		normalised === '/help/configure-model'
+	) {
 		return { kind: 'reserved', path: normalised as ReservedPath };
 	}
 
