@@ -128,7 +128,30 @@ export const Invalid: Story = {
 };
 /** Every control is disabled and no events fire. */
 export const Disabled: Story = {
-	render: () => form({ id: 'logistic-regression', disabled: true })
+	render: () => form({ id: 'logistic-regression', disabled: true }),
+	play: async ({ canvasElement }) => {
+		const element =
+			canvasElement.querySelector<AppModelConfiguration>('app-model-configuration')!;
+		await element.updateComplete;
+		const fired: string[] = [];
+		element.addEventListener('app-model-configuration-change', () => fired.push('change'));
+		element.addEventListener('app-model-configuration-continue', () => fired.push('continue'));
+		const root = element.shadowRoot!;
+		const controls = [...root.querySelectorAll<HTMLElement>('select, input, button')];
+		expect(controls.length).toBeGreaterThan(0);
+		for (const control of controls) {
+			expect((control as HTMLInputElement).disabled).toBe(true);
+		}
+		root.querySelector('form')!.requestSubmit();
+		const select = root.querySelector<HTMLSelectElement>('select')!;
+		select.dispatchEvent(new Event('input', { bubbles: true }));
+		select.dispatchEvent(new Event('change', { bubbles: true }));
+		const number = root.querySelector<HTMLInputElement>('input[type="number"]')!;
+		number.dispatchEvent(new Event('input', { bubbles: true }));
+		number.dispatchEvent(new Event('change', { bubbles: true }));
+		await element.updateComplete;
+		expect(fired).toEqual([]);
+	}
 };
 /** Narrow container where long labels wrap. */
 export const LongLabel: Story = {
