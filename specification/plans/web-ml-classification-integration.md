@@ -12,7 +12,7 @@
 
 **Target behaviour:** Superseded and split into seven sequential phase plans so each phase can be reviewed, verified, and implemented independently:
 
-1. **Phase 1 (`ready-for-review`):** [web-ml-phase-1-configure-model.md](web-ml-phase-1-configure-model.md) — Step 3 (`3. Configure Model`) manual hyperparameter selection from `web-ml` JSON metadata and saving normalised values to application state matching `web-ml`'s `options` parameter (`Partial<TrainingOptionsFor<A>>`).
+1. **Phase 1 (`ready-for-review`):** [web-ml-phase-1-configure-model.md](archive/web-ml-phase-1-configure-model.md) — Step 3 (`3. Configure Model`) manual hyperparameter selection from `web-ml` JSON metadata and saving normalised values to application state matching `web-ml`'s `options` parameter (`Partial<TrainingOptionsFor<A>>`).
 2. **Phase 2 (`draft`):** [web-ml-phase-2-training-setup.md](web-ml-phase-2-training-setup.md) — Step 4 (`4. Training Setup`) choosing between One-Shot Training and Nested Cross-Validation (with configurable number of folds), persisting `ValidationMethodology` to application state, and moving custom fold/split sizes to [FUTURE.md](../FUTURE.md).
 3. **Phase 3 (`draft`):** [web-ml-phase-3-model-training.md](web-ml-phase-3-model-training.md) — Step 5 (`5. Train Model`) executing training via `web-ml`'s public functions with a single `<progress>` bar and an expandable `<details>`/`<summary>` message log.
 4. **Phase 4 (`draft`):** [web-ml-phase-4-single-model-results.md](web-ml-phase-4-single-model-results.md) — Section 6 shared single-model metrics and visuals (balanced accuracy, baseline deltas, per-class errors, outer-fold spread, threshold explorer, calibration) and the persisted evaluation contract every later phase reads.

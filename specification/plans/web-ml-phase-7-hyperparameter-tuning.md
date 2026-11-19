@@ -8,7 +8,7 @@
 
 ## Goal
 
-**Current behaviour:** Phase 1 ([web-ml-phase-1-configure-model.md](web-ml-phase-1-configure-model.md)) fixes `model.hyperparameters.mode = 'manual'` and stores fixed values in `model.hyperparameters.values`. `src/types/state.ts` L73–77 still declares a provisional `tuningSearchSpace?: Record<string, HyperparameterValue[]>`. Phases 3–6 train, evaluate and display fixed-hyperparameter models only.
+**Current behaviour:** Phase 1 ([web-ml-phase-1-configure-model.md](archive/web-ml-phase-1-configure-model.md)) fixes `model.hyperparameters.mode = 'manual'` and stores fixed values in `model.hyperparameters.values`. `src/types/state.ts` L73–77 still declares a provisional `tuningSearchSpace?: Record<string, HyperparameterValue[]>`. Phases 3–6 train, evaluate and display fixed-hyperparameter models only.
 
 **Target behaviour:** Section 3 (`3. Configure Model`) offers **Manual** or **Hyperparameter tuning**. In tuning mode each tunable option is **Fixed** or **Tune**: categorical options take a checkbox set of at least two candidates, numeric options a minimum, maximum and scale (integer, linear or log). A random-search budget (trials and seed) and a live model-fit count complete the form. Training then runs:
 
