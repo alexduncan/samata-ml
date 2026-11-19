@@ -1,0 +1,7 @@
+{
+	"workspaceSettings": {
+		"permissionGrants": {
+			"allow": ["read_file(./)", "read_file(../web-ml/)"]
+		}
+	}
+}

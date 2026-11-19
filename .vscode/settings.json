@@ -21,5 +21,19 @@
 		"**/dist": true,
 		"**/bun.lock": true
 	},
-	"antigravity.agent.terminal.allowedCommands": ["bun", "bunx"]
+	"antigravity.agent.terminal.allowedCommands": [
+		"bun *",
+		"bunx *",
+		"lsof",
+		"ps",
+		"bunx playwright *",
+		"grep",
+		"find *",
+		"ls",
+		"git checkout",
+		"echo",
+		"cat",
+		"head",
+		"diff"
+	]
 }
