@@ -122,7 +122,11 @@ function isSafeGitWrite(cmd: string): boolean {
 	const add = /^git\s+add\s+(.+)$/.exec(cmd);
 	if (add) {
 		const args = add[1].trim().split(/\s+/);
-		return args.every((arg) => !['-A', '--all', '-u', '--update', '.', '*', '--', ':/'].includes(arg) && !/^-[a-zA-Z]*[Au]/.test(arg));
+		return args.every(
+			(arg) =>
+				!['-A', '--all', '-u', '--update', '.', '*', '--', ':/'].includes(arg) &&
+				!/^-[a-zA-Z]*[Au]/.test(arg)
+		);
 	}
 	const commit = /^git\s+commit(\s+.*)?$/.exec(cmd);
 	if (commit) {
