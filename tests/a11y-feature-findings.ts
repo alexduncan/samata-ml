@@ -312,5 +312,22 @@ export const featureA11yFindings: readonly FeatureFinding[] = [
 			fontSize: '10.5pt (14px)',
 			fontWeight: 'normal'
 		}
+	},
+	{
+		rule: 'color-contrast',
+		target: [
+			[
+				'app-model-builder-view',
+				'section[aria-labelledby="step-4-title"] > .train-step-content > .pending-notice'
+			]
+		],
+		owner: 'src/features/models/app-model-builder-view.ts',
+		data: {
+			fgColor: '#887b71',
+			bgColor: '#ffffff',
+			contrastRatio: 4.1,
+			fontSize: '12.0pt (16px)',
+			fontWeight: 'normal'
+		}
 	}
 ];

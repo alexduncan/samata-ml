@@ -91,8 +91,8 @@ const meta = {
 	component: 'app-model-builder-view',
 	parameters: {
 		layout: 'fullscreen',
-		// Excludes only the Section 1 and 2 hint, note and feature-table targets tracked by the
-		// HUMAN.md contrast-repair item.
+		// Excludes every app-model-builder-view finding in tests/a11y-feature-findings.ts, all
+		// tracked by the HUMAN.md contrast-repair item.
 		a11y: {
 			test: 'error',
 			context: {
