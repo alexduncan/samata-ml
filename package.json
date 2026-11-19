@@ -20,6 +20,14 @@
 		"format:check": "prettier --check",
 		"plans:check": "python3 \"$HOME/.agents/skills/create-plan/scripts/validate_plan.py\"",
 		"plans:task": "python3 \"$HOME/.agents/skills/implement/scripts/task_gate.py\"",
+		"plans:review": "python3 \"$HOME/.agents/skills/verify-plan/scripts/review_gate.py\"",
+		"plans:close": "python3 \"$HOME/.agents/skills/verify-implementation/scripts/close_plan.py\"",
+		"plans:baseline": "python3 \"$HOME/.agents/skills/implement/scripts/check_baseline.py\"",
+		"git:sync": "python3 \"$HOME/.agents/skills/implement/scripts/git_land.py\" sync",
+		"git:land": "python3 \"$HOME/.agents/skills/implement/scripts/git_land.py\" land",
+		"git:status": "python3 \"$HOME/.agents/skills/implement/scripts/git_land.py\" status",
+		"git:release": "python3 \"$HOME/.agents/skills/implement/scripts/git_land.py\" release",
+		"git:tidy": "python3 \"$HOME/.agents/skills/implement/scripts/git_land.py\" tidy",
 		"now": "date -u +%Y-%m-%dT%H:%M:%SZ"
 	},
 	"devDependencies": {

@@ -50,3 +50,7 @@ CLAUDE.local.md
 # OS files
 .DS_Store
 Thumbs.db
+
+# agent session worktrees
+.claude/worktrees/
+.worktrees/

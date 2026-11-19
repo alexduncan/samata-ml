@@ -80,7 +80,7 @@ function isWhitelisted(cmd: string): boolean {
 	// Whitelist patterns for samata-ml repository
 	const WHITELIST_PATTERNS: RegExp[] = [
 		// Bun commands
-		/^bun\s+run\s+(check|typecheck|build|server|serve:scaffold|format|format:check|plans:check|plans:task|now)(\s+.*)?$/,
+		/^bun\s+run\s+(check|typecheck|build|server|serve:mockups|serve:scaffold|audit:mockups|format|format:check|test:e2e|storybook|storybook:build|storybook:manifest|test:stories|now|plans:(check|task|review|close|baseline)|git:(sync|land|status|release|tidy))(\s+.*)?$/,
 		/^bun\s+run\s+--silent\s+now$/,
 		/^bun\s+test(\s+.*)?$/,
 		/^bun\s+(install|add|remove)(\s+.*)?$/,
@@ -90,12 +90,11 @@ function isWhitelisted(cmd: string): boolean {
 		/^bunx\s+prettier(\s+.*)?$/,
 		/^bunx\s+tsc(\s+.*)?$/,
 
-		// Python specification/gate scripts
-		/^python3\s+\.agents\/skills\/planning\/scripts\/validate_plan\.py(\s+.*)?$/,
-		/^python3\s+\.agents\/skills\/implementation\/scripts\/task_gate\.py(\s+.*)?$/,
+		// Shared agent-workflow gate scripts (prefer the bun run plans:* and git:* wrappers)
+		/^python3\s+"?(\$HOME|~)\/\.agents\/skills\/(create-plan|verify-plan|implement|verify-implementation)\/scripts\/[a-z_]+\.py"?(\s+.*)?$/,
 
 		// Read-only repository inspection commands
-		/^git\s+(status|diff|log|branch|rev-parse|show)(\s+.*)?$/,
+		/^git\s+(status|diff|log|branch|rev-parse|show|cherry|merge-base|worktree\s+list)(\s+.*)?$/,
 		/^ls(\s+.*)?$/,
 		/^cat(\s+.*)?$/,
 		/^grep(\s+.*)?$/,
@@ -112,7 +111,24 @@ function isWhitelisted(cmd: string): boolean {
 		/^rm\s+specification\/notes\/[a-zA-Z0-9_\-]+\.md$/
 	];
 
-	return WHITELIST_PATTERNS.some((pattern) => pattern.test(cmd));
+	return WHITELIST_PATTERNS.some((pattern) => pattern.test(cmd)) || isSafeGitWrite(cmd);
+}
+
+/**
+ * Allow the commit workflow in AGENTS.md: `git add` with explicit paths and plain `git commit`.
+ * Whole-tree staging (`-A`, `--all`, `-u`, `--update`, `.`), `commit -a` and `--amend` still ask.
+ */
+function isSafeGitWrite(cmd: string): boolean {
+	const add = /^git\s+add\s+(.+)$/.exec(cmd);
+	if (add) {
+		const args = add[1].trim().split(/\s+/);
+		return args.every((arg) => !['-A', '--all', '-u', '--update', '.', '*', '--', ':/'].includes(arg) && !/^-[a-zA-Z]*[Au]/.test(arg));
+	}
+	const commit = /^git\s+commit(\s+.*)?$/.exec(cmd);
+	if (commit) {
+		return !/(^|\s)(--amend|--all|-[a-zA-Z]*a[a-zA-Z]*)(\s|=|$)/.test(commit[1] ?? '');
+	}
+	return false;
 }
 
 function output(res: HookDecision) {
