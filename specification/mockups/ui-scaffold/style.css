@@ -14,6 +14,7 @@
 @import url("./css/train-model.css");
 @import url("./css/virtual-table.css");
 @import url("./css/hyperparameters.css");
+@import url("./css/progress.css");
 
 .icon {
 	display: block;
