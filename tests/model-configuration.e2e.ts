@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { featureA11yFindings } from './a11y-feature-findings';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
@@ -281,7 +282,21 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 			.withTags(AXE_TAGS)
 			.include('app-model-builder-view')
 			.analyze();
-		expect(axe.violations.filter((v) => v.id !== 'color-contrast')).toEqual([]);
+		const unexpected = axe.violations.flatMap((v) =>
+			v.nodes
+				.filter(
+					(n) =>
+						!featureA11yFindings.some(
+							(f) =>
+								f.rule === v.id &&
+								[f.target, ...(f.alternateTargets ?? [])].some(
+									(t) => JSON.stringify(t) === JSON.stringify(n.target)
+								)
+						)
+				)
+				.map((n) => ({ rule: v.id, target: n.target, summary: n.failureSummary }))
+		);
+		expect(unexpected).toEqual([]);
 	});
 
 	test('WML-P1-UI-4: Save & Continue validates, completes, and Edit reopens', async ({
@@ -308,7 +323,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		await expect(builder.locator('.train-step').nth(3)).toHaveAttribute('aria-current', 'step');
 
 		// Edit reopens directly (no later section complete)
-		await step3.getByRole('button', { name: 'Reopen Configure Model' }).click();
+		await step3.getByRole('button', { name: 'Edit Configure Model' }).click();
 		await expect(builder.locator('dialog.confirm-dialog')).not.toBeVisible();
 		await expect(step3).toHaveAttribute('aria-current', 'step');
 		await form.locator('select#penalty').selectOption('l2');
@@ -328,7 +343,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 				}))
 			});
 		});
-		await step3.getByRole('button', { name: 'Reopen Configure Model' }).click();
+		await step3.getByRole('button', { name: 'Edit Configure Model' }).click();
 		await expect(builder.locator('dialog.confirm-dialog')).toBeVisible();
 	});
 
@@ -433,7 +448,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		await page
 			.locator('app-model-builder-view .train-step')
 			.nth(2)
-			.getByRole('button', { name: 'Reopen Configure Model' })
+			.getByRole('button', { name: 'Edit Configure Model' })
 			.click();
 		await useModel(page, 'support-vector-classifier');
 		const gamma = form.getByRole('combobox', { name: 'Gamma' });

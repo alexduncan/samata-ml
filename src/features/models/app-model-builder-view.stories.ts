@@ -4,7 +4,12 @@ import { $appState } from '../../stores/app.store';
 import { $datasetResources } from '../../stores/dataset.store';
 import { INITIAL_APP_STATE, type ModelRecord, type PersistedAppState } from '../../types/state';
 import type { DatasetMetadata } from '../../types/dataset';
+import { featureA11yFindings } from '../../../tests/a11y-feature-findings';
 import './app-model-builder-view';
+
+const builderFindings = featureA11yFindings.filter(
+	(f) => f.target[0]?.[0] === 'app-model-builder-view'
+);
 
 function model(overrides: Partial<ModelRecord>): ModelRecord {
 	return {
@@ -86,16 +91,12 @@ const meta = {
 	component: 'app-model-builder-view',
 	parameters: {
 		layout: 'fullscreen',
-		// Sections 1 and 2 predate this plan: their Edit buttons have aria-labels without the
-		// visible text, and some hint text is below 4.5:1. Section 3 follows the plan's
-		// Reopen Configure Model label. Recorded in the plan log for a follow-up fix.
+		// Excludes only the Section 1 and 2 hint, note and feature-table targets tracked by the
+		// HUMAN.md contrast-repair item.
 		a11y: {
 			test: 'error',
-			config: {
-				rules: [
-					{ id: 'label-content-name-mismatch', enabled: false },
-					{ id: 'color-contrast', enabled: false }
-				]
+			context: {
+				exclude: builderFindings.map((f) => ({ fromShadowDom: f.target[0]! }))
 			}
 		},
 		docs: {
@@ -112,6 +113,13 @@ type Story = StoryObj<typeof meta>;
 
 /** Section 3 active with the Logistic Regression form. */
 export const ConfigureModel: Story = { beforeEach: () => seed('categorical') };
+/** Sections 1 to 3 complete, so axe checks the Section 3 Edit button name. */
+export const ConfigureModelComplete: Story = {
+	beforeEach: () =>
+		seed('categorical', {
+			completedSteps: ['choose-model', 'select-features', 'configure-model']
+		})
+};
 /** A numeric target has no classification model. */
 export const NoClassifierNumericTarget: Story = {
 	beforeEach: () => seed('numeric', { completedSteps: [], modelId: null, features: [] })

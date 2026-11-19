@@ -62,7 +62,7 @@ const messages = i18n('app-model-builder-view', {
 	helpLink: 'What do these settings mean?',
 	edit: 'Edit',
 	completed: 'Completed',
-	reopenConfigure: 'Reopen Configure Model',
+	reopenConfigure: 'Edit Configure Model',
 	...flatOptionMessages(),
 	...CONFIGURE_MODEL_MESSAGES,
 	reset: params<{ name: string }>(CONFIGURE_MODEL_TEMPLATES.reset),
@@ -772,7 +772,7 @@ export class AppModelBuilderView extends LitElement {
 										<button
 											type="button"
 											class="btn reopen-btn"
-											aria-label="Reopen Choose Model"
+											aria-label="Edit Choose Model"
 											@click=${() => this.handleReopenClick('choose-model')}>
 											Edit
 										</button>
@@ -935,7 +935,7 @@ export class AppModelBuilderView extends LitElement {
 										<button
 											type="button"
 											class="btn reopen-btn"
-											aria-label="Reopen Select Features"
+											aria-label="Edit Select Features"
 											@click=${() =>
 												this.handleReopenClick('select-features')}>
 											Edit
