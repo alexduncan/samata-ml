@@ -53,8 +53,8 @@ One-time adoption steps (package scripts, `plans:baseline`) are in `agent-workfl
 Follow the shared rules in `agent-workflow/AGENTS.md` § Git workflow (summarised here):
 
 - One session, one worktree, one session branch. Never `git switch` to `main` or `plan/<slug>` in a session worktree; the primary checkout stays on `main`.
-- Target `main` for specification-only work and `plan/<slug>` for everything belonging to a plan once that branch exists (`implement` creates it with `git branch plan/<slug> main`).
-- `bun run git:sync <target>` at the start; commit your own paths explicitly (never `git add -A`, `.` or `-u`) with `{slug} plan|review|T{n}|R{n}|closure: …`, `docs: …`, `fix: …` or `chore: …` subjects; `bun run git:land <target>` after each commit the next session needs and before ending. On `BLOCKED`, stop and report.
+- Target `main` for specification-only work and `plan/<slug>` for everything belonging to a plan once that branch exists (`implement` creates it with `bun run git:sync plan/<slug> --create`).
+- `bun run git:sync <target>` at the start (it gives a detached worktree its own session branch); commit your own paths explicitly (never `git add -A`, `.` or `-u`) with `{slug} plan|review|T{n}|R{n}|closure: …`, `docs: …`, `fix: …` or `chore: …` subjects; `bun run git:land <target>` after each commit the next session needs and before ending. On `BLOCKED`, stop and report.
 - Landing non-specification work on `main` needs maintainer approval (`bun run git:land main --maintainer-approved`). `review-codebase` never changes Git state.
 - Never reset, clean, stash or overwrite others' changes, rewrite shared branches, add remotes or push.
 
