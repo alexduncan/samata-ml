@@ -25,7 +25,24 @@
 			"Bash(file *)",
 			"Bash(date)",
 			"Bash(date *)",
-			"Bash(python3 .agents/*)"
+			"Bash(python3 .agents/*)",
+			"Bash(git add *)",
+			"Bash(git commit *)",
+			"Bash(git worktree list*)",
+			"Bash(git cherry*)",
+			"Bash(git merge-base*)"
+		],
+		"deny": [
+			"Bash(git add -A*)",
+			"Bash(git add --all*)",
+			"Bash(git add -u*)",
+			"Bash(git add --update*)",
+			"Bash(git add .)",
+			"Bash(git add . *)",
+			"Bash(git commit -a*)",
+			"Bash(git commit --all*)",
+			"Bash(git commit --amend*)",
+			"Bash(git push*)"
 		]
 	}
 }
