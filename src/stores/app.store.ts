@@ -21,7 +21,8 @@ import { $scrollState, clearScroll } from './scroll.store';
  */
 export const $appState = atom<PersistedAppState>(INITIAL_APP_STATE);
 
-const SECTION_ORDER: ModelSectionId[] = [
+/** Model builder sections in workflow order; a section is downstream of every section before it. */
+export const SECTION_ORDER: readonly ModelSectionId[] = [
 	'choose-model',
 	'select-features',
 	'configure-model',

@@ -8,9 +8,13 @@ import {
 	completeSection,
 	initialiseFeatureSelection,
 	reopenSection,
+	SECTION_ORDER,
 	setFeatures,
+	setHyperparameters,
+	setMulticlassStrategy,
 	toggleFeature
 } from '../../stores/app.store';
+import { params } from '@nanostores/i18n';
 import { i18n } from '../../i18n';
 import { $datasetResources, loadDatasetResources } from '../../stores/dataset.store';
 import { blockedReason } from '../../stores/predicates';
@@ -24,15 +28,47 @@ import { trainModelStyles } from '../../styles/train-model.styles';
 import { headingFocusStyles } from '../../styles/heading-focus.styles';
 import type { ColumnType, ModelRecord, ModelSectionId } from '../../types/state';
 import { buildFeatureRows, formatFeatureNote, type FeatureRow } from './feature-eligibility';
-import { modelsForTarget, SUPERVISED_MODELS, type ModelCatalogueEntry } from './model-catalogue';
+import {
+	isClassifierId,
+	modelsForTarget,
+	SUPERVISED_MODELS,
+	type ModelCatalogueEntry
+} from './model-catalogue';
 import type { ModelDescriptionStatus } from './app-model-description-dialog';
 import './app-model-description-dialog';
 import './app-model-card';
+import './app-model-configuration';
+import type {
+	ConfigurationLabels,
+	ModelConfigurationChangeDetail,
+	ModelConfigurationContinueDetail
+} from './app-model-configuration';
+import type { ModelDocument } from '../../types/model-document';
+import { getModelDocument } from './model-documents';
+import {
+	buildConfigurationLabels,
+	CONFIGURE_MODEL_MESSAGES,
+	CONFIGURE_MODEL_TEMPLATES,
+	flatOptionMessages
+} from './model-option-copy';
+import { MULTICLASS_STRATEGY } from './model-presentation-policy';
 
 const messages = i18n('app-model-builder-view', {
 	noModelHeading: 'No classification model available',
 	noModelText: 'This target is numeric. Regression will be added later.',
-	noModelLink: 'Choose a categorical or boolean target'
+	noModelLink: 'Choose a categorical or boolean target',
+	configureHeading: '3. Configure Model',
+	configuredHeading: '3. Model Configured',
+	helpLink: 'What do these settings mean?',
+	edit: 'Edit',
+	completed: 'Completed',
+	reopenConfigure: 'Reopen Configure Model',
+	...flatOptionMessages(),
+	...CONFIGURE_MODEL_MESSAGES,
+	reset: params<{ name: string }>(CONFIGURE_MODEL_TEMPLATES.reset),
+	removeLayer: params<{ layer: number }>(CONFIGURE_MODEL_TEMPLATES.removeLayer),
+	layerSize: params<{ layer: number }>(CONFIGURE_MODEL_TEMPLATES.layerSize),
+	exactValue: params<{ name: string }>(CONFIGURE_MODEL_TEMPLATES.exactValue)
 });
 
 /**
@@ -441,14 +477,11 @@ export class AppModelBuilderView extends LitElement {
 		const model = this.currentModel;
 		if (!model) return;
 
-		// Check if later downstream sections are completed
+		// A confirmation is needed only when a section after this one is complete
 		const completed = model.completedSteps;
-		const hasDownstream =
-			section === 'choose-model'
-				? completed.includes('select-features') ||
-					completed.includes('configure-model') ||
-					completed.includes('configure-training')
-				: completed.includes('configure-model') || completed.includes('configure-training');
+		const hasDownstream = SECTION_ORDER.slice(SECTION_ORDER.indexOf(section) + 1).some(
+			(later) => completed.includes(later)
+		);
 
 		if (hasDownstream) {
 			this.pendingReopenSection = section;
@@ -1046,6 +1079,146 @@ export class AppModelBuilderView extends LitElement {
 		`;
 	}
 
+	private labelsCache: {
+		translations: unknown;
+		modelId: string;
+		labels: ConfigurationLabels;
+	} | null = null;
+
+	private configurationLabels(document: ModelDocument): ConfigurationLabels {
+		const translations = this.translations.value;
+		if (
+			this.labelsCache &&
+			this.labelsCache.translations === translations &&
+			this.labelsCache.modelId === document.id
+		) {
+			return this.labelsCache.labels;
+		}
+		const labels = buildConfigurationLabels(
+			{
+				text: translations as unknown as Record<string, string>,
+				reset: translations.reset,
+				removeLayer: translations.removeLayer,
+				layerSize: translations.layerSize,
+				exactValue: translations.exactValue
+			},
+			document
+		);
+		this.labelsCache = { translations, modelId: document.id, labels };
+		return labels;
+	}
+
+	/** Number of target classes: distinct categories, or 2 for a boolean target. */
+	private targetClassCount(): number {
+		const appState = this.appStateController.value;
+		const metadata = this.resourcesController.value.metadata;
+		const column = metadata?.columns.find((c) => c.name === appState.target);
+		if (column?.type === 'boolean') return 2;
+		if (column?.type === 'categorical') return column.distinctCount;
+		return 0;
+	}
+
+	private handleConfigurationChange(event: CustomEvent<ModelConfigurationChangeDetail>): void {
+		setHyperparameters(this.modelNum, event.detail.config);
+	}
+
+	private handleConfigurationContinue(
+		event: CustomEvent<ModelConfigurationContinueDetail>
+	): void {
+		const model = this.currentModel;
+		if (!model || !model.modelId || !isClassifierId(model.modelId)) return;
+		setHyperparameters(this.modelNum, event.detail.config);
+		setMulticlassStrategy(
+			this.modelNum,
+			this.targetClassCount() > 2 ? MULTICLASS_STRATEGY[model.modelId] : null
+		);
+		completeSection(this.modelNum, 'configure-model');
+	}
+
+	private renderConfigureModelSection(
+		model: ModelRecord,
+		isActive: boolean,
+		isCompleted: boolean
+	): TemplateResult {
+		const t = this.translations.value;
+		const modelId = model.modelId;
+		if ((!isActive && !isCompleted) || !modelId || !isClassifierId(modelId)) {
+			return this.renderPendingSection(
+				'3. Configure Model',
+				'step-3-title',
+				'configure-model',
+				0,
+				3
+			);
+		}
+		const document = getModelDocument(modelId);
+		const classCount = this.targetClassCount();
+		return html`
+			<li
+				class="train-step ${isActive ? 'step-active' : ''}"
+				aria-current=${isActive ? 'step' : nothing}>
+				<section class="train-step-panel" aria-labelledby="step-3-title">
+					<header class="train-step-header">
+						<h2 id="step-3-title">
+							${isCompleted ? t.configuredHeading : t.configureHeading}
+							${isActive
+								? html`<a href="/help/configure-model" class="help-link"
+										>${t.helpLink}</a
+									>`
+								: nothing}
+						</h2>
+						${isCompleted
+							? html`
+									<span class="train-step-action train-step-status">
+										<button
+											type="button"
+											class="btn reopen-btn"
+											aria-label=${t.reopenConfigure}
+											@click=${() =>
+												this.handleReopenClick('configure-model')}>
+											${t.edit}
+										</button>
+										<span class="visually-hidden">${t.completed}</span>
+										<svg
+											aria-hidden="true"
+											width="20"
+											height="20"
+											viewBox="0 0 24 24"
+											fill="currentColor">
+											<path
+												d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+										</svg>
+									</span>
+								`
+							: nothing}
+					</header>
+					<div class="train-step-content" ?hidden=${!isActive}>
+						${isActive
+							? html`<app-model-configuration
+									.document=${document}
+									.value=${model.hyperparameters}
+									.context=${{
+										rowCount:
+											this.appStateController.value.dataset?.rowCount ?? 0,
+										classCount
+									}}
+									.multiclass=${classCount > 2
+										? MULTICLASS_STRATEGY[modelId]
+										: null}
+									.disabled=${model.status !== 'draft'}
+									.labels=${this.configurationLabels(document)}
+									@app-model-configuration-change=${this
+										.handleConfigurationChange}
+									@app-model-configuration-continue=${this
+										.handleConfigurationContinue}>
+								</app-model-configuration>`
+							: nothing}
+					</div>
+				</section>
+			</li>
+		`;
+	}
+
 	private renderPendingSection(
 		title: string,
 		stepId: string,
@@ -1110,6 +1283,7 @@ export class AppModelBuilderView extends LitElement {
 
 		const isStep1Completed = model.completedSteps.includes('choose-model');
 		const isStep2Completed = model.completedSteps.includes('select-features');
+		const isStep3Completed = model.completedSteps.includes('configure-model');
 
 		return html`
 			<div class="page-header">
@@ -1123,13 +1297,7 @@ export class AppModelBuilderView extends LitElement {
 				<ol class="train-model" aria-label="Model training steps">
 					${this.renderChooseModelSection(model, activeStep === 1, isStep1Completed)}
 					${this.renderSelectFeaturesSection(model, activeStep === 2, isStep2Completed)}
-					${this.renderPendingSection(
-						'3. Configure Model',
-						'step-3-title',
-						'configure-model',
-						activeStep,
-						3
-					)}
+					${this.renderConfigureModelSection(model, activeStep === 3, isStep3Completed)}
 					${this.renderPendingSection(
 						'4. Training Setup',
 						'step-4-title',

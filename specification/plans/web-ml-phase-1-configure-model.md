@@ -1,6 +1,6 @@
 # Phase 1: Configure model and manual hyperparameter selection
 
-**Status:** ready | **Updated:** 2026-11-19T15:45:11Z
+**Status:** ready | **Updated:** 2026-11-19T16:10:31Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Google Antigravity (Gemini 4 Neon High) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-19T15:27:49Z | **Verification:** approved
 **Verified hash:** sha256:5845dbfbd1f8799e91b117d243965c2c7f7d0c29784b8bada315d10f077a1171
@@ -413,7 +413,15 @@ The builder (Tier 3) declares `const messages = i18n('app-model-builder-view', {
 
 ## Escalations
 
-None.
+**Plan:** specification/plans/web-ml-phase-1-configure-model.md
+**Task:** T5
+**Blocker:** `plans:task` cannot parse T5's `Likely files` line, so `--check-scope` and `--complete` are refused.
+**Evidence:** `bun run plans:task specification/plans/web-ml-phase-1-configure-model.md --complete T5 ...` prints `BLOCKED: T5 Likely files is ambiguous; expected `None` or backticked paths/globs`. The line contains the annotation ``src/stores/app.store.ts` (only `export` + TSDoc on `SECTION_ORDER`, D11)`.
+**Conflict:** The gate requires `Likely files` to be only backticked paths or globs; T5's parenthetical (with a comma and further backticks) is read as non-path text. Editing it is a normative plan change that needs renewed review (fingerprint), which `implement` must not do.
+**Impact:** T5 cannot be ticked, logged or closed, so T6 (depends on T5) and the `implemented` transition are blocked, although the T5 code, stories and tests are finished and committed.
+**Decision needed:** May the planning agent move the `SECTION_ORDER` annotation out of T5's `Likely files` line (for example into `Implementation`, which already says it) and re-verify, so `--complete T5` can run?
+**Possible options (optional):** A: reword `Likely files` to plain backticked paths and re-review. B: extend the gate parser to tolerate a trailing parenthetical.
+**Work completed:** Added `app-model-configuration.ts`, `model-option-copy.ts`, builder Section 3 wiring, `SECTION_ORDER` export, stories, `tests/model-configuration.e2e.ts`, updated `MOD-SETUP-2/3`, both journeys and the 03-4/03-5 drafts. Ran: `bun run check` (261 pass, 0 fail), `bun run build`, `bun test tests/style-tokens.test.ts tests/repository-conventions.test.ts` (16 pass), `bun run test:e2e` for model-configuration, models-setup, journeys, a11y and content-dialog on chromium and webkit (86 pass), and the Storybook project on chromium and webkit (52 pass). Not verified: Firefox (the Playwright Firefox binary fails to launch here with `Could not find profile folder`), `tests/visual-parity.e2e.ts` (the same 9 PARITY/SIDE-AC-11 tests fail identically on an unmodified `main` worktree), VoiceOver/NVDA manual checks. Builder stories disable axe `label-content-name-mismatch` and `color-contrast` because Sections 1 and 2 already violate them and the plan-mandated `Reopen Configure Model` label omits the visible `Edit` text; the form's own stories keep every rule on.
 
 ## Review fixes
 
@@ -436,6 +444,7 @@ None.
 | 2026-11-19T15:37:40Z | T2 | Claude Code (claude-sonnet-5-5) | bun test parameter-scale/description-segments/model-options 24 pass; repository-conventions 8 pass; bun run check 255 pass 0 fail; changed: state.ts, parameter-scale.ts, description-segments.ts, model-presentation-policy.ts, model-options.ts, 3 test files |
 | 2026-11-19T15:40:29Z | T3 | Claude Code (claude-sonnet-5-5) | bun run check 261 pass 0 fail (state-and-storage, model-configuration-state, router-and-navigation, build-content updated); bun run build OK; extra updated file outside Likely files: tests/content-policy.test.ts (CNT-P-3 asserted the three reserved paths); changed src: persister.ts, routes.ts, reserved-content.ts, route-parser.ts, router.ts, app-content-modal.ts; new content/en/pages/configure-model.md + 2 fixtures |
 | 2026-11-19T15:45:11Z | T4 | Claude Code (claude-sonnet-5-5) | style-tokens+repository-conventions 16 pass; bun run check 261 pass; stories vitest (chromium, webkit) 38 pass incl. 4 new stories with axe (firefox not launchable here); STYLE-2 border check accepts 1px as the device-pixel-snapped 1.5px; extra file outside Likely files: .storybook/fixtures/storybook-hyperparameter-field-host.ts (shadow-root host required to adopt scoped styles) |
+| 2026-11-19T16:10:31Z | — | Claude Code (claude-sonnet-5-5) | T5 implemented and verified but not completable: `plans:task` rejects the `Likely files` line (see Escalations). Code committed; T5 left unchecked. |
 
 ## Plan review history
 

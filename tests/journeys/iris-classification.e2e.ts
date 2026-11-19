@@ -210,7 +210,8 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 
 		const step3 = builder.locator('.train-step').nth(2);
 		await expect(step3).toHaveAttribute('aria-current', 'step');
-		await expect(step3.locator('.pending-notice')).toHaveText('Not available yet.');
+		await expect(step3.locator('app-model-configuration form')).toBeVisible();
+		await expect(step3.locator('h2')).toContainText('3. Configure Model');
 
 		// 8. Reload page and verify state resumes cleanly
 		await page.reload();
@@ -219,7 +220,8 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		await expect(step1).toContainText('Selected model: Logistic Regression');
 		await expect(step2).toContainText('Selected features (4):');
 		await expect(step3).toHaveAttribute('aria-current', 'step');
-		await expect(step3.locator('.pending-notice')).toHaveText('Not available yet.');
+		await expect(step3.locator('app-model-configuration form')).toBeVisible();
+		await expect(step3.locator('h2')).toContainText('3. Configure Model');
 
 		// 9. Navigate back to /models via sidebar
 		await page.locator('app-sidebar a[href="/models"]').click();

@@ -210,7 +210,7 @@
 								</h2>
 							</header>
 							<div class="train-step-content">
-								<form aria-labelledby="configuration-heading">
+								<form aria-labelledby="step-3-title">
 									<!-- Mode -->
 									<div class="field">
 										<label for="mode" class="field-name">Mode</label>
@@ -502,37 +502,6 @@
 					<option>Numeric value</option>
 				</select>
 				<fieldset>
-					<legend>Gaussian class priors — Custom</legend>
-					<label for="adelie">Adelie probability</label
-					><input
-						id="adelie"
-						name="Adelie"
-						type="number"
-						min="0"
-						max="1"
-						step="any"
-						value="0.4" />
-					<label for="chinstrap">Chinstrap probability</label
-					><input
-						id="chinstrap"
-						name="Chinstrap"
-						type="number"
-						min="0"
-						max="1"
-						step="any"
-						value="0.2" />
-					<label for="gentoo">Gentoo probability</label
-					><input
-						id="gentoo"
-						name="Gentoo"
-						type="number"
-						min="0"
-						max="1"
-						step="any"
-						value="0.4" />
-					<p>Supply one probability per class. The total must be 1.</p>
-				</fieldset>
-				<fieldset>
 					<legend>Class weights</legend>
 					<label for="weight-mode">Weight mode</label
 					><select id="weight-mode" name="weight-mode">
@@ -624,7 +593,18 @@
 					L-BFGS supports only no penalty or L2. Choose a compatible penalty before
 					continuing.
 				</p>
-				<button type="button" class="btn" disabled>Continue</button>
+				<label for="solver-invalid">Solver</label>
+				<select
+					id="solver-invalid"
+					name="solver"
+					aria-invalid="true"
+					aria-describedby="solver-invalid-error">
+					<option>lbfgs</option>
+				</select>
+				<p id="solver-invalid-error">
+					L-BFGS supports only no penalty or L2. Choose a compatible penalty before saving.
+				</p>
+				<button type="submit" class="btn btn-primary">Save &amp; Continue</button>
 			</section>
 			<section>
 				<h2>No classification model available</h2>
