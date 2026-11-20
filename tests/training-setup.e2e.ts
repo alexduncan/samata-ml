@@ -309,16 +309,39 @@ test.describe('Standalone Training Setup component', () => {
 		]);
 	});
 
-	for (const blocked of [false, true]) {
-		test(`WML-P2-COMP-4: ${blocked ? 'blocked' : 'disabled'} controls emit no events`, async ({
+	for (const [reason, props] of [
+		['disabled', { disabled: true }],
+		['blocked', { blockedReason: 'Choose a target with more labelled rows.' }],
+		['below minimum folds', { maxFolds: 1 }]
+	] as const) {
+		test(`WML-P2-COMP-4: ${reason} controls emit no events before or after rendering`, async ({
 			page
 		}) => {
-			const form = await mountStandalone(page, {
-				value: crossValidation(5),
-				disabled: !blocked,
-				blockedReason: blocked ? 'Choose a target with more labelled rows.' : ''
-			});
+			const form = await mountStandalone(page, { value: crossValidation(5) });
 			const submit = form.getByRole('button', { name: 'Train Model' });
+			await expect(submit).toBeEnabled();
+			await form.evaluate(async (host, changedProps) => {
+				const element = host as AppTrainingSetup;
+				const root = element.shadowRoot!;
+				const strategy = root.querySelector('select')!;
+				const inputs = root.querySelectorAll<HTMLInputElement>('input');
+				const nativeForm = root.querySelector('form')!;
+				const dispatch = (value: string) => {
+					strategy.value = 'one_shot';
+					strategy.dispatchEvent(new Event('change'));
+					for (const input of inputs) {
+						input.value = value;
+						input.dispatchEvent(new Event('input'));
+					}
+					nativeForm.dispatchEvent(new SubmitEvent('submit', { cancelable: true }));
+				};
+
+				Object.assign(element, changedProps);
+				dispatch('6');
+				await element.updateComplete;
+				dispatch('4');
+			}, props);
+			expect(await recordedEvents(page)).toEqual([]);
 			for (const control of [
 				form.getByRole('combobox'),
 				form.getByRole('slider'),
@@ -327,23 +350,56 @@ test.describe('Standalone Training Setup component', () => {
 			]) {
 				await expect(control).toBeDisabled();
 			}
-			if (blocked) {
+			if ('blockedReason' in props) {
 				await expect(form.getByRole('alert')).toBeVisible();
 				await expect(submit).toHaveAttribute('aria-describedby', 'training-setup-blocked');
 			} else {
 				await expect(form.getByRole('alert')).toHaveCount(0);
 				expect(await submit.getAttribute('aria-describedby')).toBeNull();
 			}
-			await form.evaluate((element) => {
-				const root = element.shadowRoot!;
-				root.querySelector('select')?.dispatchEvent(new Event('change'));
-				for (const input of root.querySelectorAll('input'))
-					input.dispatchEvent(new Event('input'));
-				root.querySelector('form')?.requestSubmit();
-			});
-			expect(await recordedEvents(page)).toEqual([]);
 		});
 	}
+
+	test('WML-P2-COMP-4: change handlers use new fold limits before rendering', async ({
+		page
+	}) => {
+		const form = await mountStandalone(page);
+		await form.evaluate(async (host) => {
+			const element = host as AppTrainingSetup;
+			const root = element.shadowRoot!;
+			const strategy = root.querySelector('select')!;
+			element.maxFolds = 4;
+			strategy.value = 'nested_cv';
+			strategy.dispatchEvent(new Event('change'));
+			await element.updateComplete;
+
+			const range = root.querySelector<HTMLInputElement>('#folds-range')!;
+			element.maxFolds = 6;
+			range.value = '3';
+			range.dispatchEvent(new Event('input'));
+			await element.updateComplete;
+
+			element.maxFolds = 4;
+			range.value = '6';
+			range.dispatchEvent(new Event('input'));
+		});
+		expect(await recordedEvents(page)).toEqual([
+			{
+				type: 'app-training-setup-change',
+				detail: { setup: crossValidation(4) },
+				bubbles: false,
+				composed: false
+			},
+			{
+				type: 'app-training-setup-change',
+				detail: { setup: crossValidation(3) },
+				bubbles: false,
+				composed: false
+			}
+		]);
+		await expect(form.getByRole('spinbutton')).toHaveValue('3');
+		await expect(form.getByRole('slider')).toHaveValue('3');
+	});
 });
 
 test.describe('Connected Training Setup', () => {

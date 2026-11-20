@@ -149,13 +149,9 @@ export class AppTrainingSetup extends LitElement {
 			this.clearFoldEdit();
 		}
 
-		this.controlsDisabled =
-			this.disabled || Boolean(this.blockedReason) || this.maxFolds < MIN_CV_FOLDS;
-		this.sliderMax = Math.min(MAX_CV_FOLDS, Math.max(MIN_CV_FOLDS, this.maxFolds));
-		this.clampedSliderFolds = Math.min(
-			this.sliderMax,
-			Math.max(MIN_CV_FOLDS, this.lastValidFolds)
-		);
+		this.controlsDisabled = this.areControlsDisabled();
+		this.sliderMax = this.getSliderMax();
+		this.clampedSliderFolds = this.clampSliderFolds(this.sliderMax);
 		this.matrixFolds = Math.min(
 			MAX_CV_FOLDS,
 			Math.max(MIN_CV_FOLDS, Math.round(this.lastValidFolds))
@@ -182,6 +178,19 @@ export class AppTrainingSetup extends LitElement {
 			this.pendingNumberFocus = false;
 			this.renderRoot.querySelector<HTMLInputElement>('#folds-number')?.focus();
 		}
+	}
+
+	// Native events can run before Lit applies the latest properties to the form.
+	private areControlsDisabled(): boolean {
+		return this.disabled || Boolean(this.blockedReason) || this.maxFolds < MIN_CV_FOLDS;
+	}
+
+	private getSliderMax(): number {
+		return Math.min(MAX_CV_FOLDS, Math.max(MIN_CV_FOLDS, this.maxFolds));
+	}
+
+	private clampSliderFolds(maxFolds: number): number {
+		return Math.min(maxFolds, Math.max(MIN_CV_FOLDS, this.lastValidFolds));
 	}
 
 	private matchesLastEmission(): boolean {
@@ -225,18 +234,19 @@ export class AppTrainingSetup extends LitElement {
 	}
 
 	private handleStrategyChange(event: Event): void {
-		if (this.controlsDisabled) return;
+		if (this.areControlsDisabled()) return;
 		const strategy = (event.currentTarget as HTMLSelectElement).value;
 		if ((strategy !== 'one_shot' && strategy !== 'nested_cv') || strategy === this.strategy)
 			return;
 		this.strategy = strategy;
 		this.clearFoldEdit();
-		if (strategy === 'nested_cv') this.lastValidFolds = this.clampedSliderFolds;
+		if (strategy === 'nested_cv')
+			this.lastValidFolds = this.clampSliderFolds(this.getSliderMax());
 		this.emitSetup('app-training-setup-change');
 	}
 
 	private handleNumberInput(event: Event): void {
-		if (this.controlsDisabled) return;
+		if (this.areControlsDisabled()) return;
 		const number = event.currentTarget as HTMLInputElement;
 		const text = number.value;
 		if (number.validity.badInput) {
@@ -256,8 +266,10 @@ export class AppTrainingSetup extends LitElement {
 	}
 
 	private handleRangeInput(event: Event): void {
-		if (this.controlsDisabled) return;
-		this.acceptFoldCount((event.currentTarget as HTMLInputElement).valueAsNumber);
+		if (this.areControlsDisabled()) return;
+		const count = (event.currentTarget as HTMLInputElement).valueAsNumber;
+		if (validateFoldCount(count, this.getSliderMax()) !== null) return;
+		this.acceptFoldCount(count);
 	}
 
 	private acceptFoldCount(count: number): void {
@@ -267,7 +279,7 @@ export class AppTrainingSetup extends LitElement {
 	}
 
 	private handleNumberBlur(): void {
-		if (this.controlsDisabled) return;
+		if (this.areControlsDisabled()) return;
 		const error = this.getFoldError();
 		this.foldError = error;
 		this.liveAnnouncement = error;
@@ -275,7 +287,7 @@ export class AppTrainingSetup extends LitElement {
 
 	private handleSubmit(event: SubmitEvent): void {
 		event.preventDefault();
-		if (this.controlsDisabled) return;
+		if (this.areControlsDisabled()) return;
 		if (this.strategy === 'nested_cv') {
 			const error = this.getFoldError();
 			if (error) {
@@ -389,7 +401,7 @@ export class AppTrainingSetup extends LitElement {
 						min="2"
 						max=${this.sliderMax}
 						step="1"
-						.value=${String(this.clampedSliderFolds)}
+						.value=${live(String(this.clampedSliderFolds))}
 						?disabled=${this.controlsDisabled}
 						aria-labelledby="folds-label"
 						aria-describedby="folds-help folds-visual-summary"
