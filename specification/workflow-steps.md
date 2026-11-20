@@ -1,6 +1,6 @@
 # Steps
 
-**Status:** partial — Steps 1–2 and Step 3 setup (overview, Choose Model, Select Features) are implemented. Model configuration, training execution, and Step 4 Results remain target.
+**Status:** partial — Steps 1–2 and the Step 3 overview and builder Sections 1–4 are implemented. Training execution, model results and Step 4 comparison remain target.
 
 This web application has four sections.
 
@@ -121,7 +121,7 @@ Once a dataset and target are configured:
     - **Model Name:** Displays `Model {num} — {Library Name}` (e.g. "Model 1 — Logistic Regression") or `Model {num}` if no model is selected yet. Models cannot be renamed, deleted, or duplicated.
     - **Features:** A comma-separated list of selected features in dataset column order, or "Not selected".
     - **Configuration:** Hyperparameter settings or "Not configured".
-    - **Training Setup:** Validation and splitting options or "Not configured".
+    - **Training Setup:** The formatted strategy and split or fold count, or "Not configured".
     - **Duration:** Training duration formatted via i18n (e.g. "1.2s") or "Not trained".
     - **Action:** An action button linking to `/models/{num}`, labelled "View Results" if trained or "Continue" if draft.
 - The header includes a "Compare Results" button (`<a href="/results">`). It is disabled with a visible hint until at least two models have completed training (`$canCompare`).
@@ -166,25 +166,21 @@ Section 3 activates after Section 2 and renders `<app-model-configuration>` ([sp
 - **Multiclass:** when the target has more than two classes, a read-only note states the strategy used (no choice is offered).
 - **Help:** the section heading links to `/help/configure-model` ("What do these settings mean?").
 - **Completion:** `Save & Continue` stores sparse overrides, completes Section 3 as `3. Model Configured` and shows `Edit`. A failed submit focuses the first invalid control.
-- **Edit:** confirmation is requested only when a later section is complete (Section 4 and later remain pending, so normally none).
+- **Edit:** confirmation is requested when a later section, including Training Setup, is complete.
 
-### 4–6. Subsequent Sections (Pending)
+### 4. Training Setup
 
-Sections 4 (Configure Training), 5 (Training), and 6 (Results) display "Not available yet." and cannot be activated or completed in this version.
+Choosing a strategy requires ready metadata for the current dataset and target. For classification, samatā requires at least two observed classes with two or more rows each. Categories with no observed rows are excluded from this check. This is an input rule in samatā. The training library web-ml may still reject the split when execution is available. If the target is ineligible or missing, the section explains why and links to Set Target. If metadata cannot be read, the section offers Retry.
 
-For targets with more than two categories the multiclass strategy is fixed by the model (native, One-vs-Rest or One-vs-One as the classifier supports) and shown read-only. Selecting a strategy and Error-Correcting Output Codes remain future work.
+**One-Shot** is selected initially. It requests an 80% training and 20% test split with stratification and a fixed seed of 42. **Cross-Validation** starts at five folds or the eligible maximum, whichever is smaller. The range and exact number field accept integers from 2 through the smallest observed class count, capped at 10. A scrollable matrix shows the training and validation roles for each run and the summary gives their approximate percentages. Both Help links open the Training Setup article over the builder.
 
-### 4. Configure Training
+**Train Model** is the form's submit button. A field error leaves it enabled and submission moves focus to the exact number field. The controls are disabled when the setup is blocked or read-only. Valid submission saves and completes Section 4, shows the chosen setup and Edit in its header, and activates Section 5. The **Training Setup** column on Models uses the same formatted summary. See [Training Setup](components/training-setup.md) for the controls and validation states.
 
-This step allows the user to choose the training, folding and validation proccedures.
-
-**TODO: More work is required to design the specification for this step.**
-
-Once this step has been configured the "Train Model" button in the `<header>` of the section will change from disabled to `.btn-primary`. The `<h2>` in the `<header>` of the section will change to display the chosen Training setup. After the user clicks the "Train Model" button, the button will be replaced with an `<svg><use href="#check" /></svg>` and the class `.train-step-complete` is added to the `.train-step` element.
+For targets with more than two categories, the multiclass strategy is fixed by the model (native, One-vs-Rest or One-vs-One as the classifier supports) and shown read-only in Section 3. Selecting a strategy and Error-Correcting Output Codes remain future work.
 
 ### 5. Training
 
-When the user clicks "Continue" on the **4. Configure Training** step, this step opens and displays a progress bar. Model training is handed to the `web-ml` library and event listener updates the progress bar and status text as model training progresses.
+In the current release the model remains a draft after Train Model, and Sections 5 and 6 display “Not available yet.” Actual execution is a Phase 3 target. Once implemented, valid Train Model submission will hand training to web-ml and open this section with a progress bar and status text updated from training events.
 
 Once training is complete the section will display the time taken to train the model. In the case of "Nested Cross Validation" and "Hyperparameter Tuning" a table will display detailed results on the time for each step and a total row.
 

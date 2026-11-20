@@ -64,7 +64,7 @@ Native dialog aria-labelledby references h2. Close has the translated accessible
 
 ## 7. Internationalisation
 
-The connected dictionary owns About/Privacy/Help fallback titles and existing Close/load-error text. Loaded entry titles retain their consumer wording. The child owns no messages/stores and receives ContentDialogLabels; entry metadata controls ready content language/direction. No language switcher or locale persistence is introduced.
+The connected dictionary owns the fallback titles and the Close and load-error text. `/help/configure-model` uses “Configure Model” and `/help/training-setup` uses “Training Setup” while loading and on failure. Loaded entry titles retain their consumer wording. The child owns no messages/stores and receives ContentDialogLabels; entry metadata controls ready content language/direction. No language switcher or locale persistence is introduced.
 
 ## 8. Acceptance criteria
 
