@@ -2,7 +2,7 @@ import { copyFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { CSS_DIR, DEV_DIR, DIST_DIR, PUBLIC_DIR, ROOT_DIR, SRC_DIR } from './config';
 import { buildContent, type ContentBuildReport } from './build-content';
-import { buildModelAssets } from './build-model-assets';
+import { buildModelAssets, WEB_ML_REVISION } from './build-model-assets';
 import { generateSampleDatasets, type SampleDatasetBuildReport } from './generate-datasets';
 import { copyDirContents, resetDir, writeRevvedFile } from './filesystem';
 import { transformIndexHtml } from './html';
@@ -40,7 +40,8 @@ async function buildBrowserAssets(options: {
 	// separate browser entrypoints for this app.
 	const entrypoints = [
 		path.join(SRC_DIR, 'app.ts'),
-		path.join(SRC_DIR, 'features/data/ingestion/storage.worker.ts')
+		path.join(SRC_DIR, 'features/data/ingestion/storage.worker.ts'),
+		path.join(SRC_DIR, 'features/models/training/training.worker.ts')
 	];
 	if (process.env.SAMATA_TRAINING_RUNTIME_PROBE === '1') {
 		entrypoints.push(path.join(ROOT_DIR, 'tests/fixtures/training/runtime.worker.ts'));
@@ -58,7 +59,8 @@ async function buildBrowserAssets(options: {
 		external: [options.modelRuntimeUrl],
 		define: {
 			DEBUG: options.debug ? 'true' : 'false',
-			WEB_ML_RUNTIME_URL: JSON.stringify(options.modelRuntimeUrl)
+			WEB_ML_RUNTIME_URL: JSON.stringify(options.modelRuntimeUrl),
+			WEB_ML_RUNTIME_REVISION: JSON.stringify(WEB_ML_REVISION)
 		}
 	});
 	assertBuild(jsResult, 'JavaScript');

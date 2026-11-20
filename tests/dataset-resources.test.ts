@@ -33,6 +33,7 @@ function createMockModel(num = 1, status: ModelStatus = 'draft'): ModelRecord {
 		completedSteps: ['choose-model', 'select-features'],
 		status,
 		progress: null,
+		resultRevision: null,
 		error: null,
 		timings: null,
 		durationMs: null,

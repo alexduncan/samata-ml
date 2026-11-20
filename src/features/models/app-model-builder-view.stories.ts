@@ -30,6 +30,7 @@ function model(overrides: Partial<ModelRecord>): ModelRecord {
 		multiclass: null,
 		trainingSetup: null,
 		progress: null,
+		resultRevision: null,
 		error: null,
 		timings: null,
 		durationMs: null,

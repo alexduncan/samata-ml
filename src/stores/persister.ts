@@ -1,23 +1,29 @@
+import { atom } from 'nanostores';
 import { $appState } from './app.store';
 import { $scrollState } from './scroll.store';
 import { parseRoute } from '../router/route-parser';
+import { openSamataDb } from '../common/storage/db';
 import {
-	DEFAULT_ONE_SHOT_SETUP,
-	FIXED_ONE_SHOT_TEST_RATIO,
-	FIXED_TRAINING_RANDOM_STATE,
+	clearPendingTrainingCheckpoint,
+	commitTrainingCheckpoint,
+	decodeProtectedDomain,
+	readTrainingCheckpoint,
+	storageFailure,
+	type PendingTrainingDomain,
+	type PersistenceFailure,
+	type TrainingDomainCheckpoint,
+	type TrainingDomainMutation,
+	type TrainingSetupDecodeOutcome
+} from '../common/storage/training-domain';
+import {
 	INITIAL_APP_STATE,
 	INITIAL_SCROLL_STATE,
-	MAX_CV_FOLDS,
-	MIN_CV_FOLDS,
 	SCROLL_STORAGE_KEY,
 	STATE_STORAGE_KEY,
 	STORAGE_VERSION,
 	type PersistedAppState,
-	type PersistedScroll,
-	type ValidationMethodology
+	type PersistedScroll
 } from '../types/state';
-
-type TrainingSetupDecodeOutcome = 'valid' | 'explicit-null' | 'unusable';
 
 /**
  * Result of reading both persisted blobs; invalid or unsupported blobs come back as defaults.
@@ -29,6 +35,8 @@ export interface PersistedRead {
 	scroll: PersistedScroll;
 	/** Transient decode outcomes aligned with the original model array. */
 	trainingSetupDecodeOutcomes: readonly TrainingSetupDecodeOutcome[];
+	/** Failed domain read, distinct from a missing snapshot. */
+	domainFailure?: PersistenceFailure;
 }
 
 /**
@@ -64,12 +72,21 @@ export class MemoryStorage implements StorageAdapter {
 }
 
 let activeStorage: StorageAdapter =
-	typeof window !== 'undefined' && window.localStorage
-		? window.localStorage
-		: new MemoryStorage();
+	typeof window === 'undefined'
+		? new MemoryStorage()
+		: {
+				getItem: (key) => window.localStorage.getItem(key),
+				setItem: (key, value) => window.localStorage.setItem(key, value),
+				removeItem: (key) => window.localStorage.removeItem(key)
+			};
 
-/** Set of storage keys permanently in read-only mode for this document. */
-const readOnlyKeys = new Set<string>();
+const readOnlyKeys = new WeakMap<StorageAdapter, Set<string>>();
+
+function markReadOnly(storage: StorageAdapter, key: string): void {
+	const keys = readOnlyKeys.get(storage) ?? new Set<string>();
+	keys.add(key);
+	readOnlyKeys.set(storage, keys);
+}
 
 /**
  * Returns the currently active storage adapter.
@@ -78,85 +95,8 @@ export function getActiveStorage(): StorageAdapter {
 	return activeStorage;
 }
 
-const VALID_COLUMN_TYPES = new Set<string>([
-	'numeric',
-	'categorical',
-	'boolean',
-	'datetime',
-	'text'
-]);
-
-const VALID_MODEL_STATUSES = new Set<string>(['draft', 'training', 'trained']);
-
-const VALID_MODEL_SECTION_IDS = new Set<string>([
-	'choose-model',
-	'select-features',
-	'configure-model',
-	'configure-training',
-	'training',
-	'results'
-]);
-
-const VALID_MULTICLASS_STRATEGIES = new Set<string>(['native', 'one-vs-rest', 'one-vs-one']);
-
-const VALID_ERROR_CODES = new Set<string>([
-	'TRAINING_FAILED',
-	'TRAINING_CANCELLED',
-	'TRAINING_INTERRUPTED_BY_RELOAD'
-]);
-
 function isPlainObject(val: unknown): val is Record<string, unknown> {
 	return typeof val === 'object' && val !== null && !Array.isArray(val);
-}
-
-const FORBIDDEN_VALUE_KEYS = ['__proto__', 'constructor', 'prototype'] as const;
-
-function isStoredFoldCount(value: unknown): value is number {
-	return (
-		typeof value === 'number' &&
-		Number.isInteger(value) &&
-		value >= MIN_CV_FOLDS &&
-		value <= MAX_CV_FOLDS
-	);
-}
-
-/** Decodes a v1 setup from validated own fields, allowing an omitted historical seed. */
-function decodeTrainingSetup(value: unknown): ValidationMethodology | null {
-	if (
-		!isPlainObject(value) ||
-		!Object.hasOwn(value, 'type') ||
-		FORBIDDEN_VALUE_KEYS.some((key) => Object.hasOwn(value, key)) ||
-		(Object.hasOwn(value, 'randomState') && value.randomState !== FIXED_TRAINING_RANDOM_STATE)
-	) {
-		return null;
-	}
-
-	if (value.type === 'train_test_split') {
-		return Object.hasOwn(value, 'testRatio') && value.testRatio === FIXED_ONE_SHOT_TEST_RATIO
-			? { ...DEFAULT_ONE_SHOT_SETUP }
-			: null;
-	}
-
-	let folds: unknown;
-	if (value.type === 'k_fold_cv' && Object.hasOwn(value, 'folds')) {
-		folds = value.folds;
-	} else if (
-		value.type === 'nested_cv' &&
-		Object.hasOwn(value, 'outerFolds') &&
-		Object.hasOwn(value, 'innerFolds') &&
-		value.outerFolds === value.innerFolds
-	) {
-		folds = value.outerFolds;
-	}
-
-	return isStoredFoldCount(folds)
-		? {
-				type: 'nested_cv',
-				outerFolds: folds,
-				innerFolds: folds,
-				randomState: FIXED_TRAINING_RANDOM_STATE
-			}
-		: null;
 }
 
 /** Writes application state with v1 tags without mutating in-memory model setups. */
@@ -169,22 +109,6 @@ function serialiseAppState(state: PersistedAppState): string {
 				: model
 		)
 	});
-}
-
-/** Reports whether a persisted hyperparameter value is a finite number, string, boolean, null or number array. */
-function isHyperparameterValue(val: unknown): boolean {
-	if (val === null || typeof val === 'string' || typeof val === 'boolean') return true;
-	if (typeof val === 'number') return Number.isFinite(val);
-	return (
-		Array.isArray(val) && val.every((item) => typeof item === 'number' && Number.isFinite(item))
-	);
-}
-
-/** Reports whether persisted hyperparameter `values` is a plain object of valid values without prototype keys. */
-function isHyperparameterValues(val: unknown): boolean {
-	if (!isPlainObject(val)) return false;
-	if (FORBIDDEN_VALUE_KEYS.some((key) => Object.hasOwn(val, key))) return false;
-	return Object.values(val).every(isHyperparameterValue);
 }
 
 function validateAppState(val: unknown):
@@ -218,182 +142,25 @@ function validateAppState(val: unknown):
 		return { valid: false, isNewer: false };
 	}
 
-	if (
-		typeof val.nextModelNum !== 'number' ||
-		!Number.isInteger(val.nextModelNum) ||
-		val.nextModelNum < 1
-	) {
-		return { valid: false, isNewer: false };
-	}
-
 	if (!isPlainObject(val.results) || !isPlainObject(val.results.ui)) {
 		return { valid: false, isNewer: false };
 	}
-
-	if (val.dataset !== null) {
-		if (!isPlainObject(val.dataset)) {
-			return { valid: false, isNewer: false };
-		}
-		if (typeof val.dataset.id !== 'string' || typeof val.dataset.name !== 'string') {
-			return { valid: false, isNewer: false };
-		}
-		if (val.dataset.source !== 'sample' && val.dataset.source !== 'upload') {
-			return { valid: false, isNewer: false };
-		}
-		if (
-			val.dataset.sampleId !== undefined &&
-			(typeof val.dataset.sampleId !== 'string' || val.dataset.sampleId.length === 0)
-		) {
-			return { valid: false, isNewer: false };
-		}
-		if (
-			typeof val.dataset.rowCount !== 'number' ||
-			!Number.isInteger(val.dataset.rowCount) ||
-			val.dataset.rowCount < 0
-		) {
-			return { valid: false, isNewer: false };
-		}
-		if (!Array.isArray(val.dataset.columns)) {
-			return { valid: false, isNewer: false };
-		}
-		for (const col of val.dataset.columns) {
-			if (!isPlainObject(col)) {
-				return { valid: false, isNewer: false };
-			}
-			if (typeof col.name !== 'string' || typeof col.type !== 'string') {
-				return { valid: false, isNewer: false };
-			}
-			if (!VALID_COLUMN_TYPES.has(col.type)) {
-				return { valid: false, isNewer: false };
-			}
-			if (
-				typeof col.missingCount !== 'number' ||
-				!Number.isInteger(col.missingCount) ||
-				col.missingCount < 0
-			) {
-				return { valid: false, isNewer: false };
-			}
-		}
-	}
-
-	if (!isPlainObject(val.data)) {
+	const generation =
+		val.trainingDomainGeneration === undefined ? 0 : val.trainingDomainGeneration;
+	if (typeof generation !== 'number' || !Number.isSafeInteger(generation) || generation < 0) {
 		return { valid: false, isNewer: false };
 	}
-	if (val.data.mode !== 'select' && val.data.mode !== 'preview') {
-		return { valid: false, isNewer: false };
-	}
-	if (val.data.selectedColumn !== null && typeof val.data.selectedColumn !== 'string') {
-		return { valid: false, isNewer: false };
-	}
-
-	if (val.target !== null && typeof val.target !== 'string') {
-		return { valid: false, isNewer: false };
-	}
-
-	if (!Array.isArray(val.models)) {
-		return { valid: false, isNewer: false };
-	}
-	const trainingSetupDecodeOutcomes: TrainingSetupDecodeOutcome[] = [];
-	for (const m of val.models) {
-		if (!isPlainObject(m)) {
-			return { valid: false, isNewer: false };
-		}
-		if (typeof m.num !== 'number' || !Number.isInteger(m.num) || m.num < 1) {
-			return { valid: false, isNewer: false };
-		}
-		if (typeof m.createdAt !== 'number' || !Number.isFinite(m.createdAt)) {
-			return { valid: false, isNewer: false };
-		}
-		if (typeof m.status !== 'string' || !VALID_MODEL_STATUSES.has(m.status)) {
-			return { valid: false, isNewer: false };
-		}
-		if (!Array.isArray(m.completedSteps)) {
-			return { valid: false, isNewer: false };
-		}
-		for (const step of m.completedSteps) {
-			if (typeof step !== 'string' || !VALID_MODEL_SECTION_IDS.has(step)) {
-				return { valid: false, isNewer: false };
-			}
-		}
-		if (m.modelId !== null && typeof m.modelId !== 'string') {
-			return { valid: false, isNewer: false };
-		}
-		if (!Array.isArray(m.features) || !m.features.every((f) => typeof f === 'string')) {
-			return { valid: false, isNewer: false };
-		}
-		if (!isPlainObject(m.modelOptions) || !isPlainObject(m.ui)) {
-			return { valid: false, isNewer: false };
-		}
-		if (!isPlainObject(m.hyperparameters)) {
-			return { valid: false, isNewer: false };
-		}
-		if (m.hyperparameters.mode !== 'manual' && m.hyperparameters.mode !== 'tuning') {
-			return { valid: false, isNewer: false };
-		}
-		if (!isHyperparameterValues(m.hyperparameters.values)) {
-			return { valid: false, isNewer: false };
-		}
-		if (
-			m.hyperparameters.tuningSearchSpace !== undefined &&
-			!isPlainObject(m.hyperparameters.tuningSearchSpace)
-		) {
-			return { valid: false, isNewer: false };
-		}
-		if (
-			m.multiclass !== null &&
-			(typeof m.multiclass !== 'string' || !VALID_MULTICLASS_STRATEGIES.has(m.multiclass))
-		) {
-			return { valid: false, isNewer: false };
-		}
-		if (m.progress !== null) {
-			if (!isPlainObject(m.progress)) {
-				return { valid: false, isNewer: false };
-			}
-			if (
-				typeof m.progress.percent !== 'number' ||
-				!Number.isFinite(m.progress.percent) ||
-				typeof m.progress.statusMessage !== 'string'
-			) {
-				return { valid: false, isNewer: false };
-			}
-		}
-		if (m.error !== null) {
-			if (!isPlainObject(m.error)) {
-				return { valid: false, isNewer: false };
-			}
-			if (typeof m.error.code !== 'string' || !VALID_ERROR_CODES.has(m.error.code)) {
-				return { valid: false, isNewer: false };
-			}
-			if (
-				typeof m.error.message !== 'string' ||
-				typeof m.error.timestamp !== 'number' ||
-				!Number.isFinite(m.error.timestamp)
-			) {
-				return { valid: false, isNewer: false };
-			}
-		}
-		if (m.timings !== null && !isPlainObject(m.timings)) {
-			return { valid: false, isNewer: false };
-		}
-		if (
-			m.durationMs !== null &&
-			(typeof m.durationMs !== 'number' || !Number.isFinite(m.durationMs))
-		) {
-			return { valid: false, isNewer: false };
-		}
-		if (m.metrics !== null && !isPlainObject(m.metrics)) {
-			return { valid: false, isNewer: false };
-		}
-
-		const rawSetup = Object.hasOwn(m, 'trainingSetup') ? m.trainingSetup : undefined;
-		const setup = decodeTrainingSetup(rawSetup);
-		trainingSetupDecodeOutcomes.push(
-			setup ? 'valid' : rawSetup === null ? 'explicit-null' : 'unusable'
-		);
-		m.trainingSetup = setup;
-	}
-
-	return { valid: true, state: val as unknown as PersistedAppState, trainingSetupDecodeOutcomes };
+	const decoded = decodeProtectedDomain(val);
+	if (!decoded) return { valid: false, isNewer: false };
+	return {
+		valid: true,
+		state: {
+			...val,
+			...decoded.domain,
+			trainingDomainGeneration: generation
+		} as PersistedAppState,
+		trainingSetupDecodeOutcomes: decoded.trainingSetupDecodeOutcomes
+	};
 }
 
 function validateScrollState(
@@ -460,46 +227,67 @@ function validateScrollState(
  */
 export function readPersistedState(storage?: StorageAdapter): PersistedRead {
 	if (storage && storage !== activeStorage) {
-		readOnlyKeys.clear();
 		activeStorage = storage;
 	}
 	const s = storage ?? activeStorage;
 
-	let state = { ...INITIAL_APP_STATE };
-	let trainingSetupDecodeOutcomes: readonly TrainingSetupDecodeOutcome[] = [];
-	const rawState = s.getItem(STATE_STORAGE_KEY);
-	if (rawState) {
-		try {
-			const parsed = JSON.parse(rawState);
-			const result = validateAppState(parsed);
-			if (result.valid) {
-				state = result.state;
-				trainingSetupDecodeOutcomes = result.trainingSetupDecodeOutcomes;
-			} else if (result.isNewer) {
-				readOnlyKeys.add(STATE_STORAGE_KEY);
-			}
-		} catch {
-			// Malformed JSON yields defaults
-		}
-	}
+	const app = readAppSnapshot(s);
 
 	let scroll = { ...INITIAL_SCROLL_STATE };
-	const rawScroll = s.getItem(SCROLL_STORAGE_KEY);
-	if (rawScroll) {
-		try {
+	try {
+		const rawScroll = s.getItem(SCROLL_STORAGE_KEY);
+		if (rawScroll) {
 			const parsed = JSON.parse(rawScroll);
 			const result = validateScrollState(parsed);
 			if (result.valid) {
 				scroll = result.scroll;
 			} else if (result.isNewer) {
-				readOnlyKeys.add(SCROLL_STORAGE_KEY);
+				markReadOnly(s, SCROLL_STORAGE_KEY);
 			}
-		} catch {
-			// Malformed JSON yields defaults
 		}
+	} catch {
+		// Scroll restoration is best effort.
 	}
 
-	return { state, scroll, trainingSetupDecodeOutcomes };
+	return {
+		state: app.ok && app.state ? app.state : { ...INITIAL_APP_STATE },
+		scroll,
+		trainingSetupDecodeOutcomes: app.ok ? app.trainingSetupDecodeOutcomes : [],
+		...(!app.ok && { domainFailure: app })
+	};
+}
+
+/** Reads the current v1 domain and distinguishes absence, unsupported versions and read failures. */
+export function readAppSnapshot(
+	storage = activeStorage
+):
+	| {
+			ok: true;
+			state: PersistedAppState | null;
+			trainingSetupDecodeOutcomes: readonly TrainingSetupDecodeOutcome[];
+	  }
+	| PersistenceFailure {
+	if (readOnlyKeys.get(storage)?.has(STATE_STORAGE_KEY))
+		return { ok: false, reason: 'read-only' };
+	try {
+		const raw = storage.getItem(STATE_STORAGE_KEY);
+		if (raw === null) return { ok: true, state: null, trainingSetupDecodeOutcomes: [] };
+		const decoded = validateAppState(JSON.parse(raw));
+		if (decoded.valid) {
+			return {
+				ok: true,
+				state: decoded.state,
+				trainingSetupDecodeOutcomes: decoded.trainingSetupDecodeOutcomes
+			};
+		}
+		if (decoded.isNewer) {
+			markReadOnly(storage, STATE_STORAGE_KEY);
+			return { ok: false, reason: 'read-only' };
+		}
+		return { ok: false, reason: 'unavailable' };
+	} catch (error) {
+		return storageFailure(error);
+	}
 }
 
 let unbindAppState: (() => void) | undefined;
@@ -510,35 +298,220 @@ let pendingProgressTimer: ReturnType<typeof setTimeout> | undefined;
 let pendingScrollTimer: ReturnType<typeof setTimeout> | undefined;
 
 let previousAppState: PersistedAppState | undefined;
+let publishingSnapshot = false;
+
+/** A best-effort write failed and the current tab's edits remain available in memory. */
+export const $storageSaveNotice = atom<PersistenceFailure | null>(null);
+
+function noteOrdinaryFailure(ack: { ok: true } | PersistenceFailure): void {
+	if (!ack.ok && !$storageSaveNotice.get()) $storageSaveNotice.set(ack);
+}
 
 /**
  * Safely writes a key/value pair to storage, catching QuotaExceededError by clearing scroll snapshots and retrying.
  */
-function safeSetItem(storage: StorageAdapter, key: string, value: string): void {
-	if (readOnlyKeys.has(key)) {
-		return;
+function safeSetItem(
+	storage: StorageAdapter,
+	key: string,
+	value: string
+): { ok: true } | PersistenceFailure {
+	if (readOnlyKeys.get(storage)?.has(key)) {
+		return { ok: false, reason: 'read-only' };
 	}
 	try {
 		storage.setItem(key, value);
-	} catch (err: unknown) {
-		const isQuota =
-			err instanceof Error &&
-			(err.name === 'QuotaExceededError' ||
-				err.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
-				err.message.toLowerCase().includes('quota'));
-
-		if (isQuota) {
+		return { ok: true };
+	} catch (error) {
+		const failure = storageFailure(error);
+		if (failure.reason === 'quota') {
 			try {
 				storage.removeItem(SCROLL_STORAGE_KEY);
 				storage.setItem(key, value);
-				console.warn('Storage quota exceeded: purged scroll snapshots and retried write.');
-			} catch (retryErr) {
-				console.error('Storage quota exceeded permanently:', retryErr);
+				return { ok: true };
+			} catch (retryError) {
+				return storageFailure(retryError);
 			}
-		} else {
-			console.error('Failed to write to storage:', err);
 		}
+		return failure;
 	}
+}
+
+/** Acknowledgement of protected localStorage publication. */
+export type PersistenceAck = { ok: true; generation: number } | PersistenceFailure;
+
+/** Short lock serialising every read or publication of the protected training state. */
+export const TRAINING_STATE_LOCK = 'samata-ml:training-state';
+
+/** Storage and lock seams used by the app and deterministic tests. */
+export interface TrainingPersistenceOptions {
+	storage?: StorageAdapter;
+	openDb?: typeof openSamataDb;
+	withStateLock?: <T>(operation: () => Promise<T>) => Promise<T>;
+}
+
+type TrainingStateContext = {
+	db: Awaited<ReturnType<typeof openSamataDb>>;
+	storage: StorageAdapter;
+};
+
+/** Takes only the state lock. Resource locks must be acquired by the caller beforehand. */
+export async function withTrainingStateLock<T>(
+	operation: (context: TrainingStateContext) => Promise<T>,
+	options: TrainingPersistenceOptions = {}
+): Promise<T | PersistenceFailure> {
+	const storage = options.storage ?? activeStorage;
+	const request =
+		options.withStateLock ??
+		(typeof navigator !== 'undefined' && navigator.locks
+			? <Value>(callback: () => Promise<Value>) =>
+					navigator.locks.request(TRAINING_STATE_LOCK, callback)
+			: null);
+	if (!request) return { ok: false, reason: 'unavailable' };
+	try {
+		return await request(async () => {
+			const db = await (options.openDb ?? openSamataDb)();
+			try {
+				return await operation({ db, storage });
+			} finally {
+				db.close();
+			}
+		});
+	} catch (error) {
+		return storageFailure(error);
+	}
+}
+
+/** Applies a decoded authoritative snapshot without echoing it back to storage. */
+export function publishAcknowledgedAppSnapshot(state: PersistedAppState): void {
+	publishingSnapshot = true;
+	try {
+		$appState.set(state);
+	} finally {
+		publishingSnapshot = false;
+	}
+}
+
+function writeAcknowledgedSnapshot(
+	storage: StorageAdapter,
+	state: PersistedAppState
+): PersistenceAck {
+	const written = safeSetItem(storage, STATE_STORAGE_KEY, serialiseAppState(state));
+	return written.ok ? { ok: true, generation: state.trainingDomainGeneration } : written;
+}
+
+async function publishPending(
+	context: TrainingStateContext,
+	checkpoint: TrainingDomainCheckpoint,
+	current: PersistedAppState | null
+): Promise<{ ok: true; state: PersistedAppState } | PersistenceFailure> {
+	const pending = checkpoint.pending;
+	if (!pending || (current?.trainingDomainGeneration ?? 0) > checkpoint.generation) {
+		return { ok: false, reason: 'conflict' };
+	}
+	const acknowledged = current?.trainingDomainGeneration === checkpoint.generation;
+	const state = acknowledged
+		? current
+		: {
+				...(current ?? INITIAL_APP_STATE),
+				...pending.domain,
+				trainingDomainGeneration: checkpoint.generation,
+				updatedAt: Date.now()
+			};
+	if (!acknowledged) {
+		const ack = writeAcknowledgedSnapshot(context.storage, state);
+		if (!ack.ok) return ack;
+	}
+	const cleared = await clearPendingTrainingCheckpoint(
+		context.db,
+		checkpoint.generation,
+		pending.operationId
+	);
+	if (!cleared.ok) return cleared;
+	publishAcknowledgedAppSnapshot(state);
+	return { ok: true, state };
+}
+
+type GuardedSnapshot = {
+	ok: true;
+	state: PersistedAppState | null;
+	generation: number;
+	trainingSetupDecodeOutcomes: readonly TrainingSetupDecodeOutcome[];
+};
+
+/** Reads the snapshot and fence under the state lock, replaying only an already committed candidate. */
+export async function readGuardedTrainingSnapshot(
+	context: TrainingStateContext
+): Promise<GuardedSnapshot | PersistenceFailure> {
+	const snapshot = readAppSnapshot(context.storage);
+	if (!snapshot.ok) return snapshot;
+	const stored = await readTrainingCheckpoint(context.db);
+	if (!stored.ok) return stored;
+	const checkpoint = stored.checkpoint;
+	const generation = checkpoint?.generation ?? 0;
+	if (checkpoint?.pending) {
+		const replay = await publishPending(context, checkpoint, snapshot.state);
+		return replay.ok
+			? {
+					ok: true,
+					state: replay.state,
+					generation,
+					trainingSetupDecodeOutcomes: replay.state.models.map((model) =>
+						model.trainingSetup ? 'valid' : 'explicit-null'
+					)
+				}
+			: replay;
+	}
+	if (snapshot.state && snapshot.state.trainingDomainGeneration !== generation) {
+		return { ok: false, reason: 'conflict' };
+	}
+	return { ...snapshot, generation };
+}
+
+/** The candidate generated from the latest authoritative state under its lock. */
+export interface ProtectedTrainingChange {
+	pending: PendingTrainingDomain;
+	mutation: TrainingDomainMutation;
+}
+
+/** Prepares, commits and publishes a single protected update while holding the state lock. */
+export function commitProtectedTrainingChange(
+	prepare: (
+		current: GuardedSnapshot,
+		context: TrainingStateContext
+	) =>
+		| ProtectedTrainingChange
+		| PersistenceFailure
+		| Promise<ProtectedTrainingChange | PersistenceFailure>,
+	options: TrainingPersistenceOptions & {
+		onCommitted?: (checkpoint: TrainingDomainCheckpoint) => void;
+	} = {}
+): Promise<PersistenceAck> {
+	return withTrainingStateLock(async (context): Promise<PersistenceAck> => {
+		const current = await readGuardedTrainingSnapshot(context);
+		if (!current.ok) return current;
+		const change = await prepare(current, context);
+		if ('ok' in change) return change;
+		const committed = await commitTrainingCheckpoint(
+			context.db,
+			current.generation,
+			change.pending,
+			change.mutation
+		);
+		if (!committed.ok) return committed;
+		options.onCommitted?.(committed.checkpoint);
+		const published = await publishPending(context, committed.checkpoint, current.state);
+		return published.ok ? { ok: true, generation: committed.checkpoint.generation } : published;
+	}, options);
+}
+
+/** Retries publication of an existing checkpoint without repeating its resource mutation. */
+export function retryTrainingPublication(
+	options?: TrainingPersistenceOptions
+): Promise<PersistenceAck> {
+	return withTrainingStateLock(async (context): Promise<PersistenceAck> => {
+		const snapshot = await readGuardedTrainingSnapshot(context);
+		return snapshot.ok ? { ok: true, generation: snapshot.generation } : snapshot;
+	}, options);
 }
 
 /**
@@ -565,10 +538,7 @@ function writeAppStateNow(storage: StorageAdapter, state: PersistedAppState): vo
 		clearTimeout(pendingProgressTimer);
 		pendingProgressTimer = undefined;
 	}
-	if (readOnlyKeys.has(STATE_STORAGE_KEY)) {
-		return;
-	}
-	safeSetItem(storage, STATE_STORAGE_KEY, serialiseAppState(state));
+	noteOrdinaryFailure(safeSetItem(storage, STATE_STORAGE_KEY, serialiseAppState(state)));
 }
 
 /**
@@ -579,10 +549,7 @@ function writeScrollStateNow(storage: StorageAdapter, scroll: PersistedScroll): 
 		clearTimeout(pendingScrollTimer);
 		pendingScrollTimer = undefined;
 	}
-	if (readOnlyKeys.has(SCROLL_STORAGE_KEY)) {
-		return;
-	}
-	safeSetItem(storage, SCROLL_STORAGE_KEY, JSON.stringify(scroll));
+	noteOrdinaryFailure(safeSetItem(storage, SCROLL_STORAGE_KEY, JSON.stringify(scroll)));
 }
 
 /**
@@ -604,12 +571,8 @@ export function persistNow(storage?: StorageAdapter): void {
 		clearTimeout(pendingScrollTimer);
 		pendingScrollTimer = undefined;
 	}
-	if (!readOnlyKeys.has(STATE_STORAGE_KEY)) {
-		safeSetItem(s, STATE_STORAGE_KEY, serialiseAppState($appState.get()));
-	}
-	if (!readOnlyKeys.has(SCROLL_STORAGE_KEY)) {
-		safeSetItem(s, SCROLL_STORAGE_KEY, JSON.stringify($scrollState.get()));
-	}
+	noteOrdinaryFailure(safeSetItem(s, STATE_STORAGE_KEY, serialiseAppState($appState.get())));
+	noteOrdinaryFailure(safeSetItem(s, SCROLL_STORAGE_KEY, JSON.stringify($scrollState.get())));
 }
 
 /**
@@ -742,7 +705,6 @@ export function initPersister(storage?: StorageAdapter, options: PersisterOption
 	stopPersister();
 
 	if (storage && storage !== activeStorage) {
-		readOnlyKeys.clear();
 		activeStorage = storage;
 	}
 
@@ -753,6 +715,10 @@ export function initPersister(storage?: StorageAdapter, options: PersisterOption
 	previousAppState = $appState.get();
 
 	unbindAppState = $appState.subscribe((nextState) => {
+		if (publishingSnapshot) {
+			previousAppState = nextState;
+			return;
+		}
 		const sync = isSynchronousChange(previousAppState, nextState);
 		const progressOnly = !sync && isProgressOnlyChange(previousAppState, nextState);
 		previousAppState = nextState;

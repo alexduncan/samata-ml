@@ -4,7 +4,8 @@ import path from 'node:path';
 import { ROOT_DIR } from './config';
 
 const webMlVersion = '0.1.0';
-const webMlRevision = '623dd30d7899d8e281773bc593e44be815592693';
+/** Source revision of the verified executable graph and public declarations. */
+export const WEB_ML_REVISION = '623dd30d7899d8e281773bc593e44be815592693';
 
 // Pins the prebuilt module, its relative workers and WASM, and their notices to the
 // matching public package verified for Phase 3.
@@ -79,7 +80,7 @@ function setupError(location: string, reason: string, cause?: unknown): Error {
 	return new Error(
 		`web-ml setup error at ${location}: ${reason}. Place the samata-ml checkout beside a ` +
 			`web-ml directory resolving to the verified prebuilt web-ml ${webMlVersion} package ` +
-			`at ${webMlRevision}, then run bun install --frozen-lockfile --ignore-scripts.`,
+			`at ${WEB_ML_REVISION}, then run bun install --frozen-lockfile --ignore-scripts.`,
 		{ cause }
 	);
 }

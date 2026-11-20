@@ -1,4 +1,5 @@
 import { atom } from 'nanostores';
+import type { TrainingRunIdentity } from '../types/model-result';
 import {
 	INITIAL_APP_STATE,
 	isModelEligibleColumnType,
@@ -10,6 +11,7 @@ import {
 	type MulticlassStrategy,
 	type PersistedAppState,
 	type TrainingProgress,
+	type TrainingError,
 	type ValidationMethodology,
 	type WorkflowPath
 } from '../types/state';
@@ -299,11 +301,12 @@ export function createModel(): number | false {
 			multiclass: null,
 			trainingSetup: null,
 			progress: null,
+			resultRevision: null,
 			error: null,
 			timings: null,
 			durationMs: null,
 			metrics: null,
-			ui: {}
+			ui: { trainingLogOpen: false }
 		};
 
 		return {
@@ -607,171 +610,198 @@ export function reopenSection(num: number, section: ModelSectionId): boolean {
 	});
 }
 
-/**
- * Transitions model status to 'training' when sections 1–3 are complete and trainingSetup is set.
- * Completes Section 4 (configure-training) per D8.
- */
-export function startTraining(num: number): boolean {
-	return updateState((state) => {
-		const model = state.models.find((m) => m.num === num);
-		if (!model || model.status !== 'draft') return false;
-		if (model.trainingSetup === null) return false;
-
-		const required: ModelSectionId[] = ['choose-model', 'select-features', 'configure-model'];
-		const canTrain = required.every((s) => model.completedSteps.includes(s));
-		if (!canTrain) return false;
-
-		const completedSteps = model.completedSteps.includes('configure-training')
-			? model.completedSteps
-			: [...model.completedSteps, 'configure-training' as const];
-
-		const updatedModels = state.models.map((m) => {
-			if (m.num !== num) return m;
-			return {
-				...m,
-				status: 'training' as const,
-				error: null,
-				progress: { percent: 0, statusMessage: 'Initializing...' },
-				completedSteps
-			};
-		});
-		return { ...state, models: updatedModels };
-	});
+function matchingModel(
+	state: PersistedAppState,
+	identity: TrainingRunIdentity
+): ModelRecord | undefined {
+	if (state.dataset?.id !== identity.datasetId || state.target !== identity.target)
+		return undefined;
+	return state.models.find(
+		(model) => model.num === identity.modelNum && model.createdAt === identity.modelCreatedAt
+	);
 }
 
-/**
- * Updates training progress during execution.
- */
-export function updateTrainingProgress(num: number, progress: TrainingProgress): boolean {
-	return updateState((state) => {
-		const model = state.models.find((m) => m.num === num);
-		if (!model || model.status !== 'training') return false;
-
-		const updatedModels = state.models.map((m) => {
-			if (m.num !== num) return m;
-			return { ...m, progress };
-		});
-		return { ...state, models: updatedModels };
-	});
+function updateRunModel(
+	state: PersistedAppState,
+	identity: TrainingRunIdentity,
+	change: (model: ModelRecord) => ModelRecord
+): PersistedAppState | false {
+	const model = matchingModel(state, identity);
+	if (model?.status !== 'training' || model.resultRevision !== identity.runId) return false;
+	const updated = change(model);
+	if (model === updated) return state;
+	return { ...state, models: state.models.map((entry) => (entry === model ? updated : entry)) };
 }
 
-/**
- * Transitions model to 'trained' upon successful completion.
- */
-export function trainingSucceeded(
-	num: number,
-	result: {
-		metrics: Record<string, number>;
-		timings?: { steps: { label: string; durationMs: number }[]; totalMs: number } | null;
-		durationMs?: number | null;
-	}
+/** Creates the pending domain for an accepted run without publishing it to the store. */
+export function reduceTrainingStart(
+	state: PersistedAppState,
+	identity: TrainingRunIdentity
+): PersistedAppState | false {
+	const model = matchingModel(state, identity);
+	const required: ModelSectionId[] = ['choose-model', 'select-features', 'configure-model'];
+	if (
+		!model ||
+		model.status !== 'draft' ||
+		!model.trainingSetup ||
+		!identity.runId ||
+		!required.every((section) => model.completedSteps.includes(section))
+	)
+		return false;
+
+	const completedSteps = model.completedSteps.includes('configure-training')
+		? model.completedSteps
+		: [...model.completedSteps, 'configure-training' as const];
+
+	return {
+		...state,
+		models: state.models.map((entry) =>
+			entry === model
+				? {
+						...model,
+						status: 'training',
+						error: null,
+						resultRevision: identity.runId,
+						metrics: null,
+						timings: null,
+						durationMs: null,
+						progress: {
+							percent: null,
+							stage: 'preparing',
+							phase: null,
+							statusMessage: 'preparing'
+						},
+						completedSteps
+					}
+				: entry
+		)
+	};
+}
+
+/** Applies the start transition for one captured model identity. */
+export function startTraining(identity: TrainingRunIdentity): boolean {
+	return updateState((state) => reduceTrainingStart(state, identity));
+}
+
+/** Updates compact training progress only for the matching active run. */
+export function updateTrainingProgress(
+	identity: TrainingRunIdentity,
+	progress: TrainingProgress
 ): boolean {
-	return updateState((state) => {
-		const model = state.models.find((m) => m.num === num);
-		if (!model || model.status !== 'training') return false;
+	if (
+		progress.percent !== null &&
+		(!Number.isFinite(progress.percent) || progress.percent < 0 || progress.percent > 95)
+	)
+		return false;
+	return updateState((state) =>
+		updateRunModel(state, identity, (model) => {
+			const previous = model.progress?.percent;
+			return previous !== null &&
+				previous !== undefined &&
+				(progress.percent === null || progress.percent < previous)
+				? model
+				: { ...model, progress };
+		})
+	);
+}
 
-		const updatedModels = state.models.map((m) => {
-			if (m.num !== num) return m;
-			const completed = m.completedSteps.includes('training')
-				? m.completedSteps
-				: [...m.completedSteps, 'training' as const];
+/** Terminal outcome of a single protected training attempt. */
+export type TrainingOutcome =
+	| { kind: 'success'; durationMs: number }
+	| { kind: 'stopped'; error: TrainingError };
+
+/** Creates the terminal candidate only for the current model creation and run ID. */
+export function reduceTrainingOutcome(
+	state: PersistedAppState,
+	identity: TrainingRunIdentity,
+	outcome: TrainingOutcome
+): PersistedAppState | false {
+	return updateRunModel(state, identity, (model) => {
+		if (outcome.kind === 'success') {
 			return {
-				...m,
-				status: 'trained' as const,
-				progress: null,
+				...model,
+				status: 'trained',
 				error: null,
-				metrics: result.metrics,
-				timings: result.timings ?? null,
-				durationMs: result.durationMs ?? null,
-				completedSteps: completed
+				progress: null,
+				metrics: null,
+				timings: null,
+				durationMs: outcome.durationMs,
+				completedSteps: model.completedSteps.includes('training')
+					? model.completedSteps
+					: [...model.completedSteps, 'training']
 			};
-		});
-		return { ...state, models: updatedModels };
+		}
+		return {
+			...model,
+			status: 'draft',
+			error: outcome.error,
+			progress: null,
+			resultRevision: null,
+			metrics: null,
+			timings: null,
+			durationMs: null,
+			completedSteps: model.completedSteps.filter(
+				(section) =>
+					section !== 'configure-training' &&
+					section !== 'training' &&
+					section !== 'results'
+			)
+		};
 	});
 }
 
-/**
- * Reverts model to 'draft' with error details upon training failure, reopening configure-training.
- */
-export function trainingFailed(num: number, message: string, details?: string): boolean {
-	return updateState((state) => {
-		const model = state.models.find((m) => m.num === num);
-		if (!model || model.status !== 'training') return false;
-
-		const updatedModels = state.models.map((m) => {
-			if (m.num !== num) return m;
-			return {
-				...m,
-				status: 'draft' as const,
-				progress: null,
-				error: {
-					code: 'TRAINING_FAILED' as const,
-					message,
-					timestamp: Date.now(),
-					details
-				},
-				completedSteps: m.completedSteps.filter(
-					(s) => s !== 'configure-training' && s !== 'training' && s !== 'results'
-				)
-			};
-		});
-		return { ...state, models: updatedModels };
-	});
+/** Publishes a completed matching run after its durable result is acknowledged. */
+export function trainingSucceeded(identity: TrainingRunIdentity, durationMs: number): boolean {
+	return updateState((state) =>
+		reduceTrainingOutcome(state, identity, { kind: 'success', durationMs })
+	);
 }
 
-/**
- * Cancels active model training, reopening configure-training.
- */
-export function cancelTraining(num: number): boolean {
-	return updateState((state) => {
-		const model = state.models.find((m) => m.num === num);
-		if (!model || model.status !== 'training') return false;
-
-		const updatedModels = state.models.map((m) => {
-			if (m.num !== num) return m;
-			return {
-				...m,
-				status: 'draft' as const,
-				progress: null,
-				error: {
-					code: 'TRAINING_CANCELLED' as const,
-					message: 'Training was cancelled',
-					timestamp: Date.now()
-				},
-				completedSteps: m.completedSteps.filter(
-					(s) => s !== 'configure-training' && s !== 'training' && s !== 'results'
-				)
-			};
-		});
-		return { ...state, models: updatedModels };
-	});
+function stopTraining(
+	identity: TrainingRunIdentity,
+	code: TrainingError['code'],
+	message: string
+): boolean {
+	return updateState((state) =>
+		reduceTrainingOutcome(state, identity, {
+			kind: 'stopped',
+			error: { code, message, timestamp: Date.now() }
+		})
+	);
 }
 
-/**
- * Recovers interrupted model training from browser reload, reopening configure-training.
- */
-export function recoverInterrupted(num: number): boolean {
-	return updateState((state) => {
-		const model = state.models.find((m) => m.num === num);
-		if (!model || model.status !== 'training') return false;
+/** Reopens the matching failed run's training setup with a safe message. */
+export function trainingFailed(identity: TrainingRunIdentity, message: string): boolean {
+	return stopTraining(identity, 'TRAINING_FAILED', message);
+}
 
-		const updatedModels = state.models.map((m) => {
-			if (m.num !== num) return m;
-			return {
-				...m,
-				status: 'draft' as const,
-				progress: null,
-				error: {
-					code: 'TRAINING_INTERRUPTED_BY_RELOAD' as const,
-					message: 'Training was interrupted by a page reload',
-					timestamp: Date.now()
-				},
-				completedSteps: m.completedSteps.filter(
-					(s) => s !== 'configure-training' && s !== 'training' && s !== 'results'
-				)
-			};
-		});
-		return { ...state, models: updatedModels };
+/** Reopens training setup after cancellation of the matching run. */
+export function cancelTraining(identity: TrainingRunIdentity): boolean {
+	return stopTraining(identity, 'TRAINING_CANCELLED', 'Training was cancelled');
+}
+
+/** Reopens training setup after interruption of the matching run. */
+export function recoverInterrupted(identity: TrainingRunIdentity): boolean {
+	return stopTraining(
+		identity,
+		'TRAINING_INTERRUPTED_BY_RELOAD',
+		'Training was interrupted by a page reload'
+	);
+}
+
+/** Stores the disclosure preference without replacing a model's other UI selections. */
+export function setTrainingLogOpen(num: number, open: boolean): boolean {
+	if (typeof open !== 'boolean') return false;
+	return updateState((state) => {
+		const model = state.models.find((entry) => entry.num === num);
+		if (!model) return false;
+		if ((model.ui.trainingLogOpen ?? false) === open) return state;
+		return {
+			...state,
+			models: state.models.map((entry) =>
+				entry === model ? { ...model, ui: { ...model.ui, trainingLogOpen: open } } : entry
+			)
+		};
 	});
 }
 

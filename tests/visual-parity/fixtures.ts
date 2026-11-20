@@ -17,6 +17,7 @@ function model(num: number, status: ModelRecord['status']): ModelRecord {
 		trainingSetup: null,
 		completedSteps: [],
 		progress: null,
+		resultRevision: null,
 		error: null,
 		timings: null,
 		durationMs: null,

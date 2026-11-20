@@ -115,11 +115,20 @@ export const DEFAULT_ONE_SHOT_SETUP: ValidationMethodology = {
 /** Multi-class classification strategy. */
 export type MulticlassStrategy = 'native' | 'one-vs-rest' | 'one-vs-one';
 
+/** Stages reported across the two training strategies. */
+export type TrainingStage =
+	| 'preparing'
+	| 'fitting'
+	| 'cross-validation'
+	| 'refitting'
+	| 'evaluating'
+	| 'saving';
+
 /** Training progress snapshot emitted during training execution. */
 export interface TrainingProgress {
-	percent: number;
-	currentFold?: number;
-	totalFolds?: number;
+	percent: number | null;
+	stage: TrainingStage;
+	phase: string | null;
 	statusMessage: string;
 }
 
@@ -166,6 +175,8 @@ export interface ModelRecord {
 
 	/** Section 5: Transient or current progress. */
 	progress: TrainingProgress | null;
+	/** Current run identity during training and after its result has been saved. */
+	resultRevision: string | null;
 	/** Section 5: Error information if training ended in failure. */
 	error: TrainingError | null;
 	/** Section 5: Timing breakdown. */
@@ -177,13 +188,18 @@ export interface ModelRecord {
 	metrics: Record<string, number> | null;
 
 	/** Section 6: UI selections (chart tab, etc.). */
-	ui: Record<string, unknown>;
+	ui: Record<string, unknown> & { trainingLogOpen?: boolean };
 }
+
+/** Result-store dataset ID reserved for the training domain checkpoint. */
+export const TRAINING_DOMAIN_DATASET_ID = 'samata-ml:training-domain';
 
 /** Persisted application state structure saved to localStorage. */
 export interface PersistedAppState {
 	version: typeof STORAGE_VERSION;
 	updatedAt: number;
+	/** Last acknowledged protected generation. Historic v1 snapshots decode to zero. */
+	trainingDomainGeneration: number;
 
 	onboarding: { welcomeDismissed: boolean };
 
@@ -232,6 +248,7 @@ export interface PersistedScroll {
 export const INITIAL_APP_STATE: PersistedAppState = {
 	version: STORAGE_VERSION,
 	updatedAt: Date.now(),
+	trainingDomainGeneration: 0,
 	onboarding: { welcomeDismissed: false },
 	resumePath: '/data',
 	dataset: null,
