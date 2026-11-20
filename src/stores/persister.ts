@@ -387,7 +387,11 @@ export async function withTrainingStateLock<T>(
 
 /** Applies a decoded authoritative snapshot without echoing it back to storage. */
 export function publishAcknowledgedAppSnapshot(state: PersistedAppState): void {
-	acknowledgedState = state;
+	publishAppSnapshot(state, state);
+}
+
+function publishAppSnapshot(state: PersistedAppState, persisted: PersistedAppState): void {
+	acknowledgedState = persisted;
 	publishingSnapshot = true;
 	try {
 		$appState.set(state);
@@ -423,13 +427,14 @@ async function publishPending(
 				trainingDomainGeneration: checkpoint.generation,
 				updatedAt: Date.now()
 			};
-	const state =
+	let state =
 		!acknowledged && current
 			? keepLocalOrdinaryChanges(candidate, current, firstPublication)
 			: candidate;
 	if (!acknowledged) {
 		const ack = writeAcknowledgedSnapshot(context.storage, state);
 		if (!ack.ok) return ack;
+		acknowledgedState = state;
 	}
 	const cleared = await clearPendingTrainingCheckpoint(
 		context.db,
@@ -437,8 +442,59 @@ async function publishPending(
 		pending.operationId
 	);
 	if (!cleared.ok) return cleared;
-	publishAcknowledgedAppSnapshot(state);
+	const visible =
+		acknowledged && pending.kind === 'finish' ? keepLocalTrainingLogDisclosure(state) : state;
+	if (visible !== state) {
+		// The protected result is already durable. Saving the disclosure remains best effort.
+		const ack = writeAcknowledgedSnapshot(context.storage, visible);
+		if (ack.ok) state = visible;
+		else ordinaryBase ??= state;
+		noteOrdinaryFailure(ack);
+	}
+	publishAppSnapshot(visible, state);
 	return { ok: true, state };
+}
+
+function keepLocalTrainingLogDisclosure(state: PersistedAppState): PersistedAppState {
+	const local = $appState.get();
+	const generation = state.trainingDomainGeneration;
+	// If this tab wrote the candidate before cleanup failed, compare against what it wrote.
+	const base =
+		acknowledgedState?.trainingDomainGeneration === generation
+			? acknowledgedState
+			: (ordinaryBase ?? acknowledgedState);
+	if (
+		!protectedPersistence ||
+		!base ||
+		local.trainingDomainGeneration < generation - 1 ||
+		local.trainingDomainGeneration > generation ||
+		(base.trainingDomainGeneration !== generation &&
+			base.trainingDomainGeneration !== local.trainingDomainGeneration) ||
+		local.dataset?.id !== state.dataset?.id ||
+		base.dataset?.id !== state.dataset?.id ||
+		local.target !== state.target ||
+		base.target !== state.target
+	) {
+		return state;
+	}
+	const models = state.models.map((stored) => {
+		const sameModel = (model: ModelRecord) =>
+			model.num === stored.num && model.createdAt === stored.createdAt;
+		const before = base.models.find(sameModel);
+		const open = local.models.find(sameModel)?.ui.trainingLogOpen;
+		if (
+			!before ||
+			typeof open !== 'boolean' ||
+			open === (before.ui.trainingLogOpen ?? false) ||
+			open === (stored.ui.trainingLogOpen ?? false)
+		) {
+			return stored;
+		}
+		return { ...stored, ui: { ...stored.ui, trainingLogOpen: open } };
+	});
+	return models.some((model, index) => model !== state.models[index])
+		? { ...state, models }
+		: state;
 }
 
 /** Freshly validated localStorage state and the current durable fence. */

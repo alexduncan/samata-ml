@@ -446,6 +446,92 @@ test('WML-P3-UI-1: a disclosure changed during publication failure survives retr
 	expect(workers).toHaveLength(1);
 });
 
+test.each([false, true])(
+	'WML-P3-UI-1: retry preserves the disclosure after checkpoint cleanup fails (preference write denied: %s)',
+	async (denyPreferenceWrite) => {
+		seed();
+		initPersister(storage, {
+			trainingPersistence: {
+				withStateLock: (operation) => locks.request(TRAINING_STATE_LOCK, operation)
+			}
+		});
+		const put = IDBObjectStore.prototype.put;
+		let denyCleanup = true;
+		IDBObjectStore.prototype.put = function (value, key) {
+			if (
+				denyCleanup &&
+				this.name === 'model_results' &&
+				value?.kind === 'training-domain-checkpoint' &&
+				value.generation === 2 &&
+				value.pending === null
+			) {
+				throw new DOMException('Test marker cleanup failure', 'SecurityError');
+			}
+			return put.call(this, value, key);
+		};
+		const savedState = () =>
+			JSON.parse(storage.getItem(STATE_STORAGE_KEY)!) as PersistedAppState;
+		let runId: string;
+		try {
+			const run = service.start(1);
+			const worker = await workerAt(0);
+			runId = worker.identity.runId;
+			worker.succeed();
+			expect(await run).toMatchObject({ ok: false, reason: 'security', pending: 'finish' });
+			expect(savedState()).toMatchObject({
+				trainingDomainGeneration: 2,
+				models: [
+					{ status: 'trained', resultRevision: runId, ui: { trainingLogOpen: false } }
+				]
+			});
+
+			expect(setTrainingLogOpen(1, true)).toBe(true);
+			flushNow();
+			await locks.request(TRAINING_STATE_LOCK, () => {});
+			expect($appState.get().models[0]?.ui.trainingLogOpen).toBe(true);
+			expect(await readTrainingCheckpoint(db)).toMatchObject({
+				checkpoint: { generation: 2, pending: { kind: 'finish' } }
+			});
+
+			denyCleanup = false;
+			storage.reject = (state) =>
+				denyPreferenceWrite && !!state.models[0]?.ui.trainingLogOpen;
+			expect(await service.retry(worker.identity)).toMatchObject({ ok: true });
+			expect(await readTrainingCheckpoint(db)).toMatchObject({
+				checkpoint: { generation: 2, pending: null }
+			});
+			expect($appState.get().models[0]).toMatchObject({
+				status: 'trained',
+				resultRevision: runId,
+				ui: { trainingLogOpen: true }
+			});
+			expect(savedState().models[0]).toMatchObject({
+				status: 'trained',
+				resultRevision: runId,
+				ui: { trainingLogOpen: !denyPreferenceWrite }
+			});
+		} finally {
+			IDBObjectStore.prototype.put = put;
+			stopPersister();
+			await locks.request(TRAINING_STATE_LOCK, () => {});
+		}
+
+		$appState.set(INITIAL_APP_STATE);
+		$trainingSession.set(new Map());
+		expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({
+			ok: true,
+			generation: 2
+		});
+		expect($appState.get().models[0]).toMatchObject({
+			status: 'trained',
+			resultRevision: runId,
+			ui: { trainingLogOpen: !denyPreferenceWrite }
+		});
+		expect(workers).toHaveLength(1);
+		expect(workers[0]?.posted.map(({ kind }) => kind)).toEqual(['start']);
+	}
+);
+
 test('WML-P3-TRAIN-5: separate stop repairs preserve the original reason for each run', async () => {
 	seed(2);
 	const first = service.start(1);
