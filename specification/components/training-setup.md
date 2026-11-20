@@ -59,7 +59,7 @@ Changes from mockup CSS follow [the deviation registers](../visual-design.md#5-d
 - The form and Strategy select have accessible names. The range and exact number field each have a label, with shared fold help. On an invalid fold edit, the described error comes first and is announced politely on blur and read as the focused field’s description on invalid submit. The same native number control retains unfinished input across updates. Train Model remains available with a field error and sends focus to the number field on invalid submission.
 - A blocked form disables all form controls. Its alert describes the submit control. A disabled form with no blocked reason omits the alert and its description.
 - A table caption names both the table and its focusable scroll region. The table uses scoped row and column headers and a visually hidden “Training” or “Validation” label per cell. Visible en dashes and check marks, dashed and solid borders, and matching legend swatches distinguish roles in forced colours. Keyboard focus is visible on the wrapper and Learn more.
-- Safari's accessibility tree exposed the Strategy select, both fold inputs, matrix headers, cell labels and the named Help dialog. Spoken announcements in VoiceOver remain to be verified. NVDA and Orca were unavailable on the test host.
+- Safari's accessibility tree exposed the Strategy select, both fold inputs, matrix headers, cell labels and the named Help dialog. The maintainer verified the corresponding spoken announcements with VoiceOver in Safari. NVDA and Orca were unavailable on the test host.
 
 ## 7. Internationalisation
 
