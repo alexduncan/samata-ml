@@ -10,7 +10,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'Do: give every control a native label, link its help text with aria-describedby and keep the description beside the control. Don’t: apply these styles outside a .field, or hide an error that aria-invalid reports.'
+					'Do: give every control a native label and link descriptions with aria-describedby. Place a fold matrix inside a named, focusable scroll region. Don’t hide the error reported by aria-invalid or use colour alone for fold roles.'
 			}
 		}
 	},
@@ -71,4 +71,52 @@ export const RTL: Story = {
 	beforeEach: () => {
 		document.documentElement.dir = 'rtl';
 	}
+};
+
+async function getMatrixRegion(canvasElement: HTMLElement): Promise<HTMLElement> {
+	const host = canvasElement.querySelector('storybook-hyperparameter-field-host')!;
+	await host.updateComplete;
+	return host.shadowRoot!.querySelector<HTMLElement>('.fold-matrix-scroll')!;
+}
+
+/** WML-P2-STYLE-2: a ten-fold matrix scrolls within the preview. */
+export const FoldsMatrix: Story = {
+	name: 'WML-P2-STYLE-2: ten folds',
+	render: () => html`
+		<storybook-hyperparameter-field-host
+			style="inline-size: 272px; max-inline-size: 100%"
+			.folds=${10}></storybook-hyperparameter-field-host>
+	`,
+	play: async ({ canvasElement }) => {
+		const wrapper = await getMatrixRegion(canvasElement);
+		expect(wrapper.clientWidth).toBeGreaterThan(0);
+		expect(wrapper.scrollWidth).toBeGreaterThan(wrapper.clientWidth);
+	}
+};
+
+/** WML-P2-STYLE-2: a two-fold matrix fills the preview without overflow. */
+export const FoldsMatrixTwo: Story = {
+	name: 'WML-P2-STYLE-2: two folds',
+	render: () => html`
+		<storybook-hyperparameter-field-host
+			style="inline-size: 272px; max-inline-size: 100%"
+			.folds=${2}></storybook-hyperparameter-field-host>
+	`,
+	play: async ({ canvasElement }) => {
+		const wrapper = await getMatrixRegion(canvasElement);
+		expect(wrapper.clientWidth).toBeGreaterThan(0);
+		expect(wrapper.scrollWidth).toBe(wrapper.clientWidth);
+	}
+};
+
+/** WML-P2-STYLE-2: the matrix in right-to-left direction with a long caption. */
+export const FoldsMatrixRtlLongLabel: Story = {
+	name: 'WML-P2-STYLE-2: right-to-left with a long caption',
+	render: () => html`
+		<storybook-hyperparameter-field-host
+			dir="rtl"
+			style="inline-size: 272px; max-inline-size: 100%"
+			.folds=${10}
+			.matrixCaption=${'Cross-validation training and validation partitions by run'}></storybook-hyperparameter-field-host>
+	`
 };

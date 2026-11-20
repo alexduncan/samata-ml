@@ -255,8 +255,8 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 
 		await expect(step1).toHaveAttribute('aria-current', 'step');
 
-		// 4. Verify sections 4-6 never show training controls (Section 3 is pending here)
-		for (let i = 3; i <= 5; i++) {
+		// 4. Sections 5 and 6 are still placeholders.
+		for (let i = 4; i <= 5; i++) {
 			const pendingStep = builder.locator('.train-step').nth(i);
 			await expect(pendingStep.locator('button:has-text("Train")')).toHaveCount(0);
 			await expect(pendingStep.locator('input')).toHaveCount(0);

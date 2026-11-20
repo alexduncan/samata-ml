@@ -105,22 +105,28 @@ The three shell owners have closed component specs linked above and live in `src
 | `/about`                | reserved | footer                     | Static content modal                         | Never persisted.                                                                                                                                            |
 | `/privacy`              | reserved | footer                     | Static content modal                         | Never persisted.                                                                                                                                            |
 | `/help`                 | reserved | footer                     | Static content modal                         | Never persisted.                                                                                                                                            |
-| `/help/configure-model` | reserved | footer                     | Static content modal                         | Never persisted. Opens from the Section 3 heading help link; closing returns to `/models/{num}`.                                                            |
+| `/help/configure-model` | reserved | Section 3                  | Static content modal                         | Never persisted. Opens from the Section 3 heading help link; closing returns to `/models/{num}`.                                                            |
+| `/help/training-setup`  | reserved | Section 4                  | Static content modal                         | Opens from What is this? or Learn more. Closing returns to the same builder.                                                                                |
 | anything else           | –        | –                          | none (redirect)                              | `replaceState` to the resume path plus a transient notification.                                                                                            |
 
 Rules:
 
 - Matching is on `location.pathname` only. Query strings and hashes are ignored, not generated and not persisted. A trailing slash is normalised away by `replaceState`.
 - A `/models/{segment}` where `segment` is not a positive integer is an **unknown path** (it does not name a page) and is redirected like any other. A positive integer with no matching model is a valid page URL whose content is the "model not found" notification (§4.3); it is not redirected.
-- Reserved paths are exactly `/about`, `/privacy`, `/help`, `/help/configure-model`. Reserved paths MUST NOT be used for anything else in future.
-- Each reserved path maps to one page id via `RESERVED_CONTENT` in `src/router/reserved-content.ts` (`/about` → `about`, `/privacy` → `privacy-policy`, `/help` → `help`, `/help/configure-model` → `configure-model`), compiled by the content pipeline (see [content-and-i18n.md](content-and-i18n.md)). The mapping lives in router configuration, not in content front matter.
+- Reserved paths are exactly `/about`, `/privacy`, `/help`, `/help/configure-model` and `/help/training-setup`. Reserved paths MUST NOT be used for anything else in future.
+- Each reserved path maps to one page id via `RESERVED_CONTENT` in `src/router/reserved-content.ts` (`/about` → `about`, `/privacy` → `privacy-policy`, `/help` → `help`, `/help/configure-model` → `configure-model`, `/help/training-setup` → `training-setup`), compiled by the content pipeline (see [content-and-i18n.md](content-and-i18n.md)). The mapping lives in router configuration, not in content front matter.
 
 ### 3.1 Types
 
 ```typescript
 export type SectionNumber = 1 | 2 | 3 | 4;
 
-export type ReservedPath = '/about' | '/privacy' | '/help';
+export type ReservedPath =
+	| '/about'
+	| '/privacy'
+	| '/help'
+	| '/help/configure-model'
+	| '/help/training-setup';
 
 export type WorkflowPath = '/data' | '/target' | '/models' | `/models/${number}` | '/results';
 
@@ -319,15 +325,16 @@ Corresponds to workflow-steps §3.
 | 5   | `training`           | Training finishes                             | "Training Complete"                           |
 | 6   | `results`            | **View Results**                              | –                                             |
 
-When a section completes, its button is replaced by the `#check` icon and `.train-step-complete` is added to its `.train-step`. This presentation is a pure function of `ModelRecord.completedSteps`; no component keeps its own "completed" flag.
+A completed section shows the `#check` icon and adds `.train-step-complete` to its `.train-step`. In Section 4, the form is replaced by the saved setup summary and Edit for a draft. This presentation is a pure function of `ModelRecord.completedSteps`; no component keeps its own "completed" flag.
 
 Model-level rules:
 
 - **Eligible models** are filtered by the target type: classifiers for `boolean`/`categorical`, regressors for `numeric` (workflow-steps §3.1).
 - **Features**: all columns are listed; the target is shown but not selectable; ineligible (`text`) columns are not selectable. The target can never be in `features`.
 - **Multiclass strategy** (`native | one-vs-rest | one-vs-one`) is required only when the target is categorical with more than two categories _and_ the `web-ml` model supports the choice. It is part of section 3.
-- **Training setup** (section 4) is a placeholder: workflow-steps marks it "TODO". Until specified, the shape is the `ValidationMethodology` union in [state-and-storage.md](state-and-storage.md#3-persisted-schema), defaulting to nested cross-validation.
-- **Editing earlier sections**: while `status === 'draft'`, a completed section can be re-opened and edited. If the edit **changes** its value, completion of all _later_ sections is removed (their values are kept where still valid and the user re-confirms with Continue). Re-selecting the same model, or re-confirming unchanged values, invalidates nothing. Selecting a **different** model resets `modelOptions`, `hyperparameters` and `multiclass` to the new model's defaults and un-completes sections 2 and 3; `features` and `trainingSetup` are kept.
+- **Training Setup** (Section 4) displays **One-Shot** before the first write. The builder checks that the route, active model, dataset and target still match ready eligible metadata before accepting a change or submit. Cross-Validation uses the current target’s observed class counts to bound folds and shows a scrollable matrix. Valid **Train Model** submission saves the setup, completes Section 4 and activates the pending Section 5 while the model remains a draft. Completed drafts show the formatted summary with **Edit**. The Models table uses the same summary and shows “Not configured” when there is no usable setup, including for read-only models.
+- **Help and transient edits.** The Training Setup form is keyed by dataset ID, target name and model number. Opening Help leaves the same builder and form mounted and the router preserves the underlay's resume path. The form retains invalid drafts and focus returns to the Help link on close. An intent dispatched while Help is open cannot write. Changing the dataset, target or model creates a fresh form for the current setup.
+- **Editing earlier sections**: while `status === 'draft'`, a completed section can be re-opened and edited. If the edit **changes** its value, completion of all _later_ sections is removed (their values are kept where still valid and the user re-confirms with the section action). Re-selecting the same model, or re-confirming unchanged values, invalidates nothing. Selecting a **different** model resets `modelOptions`, `hyperparameters` and `multiclass` to the new model's defaults and un-completes sections 2 and 3; `features` and `trainingSetup` are kept.
 - **Frozen configuration.** Once a model leaves `draft` (training starts), sections 1–4 are read-only so the configuration shown in `/models` and `/results` is exactly what was trained. To try different settings the user creates a new model.
 
 ### 6.4 Changing the dataset or target while models exist
@@ -453,6 +460,8 @@ export interface ScrollSnapshot {
 
 **Semantics.** Entering a step by link, sidebar or Back/Forward restores that step's **latest** remembered position (tab-like, native-app behaviour), not the position at the moment of that specific history entry. A brand-new model page has no snapshot and opens at top.
 
+The Training Setup matrix scrolls inside its own wrapper. Its horizontal offset is not restored on reload or remount while [scroll-region restoration](plans/scroll-region-restoration.md) is pending. The same wrapper stays mounted when Help opens over the model.
+
 **Invalidation.** Dataset change (§6.1) and model discard (§6.4) clear the affected keys.
 
 ---
@@ -571,4 +580,4 @@ For a human to answer; implementers must not resolve these silently.
 4. ~~**Scroll semantics**~~ (§8.4) — answered: latest-per-step scroll memory is accepted.
 5. **Reserved content mapping:** `content/pages/privacy-policy.md` serves `/privacy`; there is no `help` content and `terms-and-conditions.md` has no route. Create `help.md`? Add a reserved route for terms?
 6. ~~**File rename** to `app-state-and-navigation.md`~~ — done 2026-11-12.
-7. **Training setup** (section 4) and **results** (sections 6 and 4) remain TODO in workflow-steps.md; the persisted shapes for them are placeholders.
+7. **Results** (builder Section 6 and workflow Step 4) remain TODO in workflow-steps.md. Their persisted shapes are placeholders.

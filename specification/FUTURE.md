@@ -1,6 +1,6 @@
 # Future development
 
-**Updated:** 2026-11-13
+**Updated:** 2026-11-20
 
 Items the specifications mark as _future_, _later_ or _deferred_. They are **not** to be planned or built until a human moves them into a spec. Open questions about current scope are in [TODO.md](TODO.md). Deliberate exclusions are listed under **Non-goals** in each component spec (§11) and are not future work.
 
@@ -15,6 +15,7 @@ Items the specifications mark as _future_, _later_ or _deferred_. They are **not
 - **Dataset card repeated-action a11y review:** Human evaluation of `aria-describedby` pointing to card descriptions for repeated action buttons vs clean native button accessible names.
 - **Error-Correcting Output Codes (ECOC)** as a multiclass strategy, alongside native multiclass, One-vs-Rest and One-vs-One ([workflow-steps §3.3](workflow-steps.md)).
 - **Learner-decided missing values.** Dataset authors declare which coded values count as missing (`implicitMissingValues`; see [sample-datasets.md](sample-datasets.md)). Learners cannot currently change that choice. An open pedagogical question is whether learners should decide per column on Load Data or Select Features. A middle option is to keep the author's default, show affected counts and let the learner override it with an explanation.
+- **More Training Setup options.** Add custom holdout ratios, editable random seeds and missing-value controls for training once the relevant contracts are specified. [Training Setup](components/training-setup.md)
 - **Datetime feature engineering.** Datetime columns are inferred and stored as UTC epoch milliseconds, but are not model inputs. Future work may add datetime feature engineering and recognise further date formats: `.` separators, 12-hour clocks, weekday prefixes and non-English month names.
 - **Richer type-specific dataset preview formatting:** Deferred in `virtual-table-component.md`; current display formats numbers with grouping separators while preserving decimals, and escapes cell values as text. Richer boolean indicators, fixed-precision floats, currency, and percentages are deferred.
 - **Authored model illustrations and replacement of text-entry fallback:** Dedicated SVG illustrations for the 13 supervised models beyond Logistic Regression (Decision Trees, Naive Bayes variants, SVM, k-NN, Multi-Layer Perceptrons, Linear/Polynomial Regression). Each new illustrated card requires a human-approved, model-appropriate SVG adhering to the 360×216 viewBox and semantic color tokens. Until authored, these models render via the accessible native text-entry fallback (`03-9_choose-model-text-entries.html`).
@@ -26,6 +27,7 @@ From [ARCHITECTURE § Future Improvements](ARCHITECTURE.md) unless noted. TODO-5
 - **CI workflow:** install pinned tool versions, run `bun install --frozen-lockfile`, and gate pull requests on the test suite. It should also run the TSDoc lint that [standards-and-documentation.md](standards-and-documentation.md) says CI enforces (Known gap 7).
 - **`bun run doctor`** setup check: verify the required tools and dependencies, and print instructions for fixing problems.
 - **Devcontainer or Codespaces** configuration for contributors.
+- **Upstream partition feasibility.** Replace samatā’s class-count fold limit when web-ml publishes its feasibility check. Phase 3 treats an upstream rejection as authoritative and reopens Training Setup with the reason. [Decision D7](plans/archive/web-ml-phase-2-training-setup.md#technical-decisions)
 - **`SECURITY.md`**, after researching the security requirements.
 
 ## Project

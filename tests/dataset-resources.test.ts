@@ -29,7 +29,7 @@ function createMockModel(num = 1, status: ModelStatus = 'draft'): ModelRecord {
 		hyperparameters: { mode: 'manual', values: {} },
 		features: ['feature_1'],
 		multiclass: 'native',
-		trainingSetup: { type: 'k_fold_cv', folds: 5 },
+		trainingSetup: { type: 'nested_cv', outerFolds: 5, innerFolds: 5, randomState: 42 },
 		completedSteps: ['choose-model', 'select-features'],
 		status,
 		progress: null,

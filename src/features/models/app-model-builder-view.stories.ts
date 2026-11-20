@@ -1,8 +1,14 @@
 import { html } from 'lit';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
+import { $route } from '../../router/router';
 import { $appState } from '../../stores/app.store';
-import { $datasetResources } from '../../stores/dataset.store';
-import { INITIAL_APP_STATE, type ModelRecord, type PersistedAppState } from '../../types/state';
+import { $datasetResources, type ResourceStatus } from '../../stores/dataset.store';
+import {
+	DEFAULT_ONE_SHOT_SETUP,
+	INITIAL_APP_STATE,
+	type ModelRecord,
+	type PersistedAppState
+} from '../../types/state';
 import type { DatasetMetadata } from '../../types/dataset';
 import { featureA11yFindings } from '../../../tests/a11y-feature-findings';
 import './app-model-builder-view';
@@ -85,7 +91,40 @@ function seed(targetType: 'categorical' | 'numeric', overrides: Partial<ModelRec
 	});
 }
 
-/** Connected model builder showing Section 3. */
+function seedTraining(status: ResourceStatus = 'ready', completed = false) {
+	const previous = {
+		app: $appState.get(),
+		resources: $datasetResources.get(),
+		route: $route.get()
+	};
+	const completedSteps: ModelRecord['completedSteps'] = [
+		'choose-model',
+		'select-features',
+		'configure-model'
+	];
+	if (completed) completedSteps.push('configure-training');
+	seed('categorical', {
+		completedSteps,
+		trainingSetup: completed ? DEFAULT_ONE_SHOT_SETUP : null
+	});
+	$route.set({ kind: 'workflow', path: '/models/1', section: 3, modelNum: 1 });
+	if (status !== 'ready') {
+		$datasetResources.set({
+			datasetId: 'iris',
+			status,
+			metadata: null,
+			descriptor: null,
+			error: null
+		});
+	}
+	return () => {
+		$appState.set(previous.app);
+		$datasetResources.set(previous.resources);
+		$route.set(previous.route);
+	};
+}
+
+/** Connected model builder showing the configuration workflow. */
 const meta = {
 	title: 'Models/Model builder',
 	component: 'app-model-builder-view',
@@ -102,7 +141,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'Do: let the builder persist each valid edit and complete Section 3 only through Save & Continue. Don’t: render the configuration form for a model that has no classifier selected.'
+					'Do: let the builder persist valid edits. Complete Section 3 through Save & Continue and Section 4 through Train Model. Don’t render a configuration form until its model and dataset are ready.'
 			}
 		}
 	},
@@ -119,6 +158,26 @@ export const ConfigureModelComplete: Story = {
 		seed('categorical', {
 			completedSteps: ['choose-model', 'select-features', 'configure-model']
 		})
+};
+/** WML-P2-UI-8: Section 4 ready for an eligible target. */
+export const ConfigureTraining: Story = {
+	name: 'WML-P2-UI-8: ConfigureTraining',
+	beforeEach: () => seedTraining()
+};
+/** WML-P2-UI-8: the completed setup and the pending training step. */
+export const TrainingSetupCompleted: Story = {
+	name: 'WML-P2-UI-8: TrainingSetupCompleted',
+	beforeEach: () => seedTraining('ready', true)
+};
+/** WML-P2-UI-8: current metadata is loading. */
+export const TrainingSetupLoading: Story = {
+	name: 'WML-P2-UI-8: TrainingSetupLoading',
+	beforeEach: () => seedTraining('loading')
+};
+/** WML-P2-UI-8: an unsuccessful read displays a Retry action. */
+export const TrainingSetupRetry: Story = {
+	name: 'WML-P2-UI-8: TrainingSetupRetry',
+	beforeEach: () => seedTraining('error')
 };
 /** A numeric target has no classification model. */
 export const NoClassifierNumericTarget: Story = {

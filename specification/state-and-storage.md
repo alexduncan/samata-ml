@@ -70,11 +70,10 @@ export interface HyperparameterConfig {
 	tuningSearchSpace?: Record<string, HyperparameterValue[]>;
 }
 
-/** Placeholder until workflow-steps "Configure Training" is specified. */
+/** Canonical training setup in memory. The two CV fold counts are equal. */
 export type ValidationMethodology =
-	| { type: 'nested_cv'; outerFolds: number; innerFolds: number }
-	| { type: 'k_fold_cv'; folds: number }
-	| { type: 'train_test_split'; testRatio: number };
+	| { type: 'one_shot'; testRatio: 0.2; randomState: 42 }
+	| { type: 'nested_cv'; outerFolds: number; innerFolds: number; randomState: 42 };
 
 export type MulticlassStrategy = 'native' | 'one-vs-rest' | 'one-vs-one';
 
@@ -116,7 +115,7 @@ export interface ModelRecord {
 	/** Section 3 – Configure Model. */
 	hyperparameters: HyperparameterConfig;
 	multiclass: MulticlassStrategy | null;
-	/** Section 4 – Configure Training. */
+	/** Section 4 – Training Setup. */
 	trainingSetup: ValidationMethodology | null;
 
 	/** Section 5 – Training. */
@@ -182,6 +181,16 @@ export interface PersistedScroll {
 
 Defaults on first load: `welcomeDismissed: false`, `resumePath: '/data'`, `dataset: null`, `data: { mode: 'select', selectedColumn: null }`, `target: null`, `models: []`, `nextModelNum: 1`, no scroll snapshots.
 
+### Training Setup on the v1 wire
+
+| In memory                                                              | JSON written to v1                                              |
+| :--------------------------------------------------------------------- | :-------------------------------------------------------------- |
+| `null`                                                                 | `null` (unset)                                                  |
+| `{ type: 'one_shot', testRatio: 0.2, randomState: 42 }`                | `{ type: 'train_test_split', testRatio: 0.2, randomState: 42 }` |
+| `{ type: 'nested_cv', outerFolds: n, innerFolds: n, randomState: 42 }` | The same `nested_cv` fields                                     |
+
+A private codec produces fresh canonical objects on read. It supplies seed 42 for seedless historical forms and upgrades legacy `k_fold_cv` with `folds: n` to equal inner and outer counts. It accepts historical `train_test_split` only at ratio 0.2 and historical `nested_cv` only with equal counts. Counts must be finite integers from 2 through 10. Required fields must be own properties of a plain record. A supplied seed other than 42, unsafe own keys (`__proto__`, `constructor`, `prototype`), an unknown tag, or a missing or invalid shape records a malformed outcome for the owning model. Explicit `null` records an unset outcome. Both read as `null` in memory and are distinguished during reconciliation (§6).
+
 ## 4. Write Scheduling
 
 A single **persister** subscribes to the stores and is the only code that touches `localStorage`, including startup reading and reconciliation via `readPersistedState` and `persistNow`. Components, reconcilers and actions never call `setItem`, `getItem` or `removeItem` directly.
@@ -192,16 +201,17 @@ A single **persister** subscribes to the stores and is the only code that touche
 | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------- |
 | `resumePath` (any workflow navigation), dataset, target, model created, section completed/re-opened, `status` change, error set, `welcomeDismissed`, `data.mode` | **Synchronous**, within the same task as the action                                                              |
 | Discrete UI selections (checkbox, card select, `data.selectedColumn`, `features`, `multiclass`, `hyperparameters.mode`, `trainingSetup?.type`)                   | Synchronous                                                                                                      |
-| Free-form field edits (hyperparameter numbers/text, values-only edits)                                                                                           | Debounced ~300 ms, plus flushed on `change`; only **committed, valid** values are stored                         |
+| Valid fold-count edits and free-form hyperparameter value edits                                                                                                  | Debounced ~300 ms                                                                                                |
 | Training `progress` ticks                                                                                                                                        | Throttled (at most one write per second without starvation); entry into and exit from `training` are synchronous |
 | Scroll snapshots (`samata-ml:scroll`)                                                                                                                            | Debounced ~150 ms; flushed before router navigation, on `visibilitychange` → `hidden` and on `pagehide`          |
 
-`flushNow()` is exported for those lifecycle hooks. `beforeunload` MUST NOT be relied on.
+The persister flushes pending valid fold edits through `flushNow()` when the document becomes hidden or on `pagehide`. The router can flush before navigation. `beforeunload` MUST NOT be relied on.
 
 ### 4.2 Rules
 
 - Reducers/actions are pure and produce new object references; the persister serialises the resulting snapshot. In-place mutation is forbidden (COMPONENTS.md §5, app-state-and-navigation.md §1.3).
 - Writes go through an injectable `Storage` interface (browser: `localStorage`; tests: in-memory mock).
+- Both `writeAppStateNow` (subscription and flush) and `persistNow` (immediate write after reconciliation) use the same private v1 encoder. Encoding leaves the in-memory shape and references intact.
 - Every write serialises `{ version, …, updatedAt: Date.now() }`.
 
 ### 4.3 Failure handling
@@ -228,7 +238,7 @@ This is what makes "exact same UI" enforceable as the app grows. Each new featur
 | Compare Results view                                                         | `results.ui`                                 | Defined by the section 4 spec                    |
 | Location                                                                     | URL, plus `resumePath` for `/`               |                                                  |
 
-**Transient (never persisted):** reserved-route modals (`/about`, `/privacy`, `/help`; these are restored only because the URL says so), Datasheet, Upload and Model Description dialogs, focus, hover, uncommitted field text, in-flight ingestion state, upload validation errors, live training progress between throttled writes.
+**Transient (never persisted):** reserved-route modals (including `/help/training-setup`; these are restored only because the URL says so), Datasheet, Upload and Model Description dialogs, focus, hover, uncommitted field text (including empty, out-of-range and native invalid fold drafts), fold errors and their live announcements, in-flight ingestion state, upload validation errors, live training progress between throttled writes.
 
 Presentational components MUST NOT import stores (COMPONENTS.md §2). They receive the value as a property and emit an event; a connected component calls the action.
 
@@ -237,13 +247,14 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 `localStorage` and IndexedDB are separate stores that can diverge (partial "clear site data", eviction under storage pressure, an upload interrupted by reload, a second tab replacing the dataset). After reading persisted state and **before the first render**, the hydrator runs these checks in order. A failed check repairs the _smallest_ affected piece and cascades downward; it never silently invents data.
 
 1. **Dataset present.** If `dataset !== null` but `metadata` for `dataset.id` is missing from IndexedDB, treat as `dataset = null`: clear `target`, `models`, `data.selectedColumn`, set `data.mode = 'select'`, clear non-`/data` scroll keys, and queue a notification.
-2. **Orphans.** Delete IndexedDB rows/metadata for any dataset id other than `dataset.id`. A partial upload (rows written, no `metadata`) is an orphan by definition.
+2. **Orphans.** Delete IndexedDB rows, metadata and model results for any dataset id other than `dataset.id`. A partial upload (rows written, no `metadata`) is an orphan by definition.
 3. **Target valid.** `target` must name an eligible column in `dataset.columns` (type ≠ `text`); otherwise `target = null` and `models = []`.
 4. **Models valid.** For each model: `features ⊆ dataset.columns` (eligible, ≠ target); drop unknown features and un-complete `select-features` onward if any were dropped. A `trained` model whose `model_results` entry is missing reverts to `draft` with a `TRAINING_FAILED` error whose message explains the stored results were lost.
 5. **Counters.** `nextModelNum = max(nextModelNum, max(models.num) + 1)`.
 6. **Selections valid.** `data.selectedColumn` must exist in `dataset.columns`. `resumePath` is **not** corrected when it names a page that cannot currently display (for example `/models/3` after model 3 was discarded): `/` resumes there and the page shows its notification, because state never blocks navigation (app-state-and-navigation.md §4).
 7. **Interrupted training.** For each model with `status === 'training'`, try `navigator.locks.request('samata-ml:training:{num}', { ifAvailable: true }, …)`. Lock acquired ⇒ nobody is training it ⇒ `recoverInterrupted` (status `draft`, `progress = null`, `TRAINING_INTERRUPTED_BY_RELOAD`; un-completes `configure-training`, `training` and `results`, returning section 4 to active). Lock unavailable ⇒ another tab is training it; leave it `training` and treat it as read-only. If the Web Locks API is missing, fall back to treating it as interrupted.
-8. Persist the repaired state immediately.
+8. **Training Setup recovery.** Capture each model's decode outcome, original status and Section 4–6 completions from the decoded envelope before any repairs. Apply setup repairs after the result and lock checks. A draft with a malformed setup, or explicit `null` with a stale original Section 4–6 completion, reopens Section 4. Clear the affected completions, progress, timings, duration, metrics and stale error. Keep the error just created when trained results were lost, or the interrupted-training error. On subsequent hydration the losses and interruptions retain their diagnostics and timestamps. An original draft with malformed setup and a stale failure clears its failure even if the message matches the loss explanation. A trained model with an existing result and a training model with an active lock keep their status, completions and results, and remain read-only. A model-local malformed setup does not discard the active dataset, its row chunks or unaffected siblings and their results.
+9. Persist the repaired state immediately.
 
 **Ingestion ordering requirement.** To make check 1 and 2 safe, ingestion MUST write the new dataset under a **new** `datasetId` and delete the previous dataset only after `metadata` for the new one is written. The "clear old stores first" behaviour in the earlier preview-dataset design would destroy the user's current dataset if an upload is interrupted.
 
@@ -261,7 +272,7 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 - Every persisted blob has `version`. `STORAGE_VERSION` starts at `1`; the earlier `ml_app_fsm_state_v1` key and the `Pipeline` proxy design were never implemented and need no migration.
 - `STORAGE_VERSION` stays `1` for Phase 1: `HyperparameterValue` only gains `null`, and no earlier release wrote option values because Section 3 never rendered, so no persisted blob changes shape. A bump would discard every user's state, because no migration exists.
 - Persisted `hyperparameters.values` are validated: numbers must be finite, values are `null`, string, boolean, number or finite number array, and prototype keys (`__proto__`, `constructor`, `prototype`) are rejected; a state that fails is discarded wholesale like any other shape failure.
-- Reads are wrapped in `try/catch`. JSON that fails to parse, fails the full runtime shape check, or has a version below current without a migration, is discarded wholesale (fresh defaults). A hand-written type guard is used; no new dependency is introduced for this.
+- Reads use a hand-written runtime shape check. JSON that fails to parse, fails envelope validation, or has a version below current without a migration falls back to fresh defaults. Training Setup decoding is a model-local exception to envelope rejection (§3, §6). The v1 wire remains compatible with the previous reader.
 - A version **higher** than the running code understands (a stale tab after a deploy) yields fresh defaults in memory and puts the persister into **read-only mode** for that key for the lifetime of the document: the tab runs from memory and never overwrites newer data.
 - Migrations are an ordered array of pure `(old) => new` functions with tests.
 

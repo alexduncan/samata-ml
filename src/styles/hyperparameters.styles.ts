@@ -3,7 +3,7 @@ import { css, type CSSResult } from 'lit';
 /**
  * Shared hyperparameter form styles: the `.field` grid family, `.form-note` and `.field-error`.
  * Ported from `specification/mockups/ui-scaffold/css/hyperparameters.css` (`.field` family and
- * the `max-width: 700px` rule; Phase 2 owns `.field--folds`, `.field-visual` and `.fold-*`)
+ * the fold matrix, and the `max-width: 700px` rule)
  * and the `input`/`select` rules of `base.css`, which are scoped under `.field` so ranges,
  * checkboxes and inputs elsewhere keep their look. Adopt in a shadow root only.
  * Deviations: `A11Y-07` (1.5px `--stone-600` border), `A11Y-08` (2px focus outline),
@@ -119,6 +119,18 @@ export const hyperparametersStyles: CSSResult = css`
 			color: var(--neutral-700);
 		}
 
+		&.field--folds {
+			grid-template-rows: max-content max-content minmax(0, 1fr);
+			grid-template-areas:
+				'label visual'
+				'control visual'
+				'description visual';
+
+			.field-description {
+				align-self: start;
+			}
+		}
+
 		/* Box rules from base.css, for number inputs and selects only */
 		input[type='number'],
 		select {
@@ -154,6 +166,136 @@ export const hyperparametersStyles: CSSResult = css`
 		}
 	}
 
+	.field-visual {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
+		grid-area: visual;
+		align-content: start;
+		gap: 0.75rem;
+		border: 1px solid var(--stone-200);
+		border-radius: 0.75rem;
+		background: var(--neutral-50);
+		padding: 1rem;
+		min-inline-size: 0;
+	}
+
+	.fold-matrix-scroll {
+		min-inline-size: 0;
+		max-inline-size: 100%;
+		overflow-x: auto;
+	}
+
+	.fold-matrix-scroll:focus-visible,
+	.field .field-description a:focus-visible {
+		outline: 2px solid var(--focus-ring);
+		outline-offset: 2px;
+	}
+
+	.fold-matrix {
+		border-collapse: separate;
+		border-spacing: 0.25rem;
+		inline-size: 100%;
+		table-layout: fixed;
+
+		caption {
+			padding-block-end: 0.5rem;
+			caption-side: top;
+			color: var(--neutral-800);
+			font-weight: 600;
+			font-size: 0.875rem;
+			text-align: start;
+		}
+
+		th {
+			padding: 0;
+			color: var(--neutral-600);
+			font-weight: 500;
+			font-size: 0.75rem;
+			text-align: center;
+		}
+
+		thead th:first-child {
+			inline-size: 3.5rem;
+			text-align: start;
+		}
+
+		thead th:not(:first-child) {
+			inline-size: 2rem;
+		}
+
+		tbody th {
+			text-align: start;
+			white-space: nowrap;
+		}
+
+		td {
+			box-sizing: border-box;
+			border: 1px solid transparent;
+			border-radius: 0.25rem;
+			padding: 0;
+			block-size: 1.75rem;
+			text-align: center;
+		}
+
+		.fold-training {
+			border-color: var(--blue-300);
+			background: var(--blue-100);
+		}
+
+		.fold-validation {
+			border-color: var(--green-500);
+			background: var(--green-100);
+		}
+
+		tbody tr:hover td {
+			filter: brightness(0.95);
+		}
+	}
+
+	.fold-visual-summary {
+		margin: 0;
+		color: var(--neutral-600);
+		font-size: 0.875rem;
+		line-height: 1.5;
+	}
+
+	.fold-legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1rem;
+		margin: 0;
+		padding: 0;
+		color: var(--neutral-700);
+		font-size: 0.8125rem;
+		list-style: none;
+
+		li {
+			display: inline-flex;
+			align-items: center;
+			gap: 0.5rem;
+		}
+	}
+
+	.fold-legend-swatch {
+		display: inline-block;
+		flex: 0 0 0.875rem;
+		border: 1px solid;
+		border-radius: 0.25rem;
+		inline-size: 0.875rem;
+		block-size: 0.875rem;
+		text-align: center;
+	}
+
+	.fold-legend-swatch-train {
+		border-color: var(--blue-300);
+		background: var(--blue-100);
+	}
+
+	.fold-legend-swatch-validation {
+		border-color: var(--green-500);
+		background: var(--green-100);
+	}
+
 	.form-note {
 		color: var(--neutral-600);
 		font-size: 0.875rem;
@@ -168,6 +310,28 @@ export const hyperparametersStyles: CSSResult = css`
 				'control'
 				'description';
 			row-gap: 0.75rem;
+
+			&.field--folds {
+				grid-template-rows: auto;
+				grid-template-areas:
+					'label'
+					'control'
+					'description'
+					'visual';
+			}
+		}
+	}
+
+	@media (forced-colors: active) {
+		.fold-matrix .fold-training,
+		.fold-legend-swatch-train {
+			border-style: dashed;
+		}
+
+		.fold-matrix .fold-validation,
+		.fold-legend-swatch-validation {
+			border-width: 2px;
+			border-style: solid;
 		}
 	}
 `;

@@ -127,6 +127,17 @@ describe('Router & Navigation (NAV-AC-1, NAV-AC-2, NAV-AC-4)', () => {
 			expect(RESERVED_CONTENT['/help/configure-model']).toBe('configure-model');
 		});
 
+		it('WML-P2-ROUTE-1: reserves the training setup page and leaves other Help topics unknown', () => {
+			for (const path of ['/help/training-setup', '/help/training-setup/']) {
+				expect(parseRoute(path)).toEqual({
+					kind: 'reserved',
+					path: '/help/training-setup'
+				});
+			}
+			expect(parseRoute('/help/other-topic').kind).toBe('unknown');
+			expect(RESERVED_CONTENT['/help/training-setup']).toBe('training-setup');
+		});
+
 		it('normalises trailing slashes without breaking', () => {
 			expect(parseRoute('/data/')).toEqual({ kind: 'workflow', path: '/data', section: 1 });
 			expect(parseRoute('/target/')).toEqual({

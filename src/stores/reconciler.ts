@@ -18,6 +18,10 @@ import { $appState } from './app.store';
 import { getActiveStorage, persistNow, readPersistedState, type StorageAdapter } from './persister';
 import { $scrollState } from './scroll.store';
 
+function isTrainingSetupOrLater(step: ModelSectionId): boolean {
+	return step === 'configure-training' || step === 'training' || step === 'results';
+}
+
 /**
  * Adapter interface for IndexedDB queries and cleanup during reconciliation.
  */
@@ -160,6 +164,7 @@ export async function reconcileStartupState(
 	}
 
 	// 4. Models valid: ensure features exist in dataset; revert trained models with missing results
+	const trainingSetupRepairs: boolean[] = [];
 	if (state.dataset === null || state.target === null) {
 		if (state.models.length > 0) {
 			state = { ...state, models: [] };
@@ -172,7 +177,14 @@ export async function reconcileStartupState(
 		);
 
 		const updatedModels: ModelRecord[] = [];
-		for (const persistedModel of state.models) {
+		for (const [index, persistedModel] of state.models.entries()) {
+			const outcome = persisted.trainingSetupDecodeOutcomes[index];
+			trainingSetupRepairs.push(
+				outcome === 'unusable' ||
+					(outcome === 'explicit-null' &&
+						persistedModel.completedSteps.some(isTrainingSetupOrLater))
+			);
+
 			// A persisted model whose id is no longer in the catalogue returns to Section 1
 			const model: ModelRecord =
 				persistedModel.modelId !== null && !isClassifierId(persistedModel.modelId)
@@ -318,15 +330,34 @@ export async function reconcileStartupState(
 					message: 'Training was interrupted by a page reload',
 					timestamp: Date.now()
 				},
-				completedSteps: model.completedSteps.filter(
-					(s) => s !== 'configure-training' && s !== 'training' && s !== 'results'
-				)
+				completedSteps: model.completedSteps.filter((step) => !isTrainingSetupOrLater(step))
 			});
 		} else {
 			modelsWithTrainingRecovery.push(model);
 		}
 	}
-	state = { ...state, models: modelsWithTrainingRecovery };
+	state = {
+		...state,
+		models: modelsWithTrainingRecovery.map((model, index) => {
+			if (model.status !== 'draft' || !trainingSetupRepairs[index]) return model;
+			const wasDemoted = persisted.state.models[index]?.status !== 'draft';
+			return {
+				...model,
+				trainingSetup: null,
+				completedSteps: model.completedSteps.filter(
+					(step) => !isTrainingSetupOrLater(step)
+				),
+				progress: null,
+				timings: null,
+				durationMs: null,
+				metrics: null,
+				error:
+					wasDemoted || model.error?.code === 'TRAINING_INTERRUPTED_BY_RELOAD'
+						? model.error
+						: null
+			};
+		})
+	};
 
 	// 8. Persist the repaired state immediately
 	$appState.set(state);

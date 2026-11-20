@@ -122,7 +122,7 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		await expect(continueLink).toBeVisible();
 	});
 
-	test('JOURNEY-PENGUINS-SETUP: navigate to /models, train new model, select logistic regression and features on penguins, verify resume on reload', async ({
+	test('WML-P2-UI-10 / JOURNEY-PENGUINS-SETUP: configure Logistic Regression and save One-Shot', async ({
 		page
 	}) => {
 		await page.goto('/data');
@@ -183,7 +183,7 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		await expect(continueStep2Btn).toBeEnabled();
 		await continueStep2Btn.click();
 
-		// 6. Section 2 is now completed; Section 3 is active and pending
+		// 6. Section 2 is complete and Section 3 is active.
 		await expect(step2).not.toHaveAttribute('aria-current', 'step');
 		const step3 = builder.locator('.train-step').nth(2);
 		await expect(step3).toHaveAttribute('aria-current', 'step');
@@ -199,7 +199,22 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		await expect(step3.locator('app-model-configuration form')).toBeVisible();
 		await expect(step3.locator('h2')).toContainText('3. Configure Model');
 
-		// 8. Navigate back to /models via sidebar
+		await step3.getByRole('button', { name: 'Save & Continue' }).click();
+		const setup = builder.locator('app-training-setup');
+		await expect(setup.getByRole('combobox', { name: 'Training Strategy' })).toHaveValue(
+			'one_shot'
+		);
+		await setup.getByRole('button', { name: 'Train Model' }).click();
+		const summary = 'One-Shot (80% / 20%)';
+		const completed = builder.getByRole('heading', { name: `4. ${summary}` });
+		await expect(completed).toBeVisible();
+		await page.reload();
+		await expect(completed).toBeVisible();
+		const training = builder.locator('.train-step').nth(4);
+		await expect(training).toHaveAttribute('aria-current', 'step');
+		await expect(training.getByText('Not available yet.')).toBeVisible();
+
+		// 8. Navigate back to /models via sidebar.
 		await page.locator('app-sidebar a[href="/models"]').click();
 		await expect(page).toHaveURL(/\/models$/);
 		await expect(modelsView).toBeVisible();
@@ -207,5 +222,6 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		await expect(table).toBeVisible();
 		await expect(table.locator('tbody tr')).toHaveCount(1);
 		await expect(table).toContainText('Model 1 — Logistic Regression');
+		await expect(table.locator('tbody td:nth-child(4)')).toHaveText(summary);
 	});
 });

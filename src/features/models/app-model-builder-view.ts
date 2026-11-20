@@ -1,7 +1,11 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { keyed } from 'lit/directives/keyed.js';
+import { ref } from 'lit/directives/ref.js';
 import { StoreController } from '@nanostores/lit';
+import { computed } from 'nanostores';
 import { ContentLoadError, loadContentEntry } from '../../common/content/content-loader';
+import { $route } from '../../router/router';
 import {
 	$appState,
 	chooseModel,
@@ -12,11 +16,16 @@ import {
 	setFeatures,
 	setHyperparameters,
 	setMulticlassStrategy,
+	setTrainingSetup,
 	toggleFeature
 } from '../../stores/app.store';
 import { params } from '@nanostores/i18n';
-import { i18n } from '../../i18n';
-import { $datasetResources, loadDatasetResources } from '../../stores/dataset.store';
+import { $format, i18n } from '../../i18n';
+import {
+	$datasetResources,
+	loadDatasetResources,
+	type DatasetResourcesState
+} from '../../stores/dataset.store';
 import { blockedReason } from '../../stores/predicates';
 import { buttonStyles } from '../../styles/button.styles';
 import { cardStyles } from '../../styles/card.styles';
@@ -26,7 +35,17 @@ import { notificationStyles } from '../../styles/notification.styles';
 import { tableStyles } from '../../styles/table.styles';
 import { trainModelStyles } from '../../styles/train-model.styles';
 import { headingFocusStyles } from '../../styles/heading-focus.styles';
-import type { ColumnType, ModelRecord, ModelSectionId } from '../../types/state';
+import type { ColumnStats } from '../../types/dataset';
+import {
+	DEFAULT_ONE_SHOT_SETUP,
+	FIXED_ONE_SHOT_TEST_RATIO,
+	FIXED_TRAINING_RANDOM_STATE,
+	type ColumnType,
+	type ModelRecord,
+	type ModelSectionId,
+	type PersistedAppState,
+	type ValidationMethodology
+} from '../../types/state';
 import { buildFeatureRows, formatFeatureNote, type FeatureRow } from './feature-eligibility';
 import {
 	isClassifierId,
@@ -38,6 +57,8 @@ import type { ModelDescriptionStatus } from './app-model-description-dialog';
 import './app-model-description-dialog';
 import './app-model-card';
 import './app-model-configuration';
+import './app-training-setup';
+import type { TrainingSetupLabels } from './app-training-setup';
 import type {
 	ConfigurationLabels,
 	ModelConfigurationChangeDetail,
@@ -52,6 +73,13 @@ import {
 	flatOptionMessages
 } from './model-option-copy';
 import { MULTICLASS_STRATEGY } from './model-presentation-policy';
+import {
+	computeTrainingSetupBounds,
+	createCrossValidationSetup,
+	formatTrainingSetupSummary,
+	validateFoldCount,
+	type TrainingSetupBounds
+} from './training-setup';
 
 const messages = i18n('app-model-builder-view', {
 	noModelHeading: 'No classification model available',
@@ -63,6 +91,47 @@ const messages = i18n('app-model-builder-view', {
 	edit: 'Edit',
 	completed: 'Completed',
 	reopenConfigure: 'Edit Configure Model',
+	trainingSetupHeading: '4. Training Setup',
+	trainingSetupHelp: 'What is this?',
+	reopenTrainingSetup: 'Edit Training Setup',
+	completedTrainingSetup: params<{ summary: string }>('4. {summary}'),
+	selectedTrainingSetup: 'Selected training setup:',
+	oneShotSummary: 'One-Shot (80% / 20%)',
+	crossValidationSummary: params<{ folds: number }>('Cross-Validation ({folds} folds)'),
+	trainingSetupNotConfigured: 'Not configured',
+	trainingSetupLoading: 'Loading dataset metadata…',
+	trainingSetupError: 'The dataset metadata could not be read.',
+	trainingSetupMalformedStats: 'The class counts for this target could not be read.',
+	trainingSetupTargetMissing: 'The current target is unavailable for training setup.',
+	trainingSetupBlocked:
+		'Training setup requires at least two classes with two labelled rows each.',
+	trainingSetupChooseTarget: 'Choose a target',
+	retryTrainingSetup: 'Retry',
+	trainingSetupForm: 'Training Setup',
+	strategyLabel: 'Training Strategy',
+	strategyOneShot: 'One-Shot',
+	strategyCrossValidation: 'Cross-Validation',
+	strategyHelp: 'How the rows are divided to train and evaluate the model.',
+	learnMore: 'Learn more',
+	oneShotNote: 'Requests an 80% training and 20% held-out test split.',
+	foldsLabel: 'Cross-validation Folds',
+	foldsExactValueLabel: 'Number of folds (exact value)',
+	foldsHelp: 'Each fold is used once for validation. More folds take longer to train.',
+	matrixCaption: 'Cross-validation training iterations',
+	matrixRunHeader: 'Run',
+	matrixTrainingCell: 'Training',
+	matrixValidationCell: 'Validation',
+	legendLabel: 'Fold partition legend',
+	legendTraining: 'Training',
+	legendValidation: 'Validation',
+	foldSummary: params<Parameters<TrainingSetupLabels['foldSummary']>[0]>(
+		'Each of the {folds} runs trains on {trainFolds} folds ({trainPercent}) and validates on 1 fold ({validationPercent}).'
+	),
+	foldErrorInvalidNumber: 'Enter a valid whole number.',
+	foldErrorRange: params<{ min: number; max: number }>(
+		'Enter a whole number between {min} and {max}.'
+	),
+	trainModel: 'Train Model',
 	...flatOptionMessages(),
 	...CONFIGURE_MODEL_MESSAGES,
 	reset: params<{ name: string }>(CONFIGURE_MODEL_TEMPLATES.reset),
@@ -70,6 +139,76 @@ const messages = i18n('app-model-builder-view', {
 	layerSize: params<{ layer: number }>(CONFIGURE_MODEL_TEMPLATES.layerSize),
 	exactValue: params<{ name: string }>(CONFIGURE_MODEL_TEMPLATES.exactValue)
 });
+
+type TrainingSetupResource =
+	| { kind: 'loading' | 'error' | 'target-missing' | 'malformed-stats' }
+	| { kind: 'ready'; targetStats: ColumnStats; bounds: TrainingSetupBounds };
+
+const TRAINING_SETUP_HELP_PATH = '/help/training-setup';
+
+function selectTrainingSetupResource(
+	appState: PersistedAppState,
+	resources: DatasetResourcesState
+): TrainingSetupResource {
+	const datasetId = appState.dataset?.id;
+	if (
+		!datasetId ||
+		resources.datasetId !== datasetId ||
+		resources.status === 'idle' ||
+		resources.status === 'loading'
+	) {
+		return { kind: 'loading' };
+	}
+
+	const metadata = resources.metadata;
+	if (
+		resources.status !== 'ready' ||
+		!metadata ||
+		metadata.id !== datasetId ||
+		!Array.isArray(metadata.columns)
+	) {
+		return { kind: 'error' };
+	}
+
+	let targetStats: ColumnStats | null = null;
+	for (const column of metadata.columns) {
+		if (
+			!column ||
+			typeof column !== 'object' ||
+			Array.isArray(column) ||
+			typeof column.name !== 'string' ||
+			typeof column.type !== 'string'
+		) {
+			return { kind: 'error' };
+		}
+		if (
+			column.name === appState.target &&
+			(column.type === 'categorical' || column.type === 'boolean')
+		) {
+			targetStats ??= column;
+		}
+	}
+	if (!targetStats) return { kind: 'target-missing' };
+
+	const bounds = computeTrainingSetupBounds(targetStats);
+	return bounds.minClassCount === null
+		? { kind: 'malformed-stats' }
+		: { kind: 'ready', targetStats, bounds };
+}
+
+const $trainingSetupResource = computed(
+	[$appState, $datasetResources],
+	selectTrainingSetupResource
+);
+
+function getActiveStep(model: ModelRecord): number {
+	const firstIncomplete = SECTION_ORDER.findIndex((step) => !model.completedSteps.includes(step));
+	return firstIncomplete < 0 ? SECTION_ORDER.length : firstIncomplete + 1;
+}
+
+function trainingSetupKey(appState: PersistedAppState, modelNum: number): string {
+	return JSON.stringify([appState.dataset?.id, appState.target, modelNum]);
+}
 
 /**
  * Connected root workflow view for Step 3: Model Builder (/models/:num).
@@ -116,6 +255,11 @@ export class AppModelBuilderView extends LitElement {
 
 			a {
 				color: var(--blue-700);
+			}
+
+			.train-step-panel[aria-labelledby='step-4-title'] a:focus-visible {
+				outline: 2px solid var(--focus-ring);
+				outline-offset: 2px;
 			}
 
 			code {
@@ -232,7 +376,7 @@ export class AppModelBuilderView extends LitElement {
 
 			.pending-notice {
 				margin: 0;
-				color: var(--stone-600);
+				color: var(--neutral-700);
 				font-style: italic;
 			}
 
@@ -273,6 +417,7 @@ export class AppModelBuilderView extends LitElement {
 
 	private readonly appStateController = new StoreController(this, $appState);
 	private readonly resourcesController = new StoreController(this, $datasetResources);
+	private readonly trainingSetupResource = new StoreController(this, $trainingSetupResource);
 	private readonly translations = new StoreController(this, messages);
 
 	/** Monotonically allocated sequential model number (e.g. 1 for /models/1). */
@@ -291,6 +436,7 @@ export class AppModelBuilderView extends LitElement {
 	@state() private accessor pendingReopenSection: ModelSectionId | null = null;
 
 	private loadPromise: Promise<void> | null = null;
+	private trainingSetupChild: { element: Element; key: string } | null = null;
 	private contentAbortController = new AbortController();
 
 	private get currentModel(): ModelRecord | undefined {
@@ -1219,6 +1365,245 @@ export class AppModelBuilderView extends LitElement {
 		`;
 	}
 
+	private trainingSetupLabels(): TrainingSetupLabels {
+		const t = this.translations.value;
+		return {
+			formLabel: t.trainingSetupForm,
+			strategyLabel: t.strategyLabel,
+			strategyOneShot: t.strategyOneShot,
+			strategyCrossValidation: t.strategyCrossValidation,
+			strategyHelp: t.strategyHelp,
+			strategyHelpLinkText: t.learnMore,
+			strategyHelpHref: TRAINING_SETUP_HELP_PATH,
+			oneShotNote: t.oneShotNote,
+			foldsLabel: t.foldsLabel,
+			foldsExactValueLabel: t.foldsExactValueLabel,
+			foldsHelp: t.foldsHelp,
+			matrixCaption: t.matrixCaption,
+			matrixRunHeader: t.matrixRunHeader,
+			matrixTrainingCell: t.matrixTrainingCell,
+			matrixValidationCell: t.matrixValidationCell,
+			legendLabel: t.legendLabel,
+			legendTraining: t.legendTraining,
+			legendValidation: t.legendValidation,
+			foldSummary: t.foldSummary,
+			formatPercent: (percent) =>
+				$format.get().number(percent / 100, { style: 'percent', maximumFractionDigits: 1 }),
+			foldErrorInvalidNumber: t.foldErrorInvalidNumber,
+			foldErrorRange: (min, max) => t.foldErrorRange({ min, max }),
+			submitButton: t.trainModel
+		};
+	}
+
+	private currentTrainingSetupFromEvent(
+		event: CustomEvent<{ readonly setup: unknown }>
+	): ValidationMethodology | null {
+		const route = $route.get();
+		const child = this.trainingSetupChild;
+		if (
+			route.kind !== 'workflow' ||
+			route.modelNum !== this.modelNum ||
+			!child?.element.isConnected ||
+			child.element !== event.currentTarget
+		)
+			return null;
+
+		const appState = $appState.get();
+		const model = appState.models.find((entry) => entry.num === this.modelNum);
+		if (
+			!model ||
+			model.status !== 'draft' ||
+			getActiveStep(model) !== 4 ||
+			child.key !== trainingSetupKey(appState, model.num)
+		)
+			return null;
+
+		const resource = selectTrainingSetupResource(appState, $datasetResources.get());
+		if (resource.kind !== 'ready' || resource.bounds.blocked) return null;
+
+		const setup = event.detail?.setup;
+		if (
+			!setup ||
+			typeof setup !== 'object' ||
+			Array.isArray(setup) ||
+			!('type' in setup) ||
+			!('randomState' in setup) ||
+			setup.randomState !== FIXED_TRAINING_RANDOM_STATE
+		)
+			return null;
+
+		if (setup.type === 'one_shot') {
+			return 'testRatio' in setup && setup.testRatio === FIXED_ONE_SHOT_TEST_RATIO
+				? { ...DEFAULT_ONE_SHOT_SETUP }
+				: null;
+		}
+		if (
+			setup.type === 'nested_cv' &&
+			'outerFolds' in setup &&
+			'innerFolds' in setup &&
+			typeof setup.outerFolds === 'number' &&
+			setup.outerFolds === setup.innerFolds &&
+			validateFoldCount(setup.outerFolds, resource.bounds.maxFolds) === null
+		) {
+			return createCrossValidationSetup(setup.outerFolds);
+		}
+		return null;
+	}
+
+	private handleTrainingSetupChange(event: CustomEvent<{ readonly setup: unknown }>): void {
+		const setup = this.currentTrainingSetupFromEvent(event);
+		if (setup) setTrainingSetup(this.modelNum, setup);
+	}
+
+	private handleTrainingSetupSubmit(event: CustomEvent<{ readonly setup: unknown }>): void {
+		const setup = this.currentTrainingSetupFromEvent(event);
+		if (setup && setTrainingSetup(this.modelNum, setup)) {
+			completeSection(this.modelNum, 'configure-training');
+		}
+	}
+
+	private handleTrainingSetupRetry(): void {
+		const datasetId = $appState.get().dataset?.id;
+		if (datasetId) this.loadPromise = loadDatasetResources(datasetId);
+	}
+
+	private handleTrainingSetupReopen(): void {
+		this.handleReopenClick('configure-training');
+	}
+
+	private renderTrainingSetupForm(model: ModelRecord): TemplateResult {
+		const t = this.translations.value;
+		const resource = this.trainingSetupResource.value;
+		if (resource.kind === 'loading')
+			return html`<p role="status">${t.trainingSetupLoading}</p>`;
+		if (resource.kind === 'target-missing') {
+			return html`<p>
+				${t.trainingSetupTargetMissing} <a href="/target">${t.trainingSetupChooseTarget}</a>
+			</p>`;
+		}
+		if (resource.kind !== 'ready') {
+			return html`
+				<p role="alert">
+					${resource.kind === 'malformed-stats'
+						? t.trainingSetupMalformedStats
+						: t.trainingSetupError}
+				</p>
+				<button type="button" class="btn" @click=${this.handleTrainingSetupRetry}>
+					${t.retryTrainingSetup}
+				</button>
+			`;
+		}
+
+		const key = trainingSetupKey(this.appStateController.value, model.num);
+		return html`
+			${keyed(
+				key,
+				html`
+					<app-training-setup
+						${ref((element) => {
+							if (element) this.trainingSetupChild = { element, key };
+							else if (this.trainingSetupChild?.key === key)
+								this.trainingSetupChild = null;
+						})}
+						.value=${model.trainingSetup}
+						.maxFolds=${resource.bounds.maxFolds}
+						.blockedReason=${resource.bounds.blocked ? t.trainingSetupBlocked : ''}
+						.labels=${this.trainingSetupLabels()}
+						@app-training-setup-change=${this.handleTrainingSetupChange}
+						@app-training-setup-submit=${this.handleTrainingSetupSubmit}>
+					</app-training-setup>
+				`
+			)}
+			${resource.bounds.blocked
+				? html`<p><a href="/target">${t.trainingSetupChooseTarget}</a></p>`
+				: nothing}
+		`;
+	}
+
+	private renderTrainingSetupSection(
+		model: ModelRecord,
+		isActive: boolean,
+		isCompleted: boolean
+	): TemplateResult {
+		const t = this.translations.value;
+		if (!isActive && !isCompleted) {
+			return this.renderPendingSection(
+				t.trainingSetupHeading,
+				'step-4-title',
+				'configure-training',
+				0,
+				4
+			);
+		}
+
+		const editable = model.status === 'draft';
+		const showForm = isActive && editable;
+		const summary = model.trainingSetup
+			? formatTrainingSetupSummary(model.trainingSetup, {
+					oneShot: t.oneShotSummary,
+					crossValidation: (folds) => t.crossValidationSummary({ folds })
+				})
+			: t.trainingSetupNotConfigured;
+		return html`
+			<li
+				class="train-step ${isActive ? 'step-active' : ''}"
+				aria-current=${isActive ? 'step' : nothing}>
+				<section class="train-step-panel" aria-labelledby="step-4-title">
+					<header class="train-step-header">
+						<h2 id="step-4-title">
+							${showForm
+								? t.trainingSetupHeading
+								: t.completedTrainingSetup({ summary })}
+							${showForm
+								? html`<a href=${TRAINING_SETUP_HELP_PATH} class="help-link"
+										>${t.trainingSetupHelp}</a
+									>`
+								: nothing}
+						</h2>
+						${isCompleted
+							? html`
+									<span class="train-step-action train-step-status">
+										${editable
+											? html`
+													<button
+														type="button"
+														class="btn reopen-btn"
+														aria-label=${t.reopenTrainingSetup}
+														@click=${this.handleTrainingSetupReopen}>
+														${t.edit}
+													</button>
+												`
+											: nothing}
+										<span class="visually-hidden">${t.completed}</span>
+										<svg
+											aria-hidden="true"
+											width="20"
+											height="20"
+											viewBox="0 0 24 24"
+											fill="currentColor">
+											<path
+												d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+										</svg>
+									</span>
+								`
+							: nothing}
+					</header>
+					<div class="train-step-content" ?hidden=${!showForm}>
+						${showForm
+							? this.renderTrainingSetupForm(model)
+							: html`
+									<div class="completed-summary">
+										<p>
+											${t.selectedTrainingSetup} <strong>${summary}</strong>
+										</p>
+									</div>
+								`}
+					</div>
+				</section>
+			</li>
+		`;
+	}
+
 	private renderPendingSection(
 		title: string,
 		stepId: string,
@@ -1265,25 +1650,11 @@ export class AppModelBuilderView extends LitElement {
 			`;
 		}
 
-		// Calculate active step
-		let activeStep = 1;
-		if (!model.completedSteps.includes('choose-model')) {
-			activeStep = 1;
-		} else if (!model.completedSteps.includes('select-features')) {
-			activeStep = 2;
-		} else if (!model.completedSteps.includes('configure-model')) {
-			activeStep = 3;
-		} else if (!model.completedSteps.includes('configure-training')) {
-			activeStep = 4;
-		} else if (!model.completedSteps.includes('training')) {
-			activeStep = 5;
-		} else {
-			activeStep = 6;
-		}
-
+		const activeStep = getActiveStep(model);
 		const isStep1Completed = model.completedSteps.includes('choose-model');
 		const isStep2Completed = model.completedSteps.includes('select-features');
 		const isStep3Completed = model.completedSteps.includes('configure-model');
+		const isStep4Completed = model.completedSteps.includes('configure-training');
 
 		return html`
 			<div class="page-header">
@@ -1298,13 +1669,7 @@ export class AppModelBuilderView extends LitElement {
 					${this.renderChooseModelSection(model, activeStep === 1, isStep1Completed)}
 					${this.renderSelectFeaturesSection(model, activeStep === 2, isStep2Completed)}
 					${this.renderConfigureModelSection(model, activeStep === 3, isStep3Completed)}
-					${this.renderPendingSection(
-						'4. Training Setup',
-						'step-4-title',
-						'configure-training',
-						activeStep,
-						4
-					)}
+					${this.renderTrainingSetupSection(model, activeStep === 4, isStep4Completed)}
 					${this.renderPendingSection(
 						'5. Train Model',
 						'step-5-title',

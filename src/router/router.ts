@@ -61,6 +61,8 @@ export function getDocumentTitle(route: ParsedRoute): string {
 					return `${BASE_TITLE} | Help`;
 				case '/help/configure-model':
 					return `${BASE_TITLE} | What do these settings mean?`;
+				case '/help/training-setup':
+					return `${BASE_TITLE} | Training Setup`;
 			}
 		case 'unknown':
 			return BASE_TITLE;

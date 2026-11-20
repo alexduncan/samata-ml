@@ -76,11 +76,41 @@ export interface HyperparameterConfig {
 	tuningSearchSpace?: Record<string, HyperparameterValue[]>;
 }
 
+/** Test partition ratio requested by One-Shot. */
+export const FIXED_ONE_SHOT_TEST_RATIO = 0.2 as const;
+
+/** Reproducible random seed for both training strategies. */
+export const FIXED_TRAINING_RANDOM_STATE = 42 as const;
+
+/** Smallest selectable cross-validation fold count. */
+export const MIN_CV_FOLDS = 2;
+
+/** Largest selectable cross-validation fold count. */
+export const MAX_CV_FOLDS = 10;
+
+/** Initial cross-validation fold count before applying target class limits. */
+export const DEFAULT_CV_FOLDS = 5;
+
 /** Methodology used for model training and validation. */
 export type ValidationMethodology =
-	| { type: 'nested_cv'; outerFolds: number; innerFolds: number }
-	| { type: 'k_fold_cv'; folds: number }
-	| { type: 'train_test_split'; testRatio: number };
+	| {
+			type: 'one_shot';
+			testRatio: typeof FIXED_ONE_SHOT_TEST_RATIO;
+			randomState: typeof FIXED_TRAINING_RANDOM_STATE;
+	  }
+	| {
+			type: 'nested_cv';
+			outerFolds: number;
+			innerFolds: number;
+			randomState: typeof FIXED_TRAINING_RANDOM_STATE;
+	  };
+
+/** Default setup for a model with no saved strategy. */
+export const DEFAULT_ONE_SHOT_SETUP: ValidationMethodology = {
+	type: 'one_shot',
+	testRatio: FIXED_ONE_SHOT_TEST_RATIO,
+	randomState: FIXED_TRAINING_RANDOM_STATE
+};
 
 /** Multi-class classification strategy. */
 export type MulticlassStrategy = 'native' | 'one-vs-rest' | 'one-vs-one';

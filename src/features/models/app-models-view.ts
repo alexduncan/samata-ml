@@ -1,6 +1,8 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { StoreController } from '@nanostores/lit';
+import { params } from '@nanostores/i18n';
+import { i18n } from '../../i18n';
 import { navigate } from '../../router/router';
 import { $appState, createModel } from '../../stores/app.store';
 import { $datasetResources, loadDatasetResources } from '../../stores/dataset.store';
@@ -11,6 +13,13 @@ import { tableStyles } from '../../styles/table.styles';
 import { headingFocusStyles } from '../../styles/heading-focus.styles';
 import type { ModelRecord } from '../../types/state';
 import { SUPERVISED_MODELS } from './model-catalogue';
+import { formatTrainingSetupSummary } from './training-setup';
+
+const messages = i18n('app-models-view', {
+	oneShotSummary: 'One-Shot (80% / 20%)',
+	crossValidationSummary: params<{ folds: number }>('Cross-Validation ({folds} folds)'),
+	notConfigured: 'Not configured'
+});
 
 /**
  * Connected root workflow view for Step 3: Train Models Overview.
@@ -111,6 +120,7 @@ export class AppModelsView extends LitElement {
 
 	private readonly appStateController = new StoreController(this, $appState);
 	private readonly resourcesController = new StoreController(this, $datasetResources);
+	private readonly translations = new StoreController(this, messages);
 	private readonly canCompareController = new StoreController(this, $canCompare);
 
 	private loadPromise: Promise<void> | null = null;
@@ -281,10 +291,15 @@ export class AppModelsView extends LitElement {
 		const isConfigured = model.completedSteps.includes('configure-model');
 		const configText = isConfigured ? model.hyperparameters.mode : 'Not configured';
 
-		// Training Setup: 'Not configured' or plain persisted value
+		const labels = this.translations.value;
 		const isTrainingSetup = model.completedSteps.includes('configure-training');
 		const setupText =
-			isTrainingSetup && model.trainingSetup ? model.trainingSetup.type : 'Not configured';
+			isTrainingSetup && model.trainingSetup
+				? formatTrainingSetupSummary(model.trainingSetup, {
+						oneShot: labels.oneShotSummary,
+						crossValidation: (folds) => labels.crossValidationSummary({ folds })
+					})
+				: labels.notConfigured;
 
 		// Duration
 		const durationText = this.formatDuration(model.durationMs);

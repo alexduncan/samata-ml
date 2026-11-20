@@ -1,10 +1,9 @@
 <!doctype html>
-<!-- DRAFT: structure only, not normative for appearance. Source: plans/web-ml-classification-integration.md, interfaces and behaviour B–G. Open questions: plan approval. -->
+<!-- DRAFT: structure only, not normative for appearance. Source: plans/web-ml-phase-2-training-setup.md, sections C–E. Open questions: none. -->
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
 		<link rel="stylesheet" href="../style.css" />
-		<link rel="stylesheet" href="../mockups.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>samatā.ml | Train Models</title>
 	</head>
@@ -234,98 +233,39 @@
 							<header class="train-step-header">
 								<h2 id="step-4-title">
 									4. Training Setup
-									<a href="/help/configure-model" class="help-link"
+									<a href="/help/training-setup" class="help-link"
 										>What is this?
 									</a>
 								</h2>
 							</header>
 							<div class="train-step-content">
-								<form aria-labelledby="training-setup-heading">
-									<!-- Random Seed -->
-									<div class="field">
-										<label for="random-seed" class="field-name"
-											>Random Seed</label
-										>
-
-										<input
-											id="random-seed"
-											name="randomSeed"
-											type="number"
-											class="field-control"
-											aria-describedby="random-seed-help"
-											value="42" />
-
-										<div id="random-seed-help" class="field-description">
-											<p>
-												Stops numbers from changing and ensures the training
-												process is reproducible.
-											</p>
-										</div>
-									</div>
-
-									<!-- After Phase 5: Add support for missing Values -->
-									<div class="field">
-										<label for="missing-values" class="field-name"
-											>Missing Values</label
-										>
-
-										<select
-											id="missing-values"
-											name="missingValues"
-											class="field-control"
-											aria-describedby="missing-values-help">
-											<option value="ignore">Ignore</option>
-											<option value="impute">Impute</option>
-										</select>
-
-										<div id="missing-values-help" class="field-description">
-											<p>
-												Specify how to handle missing values in the dataset.
-											</p>
-										</div>
-									</div>
-
-									<!-- Strategy -->
+								<form aria-labelledby="step-4-title" novalidate>
 									<div class="field">
 										<label for="strategy" class="field-name"
 											>Training Strategy</label
 										>
-
 										<select
 											id="strategy"
 											name="strategy"
 											class="field-control"
 											aria-describedby="strategy-help">
-											<option value="manual">One-Shot</option>
-											<!-- disabled until Phase 2 -->
-											<option value="tuning" disabled>
+											<option value="one_shot">One-Shot</option>
+											<option value="nested_cv" selected>
 												Cross-Validation
 											</option>
 										</select>
 										<div id="strategy-help" class="field-description">
 											<p>
-												Choose the training strategy for the model.
-												<strong>"One-Shot"</strong>
-												trains once on the development data, while
-												<strong>"Cross-Validation"</strong> trains the model
-												multiple times on different chunks of the data.
-												<a href="/help/training-strategy" target="_blank"
-													>Learn more</a
-												>
+												How the rows are divided to train and evaluate the
+												model. <a href="/help/training-setup">Learn more</a>
 											</p>
 										</div>
 									</div>
 
-									<!-- If Cross-Validation is selected, show additional settings for folds -->
-
 									<div class="field field--folds">
-										<label
-											id="folds-label"
-											for="folds-range"
-											class="field-name">
-											Cross-validation Folds
-										</label>
-
+										<label id="folds-label" for="folds-range" class="field-name"
+											>Cross-validation Folds</label
+										>
 										<div
 											class="field-controls field-controls--folds"
 											role="group"
@@ -337,12 +277,11 @@
 												max="10"
 												step="1"
 												value="5"
+												aria-labelledby="folds-label"
 												aria-describedby="folds-help folds-visual-summary" />
-
-											<label class="visually-hidden" for="folds-number">
-												Number of folds (exact value)
-											</label>
-
+											<label class="visually-hidden" for="folds-number"
+												>Number of folds (exact value)</label
+											>
 											<input
 												id="folds-number"
 												name="folds"
@@ -353,172 +292,239 @@
 												value="5"
 												aria-describedby="folds-help folds-visual-summary" />
 										</div>
-
-										<div id="folds-help" class="field-description">
-											<p>
-												Divides the dataset into multiple chunks. Then the
-												model trains on all but one chunk and validates on
-												the remaining chunk. Each chunk is used once as the
-												validation set.
-											</p>
+										<div class="field-description">
+											<div id="folds-help">
+												<p>
+													Each fold is used once for validation. More
+													folds take longer to train.
+												</p>
+											</div>
 										</div>
-
 										<div class="field-visual">
-											<table
-												class="fold-matrix"
-												aria-describedby="folds-visual-summary">
-												<caption>
-													Cross-validation training iterations
-												</caption>
-												<thead></thead>
-												<tbody></tbody>
-											</table>
-
+											<div
+												class="fold-matrix-scroll"
+												tabindex="0"
+												role="region"
+												aria-labelledby="folds-matrix-caption">
+												<table
+													class="fold-matrix"
+													aria-describedby="folds-visual-summary">
+													<caption id="folds-matrix-caption">
+														Cross-validation training iterations
+													</caption>
+													<thead>
+														<tr>
+															<th scope="col">Run</th>
+															<th scope="col">1</th>
+															<th scope="col">2</th>
+															<th scope="col">3</th>
+															<th scope="col">4</th>
+															<th scope="col">5</th>
+														</tr>
+													</thead>
+													<tbody>
+														<tr>
+															<th scope="row">1</th>
+															<td class="fold-validation">
+																<span aria-hidden="true">✓</span
+																><span class="visually-hidden"
+																	>Validation</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+														</tr>
+														<tr>
+															<th scope="row">2</th>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-validation">
+																<span aria-hidden="true">✓</span
+																><span class="visually-hidden"
+																	>Validation</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+														</tr>
+														<tr>
+															<th scope="row">3</th>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-validation">
+																<span aria-hidden="true">✓</span
+																><span class="visually-hidden"
+																	>Validation</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+														</tr>
+														<tr>
+															<th scope="row">4</th>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-validation">
+																<span aria-hidden="true">✓</span
+																><span class="visually-hidden"
+																	>Validation</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+														</tr>
+														<tr>
+															<th scope="row">5</th>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-training">
+																<span aria-hidden="true">–</span
+																><span class="visually-hidden"
+																	>Training</span
+																>
+															</td>
+															<td class="fold-validation">
+																<span aria-hidden="true">✓</span
+																><span class="visually-hidden"
+																	>Validation</span
+																>
+															</td>
+														</tr>
+													</tbody>
+												</table>
+											</div>
 											<p
 												id="folds-visual-summary"
 												class="fold-visual-summary">
-												Training on 4 folds (80%) and validating on 1 fold
-												(20%) per iteration.
+												Each of the 5 runs trains on 4 folds (80%) and
+												validates on 1 fold (20%).
 											</p>
-
 											<ul
 												class="fold-legend"
 												aria-label="Fold partition legend">
 												<li>
 													<span
 														class="fold-legend-swatch fold-legend-swatch-train"
-														aria-hidden="true"></span>
+														aria-hidden="true"
+														>–</span
+													>
 													Training
 												</li>
 												<li>
 													<span
 														class="fold-legend-swatch fold-legend-swatch-validation"
-														aria-hidden="true"></span>
+														aria-hidden="true"
+														>✓</span
+													>
 													Validation
 												</li>
 											</ul>
 										</div>
 									</div>
-
-									<button type="button" class="btn btn-primary">
-										Train Model
-									</button>
+									<div class="section-actions">
+										<button type="submit" class="btn btn-primary">
+											Train Model
+										</button>
+									</div>
 								</form>
-								<script>
-									(() => {
-										const field = document.querySelector(".field--folds");
-										if (!field) return;
-
-										const range = field.querySelector("#folds-range");
-										const number = field.querySelector("#folds-number");
-										const matrix = field.querySelector(".fold-matrix");
-										const thead = matrix.querySelector("thead");
-										const tbody = matrix.querySelector("tbody");
-										const summary = field.querySelector(".fold-visual-summary");
-
-										let currentFolds = Number(range.value);
-
-										const formatPercent = (value) =>
-											`${Number(value.toFixed(1))}%`;
-
-										function updateFolds(folds, updateNumber = true) {
-											currentFolds = folds;
-											range.value = String(folds);
-
-											if (updateNumber) {
-												number.value = String(folds);
-											}
-
-											// Update training/validation percentages.
-											const training = ((folds - 1) / folds) * 100;
-											const validation = 100 / folds;
-
-											summary.textContent =
-												`Training on ${folds - 1} folds (${formatPercent(training)}) ` +
-												`and validating on 1 fold (${formatPercent(validation)}) per iteration.`;
-
-											// Generate column headers.
-											const header = document.createElement("tr");
-
-											const corner = document.createElement("th");
-											corner.scope = "col";
-											corner.textContent = "Run";
-											header.append(corner);
-
-											for (let fold = 1; fold <= folds; fold++) {
-												const th = document.createElement("th");
-												th.scope = "col";
-												th.textContent = String(fold);
-												header.append(th);
-											}
-
-											thead.replaceChildren(header);
-
-											// Generate training iteration rows.
-											const rows = document.createDocumentFragment();
-
-											for (
-												let iteration = 1;
-												iteration <= folds;
-												iteration++
-											) {
-												const tr = document.createElement("tr");
-
-												// Iteration label.
-												const rowHeader = document.createElement("th");
-												rowHeader.scope = "row";
-												rowHeader.textContent = String(iteration);
-												tr.append(rowHeader);
-
-												// Fold partitions for this iteration.
-												for (let fold = 1; fold <= folds; fold++) {
-													const isValidation = fold === iteration;
-													const td = document.createElement("td");
-
-													td.className = isValidation
-														? "fold-validation"
-														: "fold-training";
-
-													// Accessible description for screen readers.
-													const text = document.createElement("span");
-													text.className = "visually-hidden";
-													text.textContent = isValidation
-														? "Validation"
-														: "Training";
-
-													td.append(text);
-													tr.append(td);
-												}
-
-												rows.append(tr);
-											}
-
-											tbody.replaceChildren(rows);
-										}
-
-										// Slider changes immediately.
-										range.addEventListener("input", () => {
-											updateFolds(range.valueAsNumber);
-										});
-
-										// Numeric input updates only when valid.
-										number.addEventListener("input", () => {
-											if (number.value !== "" && number.validity.valid) {
-												updateFolds(number.valueAsNumber, false);
-											}
-										});
-
-										// Restore the last valid value on blur.
-										number.addEventListener("blur", () => {
-											if (number.value === "" || !number.validity.valid) {
-												number.value = String(currentFolds);
-											}
-										});
-
-										// Initialise.
-										updateFolds(currentFolds);
-									})();
-								</script>
 							</div>
 						</section>
 					</li>
@@ -547,109 +553,43 @@
 				</ol>
 			</section>
 
-			<section>
-				<h2>4. Configure Training</h2>
-				<p>Palmer Penguins · Target: species</p>
-				<form aria-labelledby="training-setup-heading">
-					<h3 id="training-setup-heading">Holdout evaluation</h3>
-					<p>
-						Manual training fits the development data and evaluates once on held-out
-						test data.
-					</p>
-					<p>
-						Random Search fits training data and chooses parameters on validation data,
-						then refits on development data before evaluating on the test data.
-					</p>
-					<label for="test-ratio">Test fraction</label
-					><input
-						id="test-ratio"
-						name="testRatio"
-						type="number"
-						min="0"
-						max="1"
-						step="any"
-						value="0.2" />
-					<label for="validation-ratio">Validation fraction (Random Search only)</label
-					><input
-						id="validation-ratio"
-						name="validationRatio"
-						type="number"
-						min="0"
-						max="1"
-						step="any"
-						value="0.2" />
-					<p>
-						The validation fraction is measured against all eligible rows, not only the
-						development rows.
-					</p>
-					<label for="split-seed">Split seed</label
-					><input
-						id="split-seed"
-						name="randomState"
-						type="number"
-						min="0"
-						max="4294967295"
-						step="1"
-						value="42" />
-					<label for="numeric-missing">Missing numeric values</label
-					><select id="numeric-missing" name="numericMissing">
-						<option>Use the fitting-data mean</option>
-						<option>Reject missing values</option>
-					</select>
-					<label for="categorical-missing">Missing categorical values</label
-					><select id="categorical-missing" name="categoricalMissing">
-						<option>Use a separate missing category</option>
-						<option>Reject missing values</option>
-					</select>
-					<p>
-						Categorical features use categories learned from fitting data. Unknown
-						held-out categories encode as all-zero. Numeric features are not scaled.
-					</p>
-					<button class="btn btn-primary" type="button">Train Model</button>
-				</form>
+			<section aria-labelledby="setup-completed-title">
+				<h2 id="setup-completed-title">Completed</h2>
+				<p>4. One-Shot (80% / 20%)</p>
+				<button type="button" class="btn reopen-btn" aria-label="Edit Training Setup">
+					Edit
+				</button>
 			</section>
-			<section>
-				<h2>Preparation summary — example</h2>
-				<p>
-					Palmer Penguins: 344 eligible rows, 0 excluded missing-target rows. Four
-					selected numeric features.
+			<section aria-labelledby="setup-invalid-title">
+				<h2 id="setup-invalid-title">Invalid folds</h2>
+				<label for="invalid-fold-count">Number of folds (exact value)</label>
+				<input
+					id="invalid-fold-count"
+					type="number"
+					min="2"
+					max="10"
+					step="1"
+					value="11"
+					aria-invalid="true"
+					aria-describedby="invalid-fold-error" />
+				<p id="invalid-fold-error" class="field-error">
+					Enter a whole number between 2 and 10.
 				</p>
-				<p>
-					Counts are stratified and rounded per class. The confirmed counts are shown
-					after preparation.
+				<button type="button" class="btn btn-primary">Train Model</button>
+			</section>
+			<section aria-labelledby="setup-blocked-title">
+				<h2 id="setup-blocked-title">Blocked</h2>
+				<p id="draft-training-blocked" class="notification notification-alert" role="alert">
+					Training setup requires at least two labelled rows in each of at least two
+					classes.
 				</p>
-				<p>
-					Manual: development and test. Random Search: training, validation and test,
-					followed by a development refit.
-				</p>
-			</section>
-			<section>
-				<h2>Blocked setup</h2>
-				<p role="alert">The test and validation fractions must add up to less than 1.</p>
-				<button class="btn" type="button" disabled>Train Model</button>
-			</section>
-			<section>
-				<h2>Dataset too small</h2>
-				<p role="alert">
-					Every class needs at least three labelled rows for the stratified split. Add
-					data or choose another target.
-				</p>
-			</section>
-			<section>
-				<h2>Browser unavailable</h2>
-				<p role="alert">
-					Training requires a secure, cross-origin isolated page and browser support for
-					workers and Web Locks. Reload the correctly configured site.
-				</p>
-			</section>
-			<section>
-				<h2>Training in another tab</h2>
-				<p>Another tab is training this model. Its configuration is read-only.</p>
-			</section>
-			<section>
-				<h2>Preparing summary</h2>
-				<progress aria-label="Preparing dataset summary"></progress>
-				<p>Checking rows, class counts and transformed feature width…</p>
+				<button
+					type="button"
+					class="btn btn-primary"
+					aria-describedby="draft-training-blocked"
+					disabled>
+					Train Model
+				</button>
 			</section>
 		</main>
 	</body>
