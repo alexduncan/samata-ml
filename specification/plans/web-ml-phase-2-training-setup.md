@@ -1,9 +1,9 @@
 # Phase 2: Configure training setup (one-shot and cross-validation)
 
-**Status:** ready-for-review | **Updated:** 2026-11-20T08:54:53Z
+**Status:** ready | **Updated:** 2026-11-20T08:57:13Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Google Antigravity (Gemini 4 Neon High), Codex (GPT-6), Codex (gpt-6.2-astra), Codex (gpt-6.2-sol) | **Created:** 2026-11-17T21:23:45Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
-**Verified hash:** —
+**Verified by:** Codex (gpt-6.2-astra) | **Verified:** 2026-11-20T08:57:13Z | **Verification:** approved
+**Verified hash:** sha256:01a008e9e271b026620ff3adeca80768e8088dcdc27c2eaf65c16c26f989901c
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -580,6 +580,7 @@ Both web-ml copies are version 0.1.0 with 16 matching catalogue entries. The ins
 | 07:20 MINOR — workflow spec conflict            | D5 and the first specification change state the replacement of the header-button rule at `workflow-steps.md` L183 and the "Continue" wording at L187.                                                                                         |
 | 07:20 MINOR — likely files                      | `tests/a11y.e2e.ts` hosts `A11Y-E2E-16`/`-17` in T7; the contrast fix targets `.pending-notice` in the builder's own styles (T6).                                                                                                             |
 | 2026-11-20T08:52:48Z                            | Codex (gpt-6.2-astra)                                                                                                                                                                                                                         | changes-requested | MAJOR T6 §E: ready includes blocked targets and One-Shot has no fold count. Require unblocked current bounds for both strategies, check fixed One-Shot fields separately and validate equal CV counts; test direct blocked One-Shot change and submit cause zero writes. MAJOR T5: COMPONENTS.md §9 and testing.md require independent Playwright acceptance. Add a T5 browser test path and command for COMP-1 through COMP-4 with matching test IDs; retain story smoke. MINOR COMP-4: require alert linkage only for blockedReason; plain disabled has no alert. MINOR §E: format percent / 100 using Intl percent style so the connected fold summary retains its localised percent sign; assert five folds show 80% and 20%. MINOR ROUTE-1: the unknown-route shape includes path per route-parser.ts:63; assert the full object or only the kind. |
+| 2026-11-20T08:57:13Z                            | Codex (gpt-6.2-astra)                                                                                                                                                                                                                         | approved          | Independently reviewed T1–T8, the v1 codec and recovery, live eligibility guards, fixed Help route, accessibility and standalone Playwright coverage. Scout confirmed the application contracts and canonical and installed web-ml 0.1.0 public assets. The previous five findings are resolved. Phase 3 owns the declared upstream gaps. No blocking questions remain.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 
 ### Independent review on 2026-11-20 at 08:41 UTC
 
