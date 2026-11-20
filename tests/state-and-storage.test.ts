@@ -43,13 +43,16 @@ import {
 import { reconcileStartupState, type IndexedDBAdapter } from '../src/stores/reconciler';
 import { $scrollState } from '../src/stores/scroll.store';
 import {
+	DEFAULT_ONE_SHOT_SETUP,
 	INITIAL_APP_STATE,
 	INITIAL_SCROLL_STATE,
 	STATE_STORAGE_KEY,
 	STORAGE_VERSION,
 	type DatasetSummary,
+	type ModelRecord,
 	type PersistedAppState,
-	type ScrollSnapshot
+	type ScrollSnapshot,
+	type ValidationMethodology
 } from '../src/types/state';
 
 const sampleDataset: DatasetSummary = {
@@ -65,6 +68,19 @@ const sampleDataset: DatasetSummary = {
 		{ name: 'notes', type: 'text', missingCount: 0 }
 	]
 };
+
+type HistoricalTrainingState = Omit<PersistedAppState, 'models'> & {
+	models: (Omit<ModelRecord, 'trainingSetup'> & {
+		trainingSetup: { type: 'k_fold_cv'; folds: number };
+	})[];
+};
+
+const fiveFolds = {
+	type: 'nested_cv',
+	outerFolds: 5,
+	innerFolds: 5,
+	randomState: 42
+} satisfies ValidationMethodology;
 
 describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 	beforeEach(() => {
@@ -100,7 +116,7 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			setFeatures(1, ['sepal_length', 'sepal_width']);
 			completeSection(1, 'select-features');
 			completeSection(1, 'configure-model');
-			setTrainingSetup(1, { type: 'k_fold_cv', folds: 5 });
+			setTrainingSetup(1, fiveFolds);
 			startTraining(1);
 			trainingSucceeded(1, { metrics: { accuracy: 0.95 } });
 
@@ -111,7 +127,7 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			setFeatures(2, ['petal_length']);
 			completeSection(2, 'select-features');
 			completeSection(2, 'configure-model');
-			setTrainingSetup(2, { type: 'k_fold_cv', folds: 5 });
+			setTrainingSetup(2, fiveFolds);
 			startTraining(2);
 			trainingSucceeded(2, { metrics: { accuracy: 0.92 } });
 
@@ -330,7 +346,7 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			expect(startTraining(1)).toBe(false);
 
 			// Set training setup
-			setTrainingSetup(1, { type: 'k_fold_cv', folds: 5 });
+			setTrainingSetup(1, fiveFolds);
 
 			// Now training can start and completes configure-training per D8
 			expect(startTraining(1)).toBe(true);
@@ -359,7 +375,7 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			setFeatures(1, ['sepal_length']);
 			completeSection(1, 'select-features');
 			completeSection(1, 'configure-model');
-			setTrainingSetup(1, { type: 'k_fold_cv', folds: 5 });
+			setTrainingSetup(1, fiveFolds);
 
 			// 1. Training failed re-opens configure-training
 			startTraining(1);
@@ -526,7 +542,7 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 	describe('NAV-AC-9: Interrupted training recovery on hydrate', () => {
 		it('recovers interrupted model to draft with TRAINING_INTERRUPTED_BY_RELOAD when lock acquired', async () => {
 			const storage = new MemoryStorage();
-			const stateWithTraining: PersistedAppState = {
+			const stateWithTraining: HistoricalTrainingState = {
 				...INITIAL_APP_STATE,
 				dataset: sampleDataset,
 				target: 'species',
@@ -583,7 +599,7 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 
 		it('leaves model as training if another tab holds the Web Lock', async () => {
 			const storage = new MemoryStorage();
-			const stateWithTraining: PersistedAppState = {
+			const stateWithTraining: HistoricalTrainingState = {
 				...INITIAL_APP_STATE,
 				dataset: sampleDataset,
 				target: 'species',
@@ -821,6 +837,47 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 		});
 	});
 
+	it('WML-P2-STATE-4: only changed draft setups invalidate later completions', () => {
+		loadDatasetSucceeded(sampleDataset);
+		setTarget('species');
+		createModel();
+		setTrainingSetup(1, fiveFolds);
+		const trainingSetupSteps = [
+			'choose-model',
+			'select-features',
+			'configure-model',
+			'configure-training'
+		] as const;
+
+		for (const changedSetup of [
+			{ ...fiveFolds, outerFolds: 4, innerFolds: 4 },
+			DEFAULT_ONE_SHOT_SETUP
+		]) {
+			for (const step of [...trainingSetupSteps, 'training', 'results'] as const) {
+				completeSection(1, step);
+			}
+			const before = $appState.get();
+			const model = before.models[0]!;
+			expect(setTrainingSetup(1, { ...model.trainingSetup! })).toBe(true);
+			expect($appState.get()).toBe(before);
+			expect($appState.get().models[0]).toBe(model);
+			expect($appState.get().models[0]!.trainingSetup).toBe(model.trainingSetup);
+			expect(model.completedSteps).toEqual([...trainingSetupSteps, 'training', 'results']);
+
+			expect(setTrainingSetup(1, changedSetup)).toBe(true);
+			expect($appState.get().models[0]?.completedSteps).toEqual([...trainingSetupSteps]);
+			expect($appState.get().models[0]?.trainingSetup).toEqual(changedSetup);
+		}
+
+		for (const status of ['training', 'trained'] as const) {
+			const state = $appState.get();
+			const locked = { ...state, models: [{ ...state.models[0]!, status }] };
+			$appState.set(locked);
+			expect(setTrainingSetup(1, fiveFolds)).toBe(false);
+			expect($appState.get()).toBe(locked);
+		}
+	});
+
 	describe('SNC-3: discrete selections are synchronous', () => {
 		it('synchronously persists toggleFeature, setMulticlassStrategy, hyperparameter mode change, and trainingSetup type change', () => {
 			const storage = new MemoryStorage();
@@ -846,9 +903,9 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			expect(stored.models[0].hyperparameters.mode).toBe('tuning');
 
 			// 4. setTrainingSetup that changes type
-			setTrainingSetup(1, { type: 'k_fold_cv', folds: 5 });
+			setTrainingSetup(1, fiveFolds);
 			stored = JSON.parse(storage.getItem(STATE_STORAGE_KEY)!);
-			expect(stored.models[0].trainingSetup.type).toBe('k_fold_cv');
+			expect(stored.models[0].trainingSetup).toEqual(fiveFolds);
 		});
 	});
 
@@ -892,7 +949,7 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			completeSection(1, 'choose-model');
 			completeSection(1, 'select-features');
 			completeSection(1, 'configure-model');
-			setTrainingSetup(1, { type: 'k_fold_cv', folds: 5 });
+			setTrainingSetup(1, fiveFolds);
 			startTraining(1);
 			flushNow();
 

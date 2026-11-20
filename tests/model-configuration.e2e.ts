@@ -421,6 +421,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 				...s,
 				models: s.models.map((m) => ({
 					...m,
+					trainingSetup: { type: 'one_shot', testRatio: 0.2, randomState: 42 },
 					completedSteps: [...m.completedSteps, 'configure-training' as const]
 				}))
 			});

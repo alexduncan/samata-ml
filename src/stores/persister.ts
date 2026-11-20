@@ -2,14 +2,22 @@ import { $appState } from './app.store';
 import { $scrollState } from './scroll.store';
 import { parseRoute } from '../router/route-parser';
 import {
+	DEFAULT_ONE_SHOT_SETUP,
+	FIXED_ONE_SHOT_TEST_RATIO,
+	FIXED_TRAINING_RANDOM_STATE,
 	INITIAL_APP_STATE,
 	INITIAL_SCROLL_STATE,
+	MAX_CV_FOLDS,
+	MIN_CV_FOLDS,
 	SCROLL_STORAGE_KEY,
 	STATE_STORAGE_KEY,
 	STORAGE_VERSION,
 	type PersistedAppState,
-	type PersistedScroll
+	type PersistedScroll,
+	type ValidationMethodology
 } from '../types/state';
+
+type TrainingSetupDecodeOutcome = 'valid' | 'explicit-null' | 'unusable';
 
 /**
  * Result of reading both persisted blobs; invalid or unsupported blobs come back as defaults.
@@ -19,6 +27,8 @@ export interface PersistedRead {
 	state: PersistedAppState;
 	/** Validated scroll snapshot dictionary or default state. */
 	scroll: PersistedScroll;
+	/** Transient decode outcomes aligned with the original model array. */
+	trainingSetupDecodeOutcomes: readonly TrainingSetupDecodeOutcome[];
 }
 
 /**
@@ -89,8 +99,6 @@ const VALID_MODEL_SECTION_IDS = new Set<string>([
 
 const VALID_MULTICLASS_STRATEGIES = new Set<string>(['native', 'one-vs-rest', 'one-vs-one']);
 
-const VALID_TRAINING_SETUP_TYPES = new Set<string>(['nested_cv', 'k_fold_cv', 'train_test_split']);
-
 const VALID_ERROR_CODES = new Set<string>([
 	'TRAINING_FAILED',
 	'TRAINING_CANCELLED',
@@ -102,6 +110,66 @@ function isPlainObject(val: unknown): val is Record<string, unknown> {
 }
 
 const FORBIDDEN_VALUE_KEYS = ['__proto__', 'constructor', 'prototype'] as const;
+
+function isStoredFoldCount(value: unknown): value is number {
+	return (
+		typeof value === 'number' &&
+		Number.isInteger(value) &&
+		value >= MIN_CV_FOLDS &&
+		value <= MAX_CV_FOLDS
+	);
+}
+
+/** Decodes a v1 setup from validated own fields, allowing an omitted historical seed. */
+function decodeTrainingSetup(value: unknown): ValidationMethodology | null {
+	if (
+		!isPlainObject(value) ||
+		!Object.hasOwn(value, 'type') ||
+		FORBIDDEN_VALUE_KEYS.some((key) => Object.hasOwn(value, key)) ||
+		(Object.hasOwn(value, 'randomState') && value.randomState !== FIXED_TRAINING_RANDOM_STATE)
+	) {
+		return null;
+	}
+
+	if (value.type === 'train_test_split') {
+		return Object.hasOwn(value, 'testRatio') && value.testRatio === FIXED_ONE_SHOT_TEST_RATIO
+			? { ...DEFAULT_ONE_SHOT_SETUP }
+			: null;
+	}
+
+	let folds: unknown;
+	if (value.type === 'k_fold_cv' && Object.hasOwn(value, 'folds')) {
+		folds = value.folds;
+	} else if (
+		value.type === 'nested_cv' &&
+		Object.hasOwn(value, 'outerFolds') &&
+		Object.hasOwn(value, 'innerFolds') &&
+		value.outerFolds === value.innerFolds
+	) {
+		folds = value.outerFolds;
+	}
+
+	return isStoredFoldCount(folds)
+		? {
+				type: 'nested_cv',
+				outerFolds: folds,
+				innerFolds: folds,
+				randomState: FIXED_TRAINING_RANDOM_STATE
+			}
+		: null;
+}
+
+/** Writes application state with v1 tags without mutating in-memory model setups. */
+function serialiseAppState(state: PersistedAppState): string {
+	return JSON.stringify({
+		...state,
+		models: state.models.map((model) =>
+			model.trainingSetup?.type === 'one_shot'
+				? { ...model, trainingSetup: { ...model.trainingSetup, type: 'train_test_split' } }
+				: model
+		)
+	});
+}
 
 /** Reports whether a persisted hyperparameter value is a finite number, string, boolean, null or number array. */
 function isHyperparameterValue(val: unknown): boolean {
@@ -119,9 +187,13 @@ function isHyperparameterValues(val: unknown): boolean {
 	return Object.values(val).every(isHyperparameterValue);
 }
 
-function validateAppState(
-	val: unknown
-): { valid: true; state: PersistedAppState } | { valid: false; isNewer: boolean } {
+function validateAppState(val: unknown):
+	| {
+			valid: true;
+			state: PersistedAppState;
+			trainingSetupDecodeOutcomes: readonly TrainingSetupDecodeOutcome[];
+	  }
+	| { valid: false; isNewer: boolean } {
 	if (!isPlainObject(val)) {
 		return { valid: false, isNewer: false };
 	}
@@ -221,6 +293,7 @@ function validateAppState(
 	if (!Array.isArray(val.models)) {
 		return { valid: false, isNewer: false };
 	}
+	const trainingSetupDecodeOutcomes: TrainingSetupDecodeOutcome[] = [];
 	for (const m of val.models) {
 		if (!isPlainObject(m)) {
 			return { valid: false, isNewer: false };
@@ -272,17 +345,6 @@ function validateAppState(
 		) {
 			return { valid: false, isNewer: false };
 		}
-		if (m.trainingSetup !== null) {
-			if (!isPlainObject(m.trainingSetup)) {
-				return { valid: false, isNewer: false };
-			}
-			if (
-				typeof m.trainingSetup.type !== 'string' ||
-				!VALID_TRAINING_SETUP_TYPES.has(m.trainingSetup.type)
-			) {
-				return { valid: false, isNewer: false };
-			}
-		}
 		if (m.progress !== null) {
 			if (!isPlainObject(m.progress)) {
 				return { valid: false, isNewer: false };
@@ -322,9 +384,16 @@ function validateAppState(
 		if (m.metrics !== null && !isPlainObject(m.metrics)) {
 			return { valid: false, isNewer: false };
 		}
+
+		const rawSetup = Object.hasOwn(m, 'trainingSetup') ? m.trainingSetup : undefined;
+		const setup = decodeTrainingSetup(rawSetup);
+		trainingSetupDecodeOutcomes.push(
+			setup ? 'valid' : rawSetup === null ? 'explicit-null' : 'unusable'
+		);
+		m.trainingSetup = setup;
 	}
 
-	return { valid: true, state: val as unknown as PersistedAppState };
+	return { valid: true, state: val as unknown as PersistedAppState, trainingSetupDecodeOutcomes };
 }
 
 function validateScrollState(
@@ -397,6 +466,7 @@ export function readPersistedState(storage?: StorageAdapter): PersistedRead {
 	const s = storage ?? activeStorage;
 
 	let state = { ...INITIAL_APP_STATE };
+	let trainingSetupDecodeOutcomes: readonly TrainingSetupDecodeOutcome[] = [];
 	const rawState = s.getItem(STATE_STORAGE_KEY);
 	if (rawState) {
 		try {
@@ -404,6 +474,7 @@ export function readPersistedState(storage?: StorageAdapter): PersistedRead {
 			const result = validateAppState(parsed);
 			if (result.valid) {
 				state = result.state;
+				trainingSetupDecodeOutcomes = result.trainingSetupDecodeOutcomes;
 			} else if (result.isNewer) {
 				readOnlyKeys.add(STATE_STORAGE_KEY);
 			}
@@ -428,7 +499,7 @@ export function readPersistedState(storage?: StorageAdapter): PersistedRead {
 		}
 	}
 
-	return { state, scroll };
+	return { state, scroll, trainingSetupDecodeOutcomes };
 }
 
 let unbindAppState: (() => void) | undefined;
@@ -497,7 +568,7 @@ function writeAppStateNow(storage: StorageAdapter, state: PersistedAppState): vo
 	if (readOnlyKeys.has(STATE_STORAGE_KEY)) {
 		return;
 	}
-	safeSetItem(storage, STATE_STORAGE_KEY, JSON.stringify(state));
+	safeSetItem(storage, STATE_STORAGE_KEY, serialiseAppState(state));
 }
 
 /**
@@ -534,7 +605,7 @@ export function persistNow(storage?: StorageAdapter): void {
 		pendingScrollTimer = undefined;
 	}
 	if (!readOnlyKeys.has(STATE_STORAGE_KEY)) {
-		safeSetItem(s, STATE_STORAGE_KEY, JSON.stringify($appState.get()));
+		safeSetItem(s, STATE_STORAGE_KEY, serialiseAppState($appState.get()));
 	}
 	if (!readOnlyKeys.has(SCROLL_STORAGE_KEY)) {
 		safeSetItem(s, SCROLL_STORAGE_KEY, JSON.stringify($scrollState.get()));
