@@ -19,7 +19,7 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		}
 	});
 
-	test('MOD-HUB-1: guards, empty/populated rows, monotonically numbered creation and correct model links', async ({
+	test('WML-P2-UI-9 / MOD-HUB-1: overview guards, model links and persisted training setup summaries', async ({
 		page
 	}) => {
 		// 1. Guard: No dataset loaded -> /models is blocked
@@ -140,6 +140,91 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 			.analyze();
 		const unexpectedViolations = axeResults.violations.filter((v) => v.id !== 'color-contrast');
 		expect(unexpectedViolations).toEqual([]);
+
+		await page.evaluate(() => {
+			const store = window.__appState!;
+			const state = store.get();
+			const [first, second] = state.models;
+			const completedSteps = [
+				'choose-model',
+				'select-features',
+				'configure-model',
+				'configure-training'
+			] as const;
+			store.set({
+				...state,
+				models: [
+					{
+						...first!,
+						completedSteps: [...completedSteps],
+						trainingSetup: { type: 'one_shot', testRatio: 0.2, randomState: 42 }
+					},
+					{
+						...second!,
+						modelId: 'logistic-regression',
+						features: first!.features,
+						completedSteps: [...completedSteps],
+						trainingSetup: {
+							type: 'nested_cv',
+							outerFolds: 7,
+							innerFolds: 7,
+							randomState: 42
+						}
+					},
+					{ ...second!, num: 3 }
+				],
+				nextModelNum: 4
+			});
+		});
+		const setups = table.locator('tbody tr td:nth-child(4)');
+		const summaries = ['One-Shot (80% / 20%)', 'Cross-Validation (7 folds)', 'Not configured'];
+		await expect(setups).toHaveText(summaries);
+		await page.reload();
+		await expect(setups).toHaveText(summaries);
+
+		// Read a trained record with an unusable v1 setup and a surviving IndexedDB result.
+		const historicalState = await page.evaluate(async () => {
+			const datasetId = window.__appState!.get().dataset!.id;
+			const db = await new Promise<IDBDatabase>((resolve, reject) => {
+				const request = indexedDB.open('samata-db');
+				request.onsuccess = () => resolve(request.result);
+				request.onerror = () => reject(request.error);
+			});
+			try {
+				await new Promise<void>((resolve, reject) => {
+					const transaction = db.transaction('model_results', 'readwrite');
+					transaction.oncomplete = () => resolve();
+					transaction.onabort = () => reject(transaction.error);
+					transaction.objectStore('model_results').put({ datasetId, modelNum: 4 });
+				});
+			} finally {
+				db.close();
+			}
+			const stateKey = 'samata-ml:state';
+			const wire = JSON.parse(localStorage.getItem(stateKey)!);
+			wire.models.push({
+				...wire.models[0],
+				num: 4,
+				status: 'trained',
+				completedSteps: [...wire.models[0].completedSteps, 'training', 'results'],
+				trainingSetup: { type: 'nested_cv', outerFolds: 3, innerFolds: 2 }
+			});
+			return JSON.stringify({ ...wire, nextModelNum: 5 });
+		});
+		// Seed after the previous document's pagehide persistence and before startup reconciliation.
+		await page.addInitScript(
+			(state) => localStorage.setItem('samata-ml:state', state),
+			historicalState
+		);
+		await page.reload();
+		await expect(setups).toHaveText([...summaries, 'Not configured']);
+		await expect(rows.last().getByRole('link', { name: 'View Results' })).toHaveAttribute(
+			'href',
+			'/models/4'
+		);
+		expect(await page.evaluate(() => window.__appState!.get().models[3]?.status)).toBe(
+			'trained'
+		);
 	});
 
 	test('MOD-HUB-2: Compare disabled until two trained models; view results link when trained', async ({

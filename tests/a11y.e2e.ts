@@ -1,8 +1,61 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { featureA11yFindings } from './a11y-feature-findings';
+import { loadSampleDataset } from './journeys/helpers';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
+
+async function openTrainingSetupForAxe(page: Page) {
+	await page.goto('/data');
+	await loadSampleDataset(page, 'iris');
+	await page.locator('app-sidebar a[href="/target"]').click();
+	const target = page.locator('app-target-view');
+	await expect(target.getByTestId('target-ready')).toBeVisible();
+	await target.locator('tbody tr:has(th:has-text("class")) button').click();
+	await target.locator('header a[href="/models"]').click();
+	await page.getByRole('button', { name: 'Train New Model' }).click();
+	const builder = page.locator('app-model-builder-view');
+	await builder
+		.locator('app-model-card[model-id="logistic-regression"]')
+		.getByRole('button', { name: 'Select Model' })
+		.click();
+	for (const step of [0, 1]) {
+		await builder
+			.locator('.train-step')
+			.nth(step)
+			.getByRole('button', { name: 'Continue', exact: true })
+			.click();
+	}
+	await builder.getByRole('button', { name: 'Save & Continue' }).click();
+	await expect(builder.locator('app-training-setup')).toBeVisible();
+	return builder;
+}
+
+function trainingPanel(step: 4 | 5): string {
+	return `section[aria-labelledby="step-${step}-title"]`;
+}
+
+async function assertTrainingPanelAccessibility(page: Page, steps: (4 | 5)[]) {
+	const scoped = new AxeBuilder({ page });
+	for (const step of steps) {
+		scoped.include({ fromShadowDom: ['app-model-builder-view', trainingPanel(step)] });
+	}
+	const results = await scoped
+		.options({
+			runOnly: { type: 'tag', values: [...AXE_TAGS, 'wcag21a'] },
+			rules: {
+				'color-contrast': { enabled: true },
+				'label-content-name-mismatch': { enabled: true }
+			}
+		})
+		.analyze();
+	expect(results.violations).toEqual([]);
+	const checked = [...results.passes, ...results.incomplete, ...results.inapplicable].map(
+		(result) => result.id
+	);
+	expect(checked).toContain('color-contrast');
+	expect(checked).toContain('label-content-name-mismatch');
+}
 
 async function assertNoUnexpectedViolations(page: import('@playwright/test').Page) {
 	const results = await new AxeBuilder({ page }).withTags(AXE_TAGS).analyze();
@@ -571,5 +624,70 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		await expect(dialog).toBeVisible({ timeout: 5000 });
 
 		await assertNoUnexpectedViolations(page);
+	});
+
+	test('WML-P2-UI-11 / A11Y-E2E-16: completed Training Setup and the pending training notice', async ({
+		page
+	}) => {
+		const builder = await openTrainingSetupForAxe(page);
+		await builder
+			.locator('app-training-setup')
+			.getByRole('button', { name: 'Train Model' })
+			.click();
+		const setup = builder.locator(trainingPanel(4));
+		const training = builder.locator(trainingPanel(5));
+		await expect(setup).toBeVisible();
+		await expect(setup.getByRole('button', { name: 'Edit Training Setup' })).toHaveText('Edit');
+		await expect(training).toBeVisible();
+		const notice = training.getByText('Not available yet.');
+		await expect(notice).toBeVisible();
+		const contrast = await notice.evaluate((element) => {
+			const luminance = (colour: string) => {
+				const channels = colour
+					.match(/\d+(?:\.\d+)?/g)!
+					.slice(0, 3)
+					.map((channel) => {
+						const value = Number(channel) / 255;
+						return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+					});
+				return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+			};
+			const foreground = luminance(getComputedStyle(element).color);
+			let background = 1;
+			let current: Element | null = element;
+			while (current) {
+				const colour = getComputedStyle(current).backgroundColor;
+				if (colour !== 'rgba(0, 0, 0, 0)') {
+					background = luminance(colour);
+					break;
+				}
+				const root = current.getRootNode();
+				current = current.parentElement ?? (root instanceof ShadowRoot ? root.host : null);
+			}
+			return (
+				(Math.max(foreground, background) + 0.05) /
+				(Math.min(foreground, background) + 0.05)
+			);
+		});
+		expect(contrast).toBeGreaterThanOrEqual(4.5);
+		await assertTrainingPanelAccessibility(page, [4, 5]);
+	});
+
+	test('WML-P2-UI-11 / A11Y-E2E-17: Training Setup Retry', async ({ page }) => {
+		const builder = await openTrainingSetupForAxe(page);
+		await page.evaluate(() => {
+			const resources = window.__datasetResources!;
+			resources.set({
+				...resources.get(),
+				status: 'error',
+				metadata: null,
+				error: 'Metadata could not be read'
+			});
+		});
+		const setup = builder.locator(trainingPanel(4));
+		await expect(setup).toBeVisible();
+		await expect(setup.getByRole('alert')).toContainText('dataset metadata could not be read');
+		await expect(setup.getByRole('button', { name: 'Retry' })).toBeVisible();
+		await assertTrainingPanelAccessibility(page, [4]);
 	});
 });
