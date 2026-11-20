@@ -1,8 +1,8 @@
 # Phase 2: Configure training setup (one-shot and cross-validation)
 
-**Status:** ready-for-review | **Updated:** 2026-11-20T08:04:53Z
+**Status:** draft | **Updated:** 2026-11-20T08:41:10Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Google Antigravity (Gemini 4 Neon High), Codex (GPT-6), Codex (gpt-6.2-astra) | **Created:** 2026-11-17T21:23:45Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -451,6 +451,7 @@ None.
 | 2026-11-19T18:57:21Z | Codex (gpt-6.2-astra)                   | changes-requested | Two major findings. T2 must preserve the Help history entry across repeated dismissal and Forward. T2/T3 need a ten-fold matrix that actually scrolls at 320 px for UI-9. A minor focus-style gap affects the Learn more link. The independent review below records browser evidence and revision criteria.                                                                                                                                                                                                                                           |
 | 2026-11-20T07:14:55Z | Codex (gpt-6.2-astra)                   | changes-requested | MAJOR in T3. WML-P1-UI-4 reloads an explicit null training setup with Section 4 marked complete. The required T1 repair reopens that section, invalidating the confirmation test. Include tests/model-configuration.e2e.ts in T3 and give its fixture a valid completed setup. The resubmitted Help history, matrix overflow and focus criteria address the prior findings.                                                                                                                                                                           |
 | 2026-11-20T07:20:45Z | Claude Code (claude-opus-5-5)           | changes-requested | Two MAJOR findings. computeTrainingSetupBounds sets a cross-validation feasibility rule that web-ml owns, but web-ml publishes no threshold or helper for it. T2 and T3 are too large for a single implementer and bundle unrelated router and scroll repairs. MINOR findings cover undefined §D identifiers, an unresolved upstream validation-partition conflict, stale line references and wrong file claims. See the independent review below.                                                                                                    |
+| 2026-11-20T08:41:10Z | Claude Code (claude-opus-5-5)           | changes-requested | Two MINOR findings leave acceptance criteria untestable or ambiguous. STYLE-2 requires forced-colours emulation that `test:stories` cannot provide within T4's files. ROUTE-2 cites `/help/configure-model` tests that are neither in `content.e2e.ts` nor run by T3. Further MINOR fixes: move the parity baseline into T1 and refresh the drifted T4 draft references. Design, storage, boundary and upstream contracts verified; no BLOCKER or MAJOR. See the independent review below.                                                            |
 
 ### Evidence for the 2026-11-19 Codex review
 
@@ -577,6 +578,41 @@ Both web-ml copies are version 0.1.0 with 16 matching catalogue entries. The ins
 | 07:20 MINOR — stale references and wrong claims | Codebase context refreshed from the scout (`a857cad`): persister, reconciler and builder lines, story exclusions, the findings entry, journey end points, draft L243, new story files and the IndexedDB harness extension in T1.              |
 | 07:20 MINOR — workflow spec conflict            | D5 and the first specification change state the replacement of the header-button rule at `workflow-steps.md` L183 and the "Continue" wording at L187.                                                                                         |
 | 07:20 MINOR — likely files                      | `tests/a11y.e2e.ts` hosts `A11Y-E2E-16`/`-17` in T7; the contrast fix targets `.pending-notice` in the builder's own styles (T6).                                                                                                             |
+
+### Independent review on 2026-11-20 at 08:41 UTC
+
+This review ran in a fresh forked context on `90cb897`. Product code is unchanged since `a857cad`. Three `codebase-scout` passes covered state and storage, UI and routing, and the web-ml public contract. On the primary checkout, `bun run check` passed typechecking and 261 tests in 36 files. The revision resolves both 07:20 MAJOR findings. D7 records the maintainer's choice of class-count gating as a samatā UI rule. The open upstream request `2026-11-20-stratified-partition-feasibility.md` states a general capability, and D8 with the three stubs bounds the tasks. The findings below are all MINOR. The first two make acceptance criteria untestable or ambiguous, so they prevent approval.
+
+- **MINOR (prevents approval) · T4 `WML-P2-STYLE-2`, the forced-colours check cannot run.** The criterion requires markers to stay visible "with `forced-colors: active` emulated" under `bun run test:stories`. That script runs Vitest browser mode (`package.json` L16, `vitest.config.ts` L19–34). No story or config emulates forced colours, and `vitest.config.ts` defines no custom browser command that could call Playwright's `emulateMedia`. T4 may not edit that file: its likely files exclude it, and the definition of done forbids changes outside them. **Correction:** drop the forced-colours clause from STYLE-2 and rely on `WML-P2-UI-5`, which already checks markers under forced colours in Playwright. `WML-P1-UI-6` (`tests/model-configuration.e2e.ts` L568) sets the precedent. Alternatively, add the config file and a named command to T4.
+- **MINOR (prevents approval) · T3 `WML-P2-ROUTE-2`, the regression check points to the wrong file.** The criterion says "The existing `CNT-E2E-3` and `/help/configure-model` tests still pass" within `tests/content.e2e.ts`. That file has `CNT-E2E-3` (L66), which tests a missing index, but no `/help/configure-model` test. The only test for it is in `tests/model-configuration.e2e.ts` L486–490, and T3's verification commands do not run that file. **Correction:** name that file and test in ROUTE-2 and add `bun run test:e2e tests/model-configuration.e2e.ts` to T3's verification.
+- **MINOR · Parity baseline ordering.** T7's implementation and the definition of done require a Chromium parity run "before T1 begins", but T1 does not mention it. An implementer executing T1 alone will skip it. **Correction:** add the baseline run and log entry to T1's implementation and verification. Alternatively, let T7 run the parity suite against the pre-T1 commit in a separate worktree.
+- **MINOR · T4 draft references have drifted.** In `03-5`, the strategy options are `manual` (L299) and `tuning` (L301), not `one_shot`/`nested_cv`. **Train Model** is at L401–403, and the inline `<script>` starts at L405. The stale block starts at L548, not L550. The primary checkout also has an uncommitted human edit to the same `<select>`, which removes `disabled` from `tuning` around L298–303. **Correction:** state the option values T4 should write and refresh the line references. Ask the human to commit or discard that edit before T4 so the clean-up does not conflict.
+- **MINOR · Evidence accuracy.**
+    - `WML-P1-UI-4` does not set `trainingSetup: null` at L418–427. It spreads each model and appends `configure-training`, so `null` comes from the base record. The test injects state through `window.__appState.set` in `page.evaluate` and imports nothing from `src/`. T1 must therefore inline the One-Shot store literal rather than import `DEFAULT_ONE_SHOT_SETUP`.
+    - `current-limitations.md` L182–183 does state a numeric threshold: Naive Bayes needs at least two observed classes. This is consistent with D7.
+    - The `deleteOrphanDatasets` method spans L48–66.
+    - `getDocumentTitle` spans L33–68, with its reserved cases at L54–64.
+- **SUGGESTION · T1, carrying the decode outcome to the reconciler.** `reconcileStartupState` is the only caller of `readPersistedState` (`reconciler.ts` L93). `src/app.ts` L150–153 runs it before `initPersister`. §A requires the "unusable" versus "explicit `null`" distinction to survive until the model's result and lock checks run. `ValidationMethodology | null` cannot hold that distinction. Name the private carrier, for example per-model decode outcomes returned alongside the state from `readPersistedState`, so T1 needs no design choice.
+- **SUGGESTION · T6 Retry.** `whenSettled()` awaits only `loadPromise`, which `willUpdate` assigns (builder L293, L311, L340–346). State that Retry assigns `loadPromise` to the new `loadDatasetResources` call.
+- **Residual · upstream request.** `../web-ml/specification/requests/2026-11-20-stratified-partition-feasibility.md` is untracked in the web-ml checkout. Phase 2 cannot commit it (Repository boundary). The `specification/HUMAN.md` D7 item should ask the human to commit it there.
+
+**Verified without findings:**
+
+- §A: `setTrainingSetup` returns `true` for deep-equal values (`app.store.ts` L548–567, `jsonEqual`) and returns `false` for a missing or non-draft model. It invalidates only `training` and `results`. `completeSection` requires only a draft model. `reopenSection` removes the target section and every later one. The submit sequence is therefore sound.
+- The v1 reader checks only the type (`persister.ts` L92, L275–285). App state is written only at L500 and L537. A same-type fold edit takes the 300 ms debounce, because the `isProgressOnlyChange` reference check at L629 sends it there. No file under `src/features/`, `src/router/` or `src/common/storage/` builds the old variants, so T1 typechecks inside its boundary.
+- Numeric targets are eligible for selection (`target-eligibility.ts` L133–134). They stop at Section 2's "No classification model available" block, so they never reach Section 4. `categoryCounts` is a `Record<string, number>` without a missing-value key.
+- The router intercepts links through `composedPath()` (`router.ts` L266–276). `src/app.ts` L70 and L80–90 keep the model underlay and `modelNum` while Help is open. `--neutral-700` (`#334155`) on `--surface` (`#fff`) exceeds 4.5:1. The repository has no dark-mode tokens.
+- Upstream: canonical and installed web-ml are both 0.1.0, with 16 matching catalogue entries. The `outerFolds`, `innerFolds` and `randomState` names match `NestedCrossValidationRequest`. `testRatio` has no public counterpart, which the plan correctly leaves to WR-10 and Phase 3. The `metrics.md` validation-partition conflict and the dangling installed `cross-validate` export remain recorded risks.
+
+**Decision checklist:**
+
+- Specifications to change: listed under _Specification changes_ and applied in T8.
+- Contracts: §§A–E, verified above.
+- Tests: positive, negative and boundary cases in STATE-1…6, UTIL-1…2, ROUTE-1…2, STYLE-1…3, COMP-1…5 and UI-1…12, subject to the two blocking findings.
+- Boundaries: each task names its likely files, its must-not-touch paths and a T-number commit ID.
+- Sources: cited inline.
+
+The repository has no `specification/decision-checklist.md`.
 
 ## Change log
 
