@@ -1,8 +1,8 @@
 # Mockup Review Improvements
 
-**Status:** ready-for-review | **Updated:** 2026-11-20T17:49:40Z
+**Status:** draft | **Updated:** 2026-11-20T18:04:25Z
 **Authors:** Google Antigravity (Gemini 4 Neon High) | **Created:** 2026-11-20T17:44:07Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -421,8 +421,9 @@ None.
 
 ## Plan review history
 
-| Reviewed (UTC) | Agent (model) | Decision | Findings |
-| -------------- | ------------- | -------- | -------- |
+| Reviewed (UTC)       | Agent (model)                           | Decision          | Findings                                                                                                                                                                                                                                                                     |
+| -------------------- | --------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-20T18:04:25Z | Google Antigravity (Gemini 4 Neon High) | changes-requested | BLOCKER: T2 breaks tests/serve-mockups.test.ts under bun run typecheck before T4; MAJOR: renderIndexHtml() omits body.mockup-index from mockups.css, §1/T1 conflict on 00-3_mockup-review.html and 03-4/03-6 state counts, T4 omits app-shell/visual-parity E2E verification |
 
 ## Change log
 
