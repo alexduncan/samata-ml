@@ -1,4 +1,4 @@
-import { html, render } from 'lit';
+import { html, nothing, render } from 'lit';
 import './features/models/app-model-card';
 import './features/data/app-data-view';
 import './features/models/app-model-builder-view';
@@ -13,13 +13,46 @@ import { $route, initRouter, takeFocusRequest } from './router/router';
 import { getScrollKeyForRoute, initScrollRestorer, restoreScroll } from './router/scroll-restorer';
 import { $appState } from './stores/app.store';
 import { $datasetResources } from './stores/dataset.store';
-import { initPersister } from './stores/persister';
-import { createDefaultIndexedDBAdapter, reconcileStartupState } from './stores/reconciler';
+import {
+	$storageSaveNotice,
+	initPersister,
+	publishAcknowledgedAppSnapshot,
+	readGuardedTrainingSnapshot,
+	withTrainingStateLock
+} from './stores/persister';
+import { reconcileProtectedStartup } from './stores/reconciler';
 import { initGlobalStyles } from './styles/global';
+import { i18n } from './i18n';
+import { STATE_STORAGE_KEY } from './types/state';
+import {
+	$publicationPending,
+	getTrainingService
+} from './features/models/training/training-service';
 import type { ParsedRoute, WorkflowPath } from './types/routes';
 
 let lastRestoredScrollKey: string | null = null;
 let pendingHeadingFocus: AbortController | undefined;
+let startupRecovery = false;
+let retryingStartup = false;
+let retryingDatasetPublication = false;
+const storageMessages = i18n('app-shell-storage', {
+	title: 'Restore saved work',
+	startup: 'Your saved work could not be restored. Retry saving.',
+	retry: 'Retry saving',
+	retrying: 'Saving…',
+	bestEffort: 'Your changes could not be saved. They are available in this tab.',
+	datasetPending: 'The dataset is saved, but finishing is pending. Retry saving.'
+});
+
+async function retryStartup(container: HTMLElement): Promise<void> {
+	if (retryingStartup) return;
+	retryingStartup = true;
+	renderAppShell(container);
+	const ack = await reconcileProtectedStartup();
+	startupRecovery = !ack.ok;
+	retryingStartup = false;
+	renderAppShell(container);
+}
 
 type WorkflowFocusView = HTMLElementTagNameMap[
 	| 'app-data-view'
@@ -89,6 +122,15 @@ function getActiveWorkflowRoute(currentRoute: ParsedRoute): ParsedRoute {
 	return parseRoute(resume);
 }
 
+async function retryDatasetPublication(container: HTMLElement): Promise<void> {
+	if (retryingDatasetPublication) return;
+	retryingDatasetPublication = true;
+	renderAppShell(container);
+	await getTrainingService().retry();
+	retryingDatasetPublication = false;
+	renderAppShell(container);
+}
+
 /**
  * Renders the application shell into the container.
  */
@@ -97,11 +139,53 @@ export function renderAppShell(container: HTMLElement): void {
 	pendingHeadingFocus = undefined;
 	const currentRoute = $route.get();
 	const activeWorkflowRoute = getActiveWorkflowRoute(currentRoute);
+	const messages = storageMessages.get();
 
 	const template = html`
 		<app-sidebar></app-sidebar>
-		<main id="content">${renderWorkflowView(activeWorkflowRoute)}</main>
-		<app-welcome-modal></app-welcome-modal>
+		<main id="content">
+			${startupRecovery
+				? html`
+						<header class="page-header">
+							<h1 tabindex="-1">${messages.title}</h1>
+						</header>
+						<section class="page-body">
+							<p class="notification notification-alert" role="alert">
+								${messages.startup}
+							</p>
+							<button
+								class="btn btn-primary"
+								type="button"
+								?disabled=${retryingStartup}
+								@click=${() => void retryStartup(container)}>
+								${retryingStartup ? messages.retrying : messages.retry}
+							</button>
+						</section>
+					`
+				: html`
+						${$publicationPending.get()?.kind === 'replace'
+							? html`<aside>
+									<p class="notification notification-alert" role="alert">
+										${messages.datasetPending}
+									</p>
+									<button
+										type="button"
+										class="btn"
+										?disabled=${retryingDatasetPublication}
+										@click=${() => void retryDatasetPublication(container)}>
+										${messages.retry}
+									</button>
+								</aside>`
+							: nothing}
+						${$storageSaveNotice.get()
+							? html`<p class="notification notification-alert" role="status">
+									${messages.bestEffort}
+								</p>`
+							: nothing}
+						${renderWorkflowView(activeWorkflowRoute)}
+					`}
+		</main>
+		${startupRecovery ? nothing : html`<app-welcome-modal></app-welcome-modal>`}
 		<app-content-modal></app-content-modal>
 	`;
 
@@ -147,10 +231,11 @@ export async function bootstrapApp(): Promise<void> {
 	initGlobalStyles();
 
 	// 1. Reconcile storage and IndexedDB
-	await reconcileStartupState(undefined, createDefaultIndexedDBAdapter());
+	const startup = await reconcileProtectedStartup();
+	startupRecovery = !startup.ok;
 
 	// 2. Initialize persistence persister
-	initPersister();
+	initPersister(undefined, { trainingPersistence: {} });
 
 	// 3. Initialize scroll restorer
 	initScrollRestorer();
@@ -165,6 +250,28 @@ export async function bootstrapApp(): Promise<void> {
 		// Subscribe to route changes to re-render views dynamically
 		$route.subscribe(() => {
 			renderAppShell(root);
+		});
+		$storageSaveNotice.listen(() => renderAppShell(root));
+		$publicationPending.listen(() => renderAppShell(root));
+		storageMessages.listen(() => renderAppShell(root));
+		window.addEventListener('storage', (event) => {
+			if (event.key !== STATE_STORAGE_KEY && event.key !== null) return;
+			void withTrainingStateLock(readGuardedTrainingSnapshot).then((snapshot) => {
+				if (!snapshot.ok || !snapshot.state) {
+					startupRecovery = true;
+					renderAppShell(root);
+					return;
+				}
+				const current = $appState.get();
+				if (snapshot.generation > current.trainingDomainGeneration) {
+					publishAcknowledgedAppSnapshot({
+						...snapshot.state,
+						onboarding: current.onboarding,
+						resumePath: current.resumePath,
+						results: current.results
+					});
+				}
+			});
 		});
 		let prevMode = $appState.get().data.mode;
 		$appState.subscribe((state) => {

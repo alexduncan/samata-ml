@@ -140,65 +140,44 @@ export function setResumePath(resumePath: WorkflowPath): boolean {
 	}));
 }
 
-/**
- * Called when a dataset is successfully loaded or selected.
- * Preserves downstream state if schema is identical; resets target and models on change.
- */
+/** Produces the loaded-dataset domain without moving scroll or publishing memory. */
+export function reduceDatasetReplacement(
+	state: PersistedAppState,
+	dataset: DatasetSummary | null
+): PersistedAppState {
+	const current = state.dataset;
+	const same = Boolean(
+		dataset &&
+		current &&
+		current.id === dataset.id &&
+		current.columns.length === dataset.columns.length &&
+		current.columns.every(
+			(column, index) =>
+				column.name === dataset.columns[index]?.name &&
+				column.type === dataset.columns[index]?.type
+		)
+	);
+	return {
+		...state,
+		dataset,
+		data: { mode: dataset ? 'preview' : 'select', selectedColumn: null },
+		...(same ? {} : { target: null, models: [], nextModelNum: 1 })
+	};
+}
+
+/** Called by fixture and store consumers after a successful dataset load. */
 export function loadDatasetSucceeded(dataset: DatasetSummary): boolean {
-	let isDifferentDataset = false;
-	const success = updateState((state) => {
-		const current = state.dataset;
-		const isSameDataset =
-			current !== null &&
-			current.id === dataset.id &&
-			current.columns.length === dataset.columns.length &&
-			current.columns.every(
-				(c, i) => c.name === dataset.columns[i]?.name && c.type === dataset.columns[i]?.type
-			);
-
-		if (isSameDataset) {
-			return {
-				...state,
-				dataset,
-				data: { mode: 'preview', selectedColumn: null }
-			};
-		}
-
-		isDifferentDataset = true;
-		return {
-			...state,
-			dataset,
-			data: { mode: 'preview', selectedColumn: null },
-			target: null,
-			models: [],
-			nextModelNum: 1
-		};
-	});
-
-	if (success && isDifferentDataset) {
-		clearNonDataScroll();
-	}
+	const previous = $appState.get();
+	const next = reduceDatasetReplacement(previous, dataset);
+	const success = updateState(() => next);
+	if (success && next.models !== previous.models) clearNonDataScroll();
 	return success;
 }
 
-/**
- * Clears the active dataset, target, models, and non-data scroll snapshots,
- * and resets data mode to 'select'. Preserves onboarding and preferences.
- * Follows specification/plans/step-1-load-data-and-preview.md D6.
- */
+/** Clears the current dataset and downstream choices. */
 export function clearDataset(): boolean {
-	const success = updateState((state) => ({
-		...state,
-		dataset: null,
-		data: { mode: 'select', selectedColumn: null },
-		target: null,
-		models: [],
-		nextModelNum: 1
-	}));
-
-	if (success) {
-		clearNonDataScroll();
-	}
+	const success = updateState((state) => reduceDatasetReplacement(state, null));
+	if (success) clearNonDataScroll();
 	return success;
 }
 
@@ -233,90 +212,63 @@ export function setSelectedColumn(selectedColumn: string | null): boolean {
 	});
 }
 
-/**
- * Sets the target column name.
- * Rejects if models exist until confirmDiscardModels is called.
- */
-export function setTarget(column: string): boolean {
-	return updateState((state) => {
-		if (!state.dataset) return false;
-
-		const col = state.dataset.columns.find((c) => c.name === column);
-		if (!col || !isModelEligibleColumnType(col.type)) return false;
-
-		// Discard confirmation required if models already exist
-		if (state.models.length > 0 && state.target !== column) {
-			return false;
-		}
-
-		// Target column can never be in a model's features list
-		const updatedModels = state.models.map((m) => ({
-			...m,
-			features: m.features.filter((f) => f !== column)
-		}));
-
-		return {
-			...state,
-			target: column,
-			models: updatedModels
-		};
-	});
+/** Produces a target change and any explicitly confirmed model discard. */
+export function reduceTargetChange(
+	state: PersistedAppState,
+	column: string,
+	confirmed: boolean
+): PersistedAppState | false {
+	const selected = state.dataset?.columns.find((entry) => entry.name === column);
+	if (!selected || !isModelEligibleColumnType(selected.type)) return false;
+	if (state.target === column) return state;
+	if (state.models.length > 0 && !confirmed) return false;
+	return { ...state, target: column, models: [], ...(confirmed && { nextModelNum: 1 }) };
 }
 
-/**
- * Confirms discarding all models and associated scroll states.
- */
+/** Sets a target without discarding existing models. */
+export function setTarget(column: string): boolean {
+	return updateState((state) => reduceTargetChange(state, column, false));
+}
+
+/** Confirms discarding all models and associated scroll states. */
 export function confirmDiscardModels(): boolean {
-	const success = updateState((state) => ({
-		...state,
-		models: [],
-		nextModelNum: 1
-	}));
-	if (success) {
-		clearModelAndResultScroll();
-	}
+	const success = updateState((state) => ({ ...state, models: [], nextModelNum: 1 }));
+	if (success) clearModelAndResultScroll();
 	return success;
 }
 
-/**
- * Creates a new draft model record.
- *
- * @returns Allocated model number or false if target is not set.
- */
+/** Allocates a draft model against the latest protected counter. */
+export function reduceCreateModel(
+	state: PersistedAppState,
+	createdAt: number
+): PersistedAppState | false {
+	if (!state.dataset || !state.target) return false;
+	const newModel: ModelRecord = {
+		num: state.nextModelNum,
+		createdAt,
+		status: 'draft',
+		completedSteps: [],
+		modelId: null,
+		features: [],
+		modelOptions: {},
+		hyperparameters: { mode: 'manual', values: {} },
+		multiclass: null,
+		trainingSetup: null,
+		progress: null,
+		resultRevision: null,
+		error: null,
+		timings: null,
+		durationMs: null,
+		metrics: null,
+		ui: { trainingLogOpen: false }
+	};
+	return { ...state, nextModelNum: state.nextModelNum + 1, models: [...state.models, newModel] };
+}
+
+/** Creates a draft in memory for reducer consumers. */
 export function createModel(): number | false {
-	let createdNum = 0;
-	const success = updateState((state) => {
-		if (!state.dataset || !state.target) return false;
-
-		createdNum = state.nextModelNum;
-		const newModel: ModelRecord = {
-			num: createdNum,
-			createdAt: Date.now(),
-			status: 'draft',
-			completedSteps: [],
-			modelId: null,
-			features: [],
-			modelOptions: {},
-			hyperparameters: { mode: 'manual', values: {} },
-			multiclass: null,
-			trainingSetup: null,
-			progress: null,
-			resultRevision: null,
-			error: null,
-			timings: null,
-			durationMs: null,
-			metrics: null,
-			ui: { trainingLogOpen: false }
-		};
-
-		return {
-			...state,
-			nextModelNum: state.nextModelNum + 1,
-			models: [...state.models, newModel]
-		};
-	});
-
-	return success ? createdNum : false;
+	const modelNum = $appState.get().nextModelNum;
+	return updateState((state) => reduceCreateModel(state, Date.now())) ? modelNum : false;
 }
 
 /**
@@ -805,20 +757,25 @@ export function setTrainingLogOpen(num: number, open: boolean): boolean {
 	});
 }
 
-/**
- * Marks results section viewed for a trained model.
- */
+/** Produces a result acknowledgement for the matching trained model. */
+export function reduceViewResults(
+	state: PersistedAppState,
+	num: number
+): PersistedAppState | false {
+	const model = state.models.find((entry) => entry.num === num);
+	if (!model || model.status !== 'trained') return false;
+	if (model.completedSteps.includes('results')) return state;
+	return {
+		...state,
+		models: state.models.map((entry) =>
+			entry === model
+				? { ...entry, completedSteps: [...entry.completedSteps, 'results'] }
+				: entry
+		)
+	};
+}
+
+/** Marks the result acknowledgement in memory for reducer consumers. */
 export function viewResults(num: number): boolean {
-	return updateState((state) => {
-		const model = state.models.find((m) => m.num === num);
-		if (!model || model.status !== 'trained') return false;
-
-		if (model.completedSteps.includes('results')) return state;
-
-		const updatedModels = state.models.map((m) => {
-			if (m.num !== num) return m;
-			return { ...m, completedSteps: [...m.completedSteps, 'results' as const] };
-		});
-		return { ...state, models: updatedModels };
-	});
+	return updateState((state) => reduceViewResults(state, num));
 }

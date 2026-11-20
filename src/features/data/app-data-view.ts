@@ -14,6 +14,7 @@ import {
 	startDatasetLoad
 } from '../../stores/dataset.store';
 import { loadSampleCatalogue, loadSampleDatasheet } from './sample-datasets';
+import { getTrainingService } from '../models/training/training-service';
 import type { SampleDatasetIndex } from '../../types/sample-dataset';
 import { buttonStyles } from '../../styles/button.styles';
 import { dialogStyles } from '../../styles/dialog.styles';
@@ -30,10 +31,20 @@ import type {
 	VirtualTableWindow
 } from '../../components/ui-virtual-table';
 import type { ColumnStats, RawRecord } from '../../types/dataset';
-import { $format } from '../../i18n';
+import { $format, i18n } from '../../i18n';
 import { INGESTION_ERROR_MESSAGES } from './ingestion/errors';
 import { $scrollState } from '../../stores/scroll.store';
 import { recordCurrentScroll, getIsRestoringScroll } from '../../router/scroll-restorer';
+
+const changeMessages = i18n('app-data-change-dataset', {
+	remote: 'Training in another tab',
+	busy: 'The dataset is busy. Try again.',
+	failed: 'The dataset could not be changed. Try again.',
+	pending: 'The change is saved, but finishing is pending. Retry saving.',
+	retry: 'Retry saving',
+	changing: 'Changing…',
+	change: 'Change Dataset'
+});
 
 function formatPreviewRows(
 	records: readonly RawRecord[],
@@ -199,6 +210,9 @@ export class AppDataView extends LitElement {
 	@state() private accessor changeDatasetOpen = false;
 	@state() private accessor changeDatasetError: string | null = null;
 	@state() private accessor changeDatasetBusy = false;
+	@state() private accessor changeDatasetPending = false;
+	private changeIdentity: { datasetId: string; target: string | null } | null = null;
+	private readonly changeMessagesController = new StoreController(this, changeMessages);
 
 	private cataloguePromise: Promise<SampleDatasetIndex> | null = null;
 	private activeDatasheetId: string | null = null;
@@ -454,33 +468,56 @@ export class AppDataView extends LitElement {
 	}
 
 	private handleChangeDatasetRequest(e: Event): void {
+		const state = this.appStateController.value;
+		if (!state.dataset) return;
+		this.changeIdentity = { datasetId: state.dataset.id, target: state.target };
 		this.changeDatasetInvoker = (e.target as HTMLElement) ?? null;
 		this.changeDatasetOpen = true;
 		this.changeDatasetError = null;
 	}
 
 	private handleChangeDatasetCancel(): void {
+		if (this.changeDatasetBusy || this.changeDatasetPending) return;
 		this.changeDatasetOpen = false;
 		this.changeDatasetError = null;
+		this.changeIdentity = null;
 		if (this.changeDatasetInvoker) {
 			this.changeDatasetInvoker.focus();
 		}
 	}
 
-	private handleChangeDatasetDialogNativeClose(): void {
+	private handleChangeDatasetDialogNativeClose(event: Event): void {
+		if (event.type === 'cancel' && (this.changeDatasetBusy || this.changeDatasetPending)) {
+			event.preventDefault();
+			return;
+		}
 		this.changeDatasetOpen = false;
 	}
 
 	private async handleChangeDatasetConfirm(): Promise<void> {
+		if (this.changeDatasetBusy || !this.changeIdentity) return;
 		this.changeDatasetBusy = true;
 		this.changeDatasetError = null;
 		try {
-			const ok = await changeDataset();
-			if (ok) {
+			const result = this.changeDatasetPending
+				? await getTrainingService().retry()
+				: await changeDataset(this.changeIdentity.datasetId, this.changeIdentity.target);
+			if (result.ok) {
 				this.changeDatasetOpen = false;
+				this.changeDatasetPending = false;
+				this.changeIdentity = null;
+				clearDatasetResources();
+			} else {
+				const labels = this.changeMessagesController.value;
+				this.changeDatasetPending ||= result.pending === 'discard';
+				this.changeDatasetError = this.changeDatasetPending
+					? labels.pending
+					: result.code === 'remote-training'
+						? labels.remote
+						: result.code === 'busy'
+							? labels.busy
+							: labels.failed;
 			}
-		} catch (err) {
-			this.changeDatasetError = err instanceof Error ? err.message : String(err);
 		} finally {
 			this.changeDatasetBusy = false;
 		}
@@ -614,7 +651,6 @@ export class AppDataView extends LitElement {
 
 			<dialog
 				class="modal change-dataset-modal"
-				?open=${this.changeDatasetOpen}
 				aria-labelledby="change-dataset-title"
 				@cancel=${this.handleChangeDatasetDialogNativeClose}
 				@close=${this.handleChangeDatasetDialogNativeClose}>
@@ -634,7 +670,7 @@ export class AppDataView extends LitElement {
 					<button
 						type="button"
 						class="btn"
-						?disabled=${this.changeDatasetBusy}
+						?disabled=${this.changeDatasetBusy || this.changeDatasetPending}
 						@click=${this.handleChangeDatasetCancel}>
 						Cancel
 					</button>
@@ -643,7 +679,11 @@ export class AppDataView extends LitElement {
 						class="btn btn-primary"
 						?disabled=${this.changeDatasetBusy}
 						@click=${this.handleChangeDatasetConfirm}>
-						${this.changeDatasetBusy ? 'Changing…' : 'Change Dataset'}
+						${this.changeDatasetPending
+							? this.changeMessagesController.value.retry
+							: this.changeDatasetBusy
+								? this.changeMessagesController.value.changing
+								: this.changeMessagesController.value.change}
 					</button>
 				</div>
 			</dialog>

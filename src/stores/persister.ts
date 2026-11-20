@@ -21,6 +21,7 @@ import {
 	SCROLL_STORAGE_KEY,
 	STATE_STORAGE_KEY,
 	STORAGE_VERSION,
+	type ModelRecord,
 	type PersistedAppState,
 	type PersistedScroll
 } from '../types/state';
@@ -258,9 +259,7 @@ export function readPersistedState(storage?: StorageAdapter): PersistedRead {
 }
 
 /** Reads the current v1 domain and distinguishes absence, unsupported versions and read failures. */
-export function readAppSnapshot(
-	storage = activeStorage
-):
+export function readAppSnapshot(storage = activeStorage):
 	| {
 			ok: true;
 			state: PersistedAppState | null;
@@ -299,6 +298,10 @@ let pendingScrollTimer: ReturnType<typeof setTimeout> | undefined;
 
 let previousAppState: PersistedAppState | undefined;
 let publishingSnapshot = false;
+let protectedPersistence: TrainingPersistenceOptions | undefined;
+let ordinaryBase: PersistedAppState | undefined;
+let acknowledgedState: PersistedAppState | undefined;
+let unbindLifecycle: (() => void) | undefined;
 
 /** A best-effort write failed and the current tab's edits remain available in memory. */
 export const $storageSaveNotice = atom<PersistenceFailure | null>(null);
@@ -349,7 +352,8 @@ export interface TrainingPersistenceOptions {
 	withStateLock?: <T>(operation: () => Promise<T>) => Promise<T>;
 }
 
-type TrainingStateContext = {
+/** The connections owned by one state-lock callback. */
+export type TrainingStateContext = {
 	db: Awaited<ReturnType<typeof openSamataDb>>;
 	storage: StorageAdapter;
 };
@@ -383,6 +387,7 @@ export async function withTrainingStateLock<T>(
 
 /** Applies a decoded authoritative snapshot without echoing it back to storage. */
 export function publishAcknowledgedAppSnapshot(state: PersistedAppState): void {
+	acknowledgedState = state;
 	publishingSnapshot = true;
 	try {
 		$appState.set(state);
@@ -402,14 +407,15 @@ function writeAcknowledgedSnapshot(
 async function publishPending(
 	context: TrainingStateContext,
 	checkpoint: TrainingDomainCheckpoint,
-	current: PersistedAppState | null
+	current: PersistedAppState | null,
+	firstPublication = false
 ): Promise<{ ok: true; state: PersistedAppState } | PersistenceFailure> {
 	const pending = checkpoint.pending;
 	if (!pending || (current?.trainingDomainGeneration ?? 0) > checkpoint.generation) {
 		return { ok: false, reason: 'conflict' };
 	}
 	const acknowledged = current?.trainingDomainGeneration === checkpoint.generation;
-	const state = acknowledged
+	const candidate = acknowledged
 		? current
 		: {
 				...(current ?? INITIAL_APP_STATE),
@@ -417,6 +423,10 @@ async function publishPending(
 				trainingDomainGeneration: checkpoint.generation,
 				updatedAt: Date.now()
 			};
+	const state =
+		firstPublication && !acknowledged && current
+			? keepLocalOrdinaryChanges(candidate, current)
+			: candidate;
 	if (!acknowledged) {
 		const ack = writeAcknowledgedSnapshot(context.storage, state);
 		if (!ack.ok) return ack;
@@ -431,11 +441,13 @@ async function publishPending(
 	return { ok: true, state };
 }
 
-type GuardedSnapshot = {
+/** Freshly validated localStorage state and the current durable fence. */
+export type GuardedSnapshot = {
 	ok: true;
 	state: PersistedAppState | null;
 	generation: number;
 	trainingSetupDecodeOutcomes: readonly TrainingSetupDecodeOutcome[];
+	replayed: boolean;
 };
 
 /** Reads the snapshot and fence under the state lock, replaying only an already committed candidate. */
@@ -455,6 +467,7 @@ export async function readGuardedTrainingSnapshot(
 					ok: true,
 					state: replay.state,
 					generation,
+					replayed: true,
 					trainingSetupDecodeOutcomes: replay.state.models.map((model) =>
 						model.trainingSetup ? 'valid' : 'explicit-null'
 					)
@@ -464,7 +477,212 @@ export async function readGuardedTrainingSnapshot(
 	if (snapshot.state && snapshot.state.trainingDomainGeneration !== generation) {
 		return { ok: false, reason: 'conflict' };
 	}
-	return { ...snapshot, generation };
+	return { ...snapshot, generation, replayed: false };
+}
+
+const draftFields = [
+	'modelId',
+	'features',
+	'modelOptions',
+	'hyperparameters',
+	'multiclass',
+	'trainingSetup'
+] as const;
+
+function draftSteps(model: ModelRecord) {
+	return model.completedSteps.filter(
+		(section) => section !== 'training' && section !== 'results'
+	);
+}
+
+function sameDraft(left: ModelRecord, right: ModelRecord): boolean {
+	return (
+		draftFields.every(
+			(field) => JSON.stringify(left[field]) === JSON.stringify(right[field])
+		) && JSON.stringify(draftSteps(left)) === JSON.stringify(draftSteps(right))
+	);
+}
+
+/** Acknowledges the exact initiating draft against the state already checked under the lock. */
+export function flushSubmittedDraft(
+	context: TrainingStateContext,
+	latest: PersistedAppState,
+	captured: PersistedAppState,
+	model: ModelRecord
+): { ok: true; state: PersistedAppState } | PersistenceFailure {
+	const stored = latest.models.find(
+		(record) => record.num === model.num && record.createdAt === model.createdAt
+	);
+	if (
+		!stored ||
+		stored.status !== 'draft' ||
+		latest.trainingDomainGeneration !== captured.trainingDomainGeneration ||
+		latest.dataset?.id !== captured.dataset?.id ||
+		latest.target !== captured.target
+	) {
+		return { ok: false, reason: 'conflict' };
+	}
+	if (!sameDraft(stored, model)) {
+		const base = acknowledgedState?.models.find(
+			(record) => record.num === model.num && record.createdAt === model.createdAt
+		);
+		if (
+			!base ||
+			acknowledgedState?.trainingDomainGeneration !== latest.trainingDomainGeneration ||
+			!sameDraft(base, stored)
+		) {
+			return { ok: false, reason: 'conflict' };
+		}
+	}
+	const patched = mergeOrdinaryModel(stored, stored, model, true);
+	const state = {
+		...latest,
+		models: latest.models.map((record) => (record === stored ? patched : record))
+	};
+	const ack = writeAcknowledgedSnapshot(context.storage, state);
+	if (!ack.ok) return ack;
+	acknowledgedState = state;
+	return { ok: true, state };
+}
+
+function mergeOrdinaryModel(
+	stored: ModelRecord,
+	base: ModelRecord,
+	captured: ModelRecord,
+	sameGeneration: boolean
+): ModelRecord {
+	const ui = { ...stored.ui };
+	for (const key of new Set([...Object.keys(base.ui), ...Object.keys(captured.ui)])) {
+		if (base.ui[key] === captured.ui[key]) continue;
+		if (Object.hasOwn(captured.ui, key)) ui[key] = captured.ui[key];
+		else delete ui[key];
+	}
+	const result: ModelRecord = { ...stored, ui };
+	if (!sameGeneration) return result;
+	if (
+		stored.status === 'training' &&
+		captured.status === 'training' &&
+		captured.resultRevision === stored.resultRevision &&
+		captured.progress !== base.progress
+	) {
+		return { ...result, progress: captured.progress };
+	}
+	if (stored.status !== 'draft' || captured.status !== 'draft') return result;
+	for (const field of draftFields) {
+		if (captured[field] !== base[field]) Object.assign(result, { [field]: captured[field] });
+	}
+	if (captured.completedSteps !== base.completedSteps) {
+		result.completedSteps = [
+			...draftSteps(captured),
+			...stored.completedSteps.filter(
+				(section) => section === 'training' || section === 'results'
+			)
+		];
+	}
+	return result;
+}
+
+function mergeOrdinaryState(
+	latest: PersistedAppState,
+	base: PersistedAppState,
+	captured: PersistedAppState
+): PersistedAppState {
+	const sameContext =
+		latest.dataset?.id === captured.dataset?.id && latest.target === captured.target;
+	return {
+		...latest,
+		updatedAt: Date.now(),
+		onboarding: captured.onboarding,
+		resumePath: captured.resumePath,
+		results: captured.results,
+		data: sameContext ? captured.data : latest.data,
+		models: sameContext
+			? latest.models.map((stored) => {
+					const local = captured.models.find(
+						(record) =>
+							record.num === stored.num && record.createdAt === stored.createdAt
+					);
+					const before = base.models.find(
+						(record) =>
+							record.num === stored.num && record.createdAt === stored.createdAt
+					);
+					return local && before
+						? mergeOrdinaryModel(
+								stored,
+								before,
+								local,
+								latest.trainingDomainGeneration ===
+									captured.trainingDomainGeneration &&
+									latest.trainingDomainGeneration ===
+										base.trainingDomainGeneration
+							)
+						: stored;
+				})
+			: latest.models
+	};
+}
+
+function keepLocalOrdinaryChanges(
+	candidate: PersistedAppState,
+	previous: PersistedAppState
+): PersistedAppState {
+	const local = $appState.get();
+	if (
+		!protectedPersistence ||
+		local.trainingDomainGeneration !== previous.trainingDomainGeneration
+	)
+		return candidate;
+	const base = ordinaryBase ?? acknowledgedState ?? previous;
+	const sameDomain =
+		candidate.dataset?.id === local.dataset?.id &&
+		candidate.target === local.target &&
+		previous.dataset?.id === local.dataset?.id &&
+		previous.target === local.target;
+	const models = sameDomain
+		? candidate.models.map((updated) => {
+				const sameModel = (model: ModelRecord) =>
+					model.num === updated.num && model.createdAt === updated.createdAt;
+				const old = previous.models.find(sameModel);
+				const before = base.models.find(sameModel);
+				const edited = local.models.find(sameModel);
+				if (!old || !before || !edited) return updated;
+				// Retain debounced edits when the protected operation left that draft alone.
+				const draftUnchanged =
+					before.status === 'draft' &&
+					old.status === 'draft' &&
+					updated.status === 'draft' &&
+					sameDraft(old, updated) &&
+					sameDraft(old, before);
+				return mergeOrdinaryModel(updated, before, edited, draftUnchanged);
+			})
+		: candidate.models;
+	const data =
+		sameDomain && JSON.stringify(candidate.data) === JSON.stringify(previous.data)
+			? local.data
+			: candidate.data;
+	return {
+		...candidate,
+		onboarding: local.onboarding,
+		resumePath: local.resumePath,
+		results: local.results,
+		models,
+		data
+	};
+}
+
+function writeOrdinaryGuarded(
+	storage: StorageAdapter,
+	write: (context: TrainingStateContext, snapshot: GuardedSnapshot) => PersistenceAck
+): void {
+	void withTrainingStateLock(
+		async (context): Promise<PersistenceAck> => {
+			const snapshot = await readGuardedTrainingSnapshot(context);
+			if (!snapshot.ok) return snapshot;
+			if (snapshot.replayed) return { ok: true, generation: snapshot.generation };
+			return write(context, snapshot);
+		},
+		{ ...protectedPersistence, storage }
+	).then(noteOrdinaryFailure);
 }
 
 /** The candidate generated from the latest authoritative state under its lock. */
@@ -481,7 +699,8 @@ export function commitProtectedTrainingChange(
 	) =>
 		| ProtectedTrainingChange
 		| PersistenceFailure
-		| Promise<ProtectedTrainingChange | PersistenceFailure>,
+		| null
+		| Promise<ProtectedTrainingChange | PersistenceFailure | null>,
 	options: TrainingPersistenceOptions & {
 		onCommitted?: (checkpoint: TrainingDomainCheckpoint) => void;
 	} = {}
@@ -490,6 +709,7 @@ export function commitProtectedTrainingChange(
 		const current = await readGuardedTrainingSnapshot(context);
 		if (!current.ok) return current;
 		const change = await prepare(current, context);
+		if (change === null) return { ok: true, generation: current.generation };
 		if ('ok' in change) return change;
 		const committed = await commitTrainingCheckpoint(
 			context.db,
@@ -499,7 +719,7 @@ export function commitProtectedTrainingChange(
 		);
 		if (!committed.ok) return committed;
 		options.onCommitted?.(committed.checkpoint);
-		const published = await publishPending(context, committed.checkpoint, current.state);
+		const published = await publishPending(context, committed.checkpoint, current.state, true);
 		return published.ok ? { ok: true, generation: committed.checkpoint.generation } : published;
 	}, options);
 }
@@ -510,7 +730,9 @@ export function retryTrainingPublication(
 ): Promise<PersistenceAck> {
 	return withTrainingStateLock(async (context): Promise<PersistenceAck> => {
 		const snapshot = await readGuardedTrainingSnapshot(context);
-		return snapshot.ok ? { ok: true, generation: snapshot.generation } : snapshot;
+		if (!snapshot.ok) return snapshot;
+		if (!snapshot.state && snapshot.generation > 0) return { ok: false, reason: 'conflict' };
+		return { ok: true, generation: snapshot.generation };
 	}, options);
 }
 
@@ -524,6 +746,8 @@ export interface PersisterOptions {
 	debounceFieldMs?: number;
 	/** Throttle duration in milliseconds for training progress updates. Defaults to 1000 ms. */
 	throttleProgressMs?: number;
+	/** Enables guarded browser writers and supplies optional lock/storage seams. */
+	trainingPersistence?: TrainingPersistenceOptions;
 }
 
 /**
@@ -538,7 +762,19 @@ function writeAppStateNow(storage: StorageAdapter, state: PersistedAppState): vo
 		clearTimeout(pendingProgressTimer);
 		pendingProgressTimer = undefined;
 	}
-	noteOrdinaryFailure(safeSetItem(storage, STATE_STORAGE_KEY, serialiseAppState(state)));
+	if (!protectedPersistence) {
+		noteOrdinaryFailure(safeSetItem(storage, STATE_STORAGE_KEY, serialiseAppState(state)));
+		return;
+	}
+	const base = ordinaryBase ?? state;
+	ordinaryBase = undefined;
+	writeOrdinaryGuarded(storage, (context, snapshot) => {
+		if (!snapshot.state && snapshot.generation !== 0) return { ok: false, reason: 'conflict' };
+		const stateToWrite = mergeOrdinaryState(snapshot.state ?? INITIAL_APP_STATE, base, state);
+		const ack = writeAcknowledgedSnapshot(context.storage, stateToWrite);
+		if (ack.ok) acknowledgedState = stateToWrite;
+		return ack;
+	});
 }
 
 /**
@@ -549,7 +785,14 @@ function writeScrollStateNow(storage: StorageAdapter, scroll: PersistedScroll): 
 		clearTimeout(pendingScrollTimer);
 		pendingScrollTimer = undefined;
 	}
-	noteOrdinaryFailure(safeSetItem(storage, SCROLL_STORAGE_KEY, JSON.stringify(scroll)));
+	if (!protectedPersistence) {
+		noteOrdinaryFailure(safeSetItem(storage, SCROLL_STORAGE_KEY, JSON.stringify(scroll)));
+		return;
+	}
+	writeOrdinaryGuarded(storage, (context, snapshot) => {
+		const ack = safeSetItem(context.storage, SCROLL_STORAGE_KEY, JSON.stringify(scroll));
+		return ack.ok ? { ok: true, generation: snapshot.generation } : ack;
+	});
 }
 
 /**
@@ -571,8 +814,8 @@ export function persistNow(storage?: StorageAdapter): void {
 		clearTimeout(pendingScrollTimer);
 		pendingScrollTimer = undefined;
 	}
-	noteOrdinaryFailure(safeSetItem(s, STATE_STORAGE_KEY, serialiseAppState($appState.get())));
-	noteOrdinaryFailure(safeSetItem(s, SCROLL_STORAGE_KEY, JSON.stringify($scrollState.get())));
+	writeAppStateNow(s, $appState.get());
+	writeScrollStateNow(s, $scrollState.get());
 }
 
 /**
@@ -711,6 +954,7 @@ export function initPersister(storage?: StorageAdapter, options: PersisterOption
 	const debounceScrollMs = options.debounceScrollMs ?? 150;
 	const debounceFieldMs = options.debounceFieldMs ?? 300;
 	const throttleProgressMs = options.throttleProgressMs ?? 1000;
+	protectedPersistence = options.trainingPersistence;
 
 	previousAppState = $appState.get();
 
@@ -719,6 +963,8 @@ export function initPersister(storage?: StorageAdapter, options: PersisterOption
 			previousAppState = nextState;
 			return;
 		}
+		if (protectedPersistence && previousAppState === nextState) return;
+		ordinaryBase ??= previousAppState;
 		const sync = isSynchronousChange(previousAppState, nextState);
 		const progressOnly = !sync && isProgressOnlyChange(previousAppState, nextState);
 		previousAppState = nextState;
@@ -770,14 +1016,17 @@ export function initPersister(storage?: StorageAdapter, options: PersisterOption
 
 	// Register lifecycle listeners in browser environment
 	if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-		document.addEventListener('visibilitychange', () => {
+		const onVisibility = () => {
 			if (document.visibilityState === 'hidden') {
 				flushNow();
 			}
-		});
-		window.addEventListener('pagehide', () => {
-			flushNow();
-		});
+		};
+		document.addEventListener('visibilitychange', onVisibility);
+		window.addEventListener('pagehide', flushNow);
+		unbindLifecycle = () => {
+			document.removeEventListener('visibilitychange', onVisibility);
+			window.removeEventListener('pagehide', flushNow);
+		};
 	}
 }
 
@@ -794,4 +1043,8 @@ export function stopPersister(): void {
 		unbindScrollState();
 		unbindScrollState = undefined;
 	}
+	unbindLifecycle?.();
+	unbindLifecycle = undefined;
+	ordinaryBase = undefined;
+	protectedPersistence = undefined;
 }

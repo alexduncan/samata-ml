@@ -58,6 +58,7 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		});
 		const classRow = targetView.locator('tbody tr:has(th:has-text("class"))');
 		await classRow.locator('button').click();
+		await expect(classRow.locator('button')).toHaveText('Current Target');
 
 		// Navigate to /models -> should show empty state
 		await page.goto('/models');
@@ -141,10 +142,14 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		const unexpectedViolations = axeResults.violations.filter((v) => v.id !== 'color-contrast');
 		expect(unexpectedViolations).toEqual([]);
 
+		await overview.getByRole('button', { name: 'Train New Model' }).click();
+		await expect(page).toHaveURL(/\/models\/3$/);
+		await page.goto('/models');
+		await expect(rows).toHaveCount(3);
 		await page.evaluate(() => {
 			const store = window.__appState!;
 			const state = store.get();
-			const [first, second] = state.models;
+			const [first, second, third] = state.models;
 			const completedSteps = [
 				'choose-model',
 				'select-features',
@@ -171,18 +176,26 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 							randomState: 42
 						}
 					},
-					{ ...second!, num: 3 }
-				],
-				nextModelNum: 4
+					third!
+				]
 			});
 		});
 		const setups = table.locator('tbody tr td:nth-child(4)');
 		const summaries = ['One-Shot (80% / 20%)', 'Cross-Validation (7 folds)', 'Not configured'];
 		await expect(setups).toHaveText(summaries);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:state')!).models[1]
+							?.trainingSetup?.outerFolds
+				)
+			)
+			.toBe(7);
 		await page.reload();
 		await expect(setups).toHaveText(summaries);
 
-		// Read a trained record with an unusable v1 setup and a surviving IndexedDB result.
+		// A historical key-only row does not provide a recoverable result.
 		const historicalState = await page.evaluate(async () => {
 			const datasetId = window.__appState!.get().dataset!.id;
 			const db = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -218,13 +231,11 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		);
 		await page.reload();
 		await expect(setups).toHaveText([...summaries, 'Not configured']);
-		await expect(rows.last().getByRole('link', { name: 'View Results' })).toHaveAttribute(
+		await expect(rows.last().getByRole('link', { name: 'Continue' })).toHaveAttribute(
 			'href',
 			'/models/4'
 		);
-		expect(await page.evaluate(() => window.__appState!.get().models[3]?.status)).toBe(
-			'trained'
-		);
+		expect(await page.evaluate(() => window.__appState!.get().models[3]?.status)).toBe('draft');
 	});
 
 	test('MOD-HUB-2: Compare disabled until two trained models; view results link when trained', async ({
@@ -243,6 +254,9 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 			timeout: 10000
 		});
 		await targetView.locator('tbody tr:has(th:has-text("class")) button').click();
+		await expect(targetView.locator('tbody tr:has(th:has-text("class")) button')).toHaveText(
+			'Current Target'
+		);
 
 		// Seed 2 draft models
 		await page.evaluate(() => {
@@ -293,7 +307,7 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 			});
 		});
 
-		await page.goto('/models');
+		await page.locator('app-sidebar a[href="/models"]').click();
 		const overview = page.locator('app-models-view');
 		await expect(overview.locator('[data-testid="models-list"]')).toBeVisible();
 

@@ -19,6 +19,15 @@ import { IngestionError } from '../src/features/data/ingestion/errors';
 import type { StorageClient } from '../src/features/data/ingestion/storage-client';
 import { INITIAL_APP_STATE, type ModelRecord, type ModelStatus } from '../src/types/state';
 import { resetSampleDatasetCache } from '../src/features/data/sample-datasets';
+import { INGESTION_LOCK, openSamataDb } from '../src/common/storage/db';
+import {
+	createTrainingService,
+	setTrainingServiceForTesting
+} from '../src/features/models/training/training-service';
+import { MemoryStorage } from '../src/stores/persister';
+import { STATE_STORAGE_KEY } from '../src/types/state';
+import { installFakeIndexedDB } from './helpers/fake-indexeddb';
+import { createTrainingTestLocks } from './helpers/training-locks';
 
 function createMockModel(num = 1, status: ModelStatus = 'draft'): ModelRecord {
 	return {
@@ -370,38 +379,35 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 });
 
 describe('clear and change dataset actions (DATA-RES-2)', () => {
-	beforeEach(() => {
+	let restore: () => void;
+	let db: Awaited<ReturnType<typeof openSamataDb>>;
+	let storage: MemoryStorage;
+	let locks: LockManager;
+	beforeEach(async () => {
 		$appState.set(structuredClone(INITIAL_APP_STATE));
 		$datasetLoad.set({ busy: false, progress: null, errorCode: null });
 		clearDatasetResources();
+		restore = installFakeIndexedDB();
+		db = await openSamataDb();
+		storage = new MemoryStorage();
+		locks = createTrainingTestLocks();
+		setTrainingServiceForTesting(createTrainingService({ locks, persistence: { storage } }));
 	});
 
 	afterEach(() => {
 		setStorageClientForTesting(null);
+		setTrainingServiceForTesting();
 		$datasetLoad.set({ busy: false, progress: null, errorCode: null });
 		clearDatasetResources();
 		$appState.set(structuredClone(INITIAL_APP_STATE));
+		db.close();
+		restore();
 	});
 
-	it('rejects changeDataset when any model is training or ingestion is busy', async () => {
-		// Training model present
-		$appState.set({
-			...$appState.get(),
-			models: [createMockModel(1, 'training')]
-		});
-
-		await expect(changeDataset()).rejects.toThrow('Cannot change dataset while training');
-
-		// Ingestion busy
-		$appState.set(structuredClone(INITIAL_APP_STATE));
-		$datasetLoad.set({ busy: true, progress: null, errorCode: null });
-
-		await expect(changeDataset()).rejects.toThrow('Cannot change dataset while training');
-	});
-
-	it('leaves app state intact if storage deletion fails', async () => {
-		const priorState = {
-			...$appState.get(),
+	async function seed() {
+		const state = {
+			...INITIAL_APP_STATE,
+			onboarding: { welcomeDismissed: true },
 			dataset: {
 				id: 'ds-1',
 				name: 'Iris',
@@ -410,63 +416,68 @@ describe('clear and change dataset actions (DATA-RES-2)', () => {
 				rowCount: 150,
 				columns: [{ name: 'f1', type: 'numeric' as const, missingCount: 0 }]
 			},
+			data: { mode: 'preview' as const, selectedColumn: 'f1' },
 			target: 'species',
-			models: [createMockModel(1, 'draft')]
+			models: [createMockModel(1)],
+			nextModelNum: 2
 		};
-		$appState.set(priorState);
+		await db.put('metadata', createMockMetadata('ds-1'));
+		storage.setItem(STATE_STORAGE_KEY, JSON.stringify(state));
+		$appState.set(state);
+		return state;
+	}
 
-		const mockClient: StorageClient = {
-			ingest: async () => createMockMetadata('ds-1'),
-			getMetadata: async () => null,
-			fetchRows: async () => [],
-			deleteDatasetsExcept: async () => {
-				throw new IngestionError('STORAGE_FAILED', 'Disk full');
-			},
-			dispose: () => {}
-		};
-		setStorageClientForTesting(mockClient);
-
-		await expect(changeDataset()).rejects.toThrow();
-		expect($appState.get()).toEqual(priorState);
+	it('reports another tab’s shared training lock and keeps the captured dataset', async () => {
+		await seed();
+		let release!: () => void;
+		let entered!: () => void;
+		const started = new Promise<void>((resolve) => {
+			entered = resolve;
+		});
+		const held = locks.request(
+			INGESTION_LOCK,
+			{ mode: 'shared' },
+			() =>
+				new Promise<void>((resolve) => {
+					release = resolve;
+					entered();
+				})
+		);
+		await started;
+		try {
+			expect(await changeDataset()).toEqual({ ok: false, code: 'remote-training' });
+			expect(await db.get('metadata', 'ds-1')).toBeDefined();
+		} finally {
+			release();
+			await held;
+		}
+		$datasetLoad.set({ busy: true, progress: null, errorCode: null });
+		expect(await changeDataset()).toEqual({ ok: false, code: 'busy' });
 	});
 
-	it('successfully removes dataset, resets downstream state, preserves onboarding and non-data scroll', async () => {
-		let deletedWithKeepId: string | null | undefined;
-		const mockClient: StorageClient = {
-			ingest: async () => createMockMetadata('ds-1'),
-			getMetadata: async () => null,
-			fetchRows: async () => [],
-			deleteDatasetsExcept: async (keepId) => {
-				deletedWithKeepId = keepId;
-			},
-			dispose: () => {}
+	it('leaves app state intact if the protected deletion fails', async () => {
+		const priorState = await seed();
+		const original = IDBObjectStore.prototype.delete;
+		IDBObjectStore.prototype.delete = function (query) {
+			if (this.name === 'metadata')
+				throw new DOMException('Test quota', 'QuotaExceededError');
+			return original.call(this, query);
 		};
-		setStorageClientForTesting(mockClient);
+		try {
+			expect(await changeDataset()).toMatchObject({ ok: false, reason: 'quota' });
+			expect($appState.get()).toEqual(priorState);
+			expect(await db.get('metadata', 'ds-1')).toBeDefined();
+		} finally {
+			IDBObjectStore.prototype.delete = original;
+		}
+	});
 
-		$appState.set({
-			...$appState.get(),
-			onboarding: { welcomeDismissed: true },
-			dataset: {
-				id: 'ds-1',
-				name: 'Iris',
-				source: 'sample',
-				sampleId: 'iris',
-				rowCount: 150,
-				columns: [{ name: 'f1', type: 'numeric', missingCount: 0 }]
-			},
-			data: { mode: 'preview', selectedColumn: 'f1' },
-			target: 'species',
-			models: [createMockModel(1, 'draft')],
-			nextModelNum: 2
-		});
-
+	it('successfully removes dataset and resets downstream state after acknowledgement', async () => {
+		await seed();
 		recordScroll('data:table', { top: 100, savedAt: Date.now(), viewportWidth: 1024 });
 		recordScroll('models', { top: 200, savedAt: Date.now(), viewportWidth: 1024 });
-
-		const result = await changeDataset();
-		expect(result).toBe(true);
-		expect(deletedWithKeepId).toBeNull();
-
+		expect(await changeDataset()).toEqual({ ok: true, value: undefined });
+		expect(await db.get('metadata', 'ds-1')).toBeUndefined();
 		const state = $appState.get();
 		expect(state.dataset).toBeNull();
 		expect(state.data).toEqual({ mode: 'select', selectedColumn: null });
@@ -474,11 +485,8 @@ describe('clear and change dataset actions (DATA-RES-2)', () => {
 		expect(state.models).toEqual([]);
 		expect(state.nextModelNum).toBe(1);
 		expect(state.onboarding.welcomeDismissed).toBe(true);
-
-		// Check non-data scroll cleared while data:table preserved
-		const snapshots = $scrollState.get().snapshots;
-		expect(snapshots['data:table']).toBeDefined();
-		expect(snapshots['models']).toBeUndefined();
+		expect($scrollState.get().snapshots['data:table']).toBeDefined();
+		expect($scrollState.get().snapshots.models).toBeUndefined();
 	});
 
 	it('startDatasetLoad tracks progress and cancellation via cancelDatasetLoad', async () => {
