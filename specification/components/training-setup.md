@@ -46,7 +46,7 @@ The model builder binds the saved value and current fold limit with Lit property
 
 The first switch to Cross-Validation uses five folds or the supplied maximum, whichever is lower. The two CV counts in a committed setup are equal. With a saved value above the current maximum, the number and matrix keep the saved count and the slider clamps to the maximum. Submission requires a correction. Empty, unfinished or out-of-range input keeps the last valid matrix and leaves the store untouched. Switching to One-Shot clears the fold error.
 
-The builder keys the form by model number and checks route, draft status and current eligible metadata before applying an intent. The same instance stays mounted during Help, retaining its invalid draft and link focus on return. A different model starts with its own saved settings. Valid submission saves the setup and opens the pending Section 5.
+The builder keys the form by dataset ID, target name and model number. It checks the route, draft status and current eligible metadata before applying an intent. The same instance stays mounted during Help, retaining its invalid draft and link focus on return. Changing the dataset, target or model creates a fresh form for the current setup. Valid submission saves the setup and opens the pending Section 5.
 
 ## 5. Visual specification
 
