@@ -4,9 +4,10 @@
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="stylesheet" href="../mockups.css" />
 		<title>Mockup review catalogue — samatā.ml</title>
 	</head>
-	<body>
+	<body class="mockup-index">
 		<header>
 			<h1>Mockup review</h1>
 			<p>Browse every file in specification/mockups. Drafts need human styling.</p>
@@ -32,6 +33,39 @@
 			</p>
 			<section id="needs-styling">
 				<h2>Needs styling</h2>
+				<table class="mockups">
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>Description</th>
+							<th>Status</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>
+								{Simple Plain English Name of Mockup}<br />
+								<small>{mockup-filename}</small>
+							</td>
+							<td>
+								{Simple description of the situation in which a user will encounter
+								this ui.}
+							</td>
+							<td>{draft|ready|implemented}</td>
+							<td>
+								<a href="/__source/ui-scaffold/drafts/03-0_models-overview.html"
+									>View source</a
+								>
+								<a
+									href="/files/ui-scaffold/drafts/03-0_models-overview.html?clean=1"
+									>Clean preview</a
+								>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+
 				<ul>
 					<li>
 						<a href="/files/ui-scaffold/drafts/03-0_models-overview.html"

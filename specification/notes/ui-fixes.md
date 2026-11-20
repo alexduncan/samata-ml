@@ -16,24 +16,24 @@ Here is my proposed updated HTML:
   <div id="mockup-details">
     <h4 class="mockup-name">
 		<!-- Give each mockup a simple plain English name -->
-      {Simple Plain English Name of Mockup}
+      {MockupName: Simple Plain English Name of Mockup}
 
 	  <!-- Add a status to each mockup (draft, ready, implemented) -->
       <span class="mockup-status mockup-status-{status}">
-        {draft|ready|implemented}
+        {MockupStatus: draft|ready|implemented}
       </span>
     </h4>
 	<!-- Add a simple description of the mockup to help reviewers understand its context -->
     <p class="mockup-description">
-      {Simple description of the situation in which a user will encounter this
+      {MockupDescription: Simple description of the situation in which a user will encounter this
       ui.}
     </p>
   </div>
   <nav id="mockup-controls" aria-label="Mockup review">
     <!-- Removed label for the select element. WCAG comliance isn't important for this mockup review tool -->
     <select id="preview-page">
-      <option value="/files/basic-html-structure.html">
-        basic-html-structure.html
+      <option value="{file-name.html}">
+        {Mockup Name} ({file-name.html})
       </option>
       <!-- {remaining mockup options} -->
     </select>
@@ -75,11 +75,44 @@ See example in `./samata-ml/specification/mockups/ui-scaffold/drafts/01-6_virtua
 
 I used the term `scaffold` when first creating ui for the app. Now that the basics are established change all references to `scaffold` to `mockups` for ongoing ui refinement.
 
+Change the command `bun run serve:scaffold` to `bun run mockups`.
+
 ### 4) Create a Mockups Index
 
-Flatten the structure of `./samata-ml/specification/mockups/`. All HTML files should live directly inside the folder. Use `<meta 
+Flatten the structure of `./samata-ml/specification/mockups/`. All HTML files should live directly inside the folder.
 
-Write a python script
+When an agent creates a mockup it should add the metadata to the `<head>` of the HTML file using:
+- `<meta name="name" content="{Name of The Mockup}"/>`
+- `<meta name="description" content="{Description The Mockup}"/>`
+- `<meta name="status" content="{draft|ready|implemented}"/>`
+
+The bun script which serves mockups should use this meta data to generate `/index.json` which can be fetched by a script in each page to generate the `<select>` options for switching between mockups.
+
+Javascript can render the table of mockups when the user loads `http://localhost:3000/` in a browser.
+
+### 5) HTML Comments For Clearer Explainations
+
+Whenever an agent combines multiple HTML fragments representing different possible UI states into a single file it should wrap each fragment in opening and closing HTML comments to make it clear for me. For example:
+```html
+<!-- Empty -->
+<!-- This will display when... -->
+<section>
+	<h2>Empty</h2>
+	<p>This model has not completed training.</p>
+</section>
+<!-- / Empty -->
+
+<!-- Result Error -->
+<!-- This will display when... -->
+<section>
+	<h2>Result error</h2>
+	<p role="alert">
+		The result layout could not be loaded or uses an unsupported version.
+	</p>
+	<button class="btn" type="button">Retry</button>
+</section>
+<!-- / Result Error -->
+```
 
 ## Improve Virtualized Table
 1. Move scroll to body. Unwrap `ui-virtual-table` so it sits directly inside `<main>`.
