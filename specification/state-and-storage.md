@@ -1,6 +1,6 @@
 # Application State Persistence
 
-**Status:** draft — open questions in §11 (§11.5 is answered: Web Locks is Baseline Widely available). Implemented: §3 schema, §4 persister (including synchronous discrete triggers and progress throttle, except save-failure notification), §6 checks 1–8, §8 validation and read-only mode. Target: §7 multi-tab sync, §8 migrations, and ingestion ordering. Code that differs from this spec is listed in [Known gap](README.md#known-gaps) 14.
+**Status:** draft — schema, ordinary persistence, acknowledged protected commits, startup reconciliation and cross-tab training coordination are implemented. General multi-tab preferences and future migrations remain target. See [Known gap 14](README.md#known-gaps).
 
 > **Source of truth:** [workflow-steps.md](workflow-steps.md). Navigation, routing, step behaviour and scroll memory are specified in [app-state-and-navigation.md](app-state-and-navigation.md) (now the hybrid router + store design). This document specifies **how state is stored**: keys, schema, write scheduling, IndexedDB reconciliation, multi-tab behaviour, versioning.
 >
@@ -14,13 +14,14 @@ It stores _what the user has done and chosen_. _Where the user is_ comes from th
 
 ## 2. Storage Split
 
-| Data                                                                                     | Where                                                                | Why                                                                                                     |
-| :--------------------------------------------------------------------------------------- | :------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------ |
-| Workflow state, UI selections, model records, headline metrics                           | `localStorage` key `samata-ml:state`                                 | Small, needed synchronously at startup before first render and before routing                           |
-| Scroll snapshots                                                                         | `localStorage` key `samata-ml:scroll`                                | Written far more often than the rest; separate key keeps writes small and lets multi-tab sync ignore it |
-| Dataset rows                                                                             | IndexedDB `samata-db` → `raw_records`                                | Large, streamed in slices ([data-ingestion.md](data-ingestion.md))                                      |
-| Column statistics (histograms, category counts, median)                                  | IndexedDB `samata-db` → `metadata`                                   | Unbounded (up to 100 bins × columns, arbitrary category counts)                                         |
-| Detailed training results (confusion matrices, curves, predictions, feature importances) | IndexedDB `samata-db` → `model_results`, key `[datasetId, modelNum]` | Large and only needed on the results screens                                                            |
+| Data                                                           | Where                                                                           | Why                                                                                                     |
+| :------------------------------------------------------------- | :------------------------------------------------------------------------------ | :------------------------------------------------------------------------------------------------------ |
+| Workflow state, UI selections, model records, headline metrics | `localStorage` key `samata-ml:state`                                            | Small, needed synchronously at startup before first render and before routing                           |
+| Scroll snapshots                                               | `localStorage` key `samata-ml:scroll`                                           | Written far more often than the rest; separate key keeps writes small and lets multi-tab sync ignore it |
+| Dataset rows                                                   | IndexedDB `samata-db` → `raw_records`                                           | Large, streamed in slices ([data-ingestion.md](data-ingestion.md))                                      |
+| Column statistics (histograms, category counts, median)        | IndexedDB `samata-db` → `metadata`                                              | Unbounded (up to 100 bins × columns, arbitrary category counts)                                         |
+| Detailed classification results and completed training logs    | IndexedDB `samata-db` → `model_results`, key `[datasetId, modelNum]`            | Large and read on demand for Section 5 and later results views                                          |
+| Training domain checkpoint                                     | IndexedDB `samata-db` → `model_results`, key `["samata-ml:training-domain", 0]` | Retained generation and pending protected publication                                                   |
 
 `localStorage` is synchronous and quota-limited (~5 MB); it MUST NOT hold dataset rows, column statistics or per-row results. A `localStorage` write failure MUST NOT break the app (§4.3).
 
@@ -77,10 +78,18 @@ export type ValidationMethodology =
 
 export type MulticlassStrategy = 'native' | 'one-vs-rest' | 'one-vs-one';
 
+export type TrainingStage =
+	| 'preparing'
+	| 'fitting'
+	| 'cross-validation'
+	| 'refitting'
+	| 'evaluating'
+	| 'saving';
+
 export interface TrainingProgress {
-	percent: number;
-	currentFold?: number;
-	totalFolds?: number;
+	percent: number | null;
+	stage: TrainingStage;
+	phase: string | null;
 	statusMessage: string;
 }
 
@@ -120,6 +129,7 @@ export interface ModelRecord {
 
 	/** Section 5 – Training. */
 	progress: TrainingProgress | null;
+	resultRevision: string | null; // Current run ID while training or trained.
 	error: TrainingError | null;
 	timings: TrainingTimings | null;
 	durationMs: number | null;
@@ -159,6 +169,7 @@ export interface PersistedAppState {
 	models: ModelRecord[];
 	/** Next `num` to allocate. Monotonic; numbers are never reused. */
 	nextModelNum: number;
+	trainingDomainGeneration: number; // Zero for legacy v1 state.
 
 	/** UI selections for /results. Shape defined with the results spec. */
 	results: { ui: Record<string, unknown> };
@@ -179,7 +190,7 @@ export interface PersistedScroll {
 }
 ```
 
-Defaults on first load: `welcomeDismissed: false`, `resumePath: '/data'`, `dataset: null`, `data: { mode: 'select', selectedColumn: null }`, `target: null`, `models: []`, `nextModelNum: 1`, no scroll snapshots.
+Defaults on first load: `welcomeDismissed: false`, `resumePath: '/data'`, `dataset: null`, `data: { mode: 'select', selectedColumn: null }`, `target: null`, `models: []`, `nextModelNum: 1`, `trainingDomainGeneration: 0` and no scroll snapshots.
 
 ### Training Setup on the v1 wire
 
@@ -193,30 +204,32 @@ A private codec produces fresh canonical objects on read. It supplies seed 42 fo
 
 ## 4. Write Scheduling
 
-A single **persister** subscribes to the stores and is the only code that touches `localStorage`, including startup reading and reconciliation via `readPersistedState` and `persistNow`. Components, reconcilers and actions never call `setItem`, `getItem` or `removeItem` directly.
+The persister encodes v1 state and coordinates normal browser writes with the protected journal. The training service and startup reconciliation use acknowledged persistence for lifecycle operations. Ordinary changes update in-memory state immediately. Their writer merges eligible changes under the state lock against the latest published generation and retains the protected dataset pointer, target, model membership and lifecycle.
 
 ### 4.1 Triggers
 
-| Change                                                                                                                                                           | Write                                                                                                            |
-| :--------------------------------------------------------------------------------------------------------------------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------- |
-| `resumePath` (any workflow navigation), dataset, target, model created, section completed/re-opened, `status` change, error set, `welcomeDismissed`, `data.mode` | **Synchronous**, within the same task as the action                                                              |
-| Discrete UI selections (checkbox, card select, `data.selectedColumn`, `features`, `multiclass`, `hyperparameters.mode`, `trainingSetup?.type`)                   | Synchronous                                                                                                      |
-| Valid fold-count edits and free-form hyperparameter value edits                                                                                                  | Debounced ~300 ms                                                                                                |
-| Training `progress` ticks                                                                                                                                        | Throttled (at most one write per second without starvation); entry into and exit from `training` are synchronous |
-| Scroll snapshots (`samata-ml:scroll`)                                                                                                                            | Debounced ~150 ms; flushed before router navigation, on `visibilitychange` → `hidden` and on `pagehide`          |
+| Change                                                                                                                     | Persistence                                                             |
+| -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Dataset publication, target changes and discard, model creation, training entry and exit, View Results and startup repairs | Acknowledged protected commit                                           |
+| Resume path, onboarding, UI selections, section changes and discrete draft edits                                           | Prompt best-effort write                                                |
+| Fold-count and free-form hyperparameter edits                                                                              | Debounced about 300 ms                                                  |
+| Compact training progress                                                                                                  | Throttled to at most one write per second                               |
+| Log disclosure                                                                                                             | Best-effort immediate flush                                             |
+| Scroll snapshots                                                                                                           | Debounced about 150 ms, with navigation and document visibility flushes |
 
-The persister flushes pending valid fold edits through `flushNow()` when the document becomes hidden or on `pagehide`. The router can flush before navigation. `beforeunload` MUST NOT be relied on.
+The persister requests a flush on `pagehide` and when the document becomes hidden. A form submission is checked against the persisted draft and can acknowledge the captured eligible edit before starting the protected attempt.
 
-### 4.2 Rules
+### 4.2 Protected commits
 
-- Reducers/actions are pure and produce new object references; the persister serialises the resulting snapshot. In-place mutation is forbidden (COMPONENTS.md §5, app-state-and-navigation.md §1.3).
-- Writes go through an injectable `Storage` interface (browser: `localStorage`; tests: in-memory mock).
-- Both `writeAppStateNow` (subscription and flush) and `persistNow` (immediate write after reconciliation) use the same private v1 encoder. Encoding leaves the in-memory shape and references intact.
-- Every write serialises `{ version, …, updatedAt: Date.now() }`.
+The protected writer uses `samata-ml:training-state` to validate the current generation, publish already committed recovery work and serialise each new operation. It stages the next protected domain and increments the generation in IndexedDB. Result insertion and resource deletion join the same transaction as the pending journal row. After the transaction commits, the persister writes the candidate v1 snapshot with that generation and clears the exact pending entry. The checkpoint row retains the generation even after publication. The state write and journal clear acknowledge the operation before normal workflow progression.
+
+The reserved result-store row has a distinct checkpoint tag and a v1 schema. Its pending entry carries the operation ID, kind and protected domain snapshot. Rows under the reservation are excluded from result lookup, dataset deletion and orphan cleanup.
 
 ### 4.3 Failure handling
 
-`setItem` can throw `QuotaExceededError`, or `SecurityError` when storage is blocked (private modes, disabled site data). The persister MUST catch it, keep the app running from memory, and raise one non-blocking notification per document ("Progress can't be saved in this browser"). It MUST NOT retry in a tight loop. If the quota is exceeded the persister first drops `scroll` data (cheapest to lose) and retries once.
+Ordinary edits continue in memory when `localStorage` throws. The persister shows a save-failure notice and can reclaim scroll snapshots before retrying a quota failure. Protected operations surface an explicit response for an unavailable read, a conflicting generation, a read-only version or a failed write. A failure before the IndexedDB commit leaves the prior published resources and domain intact. An unavailable read provides no evidence of missing data.
+
+After the IndexedDB commit, failures retain the pending candidate in the durable checkpoint. Further protected mutations wait on successful publication. Retry saving and startup replay the same operation and generation. A saved result stays at 95% until publication and a committed discard keeps the confirmation in recovery. The app shell withholds unreconciled workflow views until saved work can be restored.
 
 ## 5. UI State Persistence Rule
 
@@ -224,19 +237,20 @@ The persister flushes pending valid fold edits through `flushNow()` when the doc
 
 This is what makes "exact same UI" enforceable as the app grows. Each new feature spec MUST add its UI state to the registry below or state why it is transient.
 
-| UI state                                                                     | Persisted as                                 | Notes                                            |
-| :--------------------------------------------------------------------------- | :------------------------------------------- | :----------------------------------------------- |
-| Welcome modal dismissed                                                      | `onboarding.welcomeDismissed`                |                                                  |
-| `/data` picker vs preview                                                    | `data.mode`                                  |                                                  |
-| Open column-details aside                                                    | `data.selectedColumn`                        |                                                  |
-| Virtual table scroll offsets                                                 | `ScrollSnapshot.regions['data-table']`       |                                                  |
-| Page scroll, per step                                                        | `PersistedScroll.snapshots[key]`             | Ignored if viewport width differs                |
-| Per-model section completion                                                 | `ModelRecord.completedSteps`                 | Drives `.train-step-complete` and the check icon |
-| Feature initialisation state                                                 | `ModelRecord.ui.featureSelectionInitialised` | Tracks one-time population on model continue     |
-| Chosen model, features, options, hyperparameters, multiclass, training setup | `ModelRecord.*`                              | Committed values                                 |
-| Per-model results view                                                       | `ModelRecord.ui`                             | Defined by the section 6 spec                    |
-| Compare Results view                                                         | `results.ui`                                 | Defined by the section 4 spec                    |
-| Location                                                                     | URL, plus `resumePath` for `/`               |                                                  |
+| UI state                                                                     | Persisted as                                 | Notes                                          |
+| :--------------------------------------------------------------------------- | :------------------------------------------- | :--------------------------------------------- |
+| Welcome modal dismissed                                                      | `onboarding.welcomeDismissed`                |                                                |
+| `/data` picker vs preview                                                    | `data.mode`                                  |                                                |
+| Open column-details aside                                                    | `data.selectedColumn`                        |                                                |
+| Virtual table scroll offsets                                                 | `ScrollSnapshot.regions['data-table']`       |                                                |
+| Page scroll, per step                                                        | `PersistedScroll.snapshots[key]`             | Ignored if viewport width differs              |
+| Per-model section completion                                                 | `ModelRecord.completedSteps`                 | Drives section selection and completion checks |
+| Feature initialisation state                                                 | `ModelRecord.ui.featureSelectionInitialised` | Tracks one-time population on model continue   |
+| Chosen model, features, options, hyperparameters, multiclass, training setup | `ModelRecord.*`                              | Committed values                               |
+| Training log disclosure                                                      | `ModelRecord.ui.trainingLogOpen`             | Boolean, defaults to closed when absent        |
+| Per-model results view                                                       | `ModelRecord.ui`                             | Defined by the section 6 spec                  |
+| Compare Results view                                                         | `results.ui`                                 | Defined by the section 4 spec                  |
+| Location                                                                     | URL, plus `resumePath` for `/`               |                                                |
 
 **Transient (never persisted):** reserved-route modals (including `/help/training-setup`; these are restored only because the URL says so), Datasheet, Upload and Model Description dialogs, focus, hover, uncommitted field text (including empty, out-of-range and native invalid fold drafts), fold errors and their live announcements, in-flight ingestion state, upload validation errors, live training progress between throttled writes.
 
@@ -244,28 +258,21 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 
 ## 6. IndexedDB Reconciliation
 
-`localStorage` and IndexedDB are separate stores that can diverge (partial "clear site data", eviction under storage pressure, an upload interrupted by reload, a second tab replacing the dataset). After reading persisted state and **before the first render**, the hydrator runs these checks in order. A failed check repairs the _smallest_ affected piece and cascades downward; it never silently invents data.
+Startup reads v1 storage and the IndexedDB checkpoint under the state lock. It replays any pending committed operation before exposing workflow views. A storage access failure enters recovery. Available but missing or invalid dataset metadata or results are handled separately.
 
-1. **Dataset present.** If `dataset !== null` but `metadata` for `dataset.id` is missing from IndexedDB, treat as `dataset = null`: clear `target`, `models`, `data.selectedColumn`, set `data.mode = 'select'`, clear non-`/data` scroll keys, and queue a notification.
-2. **Orphans.** Delete IndexedDB rows, metadata and model results for any dataset id other than `dataset.id`. A partial upload (rows written, no `metadata`) is an orphan by definition.
-3. **Target valid.** `target` must name an eligible column in `dataset.columns` (type ≠ `text`); otherwise `target = null` and `models = []`.
-4. **Models valid.** For each model: `features ⊆ dataset.columns` (eligible, ≠ target); drop unknown features and un-complete `select-features` onward if any were dropped. A `trained` model whose `model_results` entry is missing reverts to `draft` with a `TRAINING_FAILED` error whose message explains the stored results were lost.
-5. **Counters.** `nextModelNum = max(nextModelNum, max(models.num) + 1)`.
-6. **Selections valid.** `data.selectedColumn` must exist in `dataset.columns`. `resumePath` is **not** corrected when it names a page that cannot currently display (for example `/models/3` after model 3 was discarded): `/` resumes there and the page shows its notification, because state never blocks navigation (app-state-and-navigation.md §4).
-7. **Interrupted training.** For each model with `status === 'training'`, try `navigator.locks.request('samata-ml:training:{num}', { ifAvailable: true }, …)`. Lock acquired ⇒ nobody is training it ⇒ `recoverInterrupted` (status `draft`, `progress = null`, `TRAINING_INTERRUPTED_BY_RELOAD`; un-completes `configure-training`, `training` and `results`, returning section 4 to active). Lock unavailable ⇒ another tab is training it; leave it `training` and treat it as read-only. If the Web Locks API is missing, fall back to treating it as interrupted.
-8. **Training Setup recovery.** Capture each model's decode outcome, original status and Section 4–6 completions from the decoded envelope before any repairs. Apply setup repairs after the result and lock checks. A draft with a malformed setup, or explicit `null` with a stale original Section 4–6 completion, reopens Section 4. Clear the affected completions, progress, timings, duration, metrics and stale error. Keep the error just created when trained results were lost, or the interrupted-training error. On subsequent hydration the losses and interruptions retain their diagnostics and timestamps. An original draft with malformed setup and a stale failure clears its failure even if the message matches the loss explanation. A trained model with an existing result and a training model with an active lock keep their status, completions and results, and remain read-only. A model-local malformed setup does not discard the active dataset, its row chunks or unaffected siblings and their results.
-9. Persist the repaired state immediately.
+1. Validate the active dataset and eligible target. Confirmed resource loss clears the dependent state and scroll keys. Valid resources remain available when an unrelated record needs repair.
+2. Validate model identifiers, features and counters. A trained model requires a valid v1 envelope with the same dataset, target, model creation identity, effective configuration and result revision. A missing or invalid envelope reopens the draft with a result-loss notice.
+3. For a training model, probe the exclusive per-model lock. Preserve a live run owned in another tab. When no owner remains, acknowledge an interrupted draft with its setup retained and Section 4 open.
+4. Apply model-local Training Setup decoding outcomes after result and lock checks. A malformed draft setup, or an unset setup with stale Section 4–6 markers, reopens Section 4. Keep the diagnostic created by result-loss or interruption recovery.
+5. Publish any protected repair before orphan cleanup. Under the exclusive ingestion lock, reread the acknowledged pointer and journal, and clean unpublished or superseded data while retaining the active dataset, its result rows and the checkpoint. When the lock is busy or publication is unresolved, defer cleanup.
 
-**Ingestion ordering requirement.** To make check 1 and 2 safe, ingestion MUST write the new dataset under a **new** `datasetId` and delete the previous dataset only after `metadata` for the new one is written. The "clear old stores first" behaviour in the earlier preview-dataset design would destroy the user's current dataset if an upload is interrupted.
+Ingestion stages rows and metadata under a fresh dataset ID. After ingestion, the replacement queues its exclusive hand-off, checks that the staged metadata still exists and publishes the new pointer before cleaning the previous dataset. If startup removes a staged upload before it has a replacement checkpoint, the hand-off rejects that upload with the current dataset preserved. A pending or acknowledged replacement is protected from orphan cleanup.
 
 ## 7. Multi-Tab Behaviour
 
-- **Shared:** `localStorage`, IndexedDB, and (by design) `resumePath`. Opening `/` in a second tab resumes whichever workflow page was last visited in any tab.
-- **Per tab:** the URL, mounted view, scroll in progress, in-flight ingestion and the training worker.
-- **`storage` event on `samata-ml:state`:** other tabs re-hydrate domain state (dataset, target, models, data settings) into their stores and re-run reconciliation steps 3–6. They MUST NOT navigate because of it. If the page on screen can no longer display (the dataset changed or the model on screen was removed) it re-renders in place into the matching `.notification` of app-state-and-navigation.md §4.3. `resumePath` changes from other tabs are ignored by the receiving tab's router. `samata-ml:scroll` events are ignored.
-- **Training:** a tab that starts training holds the Web Lock `samata-ml:training:{num}` for the run (§6, check 7), so a second tab loading during training does not mark it interrupted. A model training in another tab is displayed read-only with "Training in another tab".
-- **Dataset replacement** in one tab invalidates the other tab's models through the `storage` event; no cross-tab locking of data is attempted.
-- Last writer wins for everything else.
+IndexedDB and the v1 state key are shared. Tabs keep their own URL, active view, focus and local workers. On a state storage event, a tab validates the generation under the state lock and applies newer acknowledged protected state in place. The receiving tab keeps its local resume route and workflow focus. Scroll-key changes and general ordinary preference sync are outside this contract.
+
+Training takes the shared `samata-ml:ingestion` lock and the exclusive `samata-ml:training:{num}` lock through settlement. A confirmation cancels local attempts and waits for settlement before trying the exclusive ingestion lock. When another tab owns a shared training lock, keep the confirmation open with a remote-training notice. A different tab can replay a pending publication under the state lock. The owning tab and the recovering tab load the same validated result revision.
 
 ## 8. Versioning & Validation
 
@@ -274,7 +281,7 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 - Persisted `hyperparameters.values` are validated: numbers must be finite, values are `null`, string, boolean, number or finite number array, and prototype keys (`__proto__`, `constructor`, `prototype`) are rejected; a state that fails is discarded wholesale like any other shape failure.
 - Reads use a hand-written runtime shape check. JSON that fails to parse, fails envelope validation, or has a version below current without a migration falls back to fresh defaults. Training Setup decoding is a model-local exception to envelope rejection (§3, §6). The v1 wire remains compatible with the previous reader.
 - A version **higher** than the running code understands (a stale tab after a deploy) yields fresh defaults in memory and puts the persister into **read-only mode** for that key for the lifetime of the document: the tab runs from memory and never overwrites newer data.
-- Migrations are an ordered array of pure `(old) => new` functions with tests.
+- Phase 3 keeps localStorage at v1 and IndexedDB at v2. Missing generation, revision and disclosure fields use their historical defaults. A versioned result envelope is validated before reuse. An old key-only result is treated as unavailable for that model. The checkpoint is validated separately. Advanced version migrations remain target.
 
 ## 9. Design Rationale
 

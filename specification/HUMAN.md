@@ -66,7 +66,7 @@ Already answered and incorporated: dataset-id/model-id identity convention; app 
 
 ## 4. Missing later specifications and content
 
-Configure Model and Training Setup are implemented. The remaining classification training and results work is specified in the [classification integration draft](plans/web-ml-classification-integration.md#interfaces-and-behaviour) and its phase plans. TODO-50 and TODO-51 remain on the integration plan for development delivery and the final specification sync.
+Configure Model, Training Setup and local classification training are implemented. Later result views, diagnostics and tuning remain in the [classification integration overview](plans/web-ml-classification-integration.md#interfaces-and-behaviour) and its phase plans.
 
 - [ ] **Author remaining model articles (TODO-12):** Add locale content for models beyond Logistic Regression. Non-blocking: the Step 3 missing-description fallback is accepted. → [content layout](content-and-i18n.md#static-content)
 - [ ] **Component documentation (TODO-34, TODO-35):** Shell, chiclet, dialog and page-header specs are delivered. Remaining transient-feature/notification/dropzone/table/stepper/status/progress specs need reconciliation. Non-blocking where reviewed plans provide closed contracts and explicit sync owners. → [template](COMPONENTS.md#12-component-spec-template)
@@ -85,7 +85,7 @@ The obsolete preview spec (TODO-48/Gap 16) is owned by Step 1 T7. The remaining 
 
 - [ ] **Style generated model options (web-ml-classification-integration):** Style the proposed manual/tuning controls, structured inputs and loading/error/invalid states. Non-blocking. → [draft](mockups/ui-scaffold/drafts/03-4_train-models-3-configure-model.html)
 - [ ] **Style Training Setup (web-ml-phase-2-training-setup):** Style the 03-5 strategy controls, matrix, summary and blocked state, then promote the draft. Non-blocking for Phase 2. → [03-5 draft](mockups/ui-scaffold/drafts/03-5_train-models-4-configure-training.html)
-- [ ] **Style Section 5 training progress.** Once Phase 3 updates the draft, style the single native progress bar and expandable log, with pending, running, cancelling, other-tab, saved-but-unpublished and completed states, plus storage-recovery and pending-confirmation notices. Promote the styled mockup for a visual port. Non-blocking. → [draft](mockups/ui-scaffold/drafts/03-6_train-models-5-train.html)
+- [ ] **Style Section 5 training progress.** Style the single native progress bar and expandable log, with pending, running, cancelling, other-tab, saved-but-unpublished and completed states, plus storage-recovery and pending-confirmation notices. Promote the styled mockup for a visual port. Check spoken milestone and disclosure feedback with VoiceOver in Safari after styling. Non-blocking. → [draft](mockups/ui-scaffold/drafts/03-6_train-models-5-train.html)
 - [ ] **Style single-model results (web-ml-phase-4/6/7):** Style the shared results sections and charts (Phase 4), model-internals sections (Phase 6) and the Tuning section (Phase 7) once each phase updates the draft. Non-blocking. → [draft](mockups/ui-scaffold/drafts/03-7_train-models-5-results.html)
 - [ ] **Style comparison (web-ml-phase-5-model-comparison):** Style the `/results` comparison draft that Phase 5 T6 creates (controls, table lens, charts, blocked/incomparable states). Non-blocking. → [plan](plans/web-ml-phase-5-model-comparison.md#t6--connected-results-view-shell-wiring-draft-and-journeys)
 
@@ -106,7 +106,7 @@ Only the human changes normative mockups. Drafts are structure only and use exis
 
 ## 7. Other spec conflicts and process backlog
 
-TODO-50/51 are answered and claimed by Phase 3: send isolation headers in production and development and consume precompiled `web-ml` assets. The verified library revision requires isolation. No native toolchain belongs here; no further decision is requested. TODO.md still lists both as open until that plan's final sync task.
+Phase 3 resolves TODO-50 and TODO-51 with development and production isolation and the pinned prebuilt web-ml graph.
 
 - [ ] **Report web-ml public documentation conflicts (web-ml-classification-integration):** (1) is resolved upstream: both JSON documents now apply `learningRate` only under SGD, and the prose says Adam rejects any rate other than 0.001. (2) NB prior order and (3) the threshold positive label, plus `classWeight` key rules, are filed as `../web-ml/specification/requests/2026-11-19-class-label-keyed-option-semantics.md`. Still to raise: (4) `durationMs` start point differs between `timing.md` and the declarations; (5) `CombinedDatasetProvider` row order is undocumented. Non-blocking: the plan avoids every affected path. Recommended: file one upstream issue; once it is answered, a follow-up plan can unlock per-class prior entry and threshold editing. → [plan context](plans/web-ml-classification-integration.md#codebase-context)
 

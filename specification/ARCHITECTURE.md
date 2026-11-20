@@ -1,6 +1,6 @@
 # System Architecture
 
-**Status:** partial — feature/component placement, development-only Storybook, history router, stores, hydration, root-absolute assets, Markdown reserved routes and single-page fallback are implemented. Service-worker caching, dynamically imported views, per-model configuration and no-inlining remain target (see [Known gaps](README.md#known-gaps) 3, 6).
+**Status:** partial — feature placement, development-only Storybook, routing, hydration, root-absolute assets, Markdown, SPA fallback and the same-origin training graph are implemented. Service-worker caching, dynamically imported views, per-model configuration and no-inlining remain target. See [Known gaps](README.md#known-gaps).
 
 This document defines the target system shape and the architectural invariants that changes must preserve.
 
@@ -47,6 +47,8 @@ The repository strictly adheres to a domain-driven, feature-based directory stru
 - **Single-page fallback:** Every workflow and reserved path (`/`, `/data`, `/target`, `/models`, `/models/{num}`, `/results`, `/about`, `/privacy`, `/help`) MUST return the app shell. Production uses `"not_found_handling": "single-page-application"` in `wrangler.jsonc`; the dev server (`scripts/static-server.ts`) MUST fall back only for extension-less paths so a missing `.js`/`.css` still returns 404.
 - **Content and dataset fragments:** `/content/*` and `/datasets/*` carry `X-Robots-Tag: noindex, nofollow` in `public/_headers`, are never `Disallow`ed in `robots.txt`, and are never linked directly with `<a href>`. Compiled fragments contain no inline scripts or third-party images (compatible with the production CSP).
 - **Remote sample CSVs:** the sole production `connect-src` exception is `https://raw.githubusercontent.com/propublica/compas-analysis/`. It must match the `REMOTE_CSV_PREFIXES` allow-list in `scripts/generate-datasets.ts`; the worker verifies remote bytes against the descriptor SHA-256 before parsing.
+- **Training assets.** The app bundles its integration entry as `/training.worker.js`. The build copies the verified prebuilt `web-ml` module graph, workers, relative WASM files and their notices to `/web-ml/{version}-{graph-digest}/`. Preserve relative paths and serve JavaScript modules and WASM types correctly. The build checks the installed package resolves to the matching sibling `../web-ml` closure, and reports its expected location and revision when setup fails. Use the locked Bun install from the verified layout.
+- **Training isolation.** Development and production serve COOP `same-origin` and COEP `require-corp`. Same-origin assets follow CORP `same-origin`. Allow-listed remote sample CSVs are fetched using CORS and verified with the descriptor hash. The isolated runtime probe exercises the app delivery headers in Chromium, Firefox and WebKit. The model service checks `crossOriginIsolated` before accepting an attempt.
 - **Service Worker:** The application MUST implement an offline-first Progressive Web App (PWA) Service Worker to cache the compiled assets locally for instant subsequent loads. Navigation requests for any path above MUST be answered with the cached app shell.
 
 ## Routing, Flow Control, and Code Splitting
@@ -67,7 +69,7 @@ The workflow is specified in [workflow-steps.md](workflow-steps.md); routing, st
 
 ## Future Improvements
 
-- Add a regular GitHub Actions workflow that installs the pinned Bun, Zig, and Emscripten versions, runs bun install --frozen-lockfile, and gates pull requests with bun run test. The existing workflow only runs the scikit-learn benchmark, so it does not yet provide full-suite CI.
+- Automate the locked Bun install and app verification suite in CI with the pinned prebuilt web-ml package. Native compilation and library benchmarks belong to the web-ml build.
 - Add a bun run doctor or setup-check command that reads the version files, checks the required tools and dependencies, and prints actionable fix instructions.
 - Offer a pinned devcontainer or Codespaces configuration for contributors who prefer a preconfigured environment.
 - Research security requirements and add `SECURITY.md`.

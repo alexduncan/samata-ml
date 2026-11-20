@@ -8,9 +8,9 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 ## 1. Workflow steps that need specifying
 
-- **TODO-02 — Single Model Results** ([workflow-steps §3.6](workflow-steps.md), marked TODO): the common metrics for classification and regression; which charts each model shows; and the format of `src/config/models/{model-name}.ts`. Results storage is still open (TODO-21). Mockup `03-7` is empty.
+- **TODO-02 — Single Model Results** ([workflow-steps §3.6](workflow-steps.md), marked TODO): the common metrics for classification and regression; which charts each model shows; and the format of `src/config/models/{model-name}.ts`. Phase 3 defines the result storage contract (TODO-21). Mockup `03-7` is empty.
 - **TODO-03 — Compare Results** ([workflow-steps §4](workflow-steps.md), marked TODO): which metrics are compared, which models can be compared (same task type only?), and the layout. Mockup `04` is a placeholder.
-- **TODO-04 — Training** ([workflow-steps §3.5](workflow-steps.md)): specify the web-ml progress and timing events, the per-step timing table for nested cross-validation and tuning, error recovery, and how web-ml enforces separate training, validation and test partitions ([VISION §10](VISION.md)). Mockup `03-6` is empty.
+- **TODO-04 — Training.** Phase 3 delivers local One-Shot and fixed CV, progress, safe errors, elapsed time and recovery. Detailed timing tables for nested evaluation and tuning remain later work. The [03-6 draft](mockups/ui-scaffold/drafts/03-6_train-models-5-train.html) awaits styling and promotion.
 - **TODO-05 — Configure Model** ([workflow-steps §3.3](workflow-steps.md)):
     - Where each model's hyperparameter definitions come from (ranges, types, defaults; `web-ml` or app config).
     - The hyperparameter-tuning UI: search method, how ranges are entered, and which tuning metric.
@@ -46,7 +46,7 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 ### [state-and-storage.md §11](state-and-storage.md)
 
-- **TODO-21** — Store results in a `model_results` store in `samata-db`, or in a separate database?
+- **TODO-21** — _Resolved:_ validated versioned training results are stored in `samata-db` → `model_results`. Later result views consume these records.
 - **TODO-22** — Identify uploads by content hash, so that re-uploading the same file keeps downstream state?
 
 ### [components/button.md §12](components/button.md)
@@ -68,13 +68,7 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 ### [machine-learning-orchestrator.md](machine-learning-orchestrator.md)
 
-- **TODO-33** — Whole spec needed:
-    - The `web-ml` API surface the app uses.
-    - Worker topology and the messaging protocol (testing.md mentions Comlink; no spec chooses it).
-    - Progress and cancellation events.
-    - Error handling.
-    - The results shape.
-    - Ownership of the `SharedArrayBuffer` that [data-ingestion §6](data-ingestion.md) requires.
+- **TODO-33** — _Resolved for Phase 3:_ the [orchestrator](machine-learning-orchestrator.md) defines the pinned runtime, worker protocol, progress, cancellation, safe errors and result envelopes. Advanced tuning and result presentation remain later work.
 
 ## 3. Components with no spec
 
@@ -88,7 +82,7 @@ Open questions and missing specification found by reviewing every Markdown and H
     - The data tables on `/target` and `/models` (`table.css`) — table style module implemented in `src/styles/table.styles.ts` and adopted globally.
     - The `.train-step` sections (`train-model.css`) — implemented in `src/styles/train-model.styles.ts` and adopted globally.
     - Any general status-dot primitive beyond the sidebar-local implementation.
-    - The training progress bar.
+    - _Resolved:_ the native bar and log are specified in [Training Progress](components/training-progress.md).
     - The histogram chart.
 
 ## 4. Mockups missing or out of date ([mockups/ui-scaffold/](mockups/ui-scaffold/))
@@ -111,8 +105,8 @@ Open questions and missing specification found by reviewing every Markdown and H
 ## 6. Inconsistencies between specs
 
 - **TODO-48** — _Resolved:_ [preview-dataset.md](preview-dataset.md) rewritten to describe implemented store, paging, virtualization, and scroll contracts.
-- **TODO-50** — `SharedArrayBuffer` needs cross-origin isolation. `public/_headers` sets COOP and COEP for production, but the dev server does not send them. Specify this for development.
-- **TODO-51** — [ARCHITECTURE § Future Improvements](ARCHITECTURE.md) mentions Zig, Emscripten and a scikit-learn benchmark workflow. These look as though they belong to `web-ml`; confirm what applies to this repo.
+- **TODO-50** — _Resolved:_ development and production serve the isolation headers required by the prebuilt training runtime. Browser checks cover both servers.
+- **TODO-51** — _Resolved:_ the app consumes the pinned prebuilt web-ml package via the frozen Bun install. Native tooling and library benchmarks belong to web-ml.
 
 ## 7. Process
 
