@@ -309,6 +309,44 @@ test.describe('Standalone Training Setup component', () => {
 		]);
 	});
 
+	for (const waitForRender of [false, true]) {
+		const timing = waitForRender ? 'after rendering' : 'before rendering';
+		test(`WML-P2-COMP-3: rejects stale saved folds when a draft becomes in range ${timing}`, async ({
+			page
+		}) => {
+			const form = await mountStandalone(page, { value: crossValidation(10), maxFolds: 5 });
+			const number = form.getByRole('spinbutton');
+			const submit = form.getByRole('button', { name: 'Train Model' });
+			await number.fill('7');
+			await submit.focus();
+			await expect(submit).toBeFocused();
+
+			await form.evaluate(async (host, wait) => {
+				const element = host as AppTrainingSetup;
+				element.maxFolds = 8;
+				if (wait) await element.updateComplete;
+				element.shadowRoot!.querySelector('form')!.requestSubmit();
+			}, waitForRender);
+			expect(await recordedEvents(page)).toEqual([]);
+			await expect(number).toHaveValue('7');
+			await expect(number).toBeFocused();
+			await expect(number).toHaveAttribute('aria-invalid', 'true');
+			await expect(number).toHaveAccessibleDescription(
+				/Enter a whole number between 2 and 8\./
+			);
+
+			await number.fill('8');
+			await expect(number).toHaveAttribute('aria-invalid', 'false');
+			await submit.click();
+			expect((await recordedEvents(page)).at(-1)).toEqual({
+				type: 'app-training-setup-submit',
+				detail: { setup: crossValidation(8) },
+				bubbles: false,
+				composed: false
+			});
+		});
+	}
+
 	for (const [reason, props] of [
 		['disabled', { disabled: true }],
 		['blocked', { blockedReason: 'Choose a target with more labelled rows.' }],

@@ -210,8 +210,10 @@ export class AppTrainingSetup extends LitElement {
 		if (edit?.status === 'bad-input' || edit?.status === 'empty') {
 			return this.labels.foldErrorInvalidNumber;
 		}
-		const count = edit ? (parseNumberText(edit.text) ?? NaN) : this.lastValidFolds;
-		const issue = validateFoldCount(count, this.maxFolds);
+		const draftIssue =
+			edit && validateFoldCount(parseNumberText(edit.text) ?? NaN, this.maxFolds);
+		// A limit change can make the draft valid without changing the count emitted on submit.
+		const issue = draftIssue ?? validateFoldCount(this.lastValidFolds, this.maxFolds);
 		if (issue === 'invalid-number') return this.labels.foldErrorInvalidNumber;
 		return issue === 'out-of-range'
 			? this.labels.foldErrorRange(MIN_CV_FOLDS, this.maxFolds)
