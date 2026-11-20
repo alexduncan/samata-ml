@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test } from 'bun:test';
 import { INGESTION_LOCK, deleteDatasetsExcept, openSamataDb } from '../src/common/storage/db';
 import { readTrainingCheckpoint } from '../src/common/storage/training-domain';
+import type { ClassifierId } from '../src/features/models/model-catalogue';
 import {
 	$publicationPending,
 	createTrainingService
@@ -17,7 +18,11 @@ import {
 	TRAINING_STATE_LOCK
 } from '../src/stores/persister';
 import { reconcileProtectedStartup } from '../src/stores/reconciler';
-import { $trainingSession, getTrainingSession } from '../src/stores/training.store';
+import {
+	$trainingSession,
+	getTrainingSession,
+	type TrainingSession
+} from '../src/stores/training.store';
 import type { DatasetMetadata } from '../src/types/dataset';
 import { toDatasetSummary } from '../src/types/dataset';
 import {
@@ -104,8 +109,8 @@ class ScriptedWorker {
 		this.onmessage?.(new MessageEvent('message', { data: reply }));
 	}
 
-	succeed(): void {
-		this.reply({ kind: 'success', identity: this.identity, result: fixtureTrainingResult() });
+	succeed(result = fixtureTrainingResult()): void {
+		this.reply({ kind: 'success', identity: this.identity, result });
 	}
 
 	terminate(): void {
@@ -147,7 +152,7 @@ afterEach(() => {
 	$appState.set(INITIAL_APP_STATE);
 });
 
-function seed(count = 1): PersistedAppState {
+function seed(count = 1, modelId: ClassifierId = 'gaussian-nb'): PersistedAppState {
 	let state: PersistedAppState = {
 		...INITIAL_APP_STATE,
 		dataset: toDatasetSummary(metadata),
@@ -163,7 +168,7 @@ function seed(count = 1): PersistedAppState {
 		...state,
 		models: state.models.map((model) => ({
 			...model,
-			modelId: 'gaussian-nb',
+			modelId,
 			features: ['measurement'],
 			trainingSetup: DEFAULT_ONE_SHOT_SETUP,
 			completedSteps: ['choose-model', 'select-features', 'configure-model']
@@ -257,6 +262,45 @@ test('WML-P3-TRAIN-3: lost results demote only the matching trained model during
 	});
 	expect($appState.get().models[1]).toEqual(second);
 });
+
+test.each(['target', 'dataset'] as const)(
+	'WML-P3-TRAIN-3: restored sessions hold only identity and display data before discarding the %s',
+	async (discard) => {
+		seed(1, 'k-neighbors-classifier');
+		const run = service.start(1);
+		const worker = await workerAt(0);
+		const fitted = { type: 'KNeighborsClassifier', trainingRows: [[1], [2], [3], [4]] };
+		worker.succeed({ ...fixtureTrainingResult(), modelJson: fitted });
+		expect(await run).toMatchObject({ ok: true });
+		const saved = await service.loadCompletedResult(1);
+		if (!saved) throw new Error('Expected a saved result');
+		expect(saved.modelJson).toEqual(fitted);
+		expect(saved.logEntries.at(-1)?.message).toEqual({ key: 'completed' });
+		const expectedSession: TrainingSession = {
+			identity: worker.identity,
+			status: 'complete',
+			progress: { percent: 100, stage: 'saving', phase: null, statusMessage: 'completed' },
+			logEntries: saved.logEntries,
+			warnings: []
+		};
+
+		$trainingSession.set(new Map());
+		expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({ ok: true });
+		expect(getTrainingSession(worker.identity)).toEqual(expectedSession);
+
+		$trainingSession.set(new Map());
+		expect(await service.loadCompletedResult(1)).toEqual(saved);
+		expect(getTrainingSession(worker.identity)).toEqual(expectedSession);
+
+		const discarded =
+			discard === 'target'
+				? await service.discardTarget(metadata.id, 'species', 'measurement')
+				: await service.discardDataset(metadata.id, 'species');
+		expect(discarded).toMatchObject({ ok: true });
+		expect(await db.get('model_results', [metadata.id, 1])).toBeUndefined();
+		expect(await service.loadCompletedResult(1)).toBeNull();
+	}
+);
 
 test('WML-P3-TRAIN-4: remote training holds back confirmation without deleting anything', async () => {
 	const prior = seed();

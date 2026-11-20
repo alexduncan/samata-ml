@@ -68,8 +68,9 @@ function setSession(session: TrainingSession): void {
 export function createTrainingSession(identity: TrainingRunIdentity): TrainingSession {
 	const existing = getTrainingSession(identity);
 	if (existing) return existing;
+	const { datasetId, target, modelNum, modelCreatedAt, configurationKey, runId } = identity;
 	const session: TrainingSession = {
-		identity,
+		identity: { datasetId, target, modelNum, modelCreatedAt, configurationKey, runId },
 		status: 'pending',
 		progress: { percent: null, stage: 'preparing', phase: null, statusMessage: 'preparing' },
 		logEntries: [],
