@@ -112,3 +112,9 @@ It is currently used in the following siutations:
 
 ### Sidebar
 - Resolve models nested link problem.
+- Temporarily change the `<button class="btn-icon project-settings"` into a "delete" link that displays an "Are you sure?" modal with options for "cancel" and "delete." If the user clicks "delete" on the modal, the state should be reset, except for the parameter which records if the welcome modal was dismissed.
+
+### Large Screens
+
+- Don't allow `.page-body` to expand beyond `max-width: 60rem`.
+- 
