@@ -257,6 +257,11 @@ export class AppModelBuilderView extends LitElement {
 				color: var(--blue-700);
 			}
 
+			.train-step-panel[aria-labelledby='step-4-title'] a:focus-visible {
+				outline: 2px solid var(--focus-ring);
+				outline-offset: 2px;
+			}
+
 			code {
 				font-family: var(--font-mono);
 			}

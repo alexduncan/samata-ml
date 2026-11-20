@@ -694,6 +694,71 @@ test.describe('Connected Training Setup', () => {
 		).toBeVisible();
 	});
 
+	for (const targetState of ['eligible', 'blocked', 'missing'] as const) {
+		test(`WML-P2-UI-4: Section 4 link has visible keyboard focus when the target is ${targetState}`, async ({
+			page,
+			browserName
+		}) => {
+			const form = await openSetup(page);
+			const section = setupStep(page);
+			const help = section.getByRole('link', { name: 'What is this?' });
+			const recovery = section.getByRole('link', { name: 'Choose a target' });
+			let previous = builder(page).getByRole('button', { name: 'Edit Configure Model' });
+			if (targetState === 'blocked') {
+				await setCounts(page, { a: 100 });
+				previous = form.getByRole('link', { name: 'Learn more' });
+			} else if (targetState === 'missing') {
+				await page.evaluate(() => {
+					const app = window.__appState!;
+					app.set({ ...app.get(), target: 'missing-target' });
+				});
+				previous = help;
+			}
+			const link = targetState === 'eligible' ? help : recovery;
+			await expect(link).toBeVisible();
+			await previous.focus();
+			await page.keyboard.press('Tab');
+			if (
+				browserName === 'webkit' &&
+				process.platform === 'darwin' &&
+				!(await link.evaluate((element) => element.matches(':focus')))
+			) {
+				// Safari on macOS can require Option-Tab to include links in keyboard navigation.
+				await previous.focus();
+				await page.keyboard.press('Alt+Tab');
+			}
+			await expect(link).toBeFocused();
+			expect(await link.evaluate((element) => element.matches(':focus-visible'))).toBe(true);
+
+			const tokenColour = await link.evaluate((element) => {
+				const reference = document.createElement('span');
+				reference.style.color = 'var(--focus-ring)';
+				element.append(reference);
+				const colour = getComputedStyle(reference).color;
+				reference.remove();
+				return colour;
+			});
+			await expect(link).toHaveCSS('outline-color', tokenColour);
+			await expect(link).toHaveCSS('outline-style', 'solid');
+			await expect(link).toHaveCSS('outline-width', '2px');
+			await expect(link).toHaveCSS('outline-offset', '2px');
+
+			await page.emulateMedia({ forcedColors: 'active' });
+			expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(
+				true
+			);
+			await expect(link).toBeFocused();
+			await expect(link).toHaveCSS('outline-style', 'solid');
+			await expect(link).toHaveCSS('outline-width', '2px');
+			const colours = await link.evaluate((element) => ({
+				outline: getComputedStyle(element).outlineColor,
+				background: getComputedStyle(element.closest('.train-step')!).backgroundColor
+			}));
+			expect(colours.outline).not.toBe('rgba(0, 0, 0, 0)');
+			expect(colours.outline).not.toBe(colours.background);
+		});
+	}
+
 	for (const direction of ['ltr', 'rtl'] as const) {
 		test(`WML-P2-UI-5: ten folds scroll by keyboard in ${direction} with visible markers in forced colours`, async ({
 			page,
