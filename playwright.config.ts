@@ -31,8 +31,16 @@ export default defineConfig({
 		{
 			command: 'bun run server',
 			url: 'https://localhost:3000',
+			env: { SAMATA_TRAINING_RUNTIME_PROBE: '1' },
 			ignoreHTTPSErrors: true,
 			reuseExistingServer: !process.env.CI
+		},
+		{
+			command: 'bun run build && bun run server --dist',
+			url: 'https://localhost:3001',
+			env: { SAMATA_SERVER_PORT: '3001', SAMATA_TRAINING_RUNTIME_PROBE: '1' },
+			ignoreHTTPSErrors: true,
+			reuseExistingServer: false
 		},
 		{
 			command: 'bun run serve:mockups --port 3333',

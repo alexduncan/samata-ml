@@ -11,7 +11,7 @@ import { join } from 'node:path';
 
 const CONTENT_DIR = join(process.cwd(), 'content');
 
-const PORT = 3000;
+const PORT = Number(process.env.SAMATA_SERVER_PORT ?? 3000);
 const HOSTNAME = 'localhost';
 const SERVE_DIST = process.argv.includes('--dist');
 const SERVE_DIR = SERVE_DIST ? DIST_DIR : DEV_DIR;
