@@ -424,8 +424,8 @@ async function publishPending(
 				updatedAt: Date.now()
 			};
 	const state =
-		firstPublication && !acknowledged && current
-			? keepLocalOrdinaryChanges(candidate, current)
+		!acknowledged && current
+			? keepLocalOrdinaryChanges(candidate, current, firstPublication)
 			: candidate;
 	if (!acknowledged) {
 		const ack = writeAcknowledgedSnapshot(context.storage, state);
@@ -624,7 +624,8 @@ function mergeOrdinaryState(
 
 function keepLocalOrdinaryChanges(
 	candidate: PersistedAppState,
-	previous: PersistedAppState
+	previous: PersistedAppState,
+	keepDraftEdits: boolean
 ): PersistedAppState {
 	const local = $appState.get();
 	if (
@@ -646,8 +647,9 @@ function keepLocalOrdinaryChanges(
 				const before = base.models.find(sameModel);
 				const edited = local.models.find(sameModel);
 				if (!old || !before || !edited) return updated;
-				// Retain debounced edits when the protected operation left that draft alone.
+				// The first publication can include debounced edits to an unchanged draft.
 				const draftUnchanged =
+					keepDraftEdits &&
 					before.status === 'draft' &&
 					old.status === 'draft' &&
 					updated.status === 'draft' &&

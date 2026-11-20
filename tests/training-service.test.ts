@@ -10,9 +10,15 @@ import type {
 	TrainingWorkerReply,
 	TrainingWorkerRequest
 } from '../src/features/models/training/protocol';
-import { $appState, reduceCreateModel, setHyperparameters } from '../src/stores/app.store';
+import {
+	$appState,
+	reduceCreateModel,
+	setHyperparameters,
+	setTrainingLogOpen
+} from '../src/stores/app.store';
 import {
 	MemoryStorage,
+	flushNow,
 	initPersister,
 	stopPersister,
 	TRAINING_STATE_LOCK
@@ -387,6 +393,56 @@ test('WML-P3-TRAIN-6: persistent result pending recovers after reload without re
 		resultRevision: worker.identity.runId
 	});
 	expect(await readTrainingCheckpoint(db)).toMatchObject({ checkpoint: { pending: null } });
+	expect(workers).toHaveLength(1);
+});
+
+test('WML-P3-UI-1: a disclosure changed during publication failure survives retry and reload', async () => {
+	seed();
+	initPersister(storage, {
+		trainingPersistence: {
+			withStateLock: (operation) => locks.request(TRAINING_STATE_LOCK, operation)
+		}
+	});
+	let runId: string;
+	try {
+		const run = service.start(1);
+		const worker = await workerAt(0);
+		runId = worker.identity.runId;
+		storage.reject = (state) => state.models[0]?.status === 'trained';
+		worker.succeed();
+		expect(await run).toMatchObject({ ok: false, reason: 'security', pending: 'finish' });
+
+		expect(setTrainingLogOpen(1, true)).toBe(true);
+		flushNow();
+		await locks.request(TRAINING_STATE_LOCK, () => {});
+		expect($appState.get().models[0]?.ui.trainingLogOpen).toBe(true);
+		expect(await readTrainingCheckpoint(db)).toMatchObject({
+			checkpoint: { generation: 2, pending: { kind: 'finish' } }
+		});
+
+		storage.reject = () => false;
+		expect(await service.retry(worker.identity)).toMatchObject({ ok: true });
+		expect($appState.get().models[0]).toMatchObject({
+			status: 'trained',
+			resultRevision: runId,
+			ui: { trainingLogOpen: true }
+		});
+	} finally {
+		stopPersister();
+		await locks.request(TRAINING_STATE_LOCK, () => {});
+	}
+
+	$appState.set(INITIAL_APP_STATE);
+	$trainingSession.set(new Map());
+	expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({
+		ok: true,
+		generation: 2
+	});
+	expect($appState.get().models[0]).toMatchObject({
+		status: 'trained',
+		resultRevision: runId,
+		ui: { trainingLogOpen: true }
+	});
 	expect(workers).toHaveLength(1);
 });
 

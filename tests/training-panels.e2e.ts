@@ -219,7 +219,9 @@ test('a committed start awaiting publication returns to a draft without launchin
 	await expect.poll(() => requestCount(page)).toBe(1);
 });
 
-test('holds a committed result at 95% and retries only publication', async ({ page }) => {
+test('WML-P3-UI-1/5: retries only publication and preserves a disclosure changed during the failure', async ({
+	page
+}) => {
 	await controlTraining(page);
 	await start(page);
 	await page.evaluate(() => (window.__trainingFixture!.blockPublication = 'finish'));
@@ -231,7 +233,14 @@ test('holds a committed result at 95% and retries only publication', async ({ pa
 	await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '95');
 	await expect(panel.getByRole('button', { name: 'View Results' })).toBeDisabled();
 	await expect(panel.getByRole('button', { name: 'Cancel Training' })).toBeDisabled();
+	const blockedWrites = await page.evaluate(() => window.__trainingFixture!.blockedWrites);
+	await panel.locator('summary').press('Enter');
+	await expect(panel.locator('details')).toHaveAttribute('open', '');
+	await expect
+		.poll(() => page.evaluate(() => window.__trainingFixture!.blockedWrites))
+		.toBeGreaterThan(blockedWrites);
 	await revisitTraining(page);
+	await expect(panel.locator('details')).toHaveAttribute('open', '');
 	await panel.getByRole('button', { name: 'Retry saving' }).focus();
 	await assertPanelAccessibility(page);
 	await page.evaluate(() => (window.__trainingFixture!.blockPublication = null));
@@ -241,6 +250,14 @@ test('holds a committed result at 95% and retries only publication', async ({ pa
 	expect(await page.evaluate(() => window.__appState!.get().models[0]?.resultRevision)).toBe(
 		runId
 	);
+	await expect(panel.locator('details')).toHaveAttribute('open', '');
+	await page.reload();
+	await expect(panel.getByRole('button', { name: 'View Results' })).toBeEnabled();
+	await expect(panel.locator('details')).toHaveAttribute('open', '');
+	expect(await page.evaluate(() => window.__appState!.get().models[0]?.resultRevision)).toBe(
+		runId
+	);
+	expect(await requestCount(page)).toBe(0);
 });
 
 test('WML-P3-UI-2: each stopped model retries its own repair and preserves the reason', async ({
