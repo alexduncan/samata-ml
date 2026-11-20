@@ -1,8 +1,8 @@
 # Phase 3 — Execute classification training with progress and an expandable log
 
-**Status:** ready-for-review | **Updated:** 2026-11-20T16:36:38Z
+**Status:** draft | **Updated:** 2026-11-20T16:44:27Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Codex (GPT-6) | **Created:** 2026-11-17T21:23:45Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -232,8 +232,9 @@ None.
 
 ## Plan review history
 
-| Reviewed (UTC) | Agent (model) | Decision | Findings |
-| -------------- | ------------- | -------- | -------- |
+| Reviewed (UTC)       | Agent (model)       | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| -------------------- | ------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-20T16:44:27Z | Codex (GPT-6 Astra) | changes-requested | MAJOR R1: Lifecycle protected persistence has no failure contract. Existing src/stores/persister.ts safeSetItem:517, writeAppStateNow:559, persistNow:593 and flushNow:717 return void and swallow quota/security failures; state-and-storage.md section 4.3 continues from memory. Define acknowledged protected writes and failure/recovery ordering before worker start, after IDB success and after destructive deletion; add quota/security/read-only negative tests and reconcile the spec. MAJOR R2: Task gates cannot close in sequence: T1 forbids src/ but requires app non-isolation UX; T2 acceptance requires browser execution assigned to dependent T5; T6 runs --check-complete while T6 is unfinished (task_gate.py:166-172). Move acceptance to its owning task and final completion gate after T6. MINOR R3: Add testing.md to specification sync because T5 replaces pending reference-journey stages. Refresh canonical provenance and identify accessible c31a967 closure path. Scout independently confirmed required upstream public contracts in the matching closure build; no upstream API mismatch found. No user decision required. |
 
 ## Change log
 
