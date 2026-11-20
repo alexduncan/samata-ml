@@ -307,6 +307,16 @@ export const ResultPublicationPending: Story = {
 	}
 };
 
+/** A stopped run with an unsaved repair shows Retry saving on that model. */
+export const StoppedRepairPending: Story = {
+	beforeEach: () => {
+		const restore = seedRun('training', false);
+		setTrainingSessionStatus(identity, 'stopped-pending');
+		$publicationPending.set(null);
+		return restore;
+	}
+};
+
 /** A completed result is available for acknowledgement, with history still inspectable. */
 export const TrainingComplete: Story = {
 	beforeEach: () => {

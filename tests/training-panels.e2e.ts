@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { controlTraining, openSetup } from './fixtures/training/browser';
+import { configureDraft, controlTraining, openSetup } from './fixtures/training/browser';
 import { fixtureTrainingResult } from './fixtures/training/results';
 
 function training(page: Page) {
@@ -241,6 +241,62 @@ test('holds a committed result at 95% and retries only publication', async ({ pa
 	expect(await page.evaluate(() => window.__appState!.get().models[0]?.resultRevision)).toBe(
 		runId
 	);
+});
+
+test('WML-P3-UI-2: each stopped model retries its own repair and preserves the reason', async ({
+	page
+}) => {
+	await controlTraining(page);
+	await start(page);
+	await page.locator('app-sidebar a[href="/models"]').click();
+	const secondSetup = await configureDraft(page, 2);
+	await secondSetup.getByRole('button', { name: 'Train Model' }).press('Enter');
+	await expect.poll(() => requestCount(page)).toBe(2);
+	const generation = await page.evaluate(() => window.__appState!.get().trainingDomainGeneration);
+
+	await page.evaluate(() => {
+		const fixture = window.__trainingFixture!;
+		fixture.blockRead = true;
+		fixture.reply({ kind: 'cancelled' }, 1);
+		fixture.reply({ kind: 'failed', code: 'invalid-request' }, 2);
+	});
+	const panel = training(page);
+	const retry = panel.getByRole('button', { name: 'Retry saving' });
+	await expect(retry).toBeVisible();
+	await page.locator('app-sidebar a[href="/models/1"]').click();
+	await expect(retry).toBeVisible();
+	await expect(panel.getByRole('alert')).toHaveText(/Training has stopped/);
+	await expect(panel.getByRole('button', { name: 'Cancel Training' })).toBeDisabled();
+	await expect(panel.getByRole('button', { name: 'View Results' })).toBeDisabled();
+
+	await page.evaluate(() => {
+		const fixture = window.__trainingFixture!;
+		fixture.blockRead = false;
+		fixture.blockPublication = 'stop';
+	});
+	await retry.press('Enter');
+	await expect
+		.poll(() => page.evaluate(() => window.__trainingFixture!.blockedWrites))
+		.toBeGreaterThan(0);
+	await expect(retry).toBeEnabled();
+	await page.evaluate(() => (window.__trainingFixture!.blockPublication = null));
+	await retry.press('Enter');
+	const stoppedNotice = page
+		.locator('section[aria-labelledby="step-4-title"]')
+		.getByRole('alert');
+	await expect(stoppedNotice).toHaveText(/Training was cancelled/);
+	expect(await page.evaluate(() => window.__appState!.get().trainingDomainGeneration)).toBe(
+		generation + 1
+	);
+
+	await page.locator('app-sidebar a[href="/models/2"]').click();
+	await expect(retry).toBeVisible();
+	await retry.press('Enter');
+	await expect(stoppedNotice).toHaveText(/The training library rejected this setup/);
+	expect(await page.evaluate(() => window.__appState!.get().trainingDomainGeneration)).toBe(
+		generation + 2
+	);
+	expect(await requestCount(page)).toBe(2);
 });
 
 test('a remote tab reads the running state and recovers a pending result without fitting again', async ({

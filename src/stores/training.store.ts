@@ -16,6 +16,7 @@ export type TrainingSessionStatus =
 	| 'cancelling'
 	| 'saving'
 	| 'publication-pending'
+	| 'stopped-pending'
 	| 'complete'
 	| 'cancelled'
 	| 'failed';

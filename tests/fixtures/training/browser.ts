@@ -15,8 +15,10 @@ type FixtureReply = {
 
 type BrowserTrainingFixture = {
 	requests: TrainingWorkerRequest[];
-	reply(event: FixtureReply): void;
-	blockPublication: 'start' | 'finish' | null;
+	reply(event: FixtureReply, modelNum?: number): void;
+	blockRead: boolean;
+	blockPublication: 'start' | 'finish' | 'stop' | null;
+	blockedWrites: number;
 };
 
 declare global {
@@ -98,18 +100,22 @@ export async function controlTraining(page: Page, isolated = true): Promise<void
 					request?: TrainingStartRequest;
 			  }
 			| undefined;
+		const workers = new Map<number, NonNullable<typeof worker>>();
 		const fixture: BrowserTrainingFixture = {
 			requests: [],
-			reply(event) {
-				if (!worker?.request || !worker.onmessage)
+			reply(event, modelNum) {
+				const recipient = modelNum === undefined ? worker : workers.get(modelNum);
+				if (!recipient?.request || !recipient.onmessage)
 					throw new Error('Expected a started training worker');
-				worker.onmessage(
+				recipient.onmessage(
 					new MessageEvent('message', {
-						data: { ...event, identity: worker.request.identity }
+						data: { ...event, identity: recipient.request.identity }
 					})
 				);
 			},
-			blockPublication: null
+			blockRead: false,
+			blockPublication: null,
+			blockedWrites: 0
 		};
 		window.__trainingFixture = fixture;
 		if (!isolated) Object.defineProperty(window, 'crossOriginIsolated', { value: false });
@@ -122,7 +128,10 @@ export async function controlTraining(page: Page, isolated = true): Promise<void
 					request: undefined as TrainingStartRequest | undefined,
 					postMessage(message: TrainingWorkerRequest) {
 						fixture.requests.push(message);
-						if (message.kind === 'start') mock.request = message;
+						if (message.kind === 'start') {
+							mock.request = message;
+							workers.set(message.identity.modelNum, mock);
+						}
 					},
 					terminate() {}
 				};
@@ -130,13 +139,22 @@ export async function controlTraining(page: Page, isolated = true): Promise<void
 				return mock;
 			}
 		});
+		const getItem = Storage.prototype.getItem;
+		Storage.prototype.getItem = function (key: string): string | null {
+			if (fixture.blockRead && key === 'samata-ml:state') {
+				throw new DOMException('Fixture blocked state read', 'SecurityError');
+			}
+			return getItem.call(this, key);
+		};
 		const setItem = Storage.prototype.setItem;
 		Storage.prototype.setItem = function (key: string, value: string): void {
 			if (fixture.blockPublication && key === 'samata-ml:state') {
 				const status = JSON.parse(value).models?.[0]?.status;
-				const blocked = fixture.blockPublication === 'finish' ? 'trained' : 'training';
-				if (status === blocked)
+				const blocked = { start: 'training', finish: 'trained', stop: 'draft' };
+				if (status === blocked[fixture.blockPublication]) {
+					fixture.blockedWrites++;
 					throw new DOMException('Fixture blocked publication', 'SecurityError');
+				}
 			}
 			setItem.call(this, key, value);
 		};

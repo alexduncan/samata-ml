@@ -79,6 +79,15 @@ const metadata: DatasetMetadata = {
 
 class TestStorage extends MemoryStorage {
 	reject: (state: PersistedAppState) => boolean = () => false;
+	denyRead = false;
+
+	override getItem(key: string): string | null {
+		if (key === STATE_STORAGE_KEY && this.denyRead) {
+			throw new DOMException('Test storage failure', 'SecurityError');
+		}
+		return super.getItem(key);
+	}
+
 	override setItem(key: string, value: string): void {
 		if (key === STATE_STORAGE_KEY && this.reject(JSON.parse(value))) {
 			throw new DOMException('Test storage failure', 'SecurityError');
@@ -379,6 +388,77 @@ test('WML-P3-TRAIN-6: persistent result pending recovers after reload without re
 	});
 	expect(await readTrainingCheckpoint(db)).toMatchObject({ checkpoint: { pending: null } });
 	expect(workers).toHaveLength(1);
+});
+
+test('WML-P3-TRAIN-5: separate stop repairs preserve the original reason for each run', async () => {
+	seed(2);
+	const first = service.start(1);
+	const one = await workerAt(0);
+	const second = service.start(2);
+	const two = await workerAt(1);
+	storage.denyRead = true;
+	one.reply({ kind: 'cancelled', identity: one.identity });
+	two.reply({ kind: 'failed', identity: two.identity, code: 'invalid-request' });
+	for (const result of await Promise.all([first, second])) {
+		expect(result).toMatchObject({ ok: false, pending: 'recover', reason: 'security' });
+	}
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: { generation: 2, pending: null }
+	});
+
+	storage.denyRead = false;
+	expect(await service.retry(one.identity)).toMatchObject({ ok: true });
+	expect($appState.get().models[0]).toMatchObject({
+		status: 'draft',
+		resultRevision: null,
+		error: { code: 'TRAINING_CANCELLED', details: 'cancelled' }
+	});
+	expect($appState.get().models[1]?.status).toBe('training');
+	expect(await service.retry(two.identity)).toMatchObject({ ok: true });
+	expect($appState.get().models[1]).toMatchObject({
+		status: 'draft',
+		resultRevision: null,
+		error: { code: 'TRAINING_FAILED', details: 'invalid-request' }
+	});
+	expect(getTrainingSession(one.identity)?.logEntries.at(-1)?.message).toEqual({
+		key: 'cancelled'
+	});
+	expect(getTrainingSession(two.identity)?.logEntries.at(-1)?.message).toEqual({ key: 'failed' });
+	expect(workers.map(({ terminations }) => terminations)).toEqual([1, 1]);
+});
+
+test('WML-P3-TRAIN-6: a committed stop repair is acknowledged without applying it twice', async () => {
+	seed();
+	const run = service.start(1);
+	const worker = await workerAt(0);
+	storage.denyRead = true;
+	worker.reply({ kind: 'failed', identity: worker.identity, code: 'invalid-request' });
+	expect(await run).toMatchObject({ ok: false, pending: 'recover', reason: 'security' });
+
+	storage.denyRead = false;
+	storage.reject = (state) => state.models[0]?.status === 'draft';
+	expect(await service.retry(worker.identity)).toMatchObject({
+		ok: false,
+		pending: 'recover',
+		reason: 'security'
+	});
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: { generation: 2, pending: { kind: 'recover' } }
+	});
+	expect($appState.get().models[0]?.status).toBe('training');
+
+	storage.reject = () => false;
+	expect(await service.retry(worker.identity)).toMatchObject({ ok: true });
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: { generation: 2, pending: null }
+	});
+	expect($appState.get().models[0]).toMatchObject({
+		status: 'draft',
+		resultRevision: null,
+		error: { details: 'invalid-request' }
+	});
+	expect(getTrainingSession(worker.identity)?.status).toBe('failed');
+	expect(workers.map(({ terminations }) => terminations)).toEqual([1]);
 });
 
 test('WML-P3-TRAIN-7: allocates concurrent models while merging the latest counter and rejects a stale start', async () => {

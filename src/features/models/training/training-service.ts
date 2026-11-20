@@ -115,6 +115,12 @@ type ActiveAttempt = {
 	port: WorkerPort | null;
 };
 
+type StoppedRepair = {
+	identity: TrainingRunIdentity;
+	status: 'cancelled' | 'failed';
+	outcome: Extract<TrainingOutcome, { kind: 'stopped' }>;
+};
+
 const conflict = { ok: false, reason: 'conflict' } as const;
 
 function modelIn(state: PersistedAppState, identity: TrainingRunIdentity): ModelRecord | undefined {
@@ -202,7 +208,10 @@ function notice(
 	};
 }
 
-function stoppedOutcome(code: TrainingCommandFailure['code'], now: number): TrainingOutcome {
+function stoppedOutcome(
+	code: TrainingCommandFailure['code'],
+	now: number
+): StoppedRepair['outcome'] {
 	const cancelled = code === 'cancelled';
 	const message = cancelled
 		? 'Training was cancelled'
@@ -230,6 +239,7 @@ function domain(state: PersistedAppState) {
 /** Creates the route-independent service that owns resource locks and worker settlement. */
 export function createTrainingService(options: TrainingServiceOptions = {}) {
 	const active = new Map<number, ActiveAttempt>();
+	const stoppedRepairs = new Map<string, StoppedRepair>();
 	const exclusiveIntents = new Set<string>();
 	let pendingDatasetCleanup: { id: string; cleanup: () => Promise<void> } | null = null;
 	const newId = options.newId ?? (() => crypto.randomUUID());
@@ -377,41 +387,50 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		});
 	}
 
-	async function settleStopped(
-		attempt: ActiveAttempt,
-		code: TrainingCommandFailure['code']
-	): Promise<TrainingCommandResult> {
-		const { identity } = attempt.request;
-		const status = code === 'cancelled' ? 'cancelled' : 'failed';
-		const kind = status === 'cancelled' ? 'cancel' : 'finish';
-		const { ack, committed } = await checkpoint(
-			kind,
-			({ state }) => {
-				const next =
-					state && reduceTrainingOutcome(state, identity, stoppedOutcome(code, now()));
-				return next ? { state: next, mutation: { type: 'none' } } : conflict;
-			},
-			identity,
-			status
-		);
+	function finishStoppedSession(identity: TrainingRunIdentity, status: StoppedRepair['status']) {
 		const entries = appendTrainingLog(
 			getTrainingSession(identity)?.logEntries ?? [],
 			{ key: status },
 			now()
 		);
+		setTrainingSessionStatus(identity, status, entries);
+	}
+
+	async function repairStopped(
+		repair: StoppedRepair,
+		kind: 'cancel' | 'finish' | 'recover'
+	): Promise<TrainingCommandResult> {
+		const { identity, status, outcome } = repair;
+		const { ack, committed } = await checkpoint(
+			kind,
+			({ state }) => {
+				const next = state && reduceTrainingOutcome(state, identity, outcome);
+				return next ? { state: next, mutation: { type: 'none' } } : conflict;
+			},
+			identity,
+			status
+		);
+		// After commit the checkpoint owns replay, including when its publication fails.
+		if (committed || ack.ok) stoppedRepairs.delete(identity.runId);
+		else stoppedRepairs.set(identity.runId, repair);
 		if (!ack.ok) {
-			setTrainingSessionStatus(identity, 'publication-pending');
-			if (!committed)
-				$publicationPending.set({
-					operationId: newId(),
-					kind: 'recover',
-					identity,
-					stoppedStatus: status
-				});
+			setTrainingSessionStatus(identity, 'stopped-pending');
 			return notice(ack, committed ? kind : 'recover');
 		}
-		setTrainingSessionStatus(identity, status, entries);
-		return { ok: false, code };
+		finishStoppedSession(identity, status);
+		return { ok: true, value: undefined };
+	}
+
+	async function settleStopped(
+		attempt: ActiveAttempt,
+		code: TrainingCommandFailure['code']
+	): Promise<TrainingCommandResult> {
+		const status = code === 'cancelled' ? 'cancelled' : 'failed';
+		const result = await repairStopped(
+			{ identity: attempt.request.identity, status, outcome: stoppedOutcome(code, now()) },
+			status === 'cancelled' ? 'cancel' : 'finish'
+		);
+		return result.ok ? { ok: false, code } : result;
 	}
 
 	async function train(
@@ -570,54 +589,38 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		}
 	}
 
-	async function retry(): Promise<TrainingCommandResult> {
+	async function retry(expected?: TrainingRunIdentity): Promise<TrainingCommandResult> {
 		const pending = $publicationPending.get();
 		const ack = await retryTrainingPublication(persistence);
-		if (!ack.ok) return notice(ack, pending?.kind);
-		if (!pending) return { ok: true, value: undefined };
-		const identity = pending.identity;
-		if (identity && (pending.kind === 'start' || pending.kind === 'recover')) {
-			const repaired = await withResource(INGESTION_LOCK, 'shared', true, () =>
-				withResource(
-					`samata-ml:training:${identity.modelNum}`,
-					'exclusive',
-					true,
-					async (): Promise<TrainingCommandResult> => {
-						const result = await checkpoint(
-							'recover',
-							({ state }) => {
-								if (!state) return conflict;
-								const next = reduceTrainingOutcome(state, identity, {
-									kind: 'stopped',
-									error: {
-										code: 'TRAINING_INTERRUPTED_BY_RELOAD',
-										message: 'Training was interrupted',
-										timestamp: now()
-									}
-								});
-								return next
-									? { state: next, mutation: { type: 'none' } }
-									: conflict;
-							},
-							identity,
-							pending.stoppedStatus ?? 'failed'
-						);
-						return result.ack.ok
-							? { ok: true, value: undefined }
-							: notice(result.ack, 'recover');
+		if (!ack.ok) {
+			const pendingStop = expected
+				? stoppedRepairs.has(expected.runId)
+				: stoppedRepairs.size > 0;
+			return notice(ack, pending?.kind ?? (pendingStop ? 'recover' : undefined));
+		}
+		const identity = pending?.identity;
+		if (identity && pending?.kind === 'start') {
+			stoppedRepairs.set(identity.runId, {
+				identity,
+				status: 'failed',
+				outcome: {
+					kind: 'stopped',
+					error: {
+						code: 'TRAINING_INTERRUPTED_BY_RELOAD',
+						message: 'Training was interrupted',
+						timestamp: now()
 					}
-				)
-			);
-			if (!repaired.ok) return repaired;
-			setTrainingSessionStatus(identity, pending.stoppedStatus ?? 'failed');
-		} else if (identity && pending.kind === 'finish' && !pending.stoppedStatus) {
+				}
+			});
+			setTrainingSessionStatus(identity, 'stopped-pending');
+		} else if (identity && pending?.stoppedStatus) {
+			finishStoppedSession(identity, pending.stoppedStatus);
+		} else if (identity && pending?.kind === 'finish') {
 			const result = await loadCompletedResult(identity.modelNum, identity);
 			if (!result) return { ok: false, code: 'conflict' };
 			setTrainingSessionStatus(identity, 'complete', result.logEntries);
-		} else if (identity && pending.stoppedStatus) {
-			setTrainingSessionStatus(identity, pending.stoppedStatus);
 		}
-		if (pending.kind === 'replace' && pendingDatasetCleanup) {
+		if (pending?.kind === 'replace' && pendingDatasetCleanup) {
 			const cleanup = pendingDatasetCleanup;
 			pendingDatasetCleanup = null;
 			await withResource(INGESTION_LOCK, 'exclusive', false, async () => {
@@ -632,8 +635,28 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 				return { ok: true, value: undefined };
 			});
 		}
-		if ($publicationPending.get()?.operationId === pending.operationId)
+		if (pending && $publicationPending.get()?.operationId === pending.operationId)
 			$publicationPending.set(null);
+
+		const repairIdentity = expected ?? (pending?.kind === 'start' ? identity : undefined);
+		const repair = repairIdentity
+			? stoppedRepairs.get(repairIdentity.runId)
+			: pending
+				? undefined
+				: stoppedRepairs.values().next().value;
+		if (repair && (!repairIdentity || sameTrainingRun(repair.identity, repairIdentity))) {
+			return withResource(INGESTION_LOCK, 'shared', true, () =>
+				withResource(
+					`samata-ml:training:${repair.identity.modelNum}`,
+					'exclusive',
+					true,
+					async () =>
+						stoppedRepairs.get(repair.identity.runId) === repair
+							? repairStopped(repair, 'recover')
+							: { ok: true, value: undefined }
+				)
+			);
+		}
 		return { ok: true, value: undefined };
 	}
 

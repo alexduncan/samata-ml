@@ -1750,12 +1750,15 @@ export class AppModelBuilderView extends LitElement {
 		}
 	}
 
-	private async handlePublicationRetry(model: ModelRecord): Promise<void> {
+	private async handlePublicationRetry(
+		model: ModelRecord,
+		identity?: TrainingRunIdentity
+	): Promise<void> {
 		if (this.retryingPublication) return;
 		const key = this.trainingNoticeKey(model);
 		this.retryingPublication = true;
 		try {
-			const result = await getTrainingService().retry();
+			const result = await getTrainingService().retry(identity);
 			if (!this.isCurrentTrainingRoute(key)) return;
 			if (result.ok) {
 				this.trainingNotice = undefined;
@@ -1799,7 +1802,8 @@ export class AppModelBuilderView extends LitElement {
 	private renderTrainingNotice(
 		model: ModelRecord,
 		message: string,
-		retry: boolean
+		retry: boolean,
+		identity?: TrainingRunIdentity
 	): TemplateResult {
 		return html`
 			<div class="notification notification-alert">
@@ -1809,7 +1813,7 @@ export class AppModelBuilderView extends LitElement {
 							type="button"
 							class="btn"
 							?disabled=${this.retryingPublication}
-							@click=${() => this.handlePublicationRetry(model)}>
+							@click=${() => this.handlePublicationRetry(model, identity)}>
 							${this.translations.value.retrySaving}
 						</button>`
 					: nothing}
@@ -1999,7 +2003,8 @@ export class AppModelBuilderView extends LitElement {
 		const viewed = model.completedSteps.includes('results');
 		const pending = this.publication.value;
 		const pendingRun = pending?.identity && pending.identity.runId === session?.identity.runId;
-		const awaitingRun = session?.status === 'publication-pending';
+		const stoppedPending = session?.status === 'stopped-pending';
+		const awaitingRun = session?.status === 'publication-pending' || stoppedPending;
 		const notice =
 			this.trainingNotice?.key === this.trainingNoticeKey(model)
 				? this.trainingNotice
@@ -2105,13 +2110,14 @@ export class AppModelBuilderView extends LitElement {
 								event: CustomEvent<{ readonly open: boolean }>
 							) => this.handleLogToggle(model, event)}>
 						</app-training-progress>
-						${awaitingRun && pendingRun
+						${stoppedPending || (awaitingRun && pendingRun)
 							? this.renderTrainingNotice(
 									model,
-									pending?.stoppedStatus
+									stoppedPending
 										? t.trainingPendingStop
 										: t.trainingPendingResult,
-									true
+									true,
+									session?.identity
 								)
 							: viewingPending
 								? this.renderTrainingNotice(
