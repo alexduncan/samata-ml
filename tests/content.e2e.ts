@@ -93,6 +93,102 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		await expect(page.locator('#content h1')).toHaveText('Train Models');
 	});
 
+	test('WML-P2-ROUTE-2: Training Setup Help preserves the Model 1 underlay', async ({ page }) => {
+		await page.goto('/data');
+		await page.locator('app-welcome-modal button.btn-primary').click();
+		await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
+		await expect(page.locator('app-dataset-preview')).toBeAttached();
+
+		await page.goto('/target');
+		const targetView = page.locator('app-target-view');
+		await expect(targetView.getByTestId('target-ready')).toBeVisible({ timeout: 10_000 });
+		await targetView.locator('tbody tr:has(th:has-text("class")) button').click();
+
+		await page.goto('/models');
+		await page.getByRole('button', { name: 'Train New Model' }).click();
+		await expect(page).toHaveURL('/models/1');
+		const builder = page.locator('app-model-builder-view');
+		await expect(builder.getByTestId('model-builder')).toBeVisible();
+		const originalBuilder = await builder.elementHandle();
+
+		await builder.locator('.page-header').evaluate((header) => {
+			const anchor = document.createElement('a');
+			anchor.href = '/help/training-setup';
+			anchor.textContent = 'Open training setup help';
+			header.append(anchor);
+		});
+		await page.getByRole('link', { name: 'Open training setup help' }).click();
+		await expect(page).toHaveURL('/help/training-setup');
+		await expect(page).toHaveTitle('samatā.ml | Training Setup');
+		const modal = page.locator('app-content-modal dialog');
+		await expect(modal).toBeVisible();
+		await expect(modal.getByRole('heading', { name: 'One-Shot Training' })).toBeVisible();
+		expect(
+			await builder.evaluate((element, original) => element === original, originalBuilder)
+		).toBe(true);
+		expect(await page.evaluate(() => window.__appState!.get().resumePath)).toBe('/models/1');
+
+		await modal.getByRole('button', { name: 'Close' }).click();
+		await expect(modal).toBeHidden();
+		await expect(page).toHaveURL('/models/1');
+		await expect(page).toHaveTitle('samatā.ml | Model 1');
+		expect(
+			await builder.evaluate((element, original) => element === original, originalBuilder)
+		).toBe(true);
+	});
+
+	test('WML-P2-ROUTE-2: Training Setup heading is present while loading and after a 404', async ({
+		page
+	}) => {
+		const { promise, resolve } = Promise.withResolvers<void>();
+		await page.route('**/content/en/pages/training-setup.html*', async (route) => {
+			await promise;
+			await route.fulfill({ status: 404 });
+		});
+		const modal = page.locator('app-content-modal dialog');
+		const heading = modal.getByRole('heading', { name: 'Training Setup', exact: true });
+		try {
+			await page.goto('/help/training-setup');
+			await expect(heading).toBeVisible();
+			await expect(modal.getByRole('alert')).toHaveCount(0);
+		} finally {
+			resolve();
+		}
+		await expect(heading).toBeVisible();
+		await expect(modal.getByRole('alert')).toHaveText(
+			'This content could not be loaded. Check your connection, then close this dialog and try again.'
+		);
+	});
+
+	test('WML-P2-HELP-1: the compiled article explains both strategies and the fold limits', async ({
+		page
+	}) => {
+		await page.goto('/help/training-setup');
+		const modal = page.getByRole('dialog', { name: 'Training Setup' });
+		await expect(modal.getByRole('heading', { name: 'One-Shot Training' })).toBeVisible();
+		await expect(
+			modal.getByRole('heading', { name: 'Cross-Validation', exact: true })
+		).toBeVisible();
+		const article = modal.locator('.modal-body');
+		for (const text of [
+			'80% for training and 20% for testing',
+			'stratified',
+			'fixed random seed of 42',
+			'test rows are held out during training',
+			'each fold takes one turn as the validation set',
+			'which can take longer',
+			'percentages illustrate the proportions for equal-sized folds',
+			'Actual row assignments and group sizes depend on your data',
+			'smallest class limits the number of folds',
+			'Training may still reject a setup when a class is very small',
+			'four rows in the smallest class allow four manual folds',
+			'three rows from that class, too few for four inner folds'
+		]) {
+			await expect(article).toContainText(text);
+		}
+		await expect(article).not.toContainText(/\bphase\s+\d+\b/i);
+	});
+
 	test('CNT-E2E-4: rapid /about to /privacy navigation and back/forward never shows stale body', async ({
 		page
 	}) => {

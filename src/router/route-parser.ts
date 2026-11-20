@@ -37,7 +37,8 @@ export function parseRoute(pathname: string): ParsedRoute {
 		normalised === '/about' ||
 		normalised === '/privacy' ||
 		normalised === '/help' ||
-		normalised === '/help/configure-model'
+		normalised === '/help/configure-model' ||
+		normalised === '/help/training-setup'
 	) {
 		return { kind: 'reserved', path: normalised as ReservedPath };
 	}

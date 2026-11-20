@@ -8,5 +8,6 @@ export const RESERVED_CONTENT = {
 	'/about': 'about',
 	'/privacy': 'privacy-policy',
 	'/help': 'help',
-	'/help/configure-model': 'configure-model'
+	'/help/configure-model': 'configure-model',
+	'/help/training-setup': 'training-setup'
 } as const satisfies Readonly<Record<ReservedPath, string>>;

@@ -2,7 +2,13 @@ import type { WorkflowPath } from './state';
 
 export type SectionNumber = 1 | 2 | 3 | 4;
 
-export type ReservedPath = '/about' | '/privacy' | '/help' | '/help/configure-model';
+/** Exact paths that open content over the current workflow page. */
+export type ReservedPath =
+	| '/about'
+	| '/privacy'
+	| '/help'
+	| '/help/configure-model'
+	| '/help/training-setup';
 
 export type { WorkflowPath } from './state';
 

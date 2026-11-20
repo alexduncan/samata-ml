@@ -42,7 +42,7 @@ describe('Content build pipeline', () => {
 
 		const report = await buildContent(outDir1, { contentDir: fixture, locales: ['en'] });
 		expect(report.locales.en).toEqual({
-			pages: { total: 4, fallbacks: 0 },
+			pages: { total: 5, fallbacks: 0 },
 			models: { total: 2, fallbacks: 0 },
 			glossary: { total: 0, fallbacks: 0 }
 		});
@@ -71,6 +71,7 @@ describe('Content build pipeline', () => {
 			'about',
 			'help',
 			'privacy-policy',
+			'training-setup',
 			'configure-model'
 		]);
 
@@ -134,6 +135,7 @@ describe('Content build pipeline', () => {
 		expect(combined).toContain('subdirectories are not allowed');
 		expect(combined).toContain("missing base-locale (en) page 'privacy-policy'");
 		expect(combined).toContain("missing base-locale (en) page 'configure-model'");
+		expect(combined).toContain("missing base-locale (en) page 'training-setup'");
 		expect(combined).toContain('unexpected entry under content root');
 
 		expect(existsSync(path.join(outDir, 'content', 'en', 'pages', 'index.json'))).toBe(false);
@@ -148,8 +150,8 @@ describe('Content build pipeline', () => {
 		const fixture = path.join(FIXTURES_DIR, 'valid-multi');
 
 		const report = await buildContent(outDir, { contentDir: fixture, locales: ['en', 'fr'] });
-		expect(report.locales.en?.pages).toEqual({ total: 4, fallbacks: 0 });
-		expect(report.locales.fr?.pages).toEqual({ total: 4, fallbacks: 3 });
+		expect(report.locales.en?.pages).toEqual({ total: 5, fallbacks: 0 });
+		expect(report.locales.fr?.pages).toEqual({ total: 5, fallbacks: 4 });
 
 		const enPages = JSON.parse(
 			readFileSync(path.join(outDir, 'content', 'en', 'pages', 'index.json'), 'utf8')
@@ -180,7 +182,7 @@ describe('Content build pipeline', () => {
 			contentDir: noFrContentDir,
 			locales: ['en', 'fr']
 		});
-		expect(noFrReport.locales.fr?.pages).toEqual({ total: 4, fallbacks: 4 });
+		expect(noFrReport.locales.fr?.pages).toEqual({ total: 5, fallbacks: 5 });
 
 		// fr/pages/extra.md with no en file, and order in fr/models/*.md both fail
 		const invalidFrDir = makeTempDir('samata-bad-fr-');
@@ -208,23 +210,28 @@ describe('Content build pipeline', () => {
 		expect(frMsg).toContain("front matter 'order' is locale-neutral");
 	});
 
-	it('WML-P1-ROUTE-1: fails when the configure-model reserved page is missing', async () => {
-		const contentDir = makeTempDir('samata-no-configure-');
-		cpSync(path.join(FIXTURES_DIR, 'valid-en'), contentDir, { recursive: true });
-		rmSync(path.join(contentDir, 'en', 'pages', 'configure-model.md'));
-		const errors: string[] = [];
-		const errSpy = spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
-			errors.push(args.map(String).join(' '));
+	for (const [id, page] of [
+		['WML-P1-ROUTE-1', 'configure-model'],
+		['WML-P2-ROUTE-1', 'training-setup']
+	]) {
+		it(`${id}: fails when the ${page} reserved page is missing`, async () => {
+			const contentDir = makeTempDir(`samata-no-${page}-`);
+			cpSync(path.join(FIXTURES_DIR, 'valid-en'), contentDir, { recursive: true });
+			rmSync(path.join(contentDir, 'en', 'pages', `${page}.md`));
+			const errors: string[] = [];
+			const errSpy = spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+				errors.push(args.map(String).join(' '));
+			});
+			try {
+				await expect(
+					buildContent(makeTempDir(), { contentDir, locales: ['en'] })
+				).rejects.toThrow(/Content build failed:/);
+			} finally {
+				errSpy.mockRestore();
+			}
+			expect(errors.join('\n')).toContain(`missing base-locale (en) page '${page}'`);
 		});
-		try {
-			await expect(
-				buildContent(makeTempDir(), { contentDir, locales: ['en'] })
-			).rejects.toThrow(/Content build failed:/);
-		} finally {
-			errSpy.mockRestore();
-		}
-		expect(errors.join('\n')).toContain("missing base-locale (en) page 'configure-model'");
-	});
+	}
 
 	it('static server serves .json and .csv with proper MIME types', async () => {
 		expect(contentTypeFromPath('/content/en/pages/index.json')).toBe(
