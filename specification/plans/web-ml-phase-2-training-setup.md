@@ -1,6 +1,6 @@
 # Phase 2: Configure training setup (one-shot and cross-validation)
 
-**Status:** draft | **Updated:** 2026-11-20T07:14:55Z
+**Status:** draft | **Updated:** 2026-11-20T07:20:45Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Google Antigravity (Gemini 4 Neon High), Codex (GPT-6), Codex (gpt-6.2-astra) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
@@ -411,6 +411,7 @@ None.
 | 2026-11-19T18:32:08Z | Codex (gpt-6.2-astra)                   | changes-requested | T2 permits invalid help paths through the public router action. T3 leaves the models overview unable to recover from malformed columns and omits scroll restoration for the fold matrix. See the independent review for evidence, test cases and a separate storage risk.                                                                                                                                                                                                                                                                             |
 | 2026-11-19T18:57:21Z | Codex (gpt-6.2-astra)                   | changes-requested | Two major findings. T2 must preserve the Help history entry across repeated dismissal and Forward. T2/T3 need a ten-fold matrix that actually scrolls at 320 px for UI-9. A minor focus-style gap affects the Learn more link. The independent review below records browser evidence and revision criteria.                                                                                                                                                                                                                                           |
 | 2026-11-20T07:14:55Z | Codex (gpt-6.2-astra)                   | changes-requested | MAJOR in T3. WML-P1-UI-4 reloads an explicit null training setup with Section 4 marked complete. The required T1 repair reopens that section, invalidating the confirmation test. Include tests/model-configuration.e2e.ts in T3 and give its fixture a valid completed setup. The resubmitted Help history, matrix overflow and focus criteria address the prior findings.                                                                                                                                                                           |
+| 2026-11-20T07:20:45Z | Claude Code (claude-opus-5-5)           | changes-requested | Two MAJOR findings. computeTrainingSetupBounds sets a cross-validation feasibility rule that web-ml owns, but web-ml publishes no threshold or helper for it. T2 and T3 are too large for a single implementer and bundle unrelated router and scroll repairs. MINOR findings cover undefined §D identifiers, an unresolved upstream validation-partition conflict, stale line references and wrong file claims. See the independent review below.                                                                                                    |
 
 ### Evidence for the 2026-11-19 Codex review
 
@@ -485,6 +486,44 @@ The core decision checklist is covered by T4’s specification list, the contrac
 The revised ROUTE-4 specifies who owns each Help entry and tests repeated dismissal and Forward. §C and UI-5/UI-9 specify measurable overflow, keyboard access to the final fold, positive-offset restoration and the Learn more focus outline. These address the preceding review. The scout confirmed the v1 writer and reader boundaries, the Phase 1 builder, current metadata paths and both web-ml 0.1.0 public catalogues. The installed package lacks the fixed-CV declaration present in the canonical checkout. This phase stores configuration only. It adds no worker message or IndexedDB store.
 
 T4 identifies the affected specifications. §§A–E define the public contracts, and T1–T4 identify their change boundaries, commit IDs and positive and negative checks, subject to the fixture correction above. The repository has no separate decision checklist. On `40e3e97`, `bun run check` passed typechecking and 261 tests in 36 files using the primary checkout’s installed dependencies. Phase 2 browser, Storybook and assistive-technology results await implementation.
+
+### Independent review on 2026-11-20 at 07:20 UTC
+
+This review ran in a fresh forked context on `40e3e97`, the commit before the concurrent 07:14 review. The normative plan text is the same in both commits. The 07:14 finding about the `WML-P1-UI-4` fixture still applies. The findings below are additional.
+
+- **MAJOR · T1 (§A), the repository boundary.** `computeTrainingSetupBounds` caps folds at the smallest class count, requires two labelled rows in each class and blocks singleton minorities. These are stratified cross-validation feasibility rules, and root `AGENTS.md` assigns cross-validation to web-ml. The web-ml 0.1.0 public surface states no such rule. `cross-validation.d.ts:60–63` requires only at least two folds. `current-limitations.md:301–304` says that rare classes "are rejected" but gives no threshold or error code. `cross-validate.d.ts:91–94` says only that failures reject the run promise. No public declaration provides a feasibility or maximum-fold helper. The WR-10 request, `2026-11-19-deterministic-partitions-and-split-helper.md`, does not ask for one. Its only open question is how to handle a class with fewer than two rows. The UI could therefore accept a fold count that Phase 3 cannot run, or block one that web-ml accepts. **Correction:** create a new upstream request for a public fold-feasibility contract, such as a documented minimum per-class count or a helper, and depend on it. Until it ships, either restrict Phase 2 to the static 2–10 range or record an explicit maintainer decision that class-count gating counts as UI input validation. In either case, state how Phase 3 reconciles the UI rule with upstream errors.
+- **MAJOR · T2 and T3, execution readiness.** T3 has 11 acceptance criteria across about 20 files. It covers a new Tier 2 component, metadata guards for builder Sections 1–3 and the Section 3 save, overview recovery and a scroll-restorer change. It also changes the restore handoff in `src/app.ts`, cleans up a mockup, adds three story files (two of them new) and a Section 5 contrast fix, and updates five E2E suites. T2 combines a rewrite of router history ownership with the content loader, the modal and the fold styles. The ownership rewrite replaces `inAppHistoryCount` at `router.ts:148,216,237–239`, which fixes an existing defect independent of training setup. That defect also affects direct-load `/about`, then a sidebar push, Back and Close. The scroll work also fills existing gaps: `scroll-restorer.ts:136` listens for `wheel`, `touchstart` and `keydown` but not `pointerdown`, `:126` tests the invalid key `'Space'`, and §8.4 requires a height retry that does not exist. A cheaper implementer cannot finish or verify any of this as one commit with bounded risk. **Correction:** split the work into ordered tasks, each with its own verification. For example: router ownership and the parser; Help content and the modal; fold styles; metadata readiness (UI-7, UI-10); the component and its stories; Section 4 and overview wiring with the journeys; and matrix scroll persistence (UI-9). Alternatively, move the router-dismissal and scroll-cancellation repairs into their own plans.
+- **MINOR · §D, undefined identifiers.** The markup uses `sliderMax`, `clampedSliderFolds`, `displayText` and `canonicalFolds` without defining them. When a saved count exceeds `maxFolds` (UI-3: saved five, maximum four), the plan does not say how large the matrix is, which `max` the number input carries or what the summary shows. Define each value.
+- **MINOR · Codebase context, upstream conflict.** The plan cites `metrics.md:419–425` as evidence that ordinary fitting accepts a supplied validation partition. No public declaration has that field (`types.d.ts:53`, `:602–619`). Record this as an unresolved conflict for Phase 3, not as supporting evidence.
+- **MINOR · Stale or wrong evidence.** The code referenced at `1c2cc96` is identical to the code at `40e3e97`, yet many line numbers are wrong:
+    - `persister.ts`: `validateAppState` is at L122–124 and the setup check at L275–285. `isSynchronousChange` spans L547–589, with the setup comparison at L580. The writers are at L488 and L522, `flushNow` at L646–662 and `readPersistedState` at L392–432.
+    - `reconciler.ts`: the function spans L88–336. Dropped features are handled at L200–207, a missing result at L215–236 and persistence at L332–333.
+    - Builder: the controllers are at L274–275, `handleReopenClick` at L476–498, the Edit buttons at L775, L938 and L1176, and `activeStep` at L1268–1282. L686 and L845 do not read metadata.
+    - `.visually-hidden` is at `train-model.styles.ts:96`.
+
+    Several factual claims are also wrong:
+    - Builder stories exclude every builder entry for all rules (`app-model-builder-view.stories.ts:94–100`), not only earlier sections.
+    - `tests/a11y-feature-findings.ts` has no `E3` ID. The Section 4 entry is at L316–329.
+    - Both reference journeys stop with Section 3 active (Iris L233, Penguins L209).
+    - Draft L243 reads `aria-labelledby="training-setup-heading"`, which points to L554, not `step-4-title`.
+    - `app-content-modal.stories.ts` and `app-models-view.stories.ts` do not exist yet, so they are new files.
+    - `tests/reconciler-indexeddb.test.ts` seeds no `model_results` and has no trained or training cases. STATE-2 and STATE-5 therefore need that harness extended.
+
+- **MINOR · T4 and the workflow spec.** `workflow-steps.md:177–183` puts **Train Model** in the section `<header>`, disabled until the setup is configured. D5 and §D make it the form's submit button and never disable it for field errors. The workflow spec takes precedence on user-facing behaviour, and the plan cites "§3.4", which does not exist. The specification-change item should state the replacement rule explicitly.
+- **MINOR · Likely files.** The UI-11 scoped axe scan has no owning test file. `tests/a11y.e2e.ts` is verified but not listed. The stylesheet for the Section 5 notice contrast fix is also unnamed.
+
+**Scout evidence.** The scouts confirmed:
+
+- The v1 reader accepts `nested_cv`, `k_fold_cv` and `train_test_split` with `testRatio`, checking the type only.
+- `writeAppStateNow` and `persistNow` are the only writers, and nothing listens for `storage` events.
+- `setTrainingSetup` behaves as §A states.
+- `activeStep` returns 5 after Section 4 completes.
+- `reconciler.ts:136` passes a null dataset ID to `deleteDatasetsExcept`, the pre-existing risk recorded under Risks.
+- `ReservedPath` is used in a non-exhaustive switch in `getDocumentTitle` and in a `satisfies` map in `reserved-content.ts`.
+- The loader's validated-index miss is at L282–286, and `resetContentCache` is exported.
+- The builder reads metadata through truthiness checks only (`metadata?.`).
+
+Both web-ml copies are version 0.1.0 with 16 matching catalogue entries. The installed `dist/src/training/index.d.ts` re-exports a `cross-validate` file that does not exist, which is a dangling export. There is no repository-specific decision checklist. The core checklist (specification changes, contracts, tests, file boundaries, sources) is covered except where the findings above apply. No commands ran beyond the plan gates.
 
 ## Change log
 
