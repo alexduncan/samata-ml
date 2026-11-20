@@ -16,6 +16,7 @@ import {
 	setFeatures,
 	setHyperparameters,
 	setMulticlassStrategy,
+	setTrainingLogOpen,
 	setTrainingSetup,
 	toggleFeature
 } from '../../stores/app.store';
@@ -27,6 +28,8 @@ import {
 	type DatasetResourcesState
 } from '../../stores/dataset.store';
 import { blockedReason } from '../../stores/predicates';
+import { flushNow } from '../../stores/persister';
+import { $trainingSession, type TrainingSession } from '../../stores/training.store';
 import { buttonStyles } from '../../styles/button.styles';
 import { cardStyles } from '../../styles/card.styles';
 import { chicletStyles } from '../../styles/chiclet.styles';
@@ -36,6 +39,7 @@ import { tableStyles } from '../../styles/table.styles';
 import { trainModelStyles } from '../../styles/train-model.styles';
 import { headingFocusStyles } from '../../styles/heading-focus.styles';
 import type { ColumnStats } from '../../types/dataset';
+import type { TrainingLogEntry, TrainingRunIdentity } from '../../types/model-result';
 import {
 	DEFAULT_ONE_SHOT_SETUP,
 	FIXED_ONE_SHOT_TEST_RATIO,
@@ -44,6 +48,7 @@ import {
 	type ModelRecord,
 	type ModelSectionId,
 	type PersistedAppState,
+	type TrainingProgress,
 	type ValidationMethodology
 } from '../../types/state';
 import { buildFeatureRows, formatFeatureNote, type FeatureRow } from './feature-eligibility';
@@ -58,6 +63,7 @@ import './app-model-description-dialog';
 import './app-model-card';
 import './app-model-configuration';
 import './app-training-setup';
+import './app-training-progress';
 import type { TrainingSetupLabels } from './app-training-setup';
 import type {
 	ConfigurationLabels,
@@ -80,6 +86,11 @@ import {
 	validateFoldCount,
 	type TrainingSetupBounds
 } from './training-setup';
+import {
+	$publicationPending,
+	getTrainingService,
+	type TrainingCommandFailure
+} from './training/training-service';
 
 const messages = i18n('app-model-builder-view', {
 	noModelHeading: 'No classification model available',
@@ -132,6 +143,50 @@ const messages = i18n('app-model-builder-view', {
 		'Enter a whole number between {min} and {max}.'
 	),
 	trainModel: 'Train Model',
+	trainingHeading: '5. Train Model',
+	resultsHeading: '6. Model Results',
+	trainingProgress: 'Training progress',
+	waitingToTrain: 'Waiting to train',
+	trainingPreparing: 'Preparing data',
+	trainingQueued: 'Waiting for the training worker',
+	trainingLoading: 'Loading training data',
+	trainingInitialising: 'Initialising the model',
+	trainingFitting: 'Fitting the model',
+	trainingTransforming: 'Transforming training data',
+	trainingTuning: 'Checking model settings',
+	trainingEvaluating: 'Evaluating the model',
+	trainingFinalising: 'Finishing training',
+	trainingCrossValidation: 'Running cross-validation',
+	trainingFoldStart: params<{ fold: string; folds: string }>('Starting fold {fold} of {folds}'),
+	trainingFoldComplete: params<{ fold: string }>('Fold {fold} complete'),
+	trainingRefitStart: 'Refitting the model on all eligible rows',
+	trainingRefitComplete: 'Refit complete',
+	trainingWorkerRetried: 'A training worker was restarted',
+	trainingReducedPerformance: 'Training is using reduced-performance mode',
+	trainingSaving: 'Saving results',
+	trainingComplete: 'Training complete',
+	trainingCancelling: 'Cancelling training',
+	trainingCancelled: 'Training was cancelled. You can start again.',
+	trainingFailed: 'Training could not finish. Check your setup and try again.',
+	trainingInterrupted: 'Training was interrupted. You can start again.',
+	trainingPartitionRejected:
+		'The training library rejected this setup. Try a different evaluation method or adjust the model settings.',
+	trainingRuntimeUnavailable:
+		'This page cannot start training. Open it in a browser tab that supports isolated training and try again.',
+	trainingStorageUnavailable: 'Training progress could not be saved. Try again.',
+	trainingBusy: 'Another operation is using this model or data. Try again when it finishes.',
+	trainingRemote: 'Training in another tab',
+	trainingPendingResult: 'The result is saved, but progress could not be saved. Retry saving.',
+	trainingPendingStop: 'Training has stopped, but progress could not be saved. Retry saving.',
+	trainingPendingStart:
+		'The start was saved, but training did not begin. Retry saving before starting again.',
+	trainingPendingResultsView:
+		'The change is saved, but progress could not be saved. Retry saving.',
+	trainingResultUnavailable: 'The saved result could not be read.',
+	trainingElapsed: params<{ seconds: string }>('Elapsed time {seconds}'),
+	cancelTraining: 'Cancel Training',
+	viewResults: 'View Results',
+	retrySaving: 'Retry saving',
 	...flatOptionMessages(),
 	...CONFIGURE_MODEL_MESSAGES,
 	reset: params<{ name: string }>(CONFIGURE_MODEL_TEMPLATES.reset),
@@ -202,12 +257,45 @@ const $trainingSetupResource = computed(
 );
 
 function getActiveStep(model: ModelRecord): number {
-	const firstIncomplete = SECTION_ORDER.findIndex((step) => !model.completedSteps.includes(step));
-	return firstIncomplete < 0 ? SECTION_ORDER.length : firstIncomplete + 1;
+	if (model.status === 'training') return 5;
+	if (model.status === 'trained') return model.completedSteps.includes('results') ? 6 : 5;
+	const incomplete = SECTION_ORDER.slice(0, 3).findIndex(
+		(step) => !model.completedSteps.includes(step)
+	);
+	return incomplete < 0 ? 4 : incomplete + 1;
 }
 
 function trainingSetupKey(appState: PersistedAppState, modelNum: number): string {
 	return JSON.stringify([appState.dataset?.id, appState.target, modelNum]);
+}
+
+function belongsToModel(
+	identity: TrainingRunIdentity,
+	appState: PersistedAppState,
+	model: ModelRecord
+): boolean {
+	return (
+		identity.datasetId === appState.dataset?.id &&
+		identity.target === appState.target &&
+		identity.modelNum === model.num &&
+		identity.modelCreatedAt === model.createdAt
+	);
+}
+
+function displaySession(
+	sessions: ReadonlyMap<string, TrainingSession>,
+	appState: PersistedAppState,
+	model: ModelRecord
+): TrainingSession | undefined {
+	for (const session of sessions.values()) {
+		if (!belongsToModel(session.identity, appState, model)) continue;
+		if (model.status === 'draft') {
+			if (session.status === 'pending' || session.status === 'cancelling') return session;
+		} else if (session.identity.runId === model.resultRevision) {
+			return session;
+		}
+	}
+	return undefined;
 }
 
 /**
@@ -418,6 +506,8 @@ export class AppModelBuilderView extends LitElement {
 	private readonly appStateController = new StoreController(this, $appState);
 	private readonly resourcesController = new StoreController(this, $datasetResources);
 	private readonly trainingSetupResource = new StoreController(this, $trainingSetupResource);
+	private readonly trainingSessions = new StoreController(this, $trainingSession);
+	private readonly publication = new StoreController(this, $publicationPending);
 	private readonly translations = new StoreController(this, messages);
 
 	/** Monotonically allocated sequential model number (e.g. 1 for /models/1). */
@@ -434,10 +524,25 @@ export class AppModelBuilderView extends LitElement {
 
 	// Reopening state
 	@state() private accessor pendingReopenSection: ModelSectionId | null = null;
+	@state() private accessor trainingNotice:
+		| {
+				key: string;
+				code: TrainingCommandFailure['code'];
+				pending?: TrainingCommandFailure['pending'];
+		  }
+		| undefined;
+	@state() private accessor resultReadFailed = false;
+	@state() private accessor showingResults = false;
+	@state() private accessor retryingPublication = false;
 
 	private loadPromise: Promise<void> | null = null;
 	private trainingSetupChild: { element: Element; key: string } | null = null;
 	private contentAbortController = new AbortController();
+	private checkedResultKey: string | null = null;
+	private logWatermark: { runId: string; id: number } | null = null;
+	private announcement = '';
+	private activeAttemptKey: string | null = null;
+	private restoreSubmitFocus = false;
 
 	private get currentModel(): ModelRecord | undefined {
 		return this.appStateController.value.models.find((m) => m.num === this.modelNum);
@@ -455,6 +560,37 @@ export class AppModelBuilderView extends LitElement {
 			const resources = this.resourcesController.value;
 			if (resources.datasetId !== datasetId || resources.status === 'idle') {
 				this.loadPromise = loadDatasetResources(datasetId);
+			}
+		}
+
+		const model = this.currentModel;
+		const session = model && displaySession(this.trainingSessions.value, appState, model);
+		const key = model && this.trainingNoticeKey(model);
+		const showingTraining =
+			model?.status === 'training' || (model?.status === 'draft' && session !== undefined);
+		this.restoreSubmitFocus = Boolean(
+			model?.status === 'draft' &&
+			!showingTraining &&
+			key === this.activeAttemptKey &&
+			this.shadowRoot?.activeElement?.closest('[data-testid="training-step"]')
+		);
+		this.activeAttemptKey = showingTraining && session ? (key ?? null) : null;
+		this.updateTrainingAnnouncement(session);
+
+		const resultKey =
+			model?.status === 'trained' && model.resultRevision
+				? JSON.stringify([key, model.resultRevision])
+				: null;
+		if (resultKey !== this.checkedResultKey) {
+			this.checkedResultKey = resultKey;
+			this.resultReadFailed = false;
+			if (model?.status === 'trained' && session?.status !== 'complete') {
+				void getTrainingService()
+					.loadCompletedResult(model.num)
+					.then((result) => {
+						if (this.checkedResultKey === resultKey)
+							this.resultReadFailed = result === null;
+					});
 			}
 		}
 	}
@@ -1455,11 +1591,253 @@ export class AppModelBuilderView extends LitElement {
 		if (setup) setTrainingSetup(this.modelNum, setup);
 	}
 
-	private handleTrainingSetupSubmit(event: CustomEvent<{ readonly setup: unknown }>): void {
-		const setup = this.currentTrainingSetupFromEvent(event);
-		if (setup && setTrainingSetup(this.modelNum, setup)) {
-			completeSection(this.modelNum, 'configure-training');
+	private trainingNoticeKey(model: ModelRecord): string {
+		return JSON.stringify([
+			trainingSetupKey(this.appStateController.value, model.num),
+			model.createdAt
+		]);
+	}
+
+	private isCurrentTrainingRoute(key: string): boolean {
+		const route = $route.get();
+		const model = this.currentModel;
+		return (
+			this.isConnected &&
+			route.kind === 'workflow' &&
+			route.modelNum === this.modelNum &&
+			Boolean(model && this.trainingNoticeKey(model) === key)
+		);
+	}
+
+	private async focusTrainingHeading(key: string, step: 5 | 6): Promise<void> {
+		await this.updateComplete;
+		if (this.isCurrentTrainingRoute(key)) {
+			this.renderRoot
+				.querySelector<HTMLElement>(`.step-active #step-${step}-title`)
+				?.focus({ preventScroll: true });
 		}
+	}
+
+	private async handleTrainingSetupSubmit(
+		event: CustomEvent<{ readonly setup: unknown }>
+	): Promise<void> {
+		const setup = this.currentTrainingSetupFromEvent(event);
+		const model = this.currentModel;
+		const service = getTrainingService();
+		if (!setup || !model || service.activeIdentity(model.num)) return;
+		const key = this.trainingNoticeKey(model);
+		const blockedStart = this.publication.value;
+		if (
+			blockedStart?.kind === 'start' &&
+			blockedStart.identity &&
+			belongsToModel(blockedStart.identity, this.appStateController.value, model)
+		)
+			return;
+		if (!setTrainingSetup(model.num, setup)) return;
+
+		this.trainingNotice = undefined;
+		const started = service.start(model.num);
+		if (service.activeIdentity(model.num)) void this.focusTrainingHeading(key, 5);
+		const result = await started;
+		if (!result.ok && this.isCurrentTrainingRoute(key)) {
+			this.trainingNotice = { key, code: result.code, pending: result.pending };
+		}
+	}
+
+	private trainingFailureMessage(code: string | undefined): string {
+		const t = this.translations.value;
+		switch (code) {
+			case 'environment-not-supported':
+				return t.trainingRuntimeUnavailable;
+			case 'cancelled':
+			case 'TRAINING_CANCELLED':
+				return t.trainingCancelled;
+			case 'TRAINING_INTERRUPTED_BY_RELOAD':
+				return t.trainingInterrupted;
+			case 'invalid-request':
+			case 'invalid-options':
+			case 'invalid-dimensions':
+			case 'numerical-failure':
+				return t.trainingPartitionRejected;
+			case 'saving-failed':
+			case 'storage-unavailable':
+				return t.trainingStorageUnavailable;
+			case 'busy':
+			case 'remote-training':
+			case 'conflict':
+				return t.trainingBusy;
+			default:
+				return t.trainingFailed;
+		}
+	}
+
+	private trainingProgressMessage(code: string): string {
+		const t = this.translations.value;
+		switch (code) {
+			case 'queued':
+				return t.trainingQueued;
+			case 'loading-data':
+				return t.trainingLoading;
+			case 'initializing':
+				return t.trainingInitialising;
+			case 'training':
+			case 'fitting':
+				return t.trainingFitting;
+			case 'transforming':
+				return t.trainingTransforming;
+			case 'tuning':
+				return t.trainingTuning;
+			case 'evaluating':
+				return t.trainingEvaluating;
+			case 'finalizing':
+				return t.trainingFinalising;
+			case 'cross-validation':
+				return t.trainingCrossValidation;
+			case 'refitting':
+				return t.trainingRefitStart;
+			case 'saving':
+				return t.trainingSaving;
+			case 'completed':
+				return t.trainingComplete;
+			default:
+				return t.trainingPreparing;
+		}
+	}
+
+	private formatTrainingLogEntry(entry: TrainingLogEntry): string {
+		const t = this.translations.value;
+		const number = $format.get().number;
+		const { message } = entry;
+		switch (message.key) {
+			case 'phase':
+				return this.trainingProgressMessage(message.phase);
+			case 'fold-start':
+				return t.trainingFoldStart({
+					fold: number(message.fold),
+					folds: number(message.folds)
+				});
+			case 'fold-complete':
+				return t.trainingFoldComplete({ fold: number(message.fold) });
+			case 'warning':
+				return message.code === 'worker-retried'
+					? t.trainingWorkerRetried
+					: t.trainingReducedPerformance;
+			case 'refit-start':
+				return t.trainingRefitStart;
+			case 'refit-complete':
+				return t.trainingRefitComplete;
+			case 'cancelled':
+				return t.trainingCancelled;
+			case 'failed':
+				return t.trainingFailed;
+			default:
+				return this.trainingProgressMessage(message.key);
+		}
+	}
+
+	private updateTrainingAnnouncement(session: TrainingSession | undefined): void {
+		const previous = this.logWatermark;
+		const latest = session?.logEntries.at(-1);
+		if (!session) {
+			this.logWatermark = null;
+			this.announcement = '';
+		} else if (previous?.runId !== session.identity.runId) {
+			this.logWatermark = { runId: session.identity.runId, id: latest?.id ?? 0 };
+			this.announcement = '';
+		} else if (latest && latest.id > previous.id) {
+			this.logWatermark = { runId: session.identity.runId, id: latest.id };
+			this.announcement = this.formatTrainingLogEntry(latest);
+		}
+	}
+
+	private async handlePublicationRetry(model: ModelRecord): Promise<void> {
+		if (this.retryingPublication) return;
+		const key = this.trainingNoticeKey(model);
+		this.retryingPublication = true;
+		try {
+			const result = await getTrainingService().retry();
+			if (!this.isCurrentTrainingRoute(key)) return;
+			if (result.ok) {
+				this.trainingNotice = undefined;
+				const current = this.currentModel;
+				if (current?.completedSteps.includes('results'))
+					await this.focusTrainingHeading(key, 6);
+			} else {
+				this.trainingNotice = { key, code: result.code, pending: result.pending };
+			}
+		} finally {
+			this.retryingPublication = false;
+		}
+	}
+
+	private async handleViewResults(model: ModelRecord, session: TrainingSession): Promise<void> {
+		if (this.showingResults) return;
+		const key = this.trainingNoticeKey(model);
+		this.showingResults = true;
+		try {
+			const result = await getTrainingService().viewResults(session.identity);
+			if (!this.isCurrentTrainingRoute(key)) return;
+			if (result.ok) await this.focusTrainingHeading(key, 6);
+			else this.trainingNotice = { key, code: result.code, pending: result.pending };
+		} finally {
+			this.showingResults = false;
+		}
+	}
+
+	private handleLogToggle(
+		model: ModelRecord,
+		event: CustomEvent<{ readonly open: boolean }>
+	): void {
+		if (
+			this.isCurrentTrainingRoute(this.trainingNoticeKey(model)) &&
+			setTrainingLogOpen(model.num, event.detail.open)
+		) {
+			flushNow();
+		}
+	}
+
+	private renderTrainingNotice(
+		model: ModelRecord,
+		message: string,
+		retry: boolean
+	): TemplateResult {
+		return html`
+			<div class="notification notification-alert">
+				<p class="notification-text" role="alert">${message}</p>
+				${retry
+					? html` <button
+							type="button"
+							class="btn"
+							?disabled=${this.retryingPublication}
+							@click=${() => this.handlePublicationRetry(model)}>
+							${this.translations.value.retrySaving}
+						</button>`
+					: nothing}
+			</div>
+		`;
+	}
+
+	private renderStoppedNotice(model: ModelRecord): TemplateResult | typeof nothing {
+		const pending = this.publication.value;
+		if (
+			pending?.kind === 'start' &&
+			pending.identity &&
+			belongsToModel(pending.identity, this.appStateController.value, model)
+		) {
+			return this.renderTrainingNotice(
+				model,
+				this.translations.value.trainingPendingStart,
+				true
+			);
+		}
+		const notice =
+			this.trainingNotice?.key === this.trainingNoticeKey(model)
+				? this.trainingNotice
+				: undefined;
+		const code = notice?.code ?? model.error?.details ?? model.error?.code;
+		return code
+			? this.renderTrainingNotice(model, this.trainingFailureMessage(code), false)
+			: nothing;
 	}
 
 	private handleTrainingSetupRetry(): void {
@@ -1506,6 +1884,7 @@ export class AppModelBuilderView extends LitElement {
 								this.trainingSetupChild = null;
 						})}
 						.value=${model.trainingSetup}
+						?autofocus=${this.restoreSubmitFocus}
 						.maxFolds=${resource.bounds.maxFolds}
 						.blockedReason=${resource.bounds.blocked ? t.trainingSetupBlocked : ''}
 						.labels=${this.trainingSetupLabels()}
@@ -1537,7 +1916,7 @@ export class AppModelBuilderView extends LitElement {
 		}
 
 		const editable = model.status === 'draft';
-		const showForm = isActive && editable;
+		const showForm = isActive && editable && !isCompleted;
 		const summary = model.trainingSetup
 			? formatTrainingSetupSummary(model.trainingSetup, {
 					oneShot: t.oneShotSummary,
@@ -1590,7 +1969,9 @@ export class AppModelBuilderView extends LitElement {
 					</header>
 					<div class="train-step-content" ?hidden=${!showForm}>
 						${showForm
-							? this.renderTrainingSetupForm(model)
+							? html`${this.renderStoppedNotice(model)}${this.renderTrainingSetupForm(
+									model
+								)}`
 							: html`
 									<div class="completed-summary">
 										<p>
@@ -1598,6 +1979,159 @@ export class AppModelBuilderView extends LitElement {
 										</p>
 									</div>
 								`}
+					</div>
+				</section>
+			</li>
+		`;
+	}
+
+	private renderTrainingSection(
+		model: ModelRecord,
+		isActive: boolean,
+		session: TrainingSession | undefined
+	): TemplateResult {
+		const t = this.translations.value;
+		if (!isActive && model.status !== 'trained') {
+			return this.renderPendingSection(t.trainingHeading, 'step-5-title', 'training', 0, 5);
+		}
+
+		const complete = model.status === 'trained' && session?.status === 'complete';
+		const viewed = model.completedSteps.includes('results');
+		const pending = this.publication.value;
+		const pendingRun = pending?.identity && pending.identity.runId === session?.identity.runId;
+		const awaitingRun = session?.status === 'publication-pending';
+		const notice =
+			this.trainingNotice?.key === this.trainingNoticeKey(model)
+				? this.trainingNotice
+				: undefined;
+		const viewingPending = notice?.pending === 'recover' && pending?.kind === 'recover';
+		const owner = Boolean(
+			session &&
+			getTrainingService().activeIdentity(model.num)?.runId === session.identity.runId
+		);
+		const cancelling = session?.status === 'cancelling';
+		const cancelVisible = (owner && !complete && session?.status !== 'saving') || awaitingRun;
+		const remote = !session && model.status === 'training';
+		const entries = session?.logEntries ?? [];
+		const rawProgress: TrainingProgress = session?.progress ??
+			model.progress ?? {
+				percent: null,
+				stage: 'preparing',
+				phase: null,
+				statusMessage: 'preparing'
+			};
+		const latest = entries.at(-1);
+		const status = remote
+			? t.trainingRemote
+			: cancelling
+				? t.trainingCancelling
+				: complete
+					? t.trainingComplete
+					: awaitingRun || session?.status === 'saving'
+						? t.trainingSaving
+						: latest
+							? this.formatTrainingLogEntry(latest)
+							: this.trainingProgressMessage(rawProgress.statusMessage);
+		const duration =
+			complete && model.durationMs !== null
+				? t.trainingElapsed({
+						seconds: $format.get().number(model.durationMs / 1000, {
+							style: 'unit',
+							unit: 'second',
+							maximumFractionDigits: 1
+						})
+					})
+				: '';
+
+		return html`
+			<li
+				class="train-step ${isActive ? 'step-active' : ''}"
+				aria-current=${isActive ? 'step' : nothing}>
+				<section
+					class="train-step-panel"
+					aria-labelledby="step-5-title"
+					data-testid="training-step">
+					<header class="train-step-header">
+						<h2 id="step-5-title" tabindex="-1">${t.trainingHeading}</h2>
+						<span class="train-step-action train-step-status">
+							${cancelVisible
+								? html`<button
+										type="button"
+										class="btn"
+										?disabled=${awaitingRun}
+										aria-disabled=${cancelling ? 'true' : nothing}
+										@click=${() =>
+											!cancelling && getTrainingService().cancel(model.num)}>
+										${t.cancelTraining}
+									</button>`
+								: nothing}
+							${viewed
+								? html` <span class="visually-hidden">${t.completed}</span>
+										<svg
+											aria-hidden="true"
+											width="20"
+											height="20"
+											viewBox="0 0 24 24"
+											fill="currentColor">
+											<path
+												d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
+										</svg>`
+								: html`<button
+										type="button"
+										class="btn"
+										?disabled=${!complete ||
+										this.showingResults ||
+										viewingPending}
+										@click=${() =>
+											session && this.handleViewResults(model, session)}>
+										${t.viewResults}
+									</button>`}
+						</span>
+					</header>
+					<div class="train-step-content">
+						<app-training-progress
+							.progress=${{ ...rawProgress, statusMessage: status }}
+							.logEntries=${entries}
+							.logOpen=${model.ui.trainingLogOpen ?? false}
+							.announcement=${this.announcement}
+							.durationText=${duration}
+							.labels=${{
+								progress: t.trainingProgress,
+								waiting: t.waitingToTrain,
+								formatEntry: (entry: TrainingLogEntry) =>
+									this.formatTrainingLogEntry(entry)
+							}}
+							@app-training-log-toggle=${(
+								event: CustomEvent<{ readonly open: boolean }>
+							) => this.handleLogToggle(model, event)}>
+						</app-training-progress>
+						${awaitingRun && pendingRun
+							? this.renderTrainingNotice(
+									model,
+									pending?.stoppedStatus
+										? t.trainingPendingStop
+										: t.trainingPendingResult,
+									true
+								)
+							: viewingPending
+								? this.renderTrainingNotice(
+										model,
+										t.trainingPendingResultsView,
+										true
+									)
+								: this.resultReadFailed && !complete
+									? this.renderTrainingNotice(
+											model,
+											t.trainingResultUnavailable,
+											false
+										)
+									: notice && complete
+										? this.renderTrainingNotice(
+												model,
+												this.trainingFailureMessage(notice.code),
+												false
+											)
+										: nothing}
 					</div>
 				</section>
 			</li>
@@ -1619,7 +2153,9 @@ export class AppModelBuilderView extends LitElement {
 				aria-current=${isActive ? 'step' : nothing}>
 				<section class="train-step-panel" aria-labelledby="${stepId}">
 					<header class="train-step-header">
-						<h2 id="${stepId}">${title}</h2>
+						<h2 id="${stepId}" tabindex=${stepKey === 'results' ? '-1' : nothing}>
+							${title}
+						</h2>
 					</header>
 					<div class="train-step-content" ?hidden=${!isActive}>
 						<p class="pending-notice">Not available yet.</p>
@@ -1650,7 +2186,8 @@ export class AppModelBuilderView extends LitElement {
 			`;
 		}
 
-		const activeStep = getActiveStep(model);
+		const session = displaySession(this.trainingSessions.value, appState, model);
+		const activeStep = model.status === 'draft' && session ? 5 : getActiveStep(model);
 		const isStep1Completed = model.completedSteps.includes('choose-model');
 		const isStep2Completed = model.completedSteps.includes('select-features');
 		const isStep3Completed = model.completedSteps.includes('configure-model');
@@ -1670,15 +2207,9 @@ export class AppModelBuilderView extends LitElement {
 					${this.renderSelectFeaturesSection(model, activeStep === 2, isStep2Completed)}
 					${this.renderConfigureModelSection(model, activeStep === 3, isStep3Completed)}
 					${this.renderTrainingSetupSection(model, activeStep === 4, isStep4Completed)}
+					${this.renderTrainingSection(model, activeStep === 5, session)}
 					${this.renderPendingSection(
-						'5. Train Model',
-						'step-5-title',
-						'training',
-						activeStep,
-						5
-					)}
-					${this.renderPendingSection(
-						'6. Model Results',
+						this.translations.value.resultsHeading,
 						'step-6-title',
 						'results',
 						activeStep,

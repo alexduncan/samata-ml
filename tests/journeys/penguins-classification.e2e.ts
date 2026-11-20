@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loadSampleDataset } from './helpers';
+import { acknowledgeDurableTraining, loadSampleDataset } from './helpers';
 
 test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUINS-DATA)', () => {
 	test.describe.configure({ mode: 'serial' });
@@ -122,7 +122,7 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		await expect(continueLink).toBeVisible();
 	});
 
-	test('WML-P2-UI-10 / JOURNEY-PENGUINS-SETUP: configure Logistic Regression and save One-Shot', async ({
+	test('WML-P3-UI-4 / JOURNEY-PENGUINS-SETUP: train and acknowledge a stratified One-Shot result', async ({
 		page
 	}) => {
 		await page.goto('/data');
@@ -191,6 +191,15 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		await expect(step3.locator('h2')).toContainText('3. Configure Model');
 
 		// 7. Reload page and verify state resumes cleanly
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:state')!).models[0]
+							?.completedSteps
+				)
+			)
+			.toContain('select-features');
 		await page.reload();
 		await expect(page).toHaveURL(/\/models\/1$/);
 		await expect(builder).toBeVisible();
@@ -206,13 +215,13 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		);
 		await setup.getByRole('button', { name: 'Train Model' }).click();
 		const summary = 'One-Shot (80% / 20%)';
-		const completed = builder.getByRole('heading', { name: `4. ${summary}` });
-		await expect(completed).toBeVisible();
-		await page.reload();
-		await expect(completed).toBeVisible();
-		const training = builder.locator('.train-step').nth(4);
-		await expect(training).toHaveAttribute('aria-current', 'step');
-		await expect(training.getByText('Not available yet.')).toBeVisible();
+		await expect(builder.getByRole('heading', { name: `4. ${summary}` })).toBeVisible();
+		expect(await acknowledgeDurableTraining(page)).toMatchObject({
+			strategy: 'one_shot',
+			rows: 344,
+			trainCount: 275,
+			testCount: 69
+		});
 
 		// 8. Navigate back to /models via sidebar.
 		await page.locator('app-sidebar a[href="/models"]').click();

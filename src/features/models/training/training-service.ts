@@ -641,11 +641,11 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		modelNum: number,
 		expected?: TrainingRunIdentity
 	): Promise<ResultEnvelope | null> {
-		const outcome = await withResource(INGESTION_LOCK, 'shared', true, () =>
+		const outcome = await withResource(INGESTION_LOCK, 'shared', false, () =>
 			withResource(
 				`samata-ml:training:${modelNum}`,
 				'shared',
-				true,
+				false,
 				async (): Promise<TrainingCommandResult<ResultEnvelope | null>> => {
 					const fetched = await withTrainingStateLock(async (context) => {
 						const snapshot = await readGuardedTrainingSnapshot(context);
@@ -685,6 +685,14 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		if (outcome.ok && outcome.value) {
 			createTrainingSession(outcome.value);
 			setTrainingSessionStatus(outcome.value, 'complete', outcome.value.logEntries);
+			const pending = $publicationPending.get();
+			if (
+				pending?.kind === 'finish' &&
+				pending.identity &&
+				sameTrainingRun(pending.identity, outcome.value)
+			) {
+				$publicationPending.set(null);
+			}
 			return outcome.value;
 		}
 		return null;

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { loadSampleDataset } from './helpers';
+import { acknowledgeDurableTraining, loadSampleDataset } from './helpers';
 
 test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () => {
 	test.describe.configure({ mode: 'serial' });
@@ -119,7 +119,7 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		await expect(continueLink).toBeVisible();
 	});
 
-	test('WML-P2-UI-10 / JOURNEY-IRIS-SETUP: configure Logistic Regression and save Cross-Validation', async ({
+	test('WML-P3-UI-4 / JOURNEY-IRIS-SETUP: train and acknowledge fixed Cross-Validation', async ({
 		page
 	}) => {
 		await page.goto('/data');
@@ -214,6 +214,15 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		await expect(step3.locator('h2')).toContainText('3. Configure Model');
 
 		// 8. Reload page and verify state resumes cleanly
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:state')!).models[0]
+							?.completedSteps
+				)
+			)
+			.toContain('select-features');
 		await page.reload();
 		await expect(page).toHaveURL(/\/models\/1$/);
 		await expect(builder).toBeVisible();
@@ -227,15 +236,16 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		const setup = builder.locator('app-training-setup');
 		await setup.getByRole('combobox', { name: 'Training Strategy' }).selectOption('nested_cv');
 		await expect(setup.getByRole('spinbutton')).toHaveValue('5');
+		await setup.getByRole('spinbutton').fill('4');
 		await setup.getByRole('button', { name: 'Train Model' }).click();
-		const summary = 'Cross-Validation (5 folds)';
-		const completed = builder.getByRole('heading', { name: `4. ${summary}` });
-		await expect(completed).toBeVisible();
-		await page.reload();
-		await expect(completed).toBeVisible();
-		const training = builder.locator('.train-step').nth(4);
-		await expect(training).toHaveAttribute('aria-current', 'step');
-		await expect(training.getByText('Not available yet.')).toBeVisible();
+		const summary = 'Cross-Validation (4 folds)';
+		await expect(builder.getByRole('heading', { name: `4. ${summary}` })).toBeVisible();
+		expect(await acknowledgeDurableTraining(page)).toMatchObject({
+			strategy: 'cross_validation',
+			rows: 150,
+			foldCount: 4,
+			refitComplete: true
+		});
 
 		// 9. Navigate back to /models via sidebar.
 		await page.locator('app-sidebar a[href="/models"]').click();
