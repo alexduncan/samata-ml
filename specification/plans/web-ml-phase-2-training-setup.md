@@ -1,6 +1,6 @@
 # Phase 2: Configure training setup (one-shot and cross-validation)
 
-**Status:** ready | **Updated:** 2026-11-20T08:57:13Z
+**Status:** ready | **Updated:** 2026-11-20T09:03:20Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Google Antigravity (Gemini 4 Neon High), Codex (GPT-6), Codex (gpt-6.2-astra), Codex (gpt-6.2-sol) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Codex (gpt-6.2-astra) | **Verified:** 2026-11-20T08:57:13Z | **Verification:** approved
 **Verified hash:** sha256:01a008e9e271b026620ff3adeca80768e8088dcdc27c2eaf65c16c26f989901c
@@ -426,7 +426,14 @@ Port `.field--folds`, `.field-visual`, `.fold-matrix`, `.fold-training`, `.fold-
 
 ## Escalations
 
-None.
+**Plan:** `specification/plans/web-ml-phase-2-training-setup.md`  
+**Task:** T1  
+**Blocker:** The required pre-edit Chromium parity baseline cannot run because this worktree has no installed dependencies.  
+**Evidence:** At baseline `7435f3918fe22e3f3d5f29c771ee8b7fe75182ea`, `bun run test:e2e tests/visual-parity.e2e.ts --project=chromium --workers=1` exited 127 with `playwright: command not found`. A retry using the primary checkout’s `node_modules/.bin` on `PATH` and `NODE_PATH` exited 1 because the worktree could not resolve `@playwright/test`.  
+**Conflict:** T1 requires this baseline before editing; the implement skill restricts shell execution to the repository’s verification, formatting and gate commands, which do not include dependency installation.  
+**Impact:** No baseline test IDs or assertions can be recorded, and T1 cannot begin or be verified.  
+**Decision needed:** Provision the worktree dependencies through an authorised workflow, then rerun implementation.  
+**Work completed:** Approval and task gates passed; no product files changed.
 
 ## Review fixes
 
@@ -439,6 +446,7 @@ None.
 | 2026-11-17T21:23:45Z | —    | Google Antigravity (Gemini 4 Argon High) | Split Phase 2 from `web-ml-classification-integration.md`; scout-verified `ValidationMethodology`, `NestedCrossValidationRequest`, and existing test fixtures.                                                                                                                                  |
 | 2026-11-18T08:34:14Z | —    | Google Antigravity (Gemini 4 Argon High) | Adopted single fold-count mapping (`outerFolds = innerFolds = folds`) and fixed 80/20 `one_shot` holdout split (`testRatio: 0.2, randomState: 42`).                                                                                                                                             |
 | 2026-11-19T16:53:37Z | —    | Google Antigravity (Gemini 4 Neon High)  | Addressed all 3 BLOCKER and 4 MAJOR findings from the 2026-11-19T15:44:17Z review after three `codebase-scout` passes, user decisions (A1–A3), and `modern-web-guidance` retrieval (`forms`, `accessible-error-announcement`, `responsive-table`). No product code changed.                     |
+| 2026-11-20T09:03:20Z | —    | Codex (GPT-6)                            | T1 blocked before edits: required Chromium parity baseline exited 127 because Playwright is not installed in this worktree; a retry using the primary checkout tools exited 1 resolving `@playwright/test`. See Escalations. |
 | 2026-11-20T07:59:44Z | —    | Claude Code (claude-opus-5-5)            | Revised after the 07:14 and 07:20 reviews. One `codebase-scout` pass on `a857cad` (product code identical to `1c2cc96`) refreshed every line reference and the web-ml 0.1.0 public evidence. User decisions D4, D7 and D8 recorded. No product code changed; no commands beyond the plan gates. |
 
 ## Plan review history
