@@ -1,6 +1,6 @@
 # Phase 2: Configure training setup (one-shot and cross-validation)
 
-**Status:** ready | **Updated:** 2026-11-20T10:16:51Z
+**Status:** ready | **Updated:** 2026-11-20T10:23:54Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Google Antigravity (Gemini 4 Neon High), Codex (GPT-6), Codex (gpt-6.2-astra), Codex (gpt-6.2-sol) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Codex (gpt-6.2-astra) | **Verified:** 2026-11-20T08:57:13Z | **Verification:** approved
 **Verified hash:** sha256:01a008e9e271b026620ff3adeca80768e8088dcdc27c2eaf65c16c26f989901c
@@ -406,8 +406,8 @@ Port `.field--folds`, `.field-visual`, `.fold-matrix`, `.fold-training`, `.fold-
 
 ## Verification and definition of done
 
-- [ ] All task acceptance criteria met, with test names starting with their `WML-P2-*` IDs.
-- [ ] `bun run check` and `bun run build` pass. The functional and accessibility Playwright suites and `bun run test:stories` pass in Chromium, Firefox and WebKit.
+- [x] All task acceptance criteria met, with test names starting with their `WML-P2-*` IDs.
+- [x] `bun run check` and `bun run build` pass. The functional and accessibility Playwright suites and `bun run test:stories` pass in Chromium, Firefox and WebKit.
 - [x] Chromium parity (`bun run test:e2e tests/visual-parity.e2e.ts --project=chromium --workers=1`) is recorded before T1 and after T7 with commit, failing IDs and assertions. No new failures; inherited failures stay linked to the existing `specification/HUMAN.md` V1 release item and are not re-baselined.
 - [x] `bun run format <changed files>` run on all edited files.
 - [ ] Manual checks recorded in the log: VoiceOver (Safari) reads the Strategy select, the folds pair, the matrix headers and cells, and the Help modal; NVDA or Orca if available, otherwise stated as not verified.
@@ -430,7 +430,7 @@ Port `.field--folds`, `.field-visual`, `.fold-matrix`, `.fold-training`, `.fold-
 
 ## Review fixes
 
-None.
+- [x] **R1** `tests/training-setup.e2e.ts` `WML-P2-UI-5` — Make the native keyboard fold-scroll assertion reliable when WebKit scrolls asynchronously. Test: Run the LTR and RTL acceptance cases repeatedly across Chromium, Firefox and WebKit, then rerun the functional and accessibility suites.
 
 ## Implementation and verification log
 
@@ -452,6 +452,7 @@ None.
 | 2026-11-20T10:10:13Z | —    | Codex (GPT-6)                            | Post-T7 at `77a3786b3bc758d1c9ee2627bd5623991e7af52e`: `bun run test:e2e tests/visual-parity.e2e.ts --project=chromium --workers=1` produced 60 passes and the same 9 failures (exit 1). Expected geometry delta ≤ 1 px: `PARITY-sidebar-steps` relative height 96 px, `PARITY-sidebar-step-first` relative height 24 px, `PARITY-sidebar-step-adjacent` relative y 24 px, `PARITY-sidebar-step-last` relative y 72 px, `PARITY-sidebar-step-label` relative y 24 px, `PARITY-step-links` relative y 24 px, `SIDE-AC-11` joined workflow height 96 px. Computed styles: `PARITY-main` padding-top 32 px versus 0 px expected, `PARITY-models-features-table` width 942 px versus 1006 px expected. These are the [V1 release checks](../HUMAN.md#1-workflow-and-plan-review).                                                                                                 |
 | 2026-11-20T10:10:13Z | —    | Codex (GPT-6)                            | Manual Safari check in the Iris model. Safari exposed the named Strategy select and both values, the labelled range and exact fold controls at 5, the Run and fold headers, Training and Validation cell names, and the named Help dialog with its Close control. Closing Help restored the model and its saved strategy. VoiceOver was enabled for the check and restored to its original off state. The available interfaces could not capture spoken output or the VoiceOver caption panel. A separate retry with VoiceOver confirmed enabled and Apple’s copy-last-phrase shortcut (VO-Shift-C) yielded no usable Strategy announcement. VoiceOver was again restored to off. The manual speech criterion remains open and blocks marking the plan implemented. NVDA and Orca were unavailable and are unverified. [Human queue](../HUMAN.md#1-workflow-and-plan-review). |
 | 2026-11-20T10:16:51Z | T8   | Codex (GPT-6)                            | Synced all eight specification items, the indexes, and the human queue. bun run plans:check specification/plans/web-ml-phase-2-training-setup.md: plan and specification index passed. bun run check: typecheck and 289 unit tests passed. Scope gate: 15 paths, zero warnings. Broader Playwright run at 77a3786: 496 passed, five failed. PH-AC-2 reproduced unchanged on main 7435f39 in all three engines (main padding 32px, expected 0px) with bun run test:e2e tests/app-shell.e2e.ts --grep PH-AC-2 --workers=2. The two WebKit WML-P2-UI-5 failures require a scoped test correction. VoiceOver speech evidence remains pending as a separate lifecycle criterion.                                                                                                                                                                                                   |
+| 2026-11-20T10:23:54Z | R1   | Codex (GPT-6)                            | Drive keyboard scrolling on the focused matrix and check the header after each native scroll interval. bun run test:e2e tests/training-setup.e2e.ts --grep WML-P2-UI-5 --repeat-each=3 --workers=2: 18 passed. bun run test:e2e --grep-invert "Visual Parity Suite\|PH-AC-2" --workers=2: 498 passed across Chromium, Firefox and WebKit. The filter separates the independently measured geometry tests from functional and axe checks. The PH-AC-2 baseline used the primary checkout at 7435f39 with separate local draft work. Its page.css change only sets max-width on .page-body and the measured main padding is inherited. No test baselines changed. bun run check: typecheck and 289 unit tests passed. R1 scope gate: two paths, zero warnings.                                                                                                                  |
 
 ## Plan review history
 

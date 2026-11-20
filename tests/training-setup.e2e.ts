@@ -666,24 +666,31 @@ test.describe('Connected Training Setup', () => {
 			await page.keyboard.press('Tab');
 			await expect(region).toBeFocused();
 			const arrow = direction === 'ltr' ? 'ArrowRight' : 'ArrowLeft';
-			for (let press = 0; press < 15; press++) await region.press(arrow, { delay: 100 });
+			await expect(
+				region.getByRole('columnheader', { name: '10', exact: true })
+			).toBeVisible();
+			await page.keyboard.press(arrow);
 			await expect
-				.poll(() =>
-					region.evaluate((el) => {
-						const last = el
-							.querySelector('thead th:last-child')!
-							.getBoundingClientRect();
-						const wrapper = el.getBoundingClientRect();
-						return {
-							visible:
-								last.left >= wrapper.left - 1 && last.right <= wrapper.right + 1,
-							scrollLeft: el.scrollLeft,
-							contentWidth: el.scrollWidth,
-							viewportWidth: el.clientWidth
-						};
-					})
+				.poll(
+					async () => {
+						const lastFoldVisible = await region.evaluate((el) => {
+							const last = el
+								.querySelector('thead th:last-child')!
+								.getBoundingClientRect();
+							const wrapper = el.getBoundingClientRect();
+							return last.left >= wrapper.left - 1 && last.right <= wrapper.right + 1;
+						});
+						if (!lastFoldVisible) await page.keyboard.press(arrow);
+						return lastFoldVisible;
+					},
+					{
+						message:
+							'The focused matrix scrolls until the fold 10 header is fully visible',
+						intervals: [250],
+						timeout: 10_000
+					}
 				)
-				.toMatchObject({ visible: true });
+				.toBe(true);
 
 			const learnMore = form.getByRole('link', { name: 'Learn more' });
 			const strategy = form.getByRole('combobox');
