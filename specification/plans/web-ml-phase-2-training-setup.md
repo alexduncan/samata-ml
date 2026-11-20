@@ -1,6 +1,6 @@
 # Phase 2: Configure training setup (one-shot and cross-validation)
 
-**Status:** ready | **Updated:** 2026-11-20T09:16:54Z
+**Status:** ready | **Updated:** 2026-11-20T09:19:06Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Google Antigravity (Gemini 4 Neon High), Codex (GPT-6), Codex (gpt-6.2-astra), Codex (gpt-6.2-sol) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Codex (gpt-6.2-astra) | **Verified:** 2026-11-20T08:57:13Z | **Verification:** approved
 **Verified hash:** sha256:01a008e9e271b026620ff3adeca80768e8088dcdc27c2eaf65c16c26f989901c
@@ -308,10 +308,10 @@ Port `.field--folds`, `.field-visual`, `.fold-matrix`, `.fold-training`, `.fold-
 - **Must not touch:** `src/stores/`, `src/types/state.ts`
 - **Implementation:** Implement §A "Eligibility and summaries" with TSDoc stating D7 on `computeTrainingSetupBounds`. No Lit or store imports.
 - **Acceptance criteria:**
-    - [ ] `WML-P2-UTIL-1` — Unavailable or unsupported stats, a single observed class, a boolean target, zero-count categories, a singleton minority, minority counts of 2, 4 and 50, and negative, fractional, non-finite or non-record counts each return the §A result. Four minority rows give `maxFolds` 4; 50 caps at 10.
-    - [ ] `WML-P2-UTIL-2` — `validateFoldCount` returns `'invalid-number'` for `NaN` and `Infinity`, `'out-of-range'` for 1, 3.5 and `maxFolds + 1`, and `null` for 2 and `maxFolds`. `createCrossValidationSetup(7)` has equal 7-fold fields and seed 42. Both summary labels format as specified.
+    - [x] `WML-P2-UTIL-1` — Unavailable or unsupported stats, a single observed class, a boolean target, zero-count categories, a singleton minority, minority counts of 2, 4 and 50, and negative, fractional, non-finite or non-record counts each return the §A result. Four minority rows give `maxFolds` 4; 50 caps at 10.
+    - [x] `WML-P2-UTIL-2` — `validateFoldCount` returns `'invalid-number'` for `NaN` and `Infinity`, `'out-of-range'` for 1, 3.5 and `maxFolds + 1`, and `null` for 2 and `maxFolds`. `createCrossValidationSetup(7)` has equal 7-fold fields and seed 42. Both summary labels format as specified.
 - **Verification:** `bun test tests/training-setup.test.ts`, `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-20T09:19:06Z)
 
 ### T3 — Fixed `/help/training-setup` route and article
 
@@ -452,6 +452,7 @@ None.
 | 2026-11-20T07:59:44Z | —    | Claude Code (claude-opus-5-5)            | Revised after the 07:14 and 07:20 reviews. One `codebase-scout` pass on `a857cad` (product code identical to `1c2cc96`) refreshed every line reference and the web-ml 0.1.0 public evidence. User decisions D4, D7 and D8 recorded. No product code changed; no commands beyond the plan gates.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | 2026-11-20T09:11:34Z | —    | Codex (GPT-6)                            | Pre-edit baseline at `d565ca19c6ce0692c00ef24040e8ed0e9176f735`: `bun run test:e2e tests/visual-parity.e2e.ts --project=chromium --workers=1` — 60 passed, 9 failed (exit 1). Geometry deltas, all expected ≤ 1 px: `PARITY-sidebar-steps` relative height 96 px; `PARITY-sidebar-step-first` relative height 24 px; `PARITY-sidebar-step-adjacent` relative y 24 px; `PARITY-sidebar-step-last` relative y 72 px; `PARITY-sidebar-step-label` relative y 24 px; `PARITY-step-links` relative y 24 px; `SIDE-AC-11` joined workflow height 96 px. Style assertions: `PARITY-main` padding-top 32 px, expected 0 px; `PARITY-models-features-table` width 942 px, expected 1006 px. These nine are tracked in [HUMAN.md’s V1 release checks](../HUMAN.md). |
 | 2026-11-20T09:16:54Z | T1   | Codex (GPT-6)                            | Pre-edit Chromium parity: 60 pass, 9 inherited failures, see baseline. bun test tests/state-and-storage.test.ts: 32 pass; bun test tests/reconciler-indexeddb.test.ts: 25 pass; bun test tests/dataset-resources.test.ts: 11 pass; bun run test:e2e tests/model-configuration.e2e.ts: 36 pass across Chromium, Firefox and WebKit; bun run check: typecheck and 282 unit tests passed. bun run plans:task --check-scope --task T1: 8 paths, 0 warnings. Updated state types, persister, reconciler, four test files and this plan.                                                                                                                                                                                                                        |
+| 2026-11-20T09:19:06Z | T2   | Codex (GPT-6)                            | bun test tests/training-setup.test.ts: 5 pass; bun run check: typecheck and 287 unit tests passed. bun run plans:task --check-scope --task T2: 2 paths, 0 warnings. Added src/features/models/training-setup.ts and tests/training-setup.test.ts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 
 ## Plan review history
 
