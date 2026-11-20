@@ -27,7 +27,7 @@ From [ARCHITECTURE § Future Improvements](ARCHITECTURE.md) unless noted. TODO-5
 - **CI workflow:** install pinned tool versions, run `bun install --frozen-lockfile`, and gate pull requests on the test suite. It should also run the TSDoc lint that [standards-and-documentation.md](standards-and-documentation.md) says CI enforces (Known gap 7).
 - **`bun run doctor`** setup check: verify the required tools and dependencies, and print instructions for fixing problems.
 - **Devcontainer or Codespaces** configuration for contributors.
-- **Upstream partition feasibility.** Replace samatā’s class-count fold limit when web-ml publishes its feasibility check. Phase 3 treats an upstream rejection as authoritative and reopens Training Setup with the reason. [Decision D7](plans/web-ml-phase-2-training-setup.md#technical-decisions)
+- **Upstream partition feasibility.** Replace samatā’s class-count fold limit when web-ml publishes its feasibility check. Phase 3 treats an upstream rejection as authoritative and reopens Training Setup with the reason. [Decision D7](plans/archive/web-ml-phase-2-training-setup.md#technical-decisions)
 - **`SECURITY.md`**, after researching the security requirements.
 
 ## Project
