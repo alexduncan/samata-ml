@@ -1,6 +1,6 @@
 # Phase 2: Configure training setup (one-shot and cross-validation)
 
-**Status:** ready | **Updated:** 2026-11-20T09:28:26Z
+**Status:** ready | **Updated:** 2026-11-20T09:34:31Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Google Antigravity (Gemini 4 Neon High), Codex (GPT-6), Codex (gpt-6.2-astra), Codex (gpt-6.2-sol) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Codex (gpt-6.2-astra) | **Verified:** 2026-11-20T08:57:13Z | **Verification:** approved
 **Verified hash:** sha256:01a008e9e271b026620ff3adeca80768e8088dcdc27c2eaf65c16c26f989901c
@@ -349,9 +349,9 @@ Port `.field--folds`, `.field-visual`, `.fold-matrix`, `.fold-training`, `.fold-
 - **Must not touch:** `src/stores/`, `src/i18n.ts`, `src/features/models/app-model-builder-view.ts`, `src/styles/`
 - **Implementation:** Apply D3, D6 and §D. Stories `OneShot`, `CrossValidation`, `MinFolds`, `MaxFolds`, `SavedAboveMaximum`, `InvalidFolds`, `Blocked`, `Disabled`, `LongLabel` and `RTL`, with Do/Don't docs, manifest-generated controls and `play` checks for structure and events. Use the stories for smoke and axe. The production component’s `COMP-1` through `COMP-4` Playwright acceptance checks run in T6 once the app registers the element through the builder import.
 - **Acceptance criteria:**
-    - [ ] `WML-P2-COMP-5` — The ten named component stories render and their smoke interactions and axe scans pass `bun run test:stories` (no exclusions) in Chromium, Firefox and WebKit.
+    - [x] `WML-P2-COMP-5` — The ten named component stories render and their smoke interactions and axe scans pass `bun run test:stories` (no exclusions) in Chromium, Firefox and WebKit.
 - **Verification:** `bun run test:stories`, `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-20T09:34:31Z)
 
 ### T6 — Section 4 in the model builder
 
@@ -455,6 +455,7 @@ None.
 | 2026-11-20T09:19:06Z | T2   | Codex (GPT-6)                            | bun test tests/training-setup.test.ts: 5 pass; bun run check: typecheck and 287 unit tests passed. bun run plans:task --check-scope --task T2: 2 paths, 0 warnings. Added src/features/models/training-setup.ts and tests/training-setup.test.ts.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 2026-11-20T09:24:01Z | T3   | Codex (GPT-6)                            | bun test tests/router-and-navigation.test.ts: 27 pass; bun test tests/content-policy.test.ts: 5 pass; bun test tests/build-content.test.ts: 6 pass; bun run test:e2e tests/content.e2e.ts: 21 pass; bun run test:e2e tests/model-configuration.e2e.ts: 36 pass across the three engines; bun run build: passed, 12 sample datasets; bun run check: typecheck and 289 unit tests passed; bun test tests/style-tokens.test.ts: 8 pass. Scope: fixed route, modal fallback, English article, two content fixtures and four test files.                                                                                                                                                                                                                       |
 | 2026-11-20T09:28:26Z | T4   | Codex (GPT-6)                            | bun test tests/style-tokens.test.ts tests/repository-conventions.test.ts: 16 pass; bun run check: typecheck and 289 unit tests passed; bun run test:stories: 168 passed across Chromium, Firefox and WebKit after provisioning worktree-local installed dependencies (first run failed before collection). WML-P2-STYLE-3 markup inspection confirmed five rows, 5 validation and 20 training cells, both route links, resolved references, enabled strategies, submit and Section 3 name. Primary draft has no local edit. Changed shared styles, story, story fixture and draft.                                                                                                                                                                        |
+| 2026-11-20T09:34:31Z | T5   | Codex (GPT-6)                            | bun run test:stories: 198 passed across Chromium, Firefox and WebKit, all ten new stories with axe and no exclusions; bun run check: typecheck and 289 unit tests passed; bun test tests/style-tokens.test.ts: 8 pass. Added src/features/models/app-training-setup.ts and its co-located stories. Production COMP-1 through COMP-4 acceptance follows in T6.                                                                                                                                                                                                                                                                                                                                                                                             |
 
 ## Plan review history
 
