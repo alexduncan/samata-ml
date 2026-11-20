@@ -71,7 +71,7 @@ The builder supplies labels and formatters through `TrainingSetupLabels`. This i
 2. `WML-P2-COMP-2` — The table and keyboard region have names. Row and column headers and both cell roles are present.
 3. `WML-P2-COMP-3` — A saved count above the maximum remains visible and prevents submission until corrected. A corrected value submits once.
 4. `WML-P2-COMP-4` — Blocked and disabled forms suppress both intents. Only the blocked state presents a described alert.
-5. `WML-P2-COMP-5` — Ten component stories pass interaction and axe checks. `WML-P2-UI-2`, `-4`, `-5` and `-7` cover native invalid input, Help, forced colours, narrow/RTL scrolling and model isolation in the builder.
+5. `WML-P2-COMP-5` — All ten component stories render and pass axe checks. Eight include play checks for form structure or events. `LongLabel` and `RTL` are render and axe stories. `WML-P2-UI-2`, `-4`, `-5` and `-7` cover native invalid input, Help, forced colours, narrow/RTL scrolling and model isolation in the builder.
 
 ## 9. Stories
 
