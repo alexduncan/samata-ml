@@ -1,8 +1,8 @@
 # Phase 2: Configure training setup (one-shot and cross-validation)
 
-**Status:** ready-for-review | **Updated:** 2026-11-20T07:09:23Z
+**Status:** draft | **Updated:** 2026-11-20T07:14:55Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Google Antigravity (Gemini 4 Neon High), Codex (GPT-6), Codex (gpt-6.2-astra) | **Created:** 2026-11-17T21:23:45Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -410,6 +410,7 @@ None.
 | 2026-11-19T17:35:08Z | Codex (gpt-6.2-astra)                   | changes-requested | MAJOR findings in T1 and T3 affect lost-result diagnostics, the form behind Help, metadata retry and the browser verification gate. T2 also names the wrong Phase 1 translation key. See the independent review below for regression cases and evidence.                                                                                                                                                                                                                                                                                              |
 | 2026-11-19T18:32:08Z | Codex (gpt-6.2-astra)                   | changes-requested | T2 permits invalid help paths through the public router action. T3 leaves the models overview unable to recover from malformed columns and omits scroll restoration for the fold matrix. See the independent review for evidence, test cases and a separate storage risk.                                                                                                                                                                                                                                                                             |
 | 2026-11-19T18:57:21Z | Codex (gpt-6.2-astra)                   | changes-requested | Two major findings. T2 must preserve the Help history entry across repeated dismissal and Forward. T2/T3 need a ten-fold matrix that actually scrolls at 320 px for UI-9. A minor focus-style gap affects the Learn more link. The independent review below records browser evidence and revision criteria.                                                                                                                                                                                                                                           |
+| 2026-11-20T07:14:55Z | Codex (gpt-6.2-astra)                   | changes-requested | MAJOR in T3. WML-P1-UI-4 reloads an explicit null training setup with Section 4 marked complete. The required T1 repair reopens that section, invalidating the confirmation test. Include tests/model-configuration.e2e.ts in T3 and give its fixture a valid completed setup. The resubmitted Help history, matrix overflow and focus criteria address the prior findings.                                                                                                                                                                           |
 
 ### Evidence for the 2026-11-19 Codex review
 
@@ -474,6 +475,16 @@ The scouts confirmed the v1 reader accepts both proposed wire encodings, both wr
 The canonical and installed web-ml 0.1.0 catalogues agreed on all 16 entries. Their shared public declarations and prose support the manual and nested fold constraints. Only the canonical checkout supplied the fixed-CV declaration. Phase 2 records configuration. Worker messages, new IndexedDB stores and model execution are outside its scope.
 
 The core decision checklist is covered by T4’s specification list, the contracts in §§A–E, the task boundaries and commit IDs in T1–T4, and the cited source and test evidence, subject to the corrections above. There is no repository-specific decision checklist. Baseline `bun run check` passed typechecking and all 220 tests in 31 files on an isolated snapshot of `b9e89f0` using the primary checkout’s installed dependencies and matching lockfile. The linked worktree had no local TypeScript installation. Both browser probes exercised isolated fixtures. The full Phase 2 browser, Storybook and assistive-technology checks await implementation.
+
+### Independent review on 2026-11-20 at 07:14 UTC
+
+**MAJOR · T1 and T3, the Section 3 Edit regression test.** At `40e3e97`, `WML-P1-UI-4` creates an Iris model with `trainingSetup: null`. It adds only the Section 4 completion to the in-memory store, waits for persistence and reloads. Its first assertion then expects the completion to survive, and its next action expects a confirmation dialog when Section 3 is reopened (`tests/model-configuration.e2e.ts:415–437`). §A requires the new reader to remove that completion from this draft. With no completed later section, the builder reopens Section 3 immediately (`src/features/models/app-model-builder-view.ts:480–500`). T3 runs the affected suite but leaves its file outside the permitted edits. Add `tests/model-configuration.e2e.ts` to T3 and have the fixture submit the default One-Shot through the Section 4 form before reload. Keep the completion and confirmation assertions. STATE-5 separately covers malformed or inconsistent storage.
+
+**MINOR · T3, overview story.** T3 lists `src/features/models/app-models-view.stories.ts` among its likely files. This story file is new on the reviewed base. Describe it as a creation so the implementer can find the intended starting point.
+
+The revised ROUTE-4 specifies who owns each Help entry and tests repeated dismissal and Forward. §C and UI-5/UI-9 specify measurable overflow, keyboard access to the final fold, positive-offset restoration and the Learn more focus outline. These address the preceding review. The scout confirmed the v1 writer and reader boundaries, the Phase 1 builder, current metadata paths and both web-ml 0.1.0 public catalogues. The installed package lacks the fixed-CV declaration present in the canonical checkout. This phase stores configuration only. It adds no worker message or IndexedDB store.
+
+T4 identifies the affected specifications. §§A–E define the public contracts, and T1–T4 identify their change boundaries, commit IDs and positive and negative checks, subject to the fixture correction above. The repository has no separate decision checklist. On `40e3e97`, `bun run check` passed typechecking and 261 tests in 36 files using the primary checkout’s installed dependencies. Phase 2 browser, Storybook and assistive-technology results await implementation.
 
 ## Change log
 
