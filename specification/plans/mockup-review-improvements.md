@@ -1,6 +1,6 @@
 # Mockup Review Improvements
 
-**Status:** ready | **Updated:** 2026-11-21T19:48:47Z
+**Status:** ready | **Updated:** 2026-11-21T19:51:52Z
 **Authors:** Google Antigravity (Gemini 4 Neon High), Google Antigravity (Gemini) | **Created:** 2026-11-20T17:44:07Z
 **Verified by:** Google Antigravity (Gemini 4 Neon High) | **Verified:** 2026-11-21T10:09:23Z | **Verification:** approved
 **Verified hash:** sha256:f34dd07a43da86070de76a354cfe9bafdcdb1745731459ae01f6ce09c0ab676f
@@ -341,11 +341,11 @@ Client-side filtering matches `#query` case-insensitively against `name`, `filen
     5. In `src/styles/hyperparameters.styles.ts` (line 5) and `src/styles/train-model.styles.ts` (line 5), update TSDoc references from `specification/mockups/ui-scaffold/css/...` to `specification/mockups/css/...`.
     6. Run `bun run format` on modified files.
 - **Acceptance criteria:**
-    - [ ] `bun run mockups` starts the mockup server on `http://localhost:3333`.
-    - [ ] Neither `serve:scaffold` nor `serve:mockups` remains in `package.json`, `playwright.config.ts`, `.claude/launch.json`, `.vscode/launch.json`, `.agents/scripts/whitelist-check.ts`, or `.agents/.agents/scripts/whitelist-check.ts`.
-    - [ ] Zero `ui-scaffold` references remain in `src/` or `scripts/`.
+    - [x] `bun run mockups` starts the mockup server on `http://localhost:3333`.
+    - [x] Neither `serve:scaffold` nor `serve:mockups` remains in `package.json`, `playwright.config.ts`, `.claude/launch.json`, `.vscode/launch.json`, `.agents/scripts/whitelist-check.ts`, or `.agents/.agents/scripts/whitelist-check.ts`.
+    - [x] Zero `ui-scaffold` references remain in `src/` or `scripts/`.
 - **Verification:** `bun run check` and `bun test tests/style-tokens.test.ts`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-21T19:51:52Z)
 
 ### T4 — Update Playwright E2E and visual-parity tests
 
@@ -428,6 +428,7 @@ None.
 | —          | —    | —             | Not started                   |
 | 2026-11-21T12:12:45Z | T1 | Google Antigravity (Gemini 4 Neon High) | Flattened specification/mockups/ (26 HTML, style.css, mockups.css verbatim, 18 css/*.css; removed 4 empty 0-byte duplicates and ui-scaffold/ + drafts/); added <meta name="name\|description\|status"> to all 26 HTML files; stripped prototype mockups.css links, orphan comments, static #__mockup-review-helper-host blocks, and placeholder titles; wrapped all multi-state fragments across all 11 multi-state product draft files (note: 03-6_train-models-5-train.html was refactored on main by web-ml-phase-3-model-training commit 18deeee to 11 fragments — 1 builder + 7 template + 3 section — all 11 wrapped). Verified: bun run format:check specification/mockups/*.html PASS, 26 HTML + 18 css/*.css, 0 empty HTML, 0 ../style.css or prototype hooks, 26/26 meta tags. |
 | 2026-11-21T19:48:47Z | T2 | Google Antigravity (Gemini 4 Neon High) | Updated scripts/config.ts, scripts/serve-mockups.ts, scripts/audit-mockups.ts, tests/serve-mockups.test.ts, tests/audit-mockups.test.ts for flat URLs, /index.json, body.mockup-index table index with client-side search/status filter, light-DOM #__mockup-review-helper-host + /mockups.css injection (omitted on ?clean=1), and bun run mockups audit error. Verified: bun run check PASS (tsc --noEmit 0 errors; 401 pass, 0 fail across 46 files), bun test tests/serve-mockups.test.ts PASS (10/10), bun test tests/audit-mockups.test.ts PASS (6/6), bun run format:check PASS. |
+| 2026-11-21T19:51:52Z | T3 | Google Antigravity (Gemini 4 Neon High) | Renamed serve:mockups/serve:scaffold to mockups across package.json, playwright.config.ts (preserving --dist webServer), .claude/launch.json, .vscode/launch.json, .agents/scripts/whitelist-check.ts, .agents/.agents/scripts/whitelist-check.ts; updated ui-scaffold/css TSDoc paths in src/styles/hyperparameters.styles.ts and src/styles/train-model.styles.ts. Verified: bun run check PASS (tsc --noEmit 0 errors; 401 pass, 0 fail), bun test tests/style-tokens.test.ts PASS (8/8), zero ui-scaffold hits in src/ and scripts/. |
 
 ## Plan review history
 

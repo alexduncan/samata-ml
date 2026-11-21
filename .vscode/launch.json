@@ -22,11 +22,11 @@
 			"internalConsoleOptions": "neverOpen"
 		},
 		{
-			"name": "Run: serve:scaffold",
+			"name": "Run: mockups",
 			"type": "node",
 			"request": "launch",
 			"runtimeExecutable": "bun",
-			"runtimeArgs": ["run", "serve:scaffold"],
+			"runtimeArgs": ["run", "mockups"],
 			"cwd": "${workspaceFolder}",
 			"console": "integratedTerminal",
 			"internalConsoleOptions": "neverOpen"

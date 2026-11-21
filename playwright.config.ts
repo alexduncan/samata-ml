@@ -43,7 +43,7 @@ export default defineConfig({
 			reuseExistingServer: false
 		},
 		{
-			command: 'bun run serve:mockups --port 3333',
+			command: 'bun run mockups --port 3333',
 			url: 'http://localhost:3333',
 			reuseExistingServer: !process.env.CI
 		}

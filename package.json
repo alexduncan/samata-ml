@@ -5,8 +5,7 @@
 	"scripts": {
 		"build": "bun run scripts/build.ts",
 		"server": "bun run scripts/server.ts",
-		"serve:mockups": "bun run scripts/serve-mockups.ts",
-		"serve:scaffold": "bun run scripts/serve-mockups.ts",
+		"mockups": "bun run scripts/serve-mockups.ts",
 		"audit:mockups": "bun run scripts/audit-mockups.ts",
 		"test": "bun test",
 		"test:e2e": "playwright test",
