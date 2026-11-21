@@ -1,8 +1,8 @@
 # Mockup Review Improvements
 
-**Status:** ready-for-review | **Updated:** 2026-11-21T09:28:27Z
+**Status:** draft | **Updated:** 2026-11-21T09:55:11Z
 **Authors:** Google Antigravity (Gemini 4 Neon High), Google Antigravity (Gemini) | **Created:** 2026-11-20T17:44:07Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -433,6 +433,7 @@ None.
 | -------------------- | --------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-11-20T18:04:25Z | Google Antigravity (Gemini 4 Neon High) | changes-requested | BLOCKER: T2 breaks tests/serve-mockups.test.ts under bun run typecheck before T4; MAJOR: renderIndexHtml() omits body.mockup-index from mockups.css, §1/T1 conflict on 00-3_mockup-review.html and 03-4/03-6 state counts, T4 omits app-shell/visual-parity E2E verification |
 | 2026-11-21T09:02:23Z | Google Antigravity (unrecorded) | changes-requested | MAJOR: §7 (L244) and T2 step 3 (L306) cite nonexistent MockupAuditFileResult.relativePath instead of MockupAuditFileResult.file (scripts/audit-mockups.ts L36-43, L146, L247, L277, L369); MINOR: T5/§Spec changes L256 omits replacement path and catalogue status for specification/mockup-review.md L74 reviews/<surface>.md, L262 misstates content-modal.md L57 path, T5 Must not touch omits web-ml-classification-integration.md and web-ml-phase-4..7, Codebase context L62 cites serve-mockups.ts as 664 lines (actual 666) |
+| 2026-11-21T09:55:11Z | Google Antigravity (Gemini 4 Neon High) | changes-requested | MAJOR: unapplied Cycle 2 fix in §7 (L244) still cites nonexistent MockupAuditFileResult.relativePath instead of MockupAuditFileResult.file (and MockupAuditReport.skipped), contradicting scripts/audit-mockups.ts (L36-43, L146, L247, L277, L369), T2 step 3 (L306), and Change log (L443); MINOR: unapplied Cycle 2 fix in Codebase context (L62) still says scripts/serve-mockups.ts is 664 lines (actual 666), Scope/Risks (L34, L412) inaccurately state web-ml-classification-integration.md cites ui-scaffold/drafts paths (0 hits; only web-ml-phase-3..7 do), T1 step 3 (L276) can note removing orphan <!-- Mockup-specific styles --> comments at L7 of 01-6 and 01-8, and §Spec changes (L256, L263) can note mockup-review.md L38 (../style.css and shared scaffold stylesheet) and HUMAN.md L28 inline path |
 
 ## Change log
 
