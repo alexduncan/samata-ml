@@ -1,6 +1,6 @@
 # Phase 4: Display shared single-model metrics and visuals in Section 6
 
-**Status:** ready | **Updated:** 2026-11-21T19:55:28Z
+**Status:** ready | **Updated:** 2026-11-21T20:29:50Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Codex (GPT-6) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Codex (GPT-6 Astra) | **Verified:** 2026-11-21T18:43:48Z | **Verification:** approved
 **Verified hash:** sha256:8bb5b4e4fe16d1c104758ae674e48ff1ad12ca414bd079667b5cdc879b4f2848
@@ -370,12 +370,12 @@ The closed element API is limited to the properties, events and methods named in
 - **Must not touch:** `css/root.css`, `src/stores/`
 - **Implementation:** Implement the four elements and their view-model builders per Interfaces §C and D8–D11. Stories: `CrossValidation`, `OneShot`, `Binary`, `Multiclass`, `GapWarning`, `MetricsUnavailable`, `ManyClasses`, `LongLabel`, `RTL`, with Do/Don't docs ("Do read balanced accuracy first"; "Don't compare against training scores").
 - **Acceptance criteria:**
-    - [ ] `WML-P4-UI-1` — Headline shows balanced accuracy first; CV shows mean ± SD plus SD and IQR, One-Shot shows one value and the no-spread sentence; accuracy shows the most-frequent baseline and signed delta; the gap card appears at gap ≥ 0.10 and not at 0.099.
-    - [ ] `WML-P4-UI-2` — Fold strip renders one dot per partition, a mean mark, an SD rule (CV only) and labelled dashed baselines; its data table lists every value; caption takeaway matches the view model.
-    - [ ] `WML-P4-UI-3` — With K = 25 the confusion matrix shows a labelled filter and 20 rows by default; choosing a class fires `app-confusion-filter-change` once and shows one row; with K ≤ 20 no filter renders.
-    - [ ] `WML-P4-UI-4` — Unavailable metrics show their reason text; no `NaN`, `undefined` or empty cells render for any fixture; RTL and long-label stories reflow at 320 px.
+    - [x] `WML-P4-UI-1` — Headline shows balanced accuracy first; CV shows mean ± SD plus SD and IQR, One-Shot shows one value and the no-spread sentence; accuracy shows the most-frequent baseline and signed delta; the gap card appears at gap ≥ 0.10 and not at 0.099.
+    - [x] `WML-P4-UI-2` — Fold strip renders one dot per partition, a mean mark, an SD rule (CV only) and labelled dashed baselines; its data table lists every value; caption takeaway matches the view model.
+    - [x] `WML-P4-UI-3` — With K = 25 the confusion matrix shows a labelled filter and 20 rows by default; choosing a class fires `app-confusion-filter-change` once and shows one row; with K ≤ 20 no filter renders.
+    - [x] `WML-P4-UI-4` — Unavailable metrics show their reason text; no `NaN`, `undefined` or empty cells render for any fixture; RTL and long-label stories reflow at 320 px.
 - **Verification:** `bun test tests/results-view-model.test.ts`; `bun run test:e2e tests/results-summary.e2e.ts`; `bun run test:stories`; `bun test tests/style-tokens.test.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-21T20:29:50Z)
 
 ### T7 — Build the binary flowchart and multiclass Classee strips
 
@@ -472,6 +472,7 @@ None.
 | 2026-11-21T19:15:51Z | T3 | Claude Code (claude-sonnet-5-5) | StoredEvaluation types, decoder, foldSummary, partitionFingerprint, four hand-written fixtures (confusion-matrix derived columns in test helper only). bun test evaluation-decoder+fold-statistics+partition-fingerprint 71 pass (50+ corruption cases across every rejection group; expected fingerprint digest independently computed with node:crypto); typecheck ok; bun run check 474 pass 0 fail. |
 | 2026-11-21T19:51:05Z | T4 | Claude Code (claude-sonnet-5-5) | bun run check: 498 pass 0 fail; bun run test:e2e tests/classification-training.e2e.ts tests/training-runtime.e2e.ts: 40 passed 26 skipped 0 failed. Fixed copyFit to store the request class axis (evaluation.classLabels) not model.classes_ (sorted). Changed: classifier-adapters, evaluation-mapper, result-validation, training-service/worker, evaluation-decoder, app.store, reconciler, model-result types, related tests and fixtures. |
 | 2026-11-21T19:55:28Z | T5 | Claude Code (claude-sonnet-5-5) | bun run check: 511 pass 0 fail (typecheck clean). New tests/model-results-store.test.ts (8), preference tests in state-and-storage.test.ts, protected stale-merge test in training-service.test.ts (mutation-checked). Changed: src/types/state.ts, src/stores/{app.store,persister,model-results.store}.ts, src/common/storage/training-domain.ts, tests. |
+| 2026-11-21T20:29:50Z | T6 | Claude Code (claude-sonnet-5-5) | bun run check: 526 pass 0 fail; bun test results-view-model+style-tokens 23 pass; test:e2e results-summary.e2e.ts 60 passed (3 engines, axe, 320px ltr/rtl); test:stories 342 pass. Changed: results-view-model, app-results-summary, app-fold-strip, app-class-metrics-table, app-confusion-matrix (+stories), src/styles/results.styles.ts, tests/{results-view-model.test.ts,results-summary.e2e.ts,helpers/mount-results-fixture.ts,fixtures/results/{summary.browser,labels}.ts}. Chart elements expose whenSettled() so app-model-results can await first render (T9). |
 
 ## Plan review history
 
