@@ -1,9 +1,9 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready-for-review | **Updated:** 2026-11-21T20:06:04Z
+**Status:** ready | **Updated:** 2026-11-21T20:09:18Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol) | **Created:** 2026-11-19T08:47:35Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
-**Verified hash:** —
+**Verified by:** Codex (gpt-6.2-astra) | **Verified:** 2026-11-21T20:09:18Z | **Verification:** approved
+**Verified hash:** sha256:c679357b13cc388e5a5188ab78f87cc09f1c1553fa92435016fc01958aefcc33
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -331,6 +331,7 @@ None.
 | Reviewed (UTC)       | Agent (model)         | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | -------------------- | --------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-11-21T19:58:41Z | Codex (gpt-6.2-astra) | changes-requested | MAJOR §C/T3: disabling the opposite option prevents reversing A/B with two models. Specify an atomic accessible swap and test both orders with exactly two models. MAJOR §C/T4: app-confusion-delta receives numeric counts but has no locale formatter or formatted strings. Supply a formatter or display strings and verify signed counts in a second locale (COMPONENTS §8). MAJOR D10/§A/T1: src/stores/persister.ts lines 589, 742 and 814 copy results across protected-domain merges. Phase 4 fingerprints omit the target. Specify ownership/merge guards and test a stale tab writing after a target switch with the same fingerprint and model numbers, while retaining valid same-context choices. |
+| 2026-11-21T20:09:18Z | Codex (gpt-6.2-astra) | approved          | Approved T1–T7. Independent scout verified the pinned 0.2.0 ROPE contract and shadow-piercing parity selectors. The atomic keyboard swap, locale-aware signed counts and protected preference ownership resolve the three prior findings. Phase 4 integration remains an implementation entry condition. MINOR T7: bring the focus-owner wording in navigation §5.6, COMPONENTS §5 and page-header PH-AC-1 into line with T6 during specification sync.                                                                                                                                                                                                                                                        |
 
 ## Change log
 
