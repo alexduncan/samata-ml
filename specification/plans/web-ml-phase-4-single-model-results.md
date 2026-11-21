@@ -1,6 +1,6 @@
 # Phase 4: Display shared single-model metrics and visuals in Section 6
 
-**Status:** ready | **Updated:** 2026-11-21T19:12:25Z
+**Status:** ready | **Updated:** 2026-11-21T19:15:51Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Codex (GPT-6) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Codex (GPT-6 Astra) | **Verified:** 2026-11-21T18:43:48Z | **Verification:** approved
 **Verified hash:** sha256:8bb5b4e4fe16d1c104758ae674e48ff1ad12ca414bd079667b5cdc879b4f2848
@@ -329,11 +329,11 @@ The closed element API is limited to the properties, events and methods named in
 - **Must not touch:** `src/common/storage/db.ts`, `src/features/models/training/` — persistence is wired in T4.
 - **Implementation:** Implement Interfaces §A exactly. Fixtures (built by hand, not computed): `irisCrossValidation` (K = 3, 5 folds, probabilities), `breastCancerOneShot` (binary, probabilities, sweep, calibration), `svcBinaryNoProbabilities` (probability metrics unavailable, curves null), `manyClasses` (K = 25).
 - **Acceptance criteria:**
-    - [ ] `WML-P4-EVAL-1` — Each fixture decodes. Minimally corrupted copies cover every §A rejection group. An unknown evaluation schema version is rejected. A calibration bin with count zero preserves null means and its neighbours’ scores.
-    - [ ] `WML-P4-EVAL-2` — `foldSummary` matches hand-computed values for `[0.8, 0.9, 1]` (mean 0.9, SD 0.1, Q1 0.85, Q3 0.95, IQR 0.1) and a 5-value case; one value gives `sd`/`iqr` `null`; empty and non-finite inputs throw.
-    - [ ] `WML-P4-EVAL-3` — The fingerprint is stable across row-pair input order. Changes to dataset ID, protocol settings, a row’s partition or the typed class axis produce different digests. Check a fixed expected hex digest for the Iris fixture.
+    - [x] `WML-P4-EVAL-1` — Each fixture decodes. Minimally corrupted copies cover every §A rejection group. An unknown evaluation schema version is rejected. A calibration bin with count zero preserves null means and its neighbours’ scores.
+    - [x] `WML-P4-EVAL-2` — `foldSummary` matches hand-computed values for `[0.8, 0.9, 1]` (mean 0.9, SD 0.1, Q1 0.85, Q3 0.95, IQR 0.1) and a 5-value case; one value gives `sd`/`iqr` `null`; empty and non-finite inputs throw.
+    - [x] `WML-P4-EVAL-3` — The fingerprint is stable across row-pair input order. Changes to dataset ID, protocol settings, a row’s partition or the typed class axis produce different digests. Check a fixed expected hex digest for the Iris fixture.
 - **Verification:** `bun test tests/evaluation-decoder.test.ts tests/fold-statistics.test.ts tests/partition-fingerprint.test.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-21T19:15:51Z)
 
 ### T4 — Request `web-ml` evaluation outputs in the worker and persist `evaluation`
 
@@ -469,6 +469,7 @@ None.
 | 2026-11-21T18:39:02Z | — | Codex (GPT-6) | Rescouted landed holdout closure 8148579 and matching e568a7c9 distribution. Frozen Bun install and app typecheck passed. The 33 public assets byte-match the pinned distribution. Updated the exact worker contract, app verification seams and compatibility scope. |
 | 2026-11-21T19:08:27Z | T1 | Claude Code (claude-sonnet-5-5) | Verified e568a7c9 dist digests (entry JS 8b135655, manifest dce1e460), installed==sibling via diff; bun test model-assets+model-options 21 pass; test:e2e training-runtime 27 pass (3 engines, dev+prod); typecheck ok; bun run check 401 pass 0 fail; build ok. Changed: scripts/build-model-assets.ts, model-presentation-policy.ts, tests/{model-assets,model-options}.test.ts, tests/training-runtime.e2e.ts, tests/fixtures/training/runtime.worker.ts |
 | 2026-11-21T19:12:25Z | T2 | Claude Code (claude-sonnet-5-5) | bun add --exact @observablehq/plot@0.6.17; 9 chart tokens in root.css; PlotController + plot-host fixture + stories. bun test chart-tokens+style-tokens 10 pass; test:e2e plot-controller 15 pass (3 engines); test:stories 282 pass; bun run check 403 pass 0 fail; build ok. Bundle: app.js 340091 B before and after (controller not yet imported); controller+Plot alone minified 390831 B. Controller strips per-mark aria-label and sets role=img (axe aria-prohibited-attr). Changed: package.json, bun.lock, css/root.css, src/features/results/charts/*, .storybook/fixtures/plot-host.ts, tests/chart-tokens.test.ts, tests/plot-controller.e2e.ts |
+| 2026-11-21T19:15:51Z | T3 | Claude Code (claude-sonnet-5-5) | StoredEvaluation types, decoder, foldSummary, partitionFingerprint, four hand-written fixtures (confusion-matrix derived columns in test helper only). bun test evaluation-decoder+fold-statistics+partition-fingerprint 71 pass (50+ corruption cases across every rejection group; expected fingerprint digest independently computed with node:crypto); typecheck ok; bun run check 474 pass 0 fail. |
 
 ## Plan review history
 
