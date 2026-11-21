@@ -1,12 +1,15 @@
 import { atom } from 'nanostores';
 import type { TrainingRunIdentity } from '../types/model-result';
 import {
+	DEFAULT_MODEL_RESULTS_UI,
 	INITIAL_APP_STATE,
 	isModelEligibleColumnType,
+	sanitiseModelResultsUi,
 	type DatasetSummary,
 	type HyperparameterConfig,
 	type HyperparameterValue,
 	type ModelRecord,
+	type ModelResultsUi,
 	type ModelSectionId,
 	type MulticlassStrategy,
 	type PersistedAppState,
@@ -752,6 +755,35 @@ export function setTrainingLogOpen(num: number, open: boolean): boolean {
 			...state,
 			models: state.models.map((entry) =>
 				entry === model ? { ...model, ui: { ...model.ui, trainingLogOpen: open } } : entry
+			)
+		};
+	});
+}
+
+/**
+ * Merges a valid partial change into one model's Section 6 display preferences. Invalid
+ * patches and no-op patches change and write nothing.
+ */
+export function setModelResultsUi(num: number, patch: Partial<ModelResultsUi>): boolean {
+	const changes = sanitiseModelResultsUi(patch);
+	const keys = Object.keys(patch);
+	if (keys.length === 0 || Object.keys(changes).length !== keys.length) return false;
+	return updateState((state) => {
+		const model = state.models.find((entry) => entry.num === num);
+		if (!model) return false;
+		const current = { ...DEFAULT_MODEL_RESULTS_UI, ...model.ui.results };
+		if (
+			(Object.keys(changes) as (keyof ModelResultsUi)[]).every(
+				(key) => current[key] === changes[key]
+			)
+		) {
+			return state;
+		}
+		const results = { ...model.ui.results, ...changes };
+		return {
+			...state,
+			models: state.models.map((entry) =>
+				entry === model ? { ...model, ui: { ...model.ui, results } } : entry
 			)
 		};
 	});

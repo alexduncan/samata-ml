@@ -24,6 +24,8 @@ import {
 	setMulticlassStrategy,
 	setHyperparameters,
 	setTrainingSetup,
+	setModelResultsUi,
+	setTrainingLogOpen,
 	recoverInterrupted
 } from '../src/stores/app.store';
 import {
@@ -1150,5 +1152,150 @@ describe('WML-P1-STATE-1: persisted hyperparameter value validation', () => {
 			const reconciled = await reconcileStartupState(storage, mockIdb);
 			expect(reconciled.models).toEqual([]);
 		}
+	});
+});
+
+describe('WML-P4-STATE-1: model results display preferences', () => {
+	const mockIdb: IndexedDBAdapter = {
+		async hasMetadata() {
+			return true;
+		},
+		async deleteOrphanDatasets() {},
+		async hasModelResults() {
+			return true;
+		}
+	};
+
+	class CountingStorage extends MemoryStorage {
+		writes = 0;
+		override setItem(key: string, value: string): void {
+			this.writes += 1;
+			super.setItem(key, value);
+		}
+	}
+
+	beforeEach(() => {
+		stopPersister();
+		$appState.set({ ...INITIAL_APP_STATE });
+		$scrollState.set({ ...INITIAL_SCROLL_STATE });
+	});
+
+	function withModel(storage: StorageAdapter): void {
+		initPersister(storage, { debounceFieldMs: 10_000 });
+		loadDatasetSucceeded(sampleDataset);
+		setTarget('species');
+		createModel();
+	}
+
+	function storageWithResultsUi(results: unknown): MemoryStorage {
+		const state: PersistedAppState = {
+			...INITIAL_APP_STATE,
+			dataset: sampleDataset,
+			target: 'species',
+			nextModelNum: 2,
+			data: { mode: 'preview', selectedColumn: null },
+			models: [
+				{
+					num: 1,
+					createdAt: 1,
+					status: 'draft',
+					completedSteps: [],
+					modelId: 'decision-tree-classifier',
+					features: [],
+					modelOptions: {},
+					hyperparameters: { mode: 'manual', values: {} },
+					multiclass: null,
+					trainingSetup: null,
+					progress: null,
+					resultRevision: null,
+					error: null,
+					timings: null,
+					durationMs: null,
+					metrics: null,
+					ui: { results: results as never, other: 'kept' }
+				}
+			]
+		};
+		const storage = new MemoryStorage();
+		storage.setItem(STATE_STORAGE_KEY, JSON.stringify(state));
+		return storage;
+	}
+
+	it('round-trips preferences through localStorage', async () => {
+		const storage = new MemoryStorage();
+		withModel(storage);
+		expect(setModelResultsUi(1, { thresholdIndex: 70, classFilter: 3 })).toBe(true);
+		expect(setModelResultsUi(1, { moreMetricsOpen: true })).toBe(true);
+		flushNow();
+		const stored = JSON.parse(storage.getItem(STATE_STORAGE_KEY)!);
+		expect(stored.models[0].ui.results).toEqual({
+			thresholdIndex: 70,
+			classFilter: 3,
+			moreMetricsOpen: true
+		});
+		stopPersister();
+		const reconciled = await reconcileStartupState(storage, mockIdb);
+		expect(reconciled.models[0]?.ui.results).toEqual({
+			thresholdIndex: 70,
+			classFilter: 3,
+			moreMetricsOpen: true
+		});
+	});
+
+	it('falls back to defaults per invalid field without discarding the model', async () => {
+		const reconciled = await reconcileStartupState(
+			storageWithResultsUi({ thresholdIndex: 101, classFilter: 2, moreMetricsOpen: 'yes' }),
+			mockIdb
+		);
+		expect(reconciled.models).toHaveLength(1);
+		expect(reconciled.models[0]?.ui).toEqual({ results: { classFilter: 2 }, other: 'kept' });
+
+		for (const invalid of [
+			{ thresholdIndex: -1, classFilter: -1, moreMetricsOpen: 1 },
+			{ thresholdIndex: 1.5, classFilter: 0.5 },
+			'text',
+			[1, 2],
+			null
+		]) {
+			const next = await reconcileStartupState(storageWithResultsUi(invalid), mockIdb);
+			expect(next.models).toHaveLength(1);
+			expect(next.models[0]?.ui).toEqual({ other: 'kept' });
+		}
+	});
+
+	it('rejects invalid patches and writes nothing for a no-op patch', () => {
+		const storage = new CountingStorage();
+		withModel(storage);
+		flushNow();
+		const before = $appState.get();
+		const writes = storage.writes;
+		for (const patch of [
+			{},
+			{ thresholdIndex: 101 },
+			{ thresholdIndex: -1 },
+			{ thresholdIndex: 0.5 },
+			{ classFilter: -1 },
+			{ classFilter: 1.5 },
+			{ moreMetricsOpen: 'true' as never },
+			{ thresholdIndex: 10, moreMetricsOpen: 'x' as never }
+		]) {
+			expect(setModelResultsUi(1, patch)).toBe(false);
+		}
+		expect(setModelResultsUi(99, { thresholdIndex: 10 })).toBe(false);
+		// Patches equal to the defaults change nothing.
+		setModelResultsUi(1, { thresholdIndex: 50, classFilter: null, moreMetricsOpen: false });
+		flushNow();
+		expect($appState.get()).toBe(before);
+		expect(storage.writes).toBe(writes);
+	});
+
+	it('keeps other UI keys when preferences change', () => {
+		withModel(new MemoryStorage());
+		setTrainingLogOpen(1, true);
+		setModelResultsUi(1, { moreMetricsOpen: true });
+		expect($appState.get().models[0]?.ui).toEqual({
+			trainingLogOpen: true,
+			results: { moreMetricsOpen: true }
+		});
 	});
 });

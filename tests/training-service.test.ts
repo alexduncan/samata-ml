@@ -21,7 +21,8 @@ import {
 	reduceTrainingStart,
 	setHyperparameters,
 	setResumePath,
-	setTrainingLogOpen
+	setTrainingLogOpen,
+	setModelResultsUi
 } from '../src/stores/app.store';
 import {
 	$storageSaveNotice,
@@ -1806,4 +1807,51 @@ test('WML-P3-TRAIN-4: a missing staged hand-off fails before commit and preserve
 	expect($appState.get()).toEqual(prior);
 	expect(await db.get('metadata', metadata.id)).toEqual(metadata);
 	expect(await readTrainingCheckpoint(db)).toEqual({ ok: true, checkpoint: null });
+});
+
+test('WML-P4-STATE-1: a stale preference write merges field by field with another tab and skips a newer run', async () => {
+	seed();
+	initPersister(storage, {
+		trainingPersistence: {
+			withStateLock: (operation) => locks.request(TRAINING_STATE_LOCK, operation)
+		}
+	});
+	const savedModel = () =>
+		(JSON.parse(storage.getItem(STATE_STORAGE_KEY)!) as PersistedAppState).models[0]!;
+	const editStored = (change: (model: Record<string, unknown>) => void) => {
+		const state = JSON.parse(storage.getItem(STATE_STORAGE_KEY)!);
+		change(state.models[0]);
+		MemoryStorage.prototype.setItem.call(storage, STATE_STORAGE_KEY, JSON.stringify(state));
+	};
+	try {
+		const run = service.start(1);
+		const worker = await workerAt(0);
+		worker.succeed();
+		expect(await run).toMatchObject({ ok: true });
+		const { resultRevision } = savedModel();
+
+		// Another tab saved a different preference of the same run; this tab edits another field.
+		editStored((model) => {
+			(model.ui as Record<string, unknown>).results = { moreMetricsOpen: true };
+		});
+		expect(setModelResultsUi(1, { thresholdIndex: 70 })).toBe(true);
+		flushNow();
+		await locks.request(TRAINING_STATE_LOCK, () => {});
+		expect(savedModel().resultRevision).toBe(resultRevision);
+		expect(savedModel().ui.results).toEqual({ moreMetricsOpen: true, thresholdIndex: 70 });
+
+		// Another tab already owns a newer run; this tab's stale preference must not land on it.
+		editStored((model) => {
+			model.resultRevision = 'newer-run';
+			(model.ui as Record<string, unknown>).results = { thresholdIndex: 10 };
+		});
+		expect(setModelResultsUi(1, { thresholdIndex: 90 })).toBe(true);
+		flushNow();
+		await locks.request(TRAINING_STATE_LOCK, () => {});
+		expect(savedModel().resultRevision).toBe('newer-run');
+		expect(savedModel().ui.results).toEqual({ thresholdIndex: 10 });
+	} finally {
+		stopPersister();
+		await locks.request(TRAINING_STATE_LOCK, () => {});
+	}
 });

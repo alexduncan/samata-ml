@@ -22,6 +22,7 @@ import {
 	STATE_STORAGE_KEY,
 	STORAGE_VERSION,
 	type ModelRecord,
+	type ModelResultsUi,
 	type PersistedAppState,
 	type PersistedScroll
 } from '../types/state';
@@ -688,6 +689,23 @@ export function flushSubmittedDraft(
 	return { ok: true, state };
 }
 
+function mergeResultsUi(
+	stored: Partial<ModelResultsUi> | undefined,
+	base: Partial<ModelResultsUi> | undefined,
+	captured: Partial<ModelResultsUi> | undefined
+): Partial<ModelResultsUi> {
+	const merged: Record<string, unknown> = { ...stored };
+	const fields = new Set([...Object.keys(base ?? {}), ...Object.keys(captured ?? {})]);
+	for (const field of fields) {
+		const before = (base as Record<string, unknown> | undefined)?.[field];
+		const after = (captured as Record<string, unknown> | undefined)?.[field];
+		if (before === after) continue;
+		if (after === undefined) delete merged[field];
+		else merged[field] = after;
+	}
+	return merged as Partial<ModelResultsUi>;
+}
+
 function mergeOrdinaryModel(
 	stored: ModelRecord,
 	base: ModelRecord,
@@ -699,6 +717,15 @@ function mergeOrdinaryModel(
 	for (const key of new Set([...Object.keys(base.ui), ...Object.keys(captured.ui)])) {
 		if (key === 'trainingLogOpen' && !includeTrainingLog) continue;
 		if (base.ui[key] === captured.ui[key]) continue;
+		if (key === 'results') {
+			// Preferences belong to one result revision and merge field by field, so a stale
+			// write cannot replace a newer run's or another tab's untouched preferences.
+			if (captured.resultRevision !== stored.resultRevision) continue;
+			const merged = mergeResultsUi(stored.ui.results, base.ui.results, captured.ui.results);
+			if (Object.keys(merged).length > 0) ui.results = merged;
+			else delete ui.results;
+			continue;
+		}
 		if (Object.hasOwn(captured.ui, key)) ui[key] = captured.ui[key];
 		else delete ui[key];
 	}

@@ -1,6 +1,6 @@
 # Phase 4: Display shared single-model metrics and visuals in Section 6
 
-**Status:** ready | **Updated:** 2026-11-21T19:51:05Z
+**Status:** ready | **Updated:** 2026-11-21T19:55:28Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Codex (GPT-6) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Codex (GPT-6 Astra) | **Verified:** 2026-11-21T18:43:48Z | **Verification:** approved
 **Verified hash:** sha256:8bb5b4e4fe16d1c104758ae674e48ff1ad12ca414bd079667b5cdc879b4f2848
@@ -357,10 +357,10 @@ The closed element API is limited to the properties, events and methods named in
 - **Must not touch:** `src/features/`, `src/common/storage/db.ts`
 - **Implementation:** Follow Interfaces §B. Use the existing protected-state preference merge and acknowledgement rules from state-and-storage §6, scoped to the same dataset, target, model creation and result revision. Only act on the current identity. Loading is idempotent, retry replaces an error and superseded completion cannot publish into the cache.
 - **Acceptance criteria:**
-    - [ ] `WML-P4-STATE-1` — Preferences round-trip through localStorage, invalid values fall back without discarding the model, no-op patches write nothing, and a newer protected run and another tab’s untouched preferences survive stale preference writes.
-    - [ ] `WML-P4-STATE-2` — Loading transitions `idle → loading → ready | legacy | lost | error`. Results from a superseded run or dataset, including a reused model number, are ignored.
+    - [x] `WML-P4-STATE-1` — Preferences round-trip through localStorage, invalid values fall back without discarding the model, no-op patches write nothing, and a newer protected run and another tab’s untouched preferences survive stale preference writes.
+    - [x] `WML-P4-STATE-2` — Loading transitions `idle → loading → ready | legacy | lost | error`. Results from a superseded run or dataset, including a reused model number, are ignored.
 - **Verification:** `bun test tests/model-results-store.test.ts tests/state-and-storage.test.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-21T19:55:28Z)
 
 ### T6 — Build the summary, fold strip and per-class table elements
 
@@ -471,6 +471,7 @@ None.
 | 2026-11-21T19:12:25Z | T2 | Claude Code (claude-sonnet-5-5) | bun add --exact @observablehq/plot@0.6.17; 9 chart tokens in root.css; PlotController + plot-host fixture + stories. bun test chart-tokens+style-tokens 10 pass; test:e2e plot-controller 15 pass (3 engines); test:stories 282 pass; bun run check 403 pass 0 fail; build ok. Bundle: app.js 340091 B before and after (controller not yet imported); controller+Plot alone minified 390831 B. Controller strips per-mark aria-label and sets role=img (axe aria-prohibited-attr). Changed: package.json, bun.lock, css/root.css, src/features/results/charts/*, .storybook/fixtures/plot-host.ts, tests/chart-tokens.test.ts, tests/plot-controller.e2e.ts |
 | 2026-11-21T19:15:51Z | T3 | Claude Code (claude-sonnet-5-5) | StoredEvaluation types, decoder, foldSummary, partitionFingerprint, four hand-written fixtures (confusion-matrix derived columns in test helper only). bun test evaluation-decoder+fold-statistics+partition-fingerprint 71 pass (50+ corruption cases across every rejection group; expected fingerprint digest independently computed with node:crypto); typecheck ok; bun run check 474 pass 0 fail. |
 | 2026-11-21T19:51:05Z | T4 | Claude Code (claude-sonnet-5-5) | bun run check: 498 pass 0 fail; bun run test:e2e tests/classification-training.e2e.ts tests/training-runtime.e2e.ts: 40 passed 26 skipped 0 failed. Fixed copyFit to store the request class axis (evaluation.classLabels) not model.classes_ (sorted). Changed: classifier-adapters, evaluation-mapper, result-validation, training-service/worker, evaluation-decoder, app.store, reconciler, model-result types, related tests and fixtures. |
+| 2026-11-21T19:55:28Z | T5 | Claude Code (claude-sonnet-5-5) | bun run check: 511 pass 0 fail (typecheck clean). New tests/model-results-store.test.ts (8), preference tests in state-and-storage.test.ts, protected stale-merge test in training-service.test.ts (mutation-checked). Changed: src/types/state.ts, src/stores/{app.store,persister,model-results.store}.ts, src/common/storage/training-domain.ts, tests. |
 
 ## Plan review history
 

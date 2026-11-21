@@ -6,6 +6,7 @@ import {
 	FIXED_TRAINING_RANDOM_STATE,
 	MAX_CV_FOLDS,
 	MIN_CV_FOLDS,
+	sanitiseModelResultsUi,
 	TRAINING_DOMAIN_DATASET_ID,
 	type ModelRecord,
 	type PersistedAppState,
@@ -323,9 +324,7 @@ export function decodeProtectedDomain(
 				typeof m.resultRevision === 'string' && m.resultRevision.length > 0
 					? m.resultRevision
 					: null,
-			ui: Object.hasOwn(m.ui, 'trainingLogOpen')
-				? { ...m.ui, trainingLogOpen: m.ui.trainingLogOpen === true }
-				: m.ui
+			ui: decodeModelUi(m.ui)
 		} as ModelRecord);
 	}
 
@@ -339,6 +338,20 @@ export function decodeProtectedDomain(
 		},
 		trainingSetupDecodeOutcomes
 	};
+}
+
+/** Normalises known preference keys and leaves every other key untouched. */
+function decodeModelUi(ui: Record<string, unknown>): Record<string, unknown> {
+	const decoded = { ...ui };
+	if (Object.hasOwn(decoded, 'trainingLogOpen')) {
+		decoded.trainingLogOpen = decoded.trainingLogOpen === true;
+	}
+	if (Object.hasOwn(decoded, 'results')) {
+		const results = sanitiseModelResultsUi(decoded.results);
+		if (Object.keys(results).length > 0) decoded.results = results;
+		else delete decoded.results;
+	}
+	return decoded;
 }
 
 function nonnegativeInteger(value: unknown): value is number {
