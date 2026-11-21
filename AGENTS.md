@@ -1,6 +1,6 @@
 # samata-ml — agent guide
 
-Browser app (Lit 3, strict TypeScript, Nanostores, IndexedDB, Web Workers) for training machine learning models locally, for education. All training and model computation is executed by the sister library `web-ml` (`../web-ml`); see Repository boundary.
+Browser app (Lit 3, strict TypeScript, Nanostores, IndexedDB, Web Workers) for training machine learning models locally, for education. All training and model computation is executed by the `web-ml` release installed from the versioned tarball in `vendor/web-ml/`; see Repository boundary.
 
 ## Repository boundary
 
@@ -11,9 +11,9 @@ Browser app (Lit 3, strict TypeScript, Nanostores, IndexedDB, Web Workers) for t
 
 ## Upstream Library Specs
 
-- **Model catalogue:** `../web-ml/specification/public-api/model-specifications/{schema.json,index.json,models/*.json}`; check the equivalent installed public path only if present.
-- **Contract authority:** use JSON for initial lookup, then public declarations (`../web-ml/index.ts`, `../web-ml/dist/index.d.ts` and required public declaration dependencies) and public prose under `../web-ml/specification/public-api/`. Public TypeScript declarations and Markdown govern compatibility. Report conflicts and insufficient evidence as unresolved.
-- **Package fallback:** check each asset under `./node_modules/web-ml/specification/public-api/` and `./node_modules/web-ml/dist/index.d.ts` individually; declarations do not imply JSON/prose is shipped. Report provenance and version differences, and do not combine incompatible versions silently.
+- **Model catalogue:** For the installed release, check `node_modules/web-ml/specification/public-api/model-specifications/{schema.json,index.json,models/*.json}`.
+- **Contract authority:** Use JSON for initial lookup, then the release's public declarations at `node_modules/web-ml/dist/index.d.ts` and their required public declaration dependencies, plus its public prose under `node_modules/web-ml/specification/public-api/`. Check each asset individually. Public TypeScript declarations and Markdown govern compatibility. Report conflicts and insufficient evidence as unresolved.
+- **Upstream changes:** For unreleased work, consult `../web-ml/index.ts`, `../web-ml/dist/index.d.ts` and `../web-ml/specification/public-api/`. Report provenance and version differences before comparing with the installed release.
 - **Cross-repo scout boundary:** only `codebase-scout` may inspect those upstream public assets. Deny rules override allow rules through symlinks: never inspect upstream Zig, `specification/internals/**`, private implementation, or installed private equivalents; never modify `../web-ml` (the one exception is creating a new request file; see Repository boundary). Report denied reads as unavailable.
 
 ## Workflow & Domain Skills
@@ -60,7 +60,7 @@ Follow the shared rules in `agent-workflow/AGENTS.md` § Git workflow (summarise
 
 ## Map
 
-`src/` app code · `css/` styles · `content/` Markdown pages & datasets · `public/` static assets · `scripts/` build and dev servers · `tests/` tests · `specification/` specs ([`specification/README.md`](specification/README.md)) · `specification/plans/` plans · `specification/notes/` inbox · `specification/HUMAN.md` human queue · `specification/mockups/` normative wireframes (`ui-scaffold/drafts/` holds unstyled agent drafts).
+`src/` app code · `css/` styles · `content/` Markdown pages & datasets · `public/` static assets · `scripts/` build and dev servers · `tests/` tests · `vendor/web-ml/` vendored release and checksum · `specification/` specs ([`specification/README.md`](specification/README.md)) · `specification/plans/` plans · `specification/notes/` inbox · `specification/HUMAN.md` human queue · `specification/mockups/` normative wireframes (`ui-scaffold/drafts/` holds unstyled agent drafts).
 
 ## Rules
 

@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { buildModelAssets } from '../scripts/build-model-assets';
 
 const workspaces: string[] = [];
@@ -19,15 +20,24 @@ afterEach(async () => {
 });
 
 describe('prebuilt model assets', () => {
-	test('WML-P3-ASSET-1: preserves the versioned module graph and notices', async () => {
-		const output = await workspace();
-		const url = await buildModelAssets(output);
+	test('WML-P3-ASSET-1: preserves the versioned module graph and notices in a standalone app', async () => {
+		const root = await workspace();
+		const app = path.join(root, 'samata-ml');
+		const modules = path.join(app, 'node_modules');
+		const output = path.join(root, 'output');
+		await mkdir(modules, { recursive: true });
+		await symlink(
+			fileURLToPath(new URL('../node_modules/web-ml', import.meta.url)),
+			path.join(modules, 'web-ml'),
+			'junction'
+		);
+		const url = await buildModelAssets(output, app);
 		expect(url).toBe(
-			'/web-ml/0.1.0-fab85a84c5db15e587ab266c1ea1770713e99ac4432ce456bba9d565068b1bc9/index.js'
+			'/web-ml/0.2.0-7a53ca09d2dbca329724be2b2509694d522efa55e4d9a1f72ca58d415d1b91f6/index.js'
 		);
 		const directory = path.join(output, path.dirname(url));
 		const files = await readdir(directory, { recursive: true, withFileTypes: true });
-		expect(files.filter((file) => file.isFile())).toHaveLength(19);
+		expect(files.filter((file) => file.isFile())).toHaveLength(20);
 		expect(files.some((file) => file.name.endsWith('.d.ts') || file.name.endsWith('.ts'))).toBe(
 			false
 		);
@@ -47,16 +57,21 @@ describe('prebuilt model assets', () => {
 			await Bun.file(path.join(directory, 'wasm', 'logistic-regression.v1.wasm')).exists()
 		).toBe(true);
 		expect(await Bun.file(path.join(directory, 'LICENSE.md')).exists()).toBe(true);
+		expect(await Bun.file(path.join(directory, 'THIRD-PARTY-NOTICES.md')).exists()).toBe(true);
 		expect(await Bun.file(path.join(directory, 'wasm', 'LIBSVM-COPYRIGHT')).exists()).toBe(
 			true
 		);
 	});
 
-	test('WML-P3-ASSET-1: names the required sibling if it is missing', async () => {
+	test('WML-P3-ASSET-1: names the installed package if it is missing', async () => {
 		const root = await workspace();
-		await expect(
-			buildModelAssets(path.join(root, 'output'), path.join(root, 'samata-ml'))
-		).rejects.toThrow(`web-ml setup error at ${path.join(root, 'web-ml')}`);
+		const app = path.join(root, 'samata-ml');
+		const output = path.join(root, 'output');
+		const packageDirectory = path.join(app, 'node_modules', 'web-ml');
+		await expect(buildModelAssets(output, app)).rejects.toThrow(
+			`web-ml setup error at ${packageDirectory}: installed package is unavailable`
+		);
+		await expect(readdir(output)).rejects.toThrow();
 	});
 
 	test('WML-P3-ASSET-1: refuses a missing or mismatched public entry', async () => {
@@ -64,7 +79,6 @@ describe('prebuilt model assets', () => {
 		const app = path.join(root, 'samata-ml');
 		const packageDirectory = path.join(app, 'node_modules', 'web-ml');
 		const output = path.join(root, 'output');
-		await mkdir(path.join(root, 'web-ml'));
 		await mkdir(packageDirectory, { recursive: true });
 		const manifest = path.join(packageDirectory, 'package.json');
 		await expect(buildModelAssets(output, app)).rejects.toThrow(
@@ -72,7 +86,7 @@ describe('prebuilt model assets', () => {
 		);
 		await writeFile(
 			path.join(packageDirectory, 'package.json'),
-			'{"name":"web-ml","version":"0.1.0"}'
+			'{"name":"web-ml","version":"0.2.0"}'
 		);
 		await expect(buildModelAssets(output, app)).rejects.toThrow(
 			`web-ml setup error at ${manifest}: package manifest does not match`

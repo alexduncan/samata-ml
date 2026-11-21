@@ -42,12 +42,17 @@ for (const origin of origins) {
 				'cross-origin-embedder-policy': 'require-corp',
 				'cross-origin-resource-policy': 'same-origin'
 			});
-			expect(await page.evaluate(() => window.crossOriginIsolated)).toBe(true);
+			expect(
+				await page.evaluate(() => ({
+					isolated: window.crossOriginIsolated,
+					sharedMemory: typeof SharedArrayBuffer === 'function'
+				}))
+			).toEqual({ isolated: true, sharedMemory: true });
 
 			const reply = await runProbe(page, 'train');
 			expect(reply).toMatchObject({ kind: 'trained' });
 			if (reply.kind !== 'trained') throw new Error(JSON.stringify(reply));
-			expect(reply.runtimeUrl).toMatch(/^\/web-ml\/0\.1\.0-[0-9a-f]{64}\/index\.js$/);
+			expect(reply.runtimeUrl).toMatch(/^\/web-ml\/0\.2\.0-[0-9a-f]{64}\/index\.js$/);
 			const entry = new URL(reply.runtimeUrl, origin.url);
 			expect(entry.origin).toBe(origin.url);
 

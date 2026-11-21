@@ -3,43 +3,46 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ROOT_DIR } from './config';
 
-const webMlVersion = '0.1.0';
-/** Source revision of the verified executable graph and public declarations. */
-export const WEB_ML_REVISION = '623dd30d7899d8e281773bc593e44be815592693';
+const webMlVersion = '0.2.0';
+const webMlTarball = `vendor/web-ml/web-ml-${webMlVersion}.tgz`;
+/** SHA-256 release identifier recorded with newly trained models. */
+export const WEB_ML_REVISION =
+	'sha256:82fc9163764805dde88ea1ca13eb3bd1a8a8a3f62d0eeb4930689c47028e76b0';
 
 // Pins the prebuilt module, its relative workers and WASM, and their notices to the
-// matching public package verified for Phase 3.
+// verified release tarball.
 const runtimeHashes = {
 	'LICENSE.md': '0ba4fb5f08e788173f083c3c53ff7ba7ad8e6888a6931e8cfb63f85d04ca2d11',
-	'dist/index.js': '5c76bca80e2cc6e9c1d990831b4b5581388f53494a83621c67ba1140448fb2c0',
+	'THIRD-PARTY-NOTICES.md': '9edbb60a3d1c5f5c3bd24948b6be6eb1537ca7765cd29aa8b4a94a788facb0f7',
+	'dist/index.js': '8b1356550549140a42f9f5e680779c9bc3bfb633e3ca0c34a01bb7fe27dde68c',
 	'dist/training-orchestrator-dedicated.js':
-		'f59f68ee9b64d3cdfb62af61913b2b5ba16e45d4a5442b62976224145e065089',
+		'8cd9b88d562d9451240b416ffeb4a105db795898f1cfd79a453643babd321357',
 	'dist/training-orchestrator.js':
-		'ccc13251ddf925afb9c5b46c5939200348dd94f24edee786ca0b7ddc1a68bf58',
+		'3e5e18fb13185a0b9c0e9fab43a02ee41ea11bd5e1d8706fc8f49510e63a6638',
 	'dist/training-worker-clustering.js':
-		'2501f7dc9ee55dd774c0e0a7d47f9dd05946a81294f20ebb8dfd18ded936cc03',
+		'f52718b96cc63641c30941bc248123f71e8a5078f940fe08694e1e6aa44c504f',
 	'dist/training-worker-linear.js':
-		'51a34efaab107ff7d607f0538ae92aea91df711eff7a69ecad5dedcca5b7d057',
+		'4f7119c2522b709dcdbe4e355b352c263bf3ed5ca05d3e11053c32afce494b80',
 	'dist/training-worker-logistic.js':
-		'bfb34a8062dcc988a7d1f4bbe943d3fadf416ab31d116fc506890a0c4bbaa61f',
+		'9748423ad560d6e7477b7498db38aba502910129bece11183bfb05f9844a32c2',
 	'dist/training-worker-mlp.js':
-		'1234092415a6cb11b5723001c234dc2e613298b0c86cf370be73258436f0fde5',
+		'7651a99839aa1ebe550806e6b39160b413435dccd42206d7bda173e67cbf4151',
 	'dist/training-worker-naive-bayes.js':
-		'7f48f0cfd4b53b620229f13e87ca43d556884d0e84d1c7d1026d7144e9fedee6',
+		'17bdc5ced80b579ac4cea88ee023cd35677ad74fe8ed60282b1934c0a25ef6ea',
 	'dist/training-worker-neighbors.js':
-		'1953465890d6a3d318a132a87cbc9c4f3003e418bf684c7ff95622a41dd21889',
+		'b76aae3470fa469bdec008ba1d1031ddab8cc8fe36067dae4348163ffc69e520',
 	'dist/training-worker-pca.js':
-		'100b0a3c6b1c484263eb144aabadf022dd619a4b17927f824e2d202bea6ec46c',
+		'4edd4007e9bde784d18a1c32470493dc0164c5a405507eabd4059914f7512217',
 	'dist/training-worker-probe.js':
 		'13c229ee830558d25ec077ea7e0cb2bb7a7281bad5b471c78cac414ca1930c72',
 	'dist/training-worker-svm.js':
-		'c61d07324dde2cf5f84148f81c7d2ab9c5d5a4d4635b661d1d7372d9d8831fea',
+		'72ca5bde02f3dda943a4d0f200dd7a04299e4a73df430340e25df0a5bcdcc73d',
 	'dist/training-worker-tree.js':
-		'845decd87f74e956c9bb9e4919bf28f967ae97e553890d794ebdfad8fc0fff23',
+		'1e5aec15251ed53ef19bf688a5d2a9f48db8de8c446537aa89917d6bbdde598d',
 	'dist/wasm/LIBSVM-COPYRIGHT':
 		'958fd47be5e5b94dabeb68b077fbe2adbbd49c015fe2e453fe11afeb4a73c7e5',
-	'dist/wasm/libsvm.js': 'd52b6abfd4d218c95053239eed3b9e77bf1458ac36ff7393024fc61c79592296',
-	'dist/wasm/libsvm.wasm': '41346038de51a9e49742c201c3d3f35da2bab45c0f77be09bf130178113fb798',
+	'dist/wasm/libsvm.js': '0212897cd67836047391f6f0633479bd4cd97b6e660d470f58b1032af7959461',
+	'dist/wasm/libsvm.wasm': '37f7461c9465272de699af339506e34d85a4757dea04dea0dfcc7bdc4a7171f3',
 	'dist/wasm/linear-regression.v2.wasm':
 		'b304432374a030e31e466ada2871b9e37299d95a39a3f6e4682c308e7fb89a27',
 	'dist/wasm/logistic-regression.v1.wasm':
@@ -74,13 +77,12 @@ const publicFiles = [
 	`${catalogue}/models/multinomial-nb.json`,
 	`${catalogue}/models/support-vector-classifier.json`
 ];
-const publicDigest = 'c08b566825459197da138c08fae62406289fc5fbb0d13e192ca59e1ac00f1165';
+const publicDigest = '13d544d94c3cbf3ed3b632b0c7f5a46d0e4bc5b76ce8a8b851162d9d8b3ef5aa';
 
 function setupError(location: string, reason: string, cause?: unknown): Error {
 	return new Error(
-		`web-ml setup error at ${location}: ${reason}. Place the samata-ml checkout beside a ` +
-			`web-ml directory resolving to the verified prebuilt web-ml ${webMlVersion} package ` +
-			`at ${WEB_ML_REVISION}, then run bun install --frozen-lockfile --ignore-scripts.`,
+		`web-ml setup error at ${location}: ${reason}. Verify ${webMlTarball} ` +
+			`(${WEB_ML_REVISION}), then run bun install --frozen-lockfile --ignore-scripts.`,
 		{ cause }
 	);
 }
@@ -106,17 +108,16 @@ function digestGraph(files: readonly { name: string; hash: string }[]): string {
  * Returns the versioned, root-relative module URL to compile into the app worker.
  */
 export async function buildModelAssets(outDir: string, appDir = ROOT_DIR): Promise<string> {
-	const siblingDirectory = path.resolve(appDir, '../web-ml');
-	const sibling = await stat(siblingDirectory).catch((cause: unknown) => {
-		throw setupError(siblingDirectory, 'required prebuilt sibling is unavailable', cause);
+	const packageDirectory = path.join(appDir, 'node_modules', 'web-ml');
+	const installed = await stat(packageDirectory).catch((cause: unknown) => {
+		throw setupError(packageDirectory, 'installed package is unavailable', cause);
 	});
-	if (!sibling.isDirectory()) {
-		throw setupError(siblingDirectory, 'expected a directory');
+	if (!installed.isDirectory()) {
+		throw setupError(packageDirectory, 'expected a directory');
 	}
 
-	const packageDirectory = path.join(appDir, 'node_modules', 'web-ml');
 	const manifest = await readInput(packageDirectory, 'package.json');
-	if (manifest.hash !== 'bc6dba9ed85cd4393d2916adc1b9b8b66ae9b9604dd85f2e25d9fdc5ae4c27c7') {
+	if (manifest.hash !== '230b2c18d60dfbeb749d132eee974620f2d09994dcee18e394b1125a43dd97e1') {
 		throw setupError(
 			path.join(packageDirectory, manifest.name),
 			'package manifest does not match the verified build'

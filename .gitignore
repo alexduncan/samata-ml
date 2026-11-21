@@ -6,6 +6,7 @@ node_modules/
 /dist/
 /out/
 *.tgz
+!/vendor/web-ml/web-ml-*.tgz
 
 # Tests and coverage
 coverage/

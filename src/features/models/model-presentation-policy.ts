@@ -250,6 +250,7 @@ export const MODEL_OPTION_POLICY = {
 			notes: [{ key: 'max-iter-cap' }]
 		},
 		tol: { kind: 'number-reset', terms: ['tolerance'], domain: NON_NEGATIVE },
+		validationFraction: { kind: 'hidden' },
 		randomState: {
 			kind: 'number-reset',
 			terms: ['seed'],
@@ -295,6 +296,7 @@ export const MODEL_OPTION_POLICY = {
 		},
 		weights: { kind: 'select' },
 		algorithm: { kind: 'hidden' },
+		leafSize: { kind: 'hidden' },
 		metric: {
 			kind: 'select',
 			terms: ['metric'],
