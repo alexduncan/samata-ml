@@ -20,6 +20,7 @@ When a spec is ambiguous or seems wrong, the agent MUST stop and list the questi
 | Accessibility target       | WCAG 2.2 level AA                                                                                                                                                                                                                                     |
 | Component acceptance tests | Playwright in Chromium, Firefox and WebKit                                                                                                                                                                                                            |
 | Docs                       | Storybook 10.6.7 (`@storybook/web-components-vite`), Vite 7.3.8, a11y/Docs/Vitest addons and Vitest 5.1.0; development only (§10).                                                                                                                    |
+| Charts                     | Observable Plot 0.6.17 (exact pin, ISC), imported only by the shared `PlotController` (`src/features/results/charts/plot-controller.ts`). Elements render charts through the controller, never import Plot themselves.                                |
 | Decorators                 | TypeScript standard decorators (`experimentalDecorators` is off). See §4 for what this requires.                                                                                                                                                      |
 
 ### Web platform rules
@@ -87,7 +88,7 @@ The public API of a block is everything its spec lists under **Public API**: tag
 - Side effects go in `updated()` / `firstUpdated()`, never in `render()`.
 - Anything that needs teardown (listeners on other objects, observers, timers) is set up in `connectedCallback()` and torn down in `disconnectedCallback()`.
 - If the setup needs rendered shadow DOM, do it in `firstUpdated()` for the first connection, and in `connectedCallback()` when `this.hasUpdated` is true for later connections. `firstUpdated()` runs only once, so an element that is removed and re-attached would otherwise lose the resource.
-- Prefer a reactive controller (`hostConnected()` / `hostDisconnected()`) for such setup. A controller used by one element is declared in that element's file. A controller used by several elements is a shared helper and needs the authorisation in §3.
+- Prefer a reactive controller (`hostConnected()` / `hostDisconnected()`) for such setup. A controller used by one element is declared in that element's file. A controller used by several elements is a shared helper and needs the authorisation in §3. Authorised: `PlotController`, which observes a stable chart wrapper, coalesces resizes to one animation frame, resolves the chart tokens, inserts the detached plot and exposes `whenSettled()`; Phase 4 uses it in four Plot elements.
 
 **Events and DOM**
 

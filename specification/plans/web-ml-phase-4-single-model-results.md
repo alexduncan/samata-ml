@@ -1,6 +1,6 @@
 # Phase 4: Display shared single-model metrics and visuals in Section 6
 
-**Status:** ready | **Updated:** 2026-11-21T21:02:38Z
+**Status:** ready | **Updated:** 2026-11-21T21:05:14Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Codex (GPT-6) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Codex (GPT-6 Astra) | **Verified:** 2026-11-21T18:43:48Z | **Verification:** approved
 **Verified hash:** sha256:8bb5b4e4fe16d1c104758ae674e48ff1ad12ca414bd079667b5cdc879b4f2848
@@ -283,14 +283,14 @@ The closed element API is limited to the properties, events and methods named in
 
 ## Specification changes
 
-- [ ] `specification/workflow-steps.md` §3.6 — Section 6 shared results: sections, order, binary vs multiclass visuals, out-of-sample wording, threshold explorer semantics, diagnostic card rule, unavailable-metric wording; remove the TODO line; status remains partial.
-- [ ] `specification/state-and-storage.md` §3, §6 — `ModelResultsUi`, `ModelRecord.metrics` keys, `StoredEvaluation` inside `ResultEnvelope`, version 1 compatibility, version 2 decoding and result-loss recovery; status remains draft.
-- [ ] `specification/machine-learning-orchestrator.md` — Evaluation outputs requested from `web-ml` (WR-1…WR-6, WR-10) and the mapping into `StoredEvaluation`.
-- [ ] `specification/visual-design.md` §1.1, §2 — the nine `--chart-*` tokens, the 3:1 graphical rule and the scoped draft-chart exception (D6–D8).
-- [ ] `specification/COMPONENTS.md` §1 — chart library row (Observable Plot 0.6.17) and the authorised `PlotController`.
-- [ ] `specification/components/model-results.md` (new) & `specification/README.md` — closed APIs, events, stories and a11y rules for the nine elements; status implemented.
-- [ ] `specification/FUTURE.md` — NEC with cost-ratio slider; subgroup fairness gap; selectable positive class; prediction latency; hand-built SVG charts (replacing Observable Plot where a bespoke chart is clearer).
-- [ ] `specification/TODO.md`, `specification/HUMAN.md` — TODO-02 resolved for classification shared results; TODO-41 chart-library part resolved; TODO-21 confirmed (`model_results` in `samata-db`); HUMAN items for styling the 03-7 draft and reviewing chart tokens.
+- [x] `specification/workflow-steps.md` §3.6 — Section 6 shared results: sections, order, binary vs multiclass visuals, out-of-sample wording, threshold explorer semantics, diagnostic card rule, unavailable-metric wording; remove the TODO line; status remains partial.
+- [x] `specification/state-and-storage.md` §3, §6 — `ModelResultsUi`, `ModelRecord.metrics` keys, `StoredEvaluation` inside `ResultEnvelope`, version 1 compatibility, version 2 decoding and result-loss recovery; status remains draft.
+- [x] `specification/machine-learning-orchestrator.md` — Evaluation outputs requested from `web-ml` (WR-1…WR-6, WR-10) and the mapping into `StoredEvaluation`.
+- [x] `specification/visual-design.md` §1.1, §2 — the nine `--chart-*` tokens, the 3:1 graphical rule and the scoped draft-chart exception (D6–D8).
+- [x] `specification/COMPONENTS.md` §1 — chart library row (Observable Plot 0.6.17) and the authorised `PlotController`.
+- [x] `specification/components/model-results.md` (new) & `specification/README.md` — closed APIs, events, stories and a11y rules for the nine elements; status implemented.
+- [x] `specification/FUTURE.md` — NEC with cost-ratio slider; subgroup fairness gap; selectable positive class; prediction latency; hand-built SVG charts (replacing Observable Plot where a bespoke chart is clearer).
+- [x] `specification/TODO.md`, `specification/HUMAN.md` — TODO-02 resolved for classification shared results; TODO-41 chart-library part resolved; TODO-21 confirmed (`model_results` in `samata-db`); HUMAN items for styling the 03-7 draft and reviewing chart tokens.
 
 ## Implementation tasks
 
@@ -427,10 +427,10 @@ The closed element API is limited to the properties, events and methods named in
 - **Must not touch:** `src/`, `tests/`, `specification/mockups/`, `specification/notes/` — the metrics note is deleted by Phase 7, its last consumer.
 - **Implementation:** Apply every item under _Specification changes_.
 - **Acceptance criteria:**
-    - [ ] Every item under _Specification changes_ is applied and ticked.
-    - [ ] The named plan and specification index pass `bun run plans:check` and each listed spec has the documented status.
+    - [x] Every item under _Specification changes_ is applied and ticked.
+    - [x] The named plan and specification index pass `bun run plans:check` and each listed spec has the documented status.
 - **Verification:** `bun run plans:check specification/plans/web-ml-phase-4-single-model-results.md`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-21T21:05:14Z)
 
 ## Verification and definition of done
 
@@ -476,6 +476,7 @@ None.
 | 2026-11-21T20:36:46Z | T7 | Claude Code (claude-sonnet-5-5) | bun run check: 532 pass 0 fail; bun test results-view-model 21 pass; test:e2e results-errors+results-summary 104 passed 1 skipped (forced-colours test skipped in WebKit, runs in Chromium and Firefox); test:stories 372 pass. Changed: app-confusion-flowchart, app-classee-strips (+stories), results-view-model, tests/{results-errors.e2e.ts,fixtures/results/{errors.browser,variants,labels}.ts}; mount helper now takes a ready key (summary e2e updated). |
 | 2026-11-21T20:43:47Z | T8 | Claude Code (claude-sonnet-5-5) | bun run check: 536 pass 0 fail; bun test results-view-model 25 pass; style-tokens 8 pass; test:e2e results-probability+errors+summary 149 passed 1 skipped (forced-colours test skipped in WebKit); test:stories 405 pass. Changed: app-threshold-explorer, app-reliability-diagram (+stories), results-view-model, tests/{results-probability.e2e.ts,fixtures/results/{probability.browser,labels,variants}.ts}. |
 | 2026-11-21T21:02:38Z | T9 | Claude Code (claude-sonnet-5-5) | bun run check: 536 pass 0 fail; style-tokens 8 pass; bun run build ok (app.js 809664 B, was 340091 B before Plot); test:stories 441 pass; test:e2e model-results+results-*+plot-controller 198 passed 3 skipped (WebKit: forced-colours emulation and Tab-to-range); a11y A11Y-E2E-18/19 axe clean (binary, multiclass, all tables open); journeys iris+penguins (with new populated-results assertions) pass in 3 engines. tests/models-setup.e2e.ts fails 4 of 4 in Chromium both with and without the builder change and also at T5 tip 1e9299e (target not persisted before page.goto), so not caused by T9. Not met: WML-P4-UI-11 scroll landing - src/app.ts (a T9 Must-not-touch file) passes whenSettled to restoreScroll only for app-data-view, so the builder promise is unused by the router; builder whenSettled itself is tested. Changed: app-model-results (+stories), app-model-builder-view (+stories), results.styles (contain: inline-size on table regions), 03-7 draft, tests/{model-results.e2e.ts,a11y.e2e.ts,helpers/seed-results.ts,journeys/*}. |
+| 2026-11-21T21:05:14Z | T10 | Claude Code (claude-sonnet-5-5) | plans:check PASS (plan and specification index); bun run check 536 pass 0 fail; prettier check clean on specification. Applied every Specification changes item: workflow-steps 3.6, state-and-storage 3 and 6, machine-learning-orchestrator, visual-design 1.1 and 2, COMPONENTS 1 and 4, new components/model-results.md plus README row, FUTURE, TODO-02/21/41/43, HUMAN (draft styling, assistive-technology check, scroll-restoration decision). |
 
 ## Plan review history
 
