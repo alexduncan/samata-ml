@@ -138,18 +138,18 @@ Use `Ctrl-C` to stop the server.
 
 ## Review mockups
 
-Browse the complete mockup tree, including drafts, source files and empty placeholders:
+Browse the flat mockup directory (`specification/mockups/`), including drafts and implemented references:
 
 ```bash
-bun run serve:mockups
+bun run mockups
 ```
 
-Open `http://localhost:3333/`. The review server is read-only. It offers clean previews that omit the in-flow review controls. The old `bun run serve:scaffold` command remains as a deprecated alias for historical instructions.
+Open `http://localhost:3333/`. The review server is read-only. Normal HTML previews inject `/mockups.css` and a light-DOM navigation bar; `?clean=1` returns untouched file bytes from disk.
 
-With the mockup server running, audit one or more HTML files or the whole tree:
+With the mockup server running, audit one or more HTML files or every non-empty mockup:
 
 ```bash
-bun run audit:mockups ui-scaffold/drafts/03-0_models-overview.html
+bun run audit:mockups 03-0_models-overview.html
 bun run audit:mockups
 ```
 

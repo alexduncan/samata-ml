@@ -4,7 +4,7 @@
 
 This web application has four sections.
 
-Startup reconciles saved browser state with IndexedDB before opening a workflow view. If a committed change cannot be published, Restore saved work offers Retry saving and withholds workflow actions. The [welcome modal](mockups/ui-scaffold/00_first-load.html) opens for a fresh workspace once saved-state recovery is clear.
+Startup reconciles saved browser state with IndexedDB before opening a workflow view. If a committed change cannot be published, Restore saved work offers Retry saving and withholds workflow actions. The [welcome modal](mockups/00_first-load.html) opens for a fresh workspace once saved-state recovery is clear.
 
 ## 1. Load Data
 
@@ -14,15 +14,15 @@ This is the first page the user sees when the app loads. It supports two modes: 
 
 ### Sample Datasets
 
-The page shows a card for each sample dataset in the generated catalogue at `/datasets/index.json` ([sample-datasets.md](sample-datasets.md)). Each card shows `name`, `tagline`, `stats.rowCount` and `stats.columnCount`, with buttons for "Datasheet" and "Load Dataset". This is shown in [01-1_select-data.html](mockups/ui-scaffold/01-1_select-data.html).
+The page shows a card for each sample dataset in the generated catalogue at `/datasets/index.json` ([sample-datasets.md](sample-datasets.md)). Each card shows `name`, `tagline`, `stats.rowCount` and `stats.columnCount`, with buttons for "Datasheet" and "Load Dataset". This is shown in [01-1_select-data.html](mockups/01-1_select-data.html).
 
 For any dataset where `csvOrigin === 'remote'` (such as COMPAS Recidivism), the card's enclosing item prominently displays a remote source notice: _"Downloaded from GitHub when loaded; internet connection required"_.
 
-Clicking the "Datasheet" button on a dataset card displays a modal containing sanitized markdown/HTML information about the sample dataset as shown in [01-2_dataset-card.html](mockups/ui-scaffold/01-2_dataset-card.html). Hostile markup (`<script>`, inline handlers, iframes) is stripped. Network failures display an alert with a "Retry" button, and closing the modal returns focus to the invoker button.
+Clicking the "Datasheet" button on a dataset card displays a modal containing sanitized markdown/HTML information about the sample dataset as shown in [01-2_dataset-card.html](mockups/01-2_dataset-card.html). Hostile markup (`<script>`, inline handlers, iframes) is stripped. Network failures display an alert with a "Retry" button, and closing the modal returns focus to the invoker button.
 
 ### Custom Dataset Upload
 
-The `.page-header` contains a button "Upload Dataset". Clicking the button displays a modal as shown in [01-3_upload-dataset.html](mockups/ui-scaffold/01-3_upload-dataset.html).
+The `.page-header` contains a button "Upload Dataset". Clicking the button displays a modal as shown in [01-3_upload-dataset.html](mockups/01-3_upload-dataset.html).
 
 The modal provides both a keyboard-reachable native file picker and a drag-and-drop zone. Upload criteria:
 
@@ -64,7 +64,7 @@ The dataset preview view displays:
 
 **url:** `/target`
 
-The user chooses the target variable to predict from their loaded dataset. Visual layout follows [02-1_set-target.html](mockups/ui-scaffold/02-1_set-target.html) and [02-2_target-set.html](mockups/ui-scaffold/02-2_target-set.html).
+The user chooses the target variable to predict from their loaded dataset. Visual layout follows [02-1_set-target.html](mockups/02-1_set-target.html) and [02-2_target-set.html](mockups/02-2_target-set.html).
 
 ### Workflow States
 
@@ -184,7 +184,7 @@ The [training panel](components/training-progress.md) displays one labelled nati
 
 Saving holds at 95%. If the result is committed and state publication fails, the panel offers Retry saving and keeps Cancel Training and View Results disabled. Acknowledged completion shows 100%, the elapsed time and View Results. View Results acknowledges Section 5, replaces the button with the completion check and focuses Section 6 on the same URL. The saved log remains inspectable. A trained model opened from Models displays Section 5 until this acknowledgement.
 
-Detailed timing tables for nested evaluation and tuning belong to the later results and tuning phases. The [03-6 draft](mockups/ui-scaffold/drafts/03-6_train-models-5-train.html) awaits human styling.
+Detailed timing tables for nested evaluation and tuning belong to the later results and tuning phases. The [03-6 draft](mockups/03-6_train-models-5-train.html) awaits human styling.
 
 ### 6. Single Model Results
 

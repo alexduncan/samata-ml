@@ -74,7 +74,7 @@ Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only wh
 
 ### Other directories
 
-- [`mockups/`](mockups/) — static HTML/CSS wireframes, normative for appearance (see [visual-design.md](visual-design.md)); not for markup or behaviour. Browse every file with `bun run serve:mockups`; audit mockup accessibility with `bun run audit:mockups`. Reference only; don't edit unless a plan says to. Exception: agents write unstyled, non-normative drafts in `mockups/ui-scaffold/drafts/` ([visual-design §1.1](visual-design.md#11-draft-mockups)).
+- [`mockups/`](mockups/) — flat static HTML/CSS wireframes (`*.html`, `style.css`, human-owned `mockups.css`, and `css/*.css`), normative for appearance when `<meta name="status">` is `ready` or `implemented` (see [visual-design.md](visual-design.md)); not for markup or behaviour. Browse the catalogue with `bun run mockups`; audit mockup accessibility with `bun run audit:mockups`. Ready/implemented files and `mockups.css` are human-owned; agents may create or edit unstyled, non-normative drafts directly in `mockups/` with `<meta name="status" content="draft" />` ([visual-design §1.1](visual-design.md#11-draft-mockups)).
 - [`plans/`](plans/README.md) — implementation plans. Only files that follow the planning template go here.
 - [`notes/`](notes/README.md) — the human's rough notes, inbox for planners. Not normative; a plan that uses a note deletes it in its `Sync specification` task.
 

@@ -33,4 +33,4 @@ Use the component for one run. Supply readable stage text and a chronological ev
 
 The progress stories cover queued, determinate, open and closed logs, cross-validation, cancelling, remote, publication pending, completion, long labels and RTL. `tests/training-panels.e2e.ts` covers the connected component, native keyboard interaction, quiet updates, failure focus, recovery and 320 px reflow. The Iris and Palmer Penguins journeys verify that logs, the disclosure preference and the acknowledged section survive reload. The Phase 3 plan records Safari and manual screen-reader evidence.
 
-The [03-6 draft](../mockups/ui-scaffold/drafts/03-6_train-models-5-train.html) shows the semantic states. Human styling and promotion remain in the [human queue](../HUMAN.md#6-style-or-fix-mockups).
+The [03-6 draft](../mockups/03-6_train-models-5-train.html) shows the semantic states. Human styling and promotion remain in the [human queue](../HUMAN.md#6-style-or-fix-mockups).

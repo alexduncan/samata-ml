@@ -202,7 +202,7 @@ Notes:
 - All four section entries, and every model under step 3, are always links. Entries may _indicate_ progress (the dataset name, the target and its type, a check mark) but never disable.
 - **Current location is marked, not removed.** The entry whose `href` equals the current workflow path is `<a href="…" aria-current="page">`. An entry for a section that contains the current page but is not the page itself (e.g. "Train Models" while on `/models/3`) is `aria-current="true"`. There is never more than one `aria-current="page"` at a time. `aria-current="step"` is not used: these are links to URLs, so `page` is the correct announcement.
 - Current entries are styled as inactive (visual state keyed off `[aria-current]`, `cursor: default`) but remain focusable, keep their `href`, and keep a `:focus-visible` outline. Activating one is a no-op in the router (§5.2): no history entry, no scroll change. This preserves keyboard focus when the sidebar re-renders reactively, keeps the section link usable from a model page, and keeps the link list a reliable map for screen reader users.
-- The `ui-scaffold` mock-ups that render the current step as a non-link `<div>` are superseded by this rule and should be updated.
+- The mockups that render the current step as a non-link `<div>` are superseded by this rule and should be updated.
 - **Deliberate exception: the Compare Results button.** The **Compare Results** button in the `/models` header is disabled until `canCompare`, as specified in workflow-steps §3, and this is a **deliberate design choice, not an oversight**. The principle in §4 is about _navigation_: where the user may go. The button is a _call to action_ that invites the user to go and compare, and inviting them when there is nothing to compare would be misleading. The two are kept separate on purpose:
     - `/results` is always reachable from the sidebar and by URL, and explains itself with the §4.3 notification.
     - The button is the only control in the application that is disabled because of workflow state. New controls MUST NOT copy this pattern for navigation; a disabled call to action needs the same justification and an entry here.
@@ -386,7 +386,7 @@ Goal G2: each workflow step remembers its own scroll position, and a new tab or 
 
 ### 8.1 Scroll container
 
-The **document** scrolls (`document.scrollingElement`). `<main>` MUST NOT be `overflow: scroll|auto` with a fixed height, and the sidebar is `position: fixed` (as in the scaffold). This keeps mobile browser chrome behaviour, keyboard scrolling, find-in-page and focus-into-view native. Inner scrollers (the virtual table, wide tables) are tracked as named **regions** (§8.3).
+The **document** scrolls (`document.scrollingElement`). `<main>` MUST NOT be `overflow: scroll|auto` with a fixed height, and the sidebar is `position: fixed` (as in the mockups). This keeps mobile browser chrome behaviour, keyboard scrolling, find-in-page and focus-into-view native. Inner scrollers (the virtual table, wide tables) are tracked as named **regions** (§8.3).
 
 ### 8.2 Scroll keys
 
