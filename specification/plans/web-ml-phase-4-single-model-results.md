@@ -1,8 +1,8 @@
 # Phase 4: Display shared single-model metrics and visuals in Section 6
 
-**Status:** draft | **Updated:** 2026-11-21T12:04:43Z
+**Status:** draft | **Updated:** 2026-11-21T12:10:36Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Codex (GPT-6) | **Created:** 2026-11-17T21:23:45Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -420,6 +420,7 @@ None.
 
 | Reviewed (UTC) | Agent (model) | Decision | Findings |
 | -------------- | ------------- | -------- | -------- |
+| 2026-11-21T12:10:36Z | Codex (GPT-6 Astra) | changes-requested | BLOCKER: Risks/Blocking and T3 leave the full One-Shot versus reduced first increment decision, same-fit fitted artefacts, landed runtime pin and curve mapping unresolved; select scope and rescout the landed public build before approval. MAJOR: T3/T4/T8 omit reconciler.ts:75-107 and :231-243: valid-result hydration clears metrics to null, while absent or invalid envelopes reset the model to draft and remove results completion before the trained-only Section 6 lost state can render. Specify reconciliation, version validation and publication changes; test valid, legacy v1 and corrupt envelopes through startup and View Results. MAJOR: Interfaces A/T3 must define exhaustive availability mapping: candidate dist/src/metrics/types.d.ts:2-9 includes not-requested and undefined-for-validation-classes outside StoredMetric reasons. Candidate HEAD 762edc085624719bd5ddb2193e2663c735059c02 holdout-validate.d.ts:17-35 still lacks fitted artefacts and only supplies end-to-end duration, so required fitDurationMs has no source. Checklist: specification changes and boundaries are listed, fold aggregation is authorised by the umbrella ledger, and positive/negative/browser tests are proposed; API/migration decisions remain incomplete. Fresh independent codebase-scout used. Local bun run check cannot run because tsc is absent (exit 127). Task commit IDs N/A: implementation has not started. |
 
 ## Change log
 
