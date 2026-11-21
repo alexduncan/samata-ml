@@ -3,6 +3,8 @@ import type { Meta, StoryObj } from '@storybook/web-components-vite';
 import { expect, fn, waitFor } from 'storybook/test';
 import { $route } from '../../router/router';
 import { $appState } from '../../stores/app.store';
+import { $modelResults, currentResultIdentity } from '../../stores/model-results.store';
+import { irisCrossValidation } from '../../../tests/fixtures/results/evaluations';
 import { $datasetResources, type ResourceStatus } from '../../stores/dataset.store';
 import {
 	$trainingSession,
@@ -327,6 +329,37 @@ export const TrainingComplete: Story = {
 			appendTrainingLog([], { key: 'completed' }, 1)
 		);
 		return restore;
+	}
+};
+/** Section 6 shows the shared results of an acknowledged trained model. */
+export const ModelResultsShown: Story = {
+	beforeEach: () => {
+		const restore = seedRun('trained', true);
+		const state = $appState.get();
+		const previous = $modelResults.get();
+		const record = state.models[0]!;
+		$appState.set({
+			...state,
+			models: [{ ...record, completedSteps: [...record.completedSteps, 'results'] }]
+		});
+		const identity = currentResultIdentity(1);
+		if (identity) {
+			$modelResults.set({
+				1: { identity, status: 'ready', evaluation: irisCrossValidation(), error: '' }
+			});
+		}
+		return () => {
+			$modelResults.set(previous);
+			restore();
+		};
+	},
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.whenSettled();
+		const results = builder.shadowRoot!.querySelector('app-model-results')!;
+		await waitFor(() =>
+			expect(results.shadowRoot!.querySelector('app-results-summary')).not.toBeNull()
+		);
 	}
 };
 /** A numeric target has no classification model. */

@@ -64,6 +64,8 @@ import './app-model-card';
 import './app-model-configuration';
 import './app-training-setup';
 import './app-training-progress';
+import '../results/app-model-results';
+import type { AppModelResults } from '../results/app-model-results';
 import type { TrainingSetupLabels } from './app-training-setup';
 import type {
 	ConfigurationLabels,
@@ -636,6 +638,7 @@ export class AppModelBuilderView extends LitElement {
 			});
 		}
 		await this.updateComplete;
+		await this.renderRoot.querySelector<AppModelResults>('app-model-results')?.whenSettled();
 	}
 
 	// ==========================================
@@ -2145,6 +2148,35 @@ export class AppModelBuilderView extends LitElement {
 		`;
 	}
 
+	/** Section 6: the shared results once the acknowledged trained model's results are shown. */
+	private renderResultsSection(model: ModelRecord, activeStep: number): TemplateResult {
+		const t = this.translations.value;
+		if (model.status !== 'trained' || !model.completedSteps.includes('results')) {
+			return this.renderPendingSection(
+				t.resultsHeading,
+				'step-6-title',
+				'results',
+				activeStep,
+				6
+			);
+		}
+		const isActive = activeStep === 6;
+		return html`
+			<li
+				class="train-step ${isActive ? 'step-active' : ''}"
+				aria-current=${isActive ? 'step' : nothing}>
+				<section class="train-step-panel" aria-labelledby="step-6-title">
+					<header class="train-step-header">
+						<h2 id="step-6-title" tabindex="-1">${t.resultsHeading}</h2>
+					</header>
+					<div class="train-step-content" data-testid="results-step">
+						<app-model-results model-num=${model.num}></app-model-results>
+					</div>
+				</section>
+			</li>
+		`;
+	}
+
 	private renderPendingSection(
 		title: string,
 		stepId: string,
@@ -2215,13 +2247,7 @@ export class AppModelBuilderView extends LitElement {
 					${this.renderConfigureModelSection(model, activeStep === 3, isStep3Completed)}
 					${this.renderTrainingSetupSection(model, activeStep === 4, isStep4Completed)}
 					${this.renderTrainingSection(model, activeStep === 5, session)}
-					${this.renderPendingSection(
-						this.translations.value.resultsHeading,
-						'step-6-title',
-						'results',
-						activeStep,
-						6
-					)}
+					${this.renderResultsSection(model, activeStep)}
 				</ol>
 			</section>
 

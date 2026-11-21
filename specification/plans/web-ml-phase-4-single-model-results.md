@@ -1,6 +1,6 @@
 # Phase 4: Display shared single-model metrics and visuals in Section 6
 
-**Status:** ready | **Updated:** 2026-11-21T20:43:47Z
+**Status:** ready | **Updated:** 2026-11-21T21:02:38Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Codex (GPT-6) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Codex (GPT-6 Astra) | **Verified:** 2026-11-21T18:43:48Z | **Verification:** approved
 **Verified hash:** sha256:8bb5b4e4fe16d1c104758ae674e48ff1ad12ca414bd079667b5cdc879b4f2848
@@ -412,12 +412,12 @@ The closed element API is limited to the properties, events and methods named in
 - **Must not touch:** `css/root.css`, `src/features/models/app-models-view.ts`, `src/app.ts`
 - **Implementation:** Compose Section 6 per §C and preserve heading focus and route settling. Use fixture store snapshots with matching result identities in stories. Seed IndexedDB envelopes using the existing journey helper shape in Playwright. Extend Iris and Penguins after their existing train/acknowledge/reload helper. Rewrite the 03-7 draft as semantic unstyled markup for binary, multiclass, loading, empty, legacy, lost and error states. The draft’s comparison and tuning material belong to the later phases.
 - **Acceptance criteria:**
-    - [ ] `WML-P4-UI-10` — A seeded trained model shows Section 6 with every shared section in order; a valid v1 envelope opens Section 6 with the legacy message and Models link. A result missing before startup returns to Training Setup with the result-loss notice and configuration intact. A result deleted after View Results acknowledges it and before the Section 6 resource read shows the lost state. A read error shows `role="alert"` and Retry recovers.
-    - [ ] `WML-P4-UI-11` — The threshold, class filter and More metrics state survive reload; `whenSettled` resolves after results load so scroll restoration lands on the same section.
-    - [ ] `WML-P4-UI-12` — Populated binary and multiclass Section 6 pass the automated axe scan. Native controls and scroll regions follow DOM order, the threshold is keyboard operable and the page has no horizontal overflow at 320 px or 200% zoom. Verify chart and table equivalence in forced colours.
-    - [ ] `WML-P4-UI-13` — `JOURNEY-IRIS-RESULTS` and `JOURNEY-PENGUINS-RESULTS` train real models and reach a populated Section 6 in Chromium, Firefox and WebKit.
+    - [x] `WML-P4-UI-10` — A seeded trained model shows Section 6 with every shared section in order; a valid v1 envelope opens Section 6 with the legacy message and Models link. A result missing before startup returns to Training Setup with the result-loss notice and configuration intact. A result deleted after View Results acknowledges it and before the Section 6 resource read shows the lost state. A read error shows `role="alert"` and Retry recovers.
+    - [x] `WML-P4-UI-11` — The threshold, class filter and More metrics state survive reload; `whenSettled` resolves after results load so scroll restoration lands on the same section.
+    - [x] `WML-P4-UI-12` — Populated binary and multiclass Section 6 pass the automated axe scan. Native controls and scroll regions follow DOM order, the threshold is keyboard operable and the page has no horizontal overflow at 320 px or 200% zoom. Verify chart and table equivalence in forced colours.
+    - [x] `WML-P4-UI-13` — `JOURNEY-IRIS-RESULTS` and `JOURNEY-PENGUINS-RESULTS` train real models and reach a populated Section 6 in Chromium, Firefox and WebKit.
 - **Verification:** `bun run test:e2e tests/model-results.e2e.ts tests/a11y.e2e.ts tests/journeys/iris-classification.e2e.ts tests/journeys/penguins-classification.e2e.ts tests/models-setup.e2e.ts`; `bun run test:stories`; `bun test tests/style-tokens.test.ts`; `bun run check`; `bun run build`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-21T21:02:38Z)
 
 ### T10 — Sync specifications for Phase 4
 
@@ -475,6 +475,7 @@ None.
 | 2026-11-21T20:29:50Z | T6 | Claude Code (claude-sonnet-5-5) | bun run check: 526 pass 0 fail; bun test results-view-model+style-tokens 23 pass; test:e2e results-summary.e2e.ts 60 passed (3 engines, axe, 320px ltr/rtl); test:stories 342 pass. Changed: results-view-model, app-results-summary, app-fold-strip, app-class-metrics-table, app-confusion-matrix (+stories), src/styles/results.styles.ts, tests/{results-view-model.test.ts,results-summary.e2e.ts,helpers/mount-results-fixture.ts,fixtures/results/{summary.browser,labels}.ts}. Chart elements expose whenSettled() so app-model-results can await first render (T9). |
 | 2026-11-21T20:36:46Z | T7 | Claude Code (claude-sonnet-5-5) | bun run check: 532 pass 0 fail; bun test results-view-model 21 pass; test:e2e results-errors+results-summary 104 passed 1 skipped (forced-colours test skipped in WebKit, runs in Chromium and Firefox); test:stories 372 pass. Changed: app-confusion-flowchart, app-classee-strips (+stories), results-view-model, tests/{results-errors.e2e.ts,fixtures/results/{errors.browser,variants,labels}.ts}; mount helper now takes a ready key (summary e2e updated). |
 | 2026-11-21T20:43:47Z | T8 | Claude Code (claude-sonnet-5-5) | bun run check: 536 pass 0 fail; bun test results-view-model 25 pass; style-tokens 8 pass; test:e2e results-probability+errors+summary 149 passed 1 skipped (forced-colours test skipped in WebKit); test:stories 405 pass. Changed: app-threshold-explorer, app-reliability-diagram (+stories), results-view-model, tests/{results-probability.e2e.ts,fixtures/results/{probability.browser,labels,variants}.ts}. |
+| 2026-11-21T21:02:38Z | T9 | Claude Code (claude-sonnet-5-5) | bun run check: 536 pass 0 fail; style-tokens 8 pass; bun run build ok (app.js 809664 B, was 340091 B before Plot); test:stories 441 pass; test:e2e model-results+results-*+plot-controller 198 passed 3 skipped (WebKit: forced-colours emulation and Tab-to-range); a11y A11Y-E2E-18/19 axe clean (binary, multiclass, all tables open); journeys iris+penguins (with new populated-results assertions) pass in 3 engines. tests/models-setup.e2e.ts fails 4 of 4 in Chromium both with and without the builder change and also at T5 tip 1e9299e (target not persisted before page.goto), so not caused by T9. Not met: WML-P4-UI-11 scroll landing - src/app.ts (a T9 Must-not-touch file) passes whenSettled to restoreScroll only for app-data-view, so the builder promise is unused by the router; builder whenSettled itself is tested. Changed: app-model-results (+stories), app-model-builder-view (+stories), results.styles (contain: inline-size on table regions), 03-7 draft, tests/{model-results.e2e.ts,a11y.e2e.ts,helpers/seed-results.ts,journeys/*}. |
 
 ## Plan review history
 

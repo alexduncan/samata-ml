@@ -122,3 +122,46 @@ export async function acknowledgeDurableTraining(page: Page): Promise<{
 	await expect(training.locator('ol li').last()).toHaveText('Training complete');
 	return before;
 }
+
+/** What a real, populated Section 6 must show for a multiclass journey. */
+export interface PopulatedResultsExpectation {
+	readonly protocol: 'one_shot' | 'cross_validation';
+	readonly folds?: number;
+	/** Held-out rows scored. */
+	readonly heldOutRows: number;
+}
+
+/**
+ * Confirms Section 6 shows every shared multiclass block for a real trained model: headline,
+ * fold or test-split score, Classee errors, confusion matrix, per-class table and calibration
+ * state, in order. Draws no threshold explorer.
+ */
+export async function expectPopulatedResults(
+	page: Page,
+	expected: PopulatedResultsExpectation
+): Promise<void> {
+	const results = page.locator('app-model-results');
+	await expect(results.locator('app-results-summary')).toBeVisible({ timeout: 15_000 });
+	await expect(results.locator('h3')).toHaveText([
+		'Scores on held-out rows',
+		expected.protocol === 'one_shot' ? 'Score on the test split' : 'Scores across folds',
+		'Where the model makes mistakes',
+		'Calibration'
+	]);
+	const summary = results.locator('app-results-summary');
+	await expect(summary).toContainText(`Held-out rows scored: ${expected.heldOutRows}`);
+	await expect(summary).toContainText(
+		expected.protocol === 'one_shot'
+			? 'One test split'
+			: `${expected.folds}-fold cross-validation`
+	);
+	await expect(summary.locator('.headline dt').first()).toHaveText(
+		'Balanced accuracy on held-out rows'
+	);
+	await expect(results.locator('app-fold-strip svg')).toBeVisible();
+	await expect(results.locator('app-classee-strips svg')).toBeVisible();
+	await expect(results.locator('app-confusion-matrix table')).toBeVisible();
+	await expect(results.locator('app-class-metrics-table table')).toBeVisible();
+	await expect(results.locator('app-threshold-explorer')).toHaveCount(0);
+	await expect(results.getByRole('alert')).toHaveCount(0);
+}

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { acknowledgeDurableTraining, loadSampleDataset } from './helpers';
+import { acknowledgeDurableTraining, expectPopulatedResults, loadSampleDataset } from './helpers';
 
 test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () => {
 	test.describe.configure({ mode: 'serial' });
@@ -119,7 +119,7 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		await expect(continueLink).toBeVisible();
 	});
 
-	test('WML-P3-UI-4 / JOURNEY-IRIS-SETUP: train and acknowledge fixed Cross-Validation', async ({
+	test('WML-P4-UI-13 / JOURNEY-IRIS-RESULTS and WML-P3-UI-4 / JOURNEY-IRIS-SETUP: train, acknowledge and show populated results for fixed Cross-Validation', async ({
 		page
 	}) => {
 		await page.goto('/data');
@@ -245,6 +245,11 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 			rows: 150,
 			foldCount: 4,
 			refitComplete: true
+		});
+		await expectPopulatedResults(page, {
+			protocol: 'cross_validation',
+			folds: 4,
+			heldOutRows: 150
 		});
 
 		// 9. Navigate back to /models via sidebar.
