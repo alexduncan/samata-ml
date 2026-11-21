@@ -1,8 +1,8 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready-for-review | **Updated:** 2026-11-21T19:55:49Z
+**Status:** draft | **Updated:** 2026-11-21T19:58:41Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol) | **Created:** 2026-11-19T08:47:35Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -314,8 +314,9 @@ None.
 
 ## Plan review history
 
-| Reviewed (UTC) | Agent (model) | Decision | Findings |
-| -------------- | ------------- | -------- | -------- |
+| Reviewed (UTC)       | Agent (model)         | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------- | --------------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-21T19:58:41Z | Codex (gpt-6.2-astra) | changes-requested | MAJOR §C/T3: disabling the opposite option prevents reversing A/B with two models. Specify an atomic accessible swap and test both orders with exactly two models. MAJOR §C/T4: app-confusion-delta receives numeric counts but has no locale formatter or formatted strings. Supply a formatter or display strings and verify signed counts in a second locale (COMPONENTS §8). MAJOR D10/§A/T1: src/stores/persister.ts lines 589, 742 and 814 copy results across protected-domain merges. Phase 4 fingerprints omit the target. Specify ownership/merge guards and test a stale tab writing after a target switch with the same fingerprint and model numbers, while retaining valid same-context choices. |
 
 ## Change log
 
