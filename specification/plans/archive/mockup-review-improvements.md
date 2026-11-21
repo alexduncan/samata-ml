@@ -1,10 +1,10 @@
 # Mockup Review Improvements
 
-**Status:** implemented | **Updated:** 2026-11-21T20:12:31Z
+**Status:** archived | **Updated:** 2026-11-21T20:56:16Z
 **Authors:** Google Antigravity (Gemini 4 Neon High), Google Antigravity (Gemini) | **Created:** 2026-11-20T17:44:07Z
 **Verified by:** Google Antigravity (Gemini 4 Neon High) | **Verified:** 2026-11-21T10:09:23Z | **Verification:** approved
 **Verified hash:** sha256:f34dd07a43da86070de76a354cfe9bafdcdb1745731459ae01f6ce09c0ab676f
-**Implementation verified by:** — | **Implementation verified:** —
+**Implementation verified by:** Google Antigravity (Gemini 4 Neon High) | **Implementation verified:** 2026-11-21T20:56:16Z
 
 ## Goal
 
@@ -432,6 +432,7 @@ None.
 | 2026-11-21T20:02:57Z | T4 | Google Antigravity (Gemini 4 Neon High) | Updated tests/mockup-review.e2e.ts, tests/visual-parity.e2e.ts, tests/visual-parity/fixtures.ts, tests/app-shell.e2e.ts, tests/welcome-acceptance.e2e.ts, tests/content-dialog.e2e.ts to flat mockup URLs and new index/helper contracts. Verified: bun run check PASS (tsc --noEmit 0 errors; 401 pass, 0 fail); test:e2e tests/mockup-review.e2e.ts PASS (12/12 across Chromium/Firefox/WebKit); test:e2e tests/welcome-acceptance.e2e.ts tests/content-dialog.e2e.ts PASS (45/45); test:e2e tests/visual-parity.e2e.ts 60 passed, 138 skipped, 9 failed (only the 9 pre-existing baseline failures, 0 HTTP 404/URL errors, PARITY-contract and SIDE-AC-10 PASS); test:e2e tests/app-shell.e2e.ts 116 passed, 7 failed (FOCUS-AC-6 and BTN-AC-13 PASS across all 3 browsers, PH-AC-2 hits only pre-existing 32px vs 0px padding mismatch across 3 browsers, plus 4 unrelated welcome-modal/scroll timing failures on Chromium/Firefox in SNC-15/SNC-16/FOCUS-AC-2 that do not call the mockup server); bun run audit:mockups 03-0_models-overview.html ran cleanly against bun run mockups writing test-results/mockup-a11y/latest.json and latest.html with http://localhost:3333/03-0_models-overview.html?clean=1 (0 errors, 1 pre-existing contrast violation in draft HTML); 0 ui-scaffold or /files/ hits remain in tests/. |
 | 2026-11-21T20:10:38Z | T5 | Google Antigravity (Gemini 4 Neon High) | Synced AGENTS.md (and CLAUDE.md symlink), README.md, specification/README.md, specification/ARCHITECTURE.md, specification/visual-design.md, specification/mockup-review.md, specification/testing.md, specification/COMPONENTS.md, specification/workflow-steps.md, specification/app-state-and-navigation.md, specification/TODO.md, specification/HUMAN.md (including tightened empty-placeholder prose alongside TODO-36 and unclaimed ui-fixes.md note), and specification/components/{content-modal,model-configuration,training-setup,virtual-table,training-progress}.md (training-progress.md added by Phase 3 after plan approval, fixed broken ui-scaffold link for AC2); ticked all items in Specification changes and Verification and definition of done. Verified: bun run check PASS (401 pass, 0 fail), bun run build PASS, bun run format:check PASS, bun run plans:check specification/plans/mockup-review-improvements.md PASS, zero ui-scaffold/serve:mockups/serve:scaffold hits across AGENTS.md, README.md, and active non-plan specification/. |
 | 2026-11-21T20:12:31Z | Implement | Google Antigravity (Gemini 4 Neon High) | Marked implemented |
+| 2026-11-21T20:56:16Z | Review | Google Antigravity (Gemini 4 Neon High) | Closed: Independent closing audit verified diff 6f90ebd..HEAD across T1-T5, 26 flat mockups and 11 multi-state drafts (incl. 11 post-Phase-3 fragments in 03-6), mockups.css byte identity, flat server/audit contracts, and all spec/link syncs. Passed: plans:review/task/check, check (401/401), build, format:check (62 files), serve-mockups (10/10), audit-mockups (6/6), style-tokens (8/8), mockup-review.e2e (12/12), welcome+content-dialog.e2e (45/45), app-shell.e2e (0 URL/404 errors; only pre-existing PH-AC-2 after verifying SNC-14..16 pass 3/3 on Chromium), visual-parity.e2e (60 pass, 138 skip, only 9 pre-existing baseline failures), and audit:mockups 03-0_models-overview.html (0 errors, clean URL verified). |
 
 ## Plan review history
 
