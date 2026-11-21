@@ -1,6 +1,6 @@
 # Phase 6: Display model-specific internals for the eight classifiers in Section 6
 
-**Status:** draft | **Updated:** 2026-11-21T08:09:01Z
+**Status:** draft | **Updated:** 2026-11-21T08:23:10Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
@@ -400,7 +400,7 @@ All take `labels` (`DEFAULT_*_LABELS`, no owned strings); charts take `caption: 
 
 ## Risks and open questions
 
-- **Blocking:** Phase 4 must be `ready`, and `web-ml` must publish WR-7, WR-8 and WR-12 in its public declarations and prose. Then re-scout, pin the hook and WR-12 signatures in T2, and submit for review. **Status on 2026-11-21:** no fitted-model hook exists in the public declarations (`crossValidate` exposes only the full-data `refit` model; `nestedCrossValidate` retains no fold models). WR-8 is filed upstream as §3 of [`2026-11-21-nested-tuning-trials-fitted-model-hook-and-robust-trial-reports.md`](../../../web-ml/specification/requests/2026-11-21-nested-tuning-trials-fitted-model-hook-and-robust-trial-reports.md). WR-12 is not yet filed.
+- **Blocking:** Phase 4 must be `ready`, and `web-ml` must publish WR-7, WR-8 and WR-12 in its public declarations and prose. Then re-scout, pin the hook and WR-12 signatures in T2, and submit for review. **Status on 2026-11-21:** no fitted-model hook exists in the public declarations (`crossValidate` exposes only the full-data `refit` model; `nestedCrossValidate` retains no fold models). WR-8 is filed upstream as §3 of [`2026-11-21-nested-tuning-trials-fitted-model-hook-and-robust-trial-reports.md`](../../../web-ml/specification/requests/2026-11-21-nested-tuning-trials-fitted-model-hook-and-robust-trial-reports.md). WR-12 is filed as [`2026-11-21-classifier-model-internals-and-explanations.md`](../../../web-ml/specification/requests/2026-11-21-classifier-model-internals-and-explanations.md). Today the tree structure, `nLeaves_`, `decisionPath`, MLP validation loss, permutation importance, Bernoulli/Multinomial NB log priors, Bernoulli NB `featureLogProb_`, feature contributions and `LogisticRegression.decisionFunction` are absent from the public declarations; the other fitted attributes this plan reads (Gaussian NB `theta_`/`var_`/`classPrior_`, LR `coef_`/`intercept_`, MLP `lossCurve_`, KNN `kneighbors`, SVC support vectors and `decisionFunction`) are public.
 - **Non-blocking:** D3 keeps closed-form display transforms (odds ratio, WoE, Fisher ratio, consensus, parameter count) in `samata-ml`. If the user wants these in `web-ml` too, add them to WR-12 and replace `display-transforms.ts` calls. Owner: human (HUMAN.md).
 - **Non-blocking:** Extraction adds work after each fold (permutation importance is the costliest: `nRepeats × features` predictions). Default `nRepeats: 5`; T2 records extraction time per model on iris and penguins in the log.
 - **Non-blocking:** Model-internals draft sections await human styling (`specification/HUMAN.md`).
@@ -426,7 +426,8 @@ None.
 
 ## Change log
 
-| When (UTC)           | Change                       | Reason                                                                                                                    |
-| -------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| 2026-11-19T08:47:35Z | Initial draft                | User split the former Phase 4 stub; model-specific metrics and visuals become Phase 6 on Phase 4's contract.              |
-| 2026-11-21T08:09:01Z | Linked upstream WR-8 request | User asked for an upstream request covering the nested-CV and multiclass trial-report limitations; Blocking remains open. |
+| When (UTC)           | Change                        | Reason                                                                                                                    |
+| -------------------- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-19T08:47:35Z | Initial draft                 | User split the former Phase 4 stub; model-specific metrics and visuals become Phase 6 on Phase 4's contract.              |
+| 2026-11-21T08:09:01Z | Linked upstream WR-8 request  | User asked for an upstream request covering the nested-CV and multiclass trial-report limitations; Blocking remains open. |
+| 2026-11-21T08:23:10Z | Linked upstream WR-12 request | User asked for the WR-12 upstream request; Blocking remains open.                                                         |

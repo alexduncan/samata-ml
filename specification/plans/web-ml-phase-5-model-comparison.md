@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** draft | **Updated:** 2026-11-19T08:47:35Z
+**Status:** draft | **Updated:** 2026-11-21T08:23:10Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
@@ -260,7 +260,7 @@ Presentational elements take `labels` with `DEFAULT_*_LABELS` and own no strings
 
 ## Risks and open questions
 
-- **Blocking:** Phase 4 must be `ready`, and `web-ml` must publish WR-9 (plus WR-1, WR-3, WR-4, WR-5, WR-10 consumed through Phase 4) in its public declarations and prose. Then re-scout WR-9's signature, update D4/D5 and T2, and submit for review.
+- **Blocking:** Phase 4 must be `ready`, and `web-ml` must publish WR-9 (plus WR-1, WR-3, WR-4, WR-5, WR-10 consumed through Phase 4) in its public declarations and prose. Then re-scout WR-9's signature, update D4/D5 and T2, and submit for review. **Status on 2026-11-21:** the public contract has no statistical comparison function. WR-9 is filed upstream as [`2026-11-21-bayesian-correlated-t-test.md`](../../../web-ml/specification/requests/2026-11-21-bayesian-correlated-t-test.md); it also asks whether scores take a `higherIsBetter` flag and how repeated folds are passed.
 - **Non-blocking:** With 2–3 outer folds the correlated t-test posterior is wide; the explanation sentence states the fold count. Owner: implementer (copy in T5).
 - **Non-blocking:** Draft `04_compare-results.html` awaits human styling (`specification/HUMAN.md`).
 
@@ -285,6 +285,7 @@ None.
 
 ## Change log
 
-| When (UTC)           | Change        | Reason                                                                                                                                                   |
-| -------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-11-19T08:47:35Z | Initial draft | User split the former Phase 4 stub; comparison becomes Phase 5 on top of Phase 4's evaluation contract; ROPE and instance agreement selected 2026-11-19. |
+| When (UTC)           | Change                       | Reason                                                                                                                                                   |
+| -------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-19T08:47:35Z | Initial draft                | User split the former Phase 4 stub; comparison becomes Phase 5 on top of Phase 4's evaluation contract; ROPE and instance agreement selected 2026-11-19. |
+| 2026-11-21T08:23:10Z | Linked upstream WR-9 request | User asked for the WR-9 upstream request; Blocking remains open.                                                                                         |
