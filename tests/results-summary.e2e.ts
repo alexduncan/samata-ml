@@ -11,7 +11,7 @@ import {
 
 declare global {
 	interface Window {
-		resultsFixture: ResultsFixture;
+		summaryFixture: ResultsFixture;
 	}
 }
 
@@ -23,8 +23,8 @@ test.describe('Section 6 summary, fold strip and tables', () => {
 	test.afterAll(() => bundle?.dispose());
 
 	async function mount(page: Page, spec: MountSpec, options?: MountOptions): Promise<void> {
-		await mountResultsFixture(page, bundle, options);
-		await page.evaluate((value) => window.resultsFixture.mount(value), spec);
+		await mountResultsFixture(page, bundle, 'summaryFixture', options);
+		await page.evaluate((value) => window.summaryFixture.mount(value), spec);
 	}
 
 	async function expectNoPlaceholders(page: Page): Promise<void> {
@@ -119,8 +119,8 @@ test.describe('Section 6 summary, fold strip and tables', () => {
 	}) => {
 		await mount(page, { element: 'summary', evaluation: 'iris' });
 		await page.locator('app-results-summary summary').click();
-		await expect.poll(() => page.evaluate(() => window.resultsFixture.events.length)).toBe(1);
-		const event = await page.evaluate(() => window.resultsFixture.events[0]);
+		await expect.poll(() => page.evaluate(() => window.summaryFixture.events.length)).toBe(1);
+		const event = await page.evaluate(() => window.summaryFixture.events[0]);
 		expect(event).toEqual({
 			type: 'app-results-more-toggle',
 			detail: { open: true },
@@ -199,7 +199,7 @@ test.describe('Section 6 summary, fold strip and tables', () => {
 		const matrix = page.locator('app-confusion-matrix');
 		await matrix.getByLabel('Show true class').selectOption({ label: 'Class 7' });
 		await expect(matrix.locator('tbody tr')).toHaveCount(1);
-		const events = await page.evaluate(() => window.resultsFixture.events);
+		const events = await page.evaluate(() => window.summaryFixture.events);
 		expect(events).toEqual([
 			{
 				type: 'app-confusion-filter-change',

@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import {
+	buildBinaryFlowView,
+	buildClasseeView,
 	buildClassMetricsRows,
 	buildConfusionMatrixView,
 	buildFoldStripView,
@@ -15,6 +17,7 @@ import {
 	manyClasses,
 	svcBinaryNoProbabilities
 } from './fixtures/results/evaluations';
+import { withPooledConfusion } from './fixtures/results/variants';
 
 const format = createResultsFormatters({
 	number: (value, options) => new Intl.NumberFormat('en-GB', options).format(value)
@@ -204,5 +207,70 @@ describe('Class metrics rows', () => {
 		const rows = buildClassMetricsRows(irisCrossValidation(), format);
 		expect(rows.map((row) => row.label)).toEqual(['setosa', 'versicolor', 'virginica']);
 		expect(rows[0]!.recall).toBe(format.percent(1));
+	});
+});
+
+describe('Binary flow view model', () => {
+	it('WML-P4-UI-5: two actual-class rows carry the pooled confusion counts and shares', () => {
+		const flow = buildBinaryFlowView(breastCancerOneShot(), 'diagnosis', format)!;
+		expect(flow.rows.map((row) => row.actual)).toEqual(['Benign', 'Malignant']);
+		expect(flow.rows.map((row) => row.outcomes.map((outcome) => outcome.count))).toEqual([
+			[68, 3],
+			[4, 39]
+		]);
+		expect(flow.rows[0]!.outcomes[0]!.share).toBeCloseTo(68 / 71, 12);
+		expect(flow.rows[1]!.outcomes.map((outcome) => outcome.correct)).toEqual([false, true]);
+		expect(flow.rows[0]!.totalText).toBe('71');
+	});
+
+	it('WML-P4-UI-5: a perfect model has zero-count outcomes with zero share', () => {
+		const flow = buildBinaryFlowView(
+			withPooledConfusion(breastCancerOneShot(), [71, 0, 0, 43]),
+			'diagnosis',
+			format
+		)!;
+		expect(flow.rows[0]!.outcomes[1]!.count).toBe(0);
+		expect(flow.rows[0]!.outcomes[1]!.share).toBe(0);
+	});
+
+	it('is null for more than two classes', () => {
+		expect(buildBinaryFlowView(irisCrossValidation(), 'species', format)).toBeNull();
+	});
+});
+
+describe('Classee view model', () => {
+	it('WML-P4-UI-6: three rows with the correct run and stacked non-zero errors', () => {
+		const view = buildClasseeView(irisCrossValidation(), null, format)!;
+		expect(view.rows.map((row) => row.label)).toEqual(['setosa', 'versicolor', 'virginica']);
+		expect(view.rows.map((row) => row.correct.count)).toEqual([50, 46, 48]);
+		expect(view.rows[0]!.errors).toEqual([]);
+		expect(view.rows[1]!.errors.map((segment) => [segment.predicted, segment.count])).toEqual([
+			['virginica', 4]
+		]);
+		expect(view.rows[2]!.errors.map((segment) => [segment.predicted, segment.count])).toEqual([
+			['versicolor', 2]
+		]);
+		expect(view.maxErrors).toBe(4);
+		expect(view.maxCorrect).toBe(50);
+		expect(view.totalErrors).toBe(6);
+	});
+
+	it('WML-P4-UI-6: zero errors give a zero total', () => {
+		const view = buildClasseeView(
+			withPooledConfusion(irisCrossValidation(), [50, 0, 0, 0, 50, 0, 0, 0, 50]),
+			null,
+			format
+		)!;
+		expect(view.totalErrors).toBe(0);
+		expect(view.maxErrors).toBe(0);
+		expect(view.rows.every((row) => row.errors.length === 0)).toBe(true);
+	});
+
+	it('applies the many-class selection and is null for binary targets', () => {
+		expect(buildClasseeView(manyClasses(), null, format)!.rows).toHaveLength(20);
+		expect(
+			buildClasseeView(manyClasses(), 9, format)!.rows.map((row) => row.classIndex)
+		).toEqual([9]);
+		expect(buildClasseeView(breastCancerOneShot(), null, format)).toBeNull();
 	});
 });

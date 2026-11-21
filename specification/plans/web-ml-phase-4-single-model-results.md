@@ -1,6 +1,6 @@
 # Phase 4: Display shared single-model metrics and visuals in Section 6
 
-**Status:** ready | **Updated:** 2026-11-21T20:29:50Z
+**Status:** ready | **Updated:** 2026-11-21T20:36:46Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Codex (GPT-6) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Codex (GPT-6 Astra) | **Verified:** 2026-11-21T18:43:48Z | **Verification:** approved
 **Verified hash:** sha256:8bb5b4e4fe16d1c104758ae674e48ff1ad12ca414bd079667b5cdc879b4f2848
@@ -385,10 +385,10 @@ The closed element API is limited to the properties, events and methods named in
 - **Must not touch:** `css/root.css`, `src/stores/`
 - **Implementation:** Per Interfaces §C. Flowchart sentences use the target column name and class labels. Classee rows follow `classLabels` order, filtered per D11. Stories: `Binary`, `PerfectModel`, `AllOneClass`, `Multiclass`, `ManyClasses`, `LongLabel`, `RTL`.
 - **Acceptance criteria:**
-    - [ ] `WML-P4-UI-5` — For the breast-cancer fixture the flowchart has two actual-class rows whose four outcome sentences contain the counts from `pooled.test.confusionMatrix`; outcome widths are proportional (ratio within 2%); forced-colours emulation keeps every sentence and icon visible.
-    - [ ] `WML-P4-UI-6` — For iris the Classee chart has three rows; correct counts are right of zero and errors left; the data table reproduces every non-zero off-diagonal cell; a model with zero errors shows "No errors" text instead of an empty left side.
+    - [x] `WML-P4-UI-5` — For the breast-cancer fixture the flowchart has two actual-class rows whose four outcome sentences contain the counts from `pooled.test.confusionMatrix`; outcome widths are proportional (ratio within 2%); forced-colours emulation keeps every sentence and icon visible.
+    - [x] `WML-P4-UI-6` — For iris the Classee chart has three rows; correct counts are right of zero and errors left; the data table reproduces every non-zero off-diagonal cell; a model with zero errors shows "No errors" text instead of an empty left side.
 - **Verification:** `bun test tests/results-view-model.test.ts`; `bun run test:e2e tests/results-errors.e2e.ts`; `bun run test:stories`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-21T20:36:46Z)
 
 ### T8 — Build the threshold explorer and reliability diagram
 
@@ -473,6 +473,7 @@ None.
 | 2026-11-21T19:51:05Z | T4 | Claude Code (claude-sonnet-5-5) | bun run check: 498 pass 0 fail; bun run test:e2e tests/classification-training.e2e.ts tests/training-runtime.e2e.ts: 40 passed 26 skipped 0 failed. Fixed copyFit to store the request class axis (evaluation.classLabels) not model.classes_ (sorted). Changed: classifier-adapters, evaluation-mapper, result-validation, training-service/worker, evaluation-decoder, app.store, reconciler, model-result types, related tests and fixtures. |
 | 2026-11-21T19:55:28Z | T5 | Claude Code (claude-sonnet-5-5) | bun run check: 511 pass 0 fail (typecheck clean). New tests/model-results-store.test.ts (8), preference tests in state-and-storage.test.ts, protected stale-merge test in training-service.test.ts (mutation-checked). Changed: src/types/state.ts, src/stores/{app.store,persister,model-results.store}.ts, src/common/storage/training-domain.ts, tests. |
 | 2026-11-21T20:29:50Z | T6 | Claude Code (claude-sonnet-5-5) | bun run check: 526 pass 0 fail; bun test results-view-model+style-tokens 23 pass; test:e2e results-summary.e2e.ts 60 passed (3 engines, axe, 320px ltr/rtl); test:stories 342 pass. Changed: results-view-model, app-results-summary, app-fold-strip, app-class-metrics-table, app-confusion-matrix (+stories), src/styles/results.styles.ts, tests/{results-view-model.test.ts,results-summary.e2e.ts,helpers/mount-results-fixture.ts,fixtures/results/{summary.browser,labels}.ts}. Chart elements expose whenSettled() so app-model-results can await first render (T9). |
+| 2026-11-21T20:36:46Z | T7 | Claude Code (claude-sonnet-5-5) | bun run check: 532 pass 0 fail; bun test results-view-model 21 pass; test:e2e results-errors+results-summary 104 passed 1 skipped (forced-colours test skipped in WebKit, runs in Chromium and Firefox); test:stories 372 pass. Changed: app-confusion-flowchart, app-classee-strips (+stories), results-view-model, tests/{results-errors.e2e.ts,fixtures/results/{errors.browser,variants,labels}.ts}; mount helper now takes a ready key (summary e2e updated). |
 
 ## Plan review history
 

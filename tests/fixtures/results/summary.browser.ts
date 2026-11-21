@@ -51,7 +51,7 @@ export interface RecordedEvent {
 	readonly composed: boolean;
 }
 
-/** Test API exposed on `window.resultsFixture`. */
+/** Test API exposed on `window.summaryFixture`. */
 export interface ResultsFixture {
 	mount(spec: MountSpec): Promise<void>;
 	readonly events: RecordedEvent[];
@@ -59,7 +59,7 @@ export interface ResultsFixture {
 
 declare global {
 	interface Window {
-		resultsFixture: ResultsFixture;
+		summaryFixture: ResultsFixture;
 	}
 }
 
@@ -170,4 +170,4 @@ async function mount(spec: MountSpec): Promise<void> {
 	}
 }
 
-window.resultsFixture = { mount, events };
+window.summaryFixture = { mount, events };

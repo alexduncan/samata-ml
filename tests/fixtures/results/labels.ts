@@ -1,3 +1,5 @@
+import type { ClasseeStripsLabels } from '../../../src/features/results/app-classee-strips';
+import type { ConfusionFlowchartLabels } from '../../../src/features/results/app-confusion-flowchart';
 import type { ChartCaption } from '../../../src/features/results/results-view-model';
 import type { ClassMetricsTableLabels } from '../../../src/features/results/app-class-metrics-table';
 import type { ConfusionMatrixLabels } from '../../../src/features/results/app-confusion-matrix';
@@ -99,4 +101,28 @@ export const englishConfusionMatrixLabels: ConfusionMatrixLabels = {
 export const sampleCaption: ChartCaption = {
 	title: 'Balanced accuracy by fold',
 	takeaway: 'Scores ranged from 93.3% to 100%, around a mean of 96.7%.'
+};
+
+/** English labels for `app-confusion-flowchart`. */
+export const englishFlowchartLabels: ConfusionFlowchartLabels = {
+	rowHeading: (row, flow) => `Rows with ${flow.target} ${row.actual}: ${row.totalText}`,
+	outcome: (outcome, row, flow) =>
+		`${outcome.text} rows with ${flow.target} ${row.actual} were predicted ${outcome.predicted} (${
+			outcome.correct ? 'correct' : 'incorrect'
+		})`
+};
+
+/** English labels for `app-classee-strips`. */
+export const englishClasseeLabels: ClasseeStripsLabels = {
+	showTable: 'Show data table',
+	tableCaption: 'Held-out rows by true class and predicted class',
+	trueClass: 'True class',
+	predictedClass: 'Predicted class',
+	count: 'Rows',
+	outcome: 'Outcome',
+	correct: 'Correct',
+	error: 'Error',
+	noErrors: 'No errors: every held-out row was predicted correctly.',
+	errorsSide: 'Errors',
+	correctSide: 'Correct'
 };

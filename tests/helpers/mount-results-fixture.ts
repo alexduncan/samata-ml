@@ -28,13 +28,17 @@ export interface MountOptions {
 	readonly width?: string;
 }
 
+/** Name of the `window` property the bundle sets when it is ready. */
+export type FixtureKey = 'summaryFixture' | 'errorsFixture' | 'probabilityFixture';
+
 /**
  * Mounts a minimal document with the real tokens and injects the bundle. The bundle must set
- * `window.resultsFixture` as its readiness signal.
+ * the `ready` window property as its readiness signal.
  */
 export async function mountResultsFixture(
 	page: Page,
 	bundle: ResultsFixtureBundle,
+	ready: FixtureKey,
 	options: MountOptions = {}
 ): Promise<void> {
 	const { dir = 'ltr', width = '48rem' } = options;
@@ -42,5 +46,5 @@ export async function mountResultsFixture(
 		`<html lang="en" dir="${dir}"><head><title>Results fixture</title><style>${readFileSync('css/root.css', 'utf8')}body{margin:0;padding:1rem;font-family:var(--font-sans)}</style></head><body><main><h1>Results fixture</h1><div id="column" style="inline-size: ${width}"></div></main></body></html>`
 	);
 	await page.addScriptTag({ type: 'module', content: bundle.source });
-	await page.waitForFunction(() => 'resultsFixture' in window);
+	await page.waitForFunction((key) => key in window, ready);
 }

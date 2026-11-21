@@ -397,3 +397,139 @@ export function buildConfusionMatrixView(
 		}))
 	};
 }
+
+/** One predicted outcome of an actual class in the binary flowchart. */
+export interface FlowOutcome {
+	readonly predictedIndex: number;
+	readonly predicted: string;
+	readonly count: number;
+	readonly text: string;
+	/** Fraction of the actual class's held-out rows; sets the bar width. */
+	readonly share: number;
+	readonly correct: boolean;
+}
+
+/** One actual class of the binary flowchart and its two outcomes. */
+export interface FlowRow {
+	readonly actualIndex: number;
+	readonly actual: string;
+	readonly total: number;
+	readonly totalText: string;
+	readonly outcomes: readonly FlowOutcome[];
+}
+
+/** Held-out rows of each actual class split by the predicted class. */
+export interface BinaryFlowView {
+	readonly target: string;
+	readonly rows: readonly FlowRow[];
+}
+
+/** Builds the binary flowchart from the pooled confusion matrix; null unless there are two classes. */
+export function buildBinaryFlowView(
+	evaluation: StoredEvaluation,
+	target: string,
+	format: ResultsFormatters
+): BinaryFlowView | null {
+	if (evaluation.classLabels.length !== 2) return null;
+	const report = evaluation.pooled.test;
+	const labels = evaluation.classLabels.map(classText);
+	return {
+		target,
+		rows: labels.map((actual, actualIndex) => {
+			const counts = [0, 1].map(
+				(column) => report.confusionMatrix[actualIndex * 2 + column]!
+			);
+			const total = counts[0]! + counts[1]!;
+			return {
+				actualIndex,
+				actual,
+				total,
+				totalText: format.count(total),
+				outcomes: counts.map((count, predictedIndex) => ({
+					predictedIndex,
+					predicted: labels[predictedIndex]!,
+					count,
+					text: format.count(count),
+					share: total === 0 ? 0 : count / total,
+					correct: predictedIndex === actualIndex
+				}))
+			};
+		})
+	};
+}
+
+/** A stack segment of wrongly predicted rows, or the correct run. */
+export interface ClasseeSegment {
+	readonly predictedIndex: number;
+	readonly predicted: string;
+	readonly count: number;
+	readonly text: string;
+}
+
+/** One true class of the multiclass error strips. */
+export interface ClasseeRow {
+	readonly classIndex: number;
+	readonly label: string;
+	readonly correct: ClasseeSegment;
+	/** Non-zero errors in predicted-class order, stacked leftwards from zero. */
+	readonly errors: readonly ClasseeSegment[];
+	readonly errorCount: number;
+	readonly errorText: string;
+}
+
+/** Per-class correct and wrong counts for the multiclass strips. */
+export interface ClasseeView {
+	readonly classCount: number;
+	readonly rows: readonly ClasseeRow[];
+	readonly maxCorrect: number;
+	readonly maxErrors: number;
+	readonly totalErrors: number;
+}
+
+/** Builds the Classee strips for the shown true classes; null for fewer than three classes. */
+export function buildClasseeView(
+	evaluation: StoredEvaluation,
+	classFilter: number | null,
+	format: ResultsFormatters
+): ClasseeView | null {
+	const count = evaluation.classLabels.length;
+	if (count < 3) return null;
+	const report = evaluation.pooled.test;
+	const labels = evaluation.classLabels.map(classText);
+	const rows = shownClassIndices(evaluation, classFilter).map((row): ClasseeRow => {
+		const cell = (column: number) => report.confusionMatrix[row * count + column]!;
+		const errors = labels.flatMap((predicted, column) =>
+			column !== row && cell(column) > 0
+				? [
+						{
+							predictedIndex: column,
+							predicted,
+							count: cell(column),
+							text: format.count(cell(column))
+						}
+					]
+				: []
+		);
+		const errorCount = errors.reduce((total, segment) => total + segment.count, 0);
+		return {
+			classIndex: row,
+			label: labels[row]!,
+			correct: {
+				predictedIndex: row,
+				predicted: labels[row]!,
+				count: cell(row),
+				text: format.count(cell(row))
+			},
+			errors,
+			errorCount,
+			errorText: format.count(errorCount)
+		};
+	});
+	return {
+		classCount: count,
+		rows,
+		maxCorrect: Math.max(0, ...rows.map((row) => row.correct.count)),
+		maxErrors: Math.max(0, ...rows.map((row) => row.errorCount)),
+		totalErrors: rows.reduce((total, row) => total + row.errorCount, 0)
+	};
+}
