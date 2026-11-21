@@ -1,8 +1,8 @@
 # Mockup Review Improvements
 
-**Status:** ready-for-review | **Updated:** 2026-11-21T08:04:34Z
+**Status:** draft | **Updated:** 2026-11-21T09:02:23Z
 **Authors:** Google Antigravity (Gemini 4 Neon High), Google Antigravity (Gemini) | **Created:** 2026-11-20T17:44:07Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -432,6 +432,7 @@ None.
 | Reviewed (UTC)       | Agent (model)                           | Decision          | Findings                                                                                                                                                                                                                                                                     |
 | -------------------- | --------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-11-20T18:04:25Z | Google Antigravity (Gemini 4 Neon High) | changes-requested | BLOCKER: T2 breaks tests/serve-mockups.test.ts under bun run typecheck before T4; MAJOR: renderIndexHtml() omits body.mockup-index from mockups.css, §1/T1 conflict on 00-3_mockup-review.html and 03-4/03-6 state counts, T4 omits app-shell/visual-parity E2E verification |
+| 2026-11-21T09:02:23Z | Google Antigravity (unrecorded) | changes-requested | MAJOR: §7 (L244) and T2 step 3 (L306) cite nonexistent MockupAuditFileResult.relativePath instead of MockupAuditFileResult.file (scripts/audit-mockups.ts L36-43, L146, L247, L277, L369); MINOR: T5/§Spec changes L256 omits replacement path and catalogue status for specification/mockup-review.md L74 reviews/<surface>.md, L262 misstates content-modal.md L57 path, T5 Must not touch omits web-ml-classification-integration.md and web-ml-phase-4..7, Codebase context L62 cites serve-mockups.ts as 664 lines (actual 666) |
 
 ## Change log
 
