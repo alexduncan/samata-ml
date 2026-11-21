@@ -1,3 +1,5 @@
+import type { ReliabilityDiagramLabels } from '../../../src/features/results/app-reliability-diagram';
+import type { ThresholdExplorerLabels } from '../../../src/features/results/app-threshold-explorer';
 import type { ClasseeStripsLabels } from '../../../src/features/results/app-classee-strips';
 import type { ConfusionFlowchartLabels } from '../../../src/features/results/app-confusion-flowchart';
 import type { ChartCaption } from '../../../src/features/results/results-view-model';
@@ -125,4 +127,46 @@ export const englishClasseeLabels: ClasseeStripsLabels = {
 	noErrors: 'No errors: every held-out row was predicted correctly.',
 	errorsSide: 'Errors',
 	correctSide: 'Correct'
+};
+
+/** English labels for `app-threshold-explorer`. */
+export const englishThresholdLabels: ThresholdExplorerLabels = {
+	unavailable:
+		'The threshold explorer is unavailable because this model was trained without probability estimates.',
+	slider: 'Probability threshold',
+	valueText: (threshold, view) => `Predict ${view.positive} at ${threshold} or higher`,
+	notice: 'Exploring thresholds is for understanding only: it does not change the stored scores.',
+	threshold: 'Threshold',
+	truePositives: (view) => `${view.positive} rows predicted ${view.positive}`,
+	falsePositives: (view) => `${view.negative} rows predicted ${view.positive}`,
+	trueNegatives: (view) => `${view.negative} rows predicted ${view.negative}`,
+	falseNegatives: (view) => `${view.positive} rows predicted ${view.negative}`,
+	truePositiveRate: (view) => `Share of ${view.positive} rows found`,
+	falsePositiveRate: (view) => `Share of ${view.negative} rows wrongly flagged`,
+	trueClass: (label) => `True class ${label}`,
+	xAxis: 'Predicted probability',
+	yAxis: 'Rows',
+	showTable: 'Show data table',
+	tableCaption: 'Held-out rows by predicted probability and true class',
+	rangeHeading: 'Probability range',
+	range: (lower, upper) => `${lower} to ${upper}`
+};
+
+/** English labels for `app-reliability-diagram`. */
+export const englishReliabilityLabels: ReliabilityDiagramLabels = {
+	unavailable:
+		'The reliability diagram is unavailable because this model was trained without probability estimates.',
+	xAxis: 'Mean predicted probability',
+	yAxis: 'Observed rate',
+	countsTitle: 'Rows in each probability bin',
+	countsAxis: 'Rows',
+	diagonal: 'Perfect calibration',
+	showTable: 'Show data table',
+	tableCaption: 'Calibration by probability bin',
+	binHeading: 'Probability bin',
+	meanPredicted: 'Mean predicted',
+	observed: 'Observed',
+	count: 'Rows',
+	range: (lower, upper) => `${lower} to ${upper}`,
+	emptyBin: 'No rows'
 };

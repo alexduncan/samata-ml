@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'bun:test';
 import {
 	buildBinaryFlowView,
+	buildCalibrationView,
+	buildThresholdView,
 	buildClasseeView,
 	buildClassMetricsRows,
 	buildConfusionMatrixView,
@@ -17,7 +19,7 @@ import {
 	manyClasses,
 	svcBinaryNoProbabilities
 } from './fixtures/results/evaluations';
-import { withPooledConfusion } from './fixtures/results/variants';
+import { withEmptyCalibrationBin, withPooledConfusion } from './fixtures/results/variants';
 
 const format = createResultsFormatters({
 	number: (value, options) => new Intl.NumberFormat('en-GB', options).format(value)
@@ -272,5 +274,61 @@ describe('Classee view model', () => {
 			buildClasseeView(manyClasses(), 9, format)!.rows.map((row) => row.classIndex)
 		).toEqual([9]);
 		expect(buildClasseeView(breastCancerOneShot(), null, format)).toBeNull();
+	});
+});
+
+describe('Threshold view model', () => {
+	it('WML-P4-UI-7: readouts and histogram bins are the stored sweep counts', () => {
+		const evaluation = breastCancerOneShot();
+		const sweep = evaluation.curves.thresholdSweep!;
+		const view = buildThresholdView(evaluation, 'diagnosis')!;
+		expect(view.positive).toBe('Malignant');
+		expect(view.negative).toBe('Benign');
+		expect(view.readouts).toHaveLength(101);
+		expect(view.readouts[50]).toEqual({
+			threshold: 0.5,
+			tp: sweep.tp[50]!,
+			fp: sweep.fp[50]!,
+			tn: sweep.tn[50]!,
+			fn: sweep.fn[50]!,
+			tpr: sweep.tpr[50]!,
+			fpr: sweep.fpr[50]!
+		});
+		expect(view.bins).toHaveLength(20);
+		expect(view.bins[0]).toMatchObject({ lower: 0, upper: 0.05 });
+		expect(view.bins[0]!.positive).toBe(sweep.tp[0]! - sweep.tp[5]!);
+		expect(view.bins[0]!.negative).toBe(sweep.fp[0]! - sweep.fp[5]!);
+		// The last bin includes probability 1, so it is the cumulative count at 0.95.
+		expect(view.bins[19]).toMatchObject({ lower: 0.95, upper: 1 });
+		expect(view.bins[19]!.positive).toBe(sweep.tp[95]!);
+		expect(view.bins[19]!.negative).toBe(sweep.fp[95]!);
+		// Every row lands in exactly one bin.
+		expect(view.bins.reduce((total, bin) => total + bin.positive, 0)).toBe(sweep.tp[0]!);
+		expect(view.bins.reduce((total, bin) => total + bin.negative, 0)).toBe(sweep.fp[0]!);
+	});
+
+	it('WML-P4-UI-8: no probabilities or a multiclass target give no explorer', () => {
+		expect(buildThresholdView(svcBinaryNoProbabilities(), 'diagnosis')).toBeNull();
+		expect(buildThresholdView(irisCrossValidation(), 'species')).toBeNull();
+	});
+});
+
+describe('Calibration view model', () => {
+	it('WML-P4-UI-8: keeps zero counts, maps empty bins to null and reports ECE', () => {
+		const view = buildCalibrationView(
+			withEmptyCalibrationBin(breastCancerOneShot(), 4),
+			format
+		)!;
+		expect(view.mode).toBe('binary');
+		expect(view.bins).toHaveLength(10);
+		expect(view.bins[4]).toMatchObject({ count: 0, meanPredicted: null, observed: null });
+		expect(view.bins[3]!.observed).not.toBeNull();
+		expect(view.bins[5]!.observed).not.toBeNull();
+		expect(view.eceText).toBe('0.04');
+	});
+
+	it('WML-P4-UI-8: multiclass uses top-label bins; no probabilities gives null', () => {
+		expect(buildCalibrationView(irisCrossValidation(), format)!.mode).toBe('top-label');
+		expect(buildCalibrationView(svcBinaryNoProbabilities(), format)).toBeNull();
 	});
 });

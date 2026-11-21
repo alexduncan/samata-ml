@@ -533,3 +533,126 @@ export function buildClasseeView(
 		totalErrors: rows.reduce((total, row) => total + row.errorCount, 0)
 	};
 }
+
+/** Number of display bins in the threshold histogram. */
+export const HISTOGRAM_BINS = 20;
+
+/** One 5-percentage-point bin of positive-class probabilities, counted by true class. */
+export interface ProbabilityBin {
+	readonly lower: number;
+	readonly upper: number;
+	/** Held-out rows of the negative class in this bin. */
+	readonly negative: number;
+	/** Held-out rows of the positive class in this bin. */
+	readonly positive: number;
+}
+
+/** Counts and rates the probability-threshold explorer shows at one cutoff. */
+export interface ThresholdReadout {
+	readonly threshold: number;
+	readonly tp: number;
+	readonly fp: number;
+	readonly tn: number;
+	readonly fn: number;
+	readonly tpr: number;
+	readonly fpr: number;
+}
+
+/** The stored threshold sweep with the class names it needs. Binary targets with probabilities only. */
+export interface ThresholdView {
+	readonly target: string;
+	readonly positive: string;
+	readonly negative: string;
+	/** Largest stored cutoff index (100). */
+	readonly lastIndex: number;
+	readonly bins: readonly ProbabilityBin[];
+	readonly maxBinCount: number;
+	readonly readouts: readonly ThresholdReadout[];
+}
+
+/**
+ * Builds the explorer data from `curves.thresholdSweep`; null unless the target is binary and
+ * the model reported probabilities. Histogram bins are differences of adjacent cumulative
+ * sweep counts, so every number is a stored `web-ml` count.
+ */
+export function buildThresholdView(
+	evaluation: StoredEvaluation,
+	target: string
+): ThresholdView | null {
+	const sweep = evaluation.curves.thresholdSweep;
+	const positiveIndex = evaluation.positiveClassIndex;
+	if (!sweep || positiveIndex === null || evaluation.classLabels.length !== 2) return null;
+	const step = (sweep.thresholds.length - 1) / HISTOGRAM_BINS;
+	const bins: ProbabilityBin[] = [];
+	for (let bin = 0; bin < HISTOGRAM_BINS; bin += 1) {
+		const from = bin * step;
+		const to = from + step;
+		const last = bin === HISTOGRAM_BINS - 1;
+		bins.push({
+			lower: sweep.thresholds[from]!,
+			upper: last ? 1 : sweep.thresholds[to]!,
+			negative: last ? sweep.fp[from]! : sweep.fp[from]! - sweep.fp[to]!,
+			positive: last ? sweep.tp[from]! : sweep.tp[from]! - sweep.tp[to]!
+		});
+	}
+	return {
+		target,
+		positive: classText(evaluation.classLabels[positiveIndex]!),
+		negative: classText(evaluation.classLabels[1 - positiveIndex]!),
+		lastIndex: sweep.thresholds.length - 1,
+		bins,
+		maxBinCount: Math.max(1, ...bins.map((bin) => Math.max(bin.negative, bin.positive))),
+		readouts: Array.from(sweep.thresholds, (threshold, index) => ({
+			threshold,
+			tp: sweep.tp[index]!,
+			fp: sweep.fp[index]!,
+			tn: sweep.tn[index]!,
+			fn: sweep.fn[index]!,
+			tpr: sweep.tpr[index]!,
+			fpr: sweep.fpr[index]!
+		}))
+	};
+}
+
+/** One of the ten uniform calibration bins. */
+export interface CalibrationBin {
+	readonly lower: number;
+	readonly upper: number;
+	readonly count: number;
+	/** Mean predicted probability; null for an empty bin. */
+	readonly meanPredicted: number | null;
+	/** Observed positive rate (or top-label accuracy); null for an empty bin. */
+	readonly observed: number | null;
+}
+
+/** Calibration bins and expected calibration error. */
+export interface CalibrationView {
+	/** `binary` plots the positive class; `top-label` plots confidence against correctness. */
+	readonly mode: 'binary' | 'top-label';
+	readonly bins: readonly CalibrationBin[];
+	readonly ece: number;
+	/** ECE formatted for captions. */
+	readonly eceText: string;
+}
+
+/** Builds the reliability data from `curves.calibration`; null when probabilities are unavailable. */
+export function buildCalibrationView(
+	evaluation: StoredEvaluation,
+	format: ResultsFormatters
+): CalibrationView | null {
+	const calibration = evaluation.curves.calibration;
+	if (!calibration) return null;
+	const count = calibration.count.length;
+	return {
+		mode: evaluation.classLabels.length === 2 ? 'binary' : 'top-label',
+		bins: Array.from(calibration.count, (binCount, index) => ({
+			lower: index / count,
+			upper: (index + 1) / count,
+			count: binCount,
+			meanPredicted: calibration.meanPredicted[index] ?? null,
+			observed: calibration.observed[index] ?? null
+		})),
+		ece: calibration.expectedCalibrationError,
+		eceText: format.decimal(calibration.expectedCalibrationError)
+	};
+}

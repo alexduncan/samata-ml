@@ -19,3 +19,27 @@ export function withLongLabels(evaluation: StoredEvaluation): StoredEvaluation {
 		)
 	};
 }
+
+/** Empties one calibration bin: zero rows and null means, as `web-ml` reports it. */
+export function withEmptyCalibrationBin(
+	evaluation: StoredEvaluation,
+	bin: number
+): StoredEvaluation {
+	const calibration = evaluation.curves.calibration!;
+	const count = Uint32Array.from(calibration.count);
+	count[bin] = 0;
+	return {
+		...evaluation,
+		curves: {
+			...evaluation.curves,
+			calibration: {
+				...calibration,
+				count,
+				meanPredicted: calibration.meanPredicted.map((value, index) =>
+					index === bin ? null : value
+				),
+				observed: calibration.observed.map((value, index) => (index === bin ? null : value))
+			}
+		}
+	};
+}
