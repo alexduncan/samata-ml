@@ -115,6 +115,11 @@ describe('requestOptions (WML-P1-OPT-2)', () => {
 		expect(run('gaussian-nb', { priors: [1] }).requestOptions).toEqual({});
 		expect(run('multinomial-nb', { classPrior: [1] }).overrides).toEqual({});
 		expect(run('k-neighbors-classifier', { algorithm: 'brute' }).overrides).toEqual({});
+		// WML-P4-ASSET-1: new upstream options stay hidden so the upstream defaults apply.
+		expect(MODEL_OPTION_POLICY['k-neighbors-classifier'].leafSize.kind).toBe('hidden');
+		expect(MODEL_OPTION_POLICY['mlp-classifier'].validationFraction.kind).toBe('hidden');
+		expect(run('k-neighbors-classifier', { leafSize: 5 }).requestOptions).toEqual({});
+		expect(run('mlp-classifier', { validationFraction: 0.3 }).requestOptions).toEqual({});
 	});
 
 	it('WML-P1-OPT-2: keeps SVC classWeight balanced and prunes null as the default', () => {

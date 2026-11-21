@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { buildModelAssets } from '../scripts/build-model-assets';
@@ -23,7 +23,7 @@ describe('prebuilt model assets', () => {
 		const output = await workspace();
 		const url = await buildModelAssets(output);
 		expect(url).toBe(
-			'/web-ml/0.1.0-fab85a84c5db15e587ab266c1ea1770713e99ac4432ce456bba9d565068b1bc9/index.js'
+			'/web-ml/0.1.0-006467a1a14edd9d72e9fc882544b79436c80cc604da5da0a0bbec1bb599fd29/index.js'
 		);
 		const directory = path.join(output, path.dirname(url));
 		const files = await readdir(directory, { recursive: true, withFileTypes: true });
@@ -78,6 +78,53 @@ describe('prebuilt model assets', () => {
 			`web-ml setup error at ${manifest}: package manifest does not match`
 		);
 		await expect(readdir(output)).rejects.toThrow();
+	});
+
+	test('WML-P4-ASSET-1: pins the landed revision and refuses tampered or stale inputs', async () => {
+		const source = path.resolve(import.meta.dir, '..', 'node_modules', 'web-ml');
+		const root = await workspace();
+		const app = path.join(root, 'samata-ml');
+		const packageDirectory = path.join(app, 'node_modules', 'web-ml');
+		await mkdir(path.join(root, 'web-ml'));
+		await cp(source, packageDirectory, { recursive: true });
+
+		const output = path.join(root, 'output');
+		const url = await buildModelAssets(output, app);
+		expect(url).toContain('006467a1a14edd9d72e9fc882544b79436c80cc604da5da0a0bbec1bb599fd29');
+		const revision = await Bun.file(
+			new URL('../scripts/build-model-assets.ts', import.meta.url)
+		).text();
+		expect(revision).toContain('e568a7c9f37eb04f39463325c3314f8ca816dcc0');
+		expect(revision).not.toContain('623dd30d7899d8e281773bc593e44be815592693');
+
+		const executable = path.join(packageDirectory, 'dist', 'training-worker-svm.js');
+		const original = await readFile(executable);
+		await writeFile(executable, Buffer.concat([original, Buffer.from('\n// tampered')]));
+		await expect(buildModelAssets(path.join(root, 'tampered'), app)).rejects.toThrow(
+			`web-ml setup error at ${executable}: runtime file does not match`
+		);
+		await writeFile(executable, original);
+
+		const declaration = path.join(
+			packageDirectory,
+			'dist',
+			'src',
+			'training',
+			'holdout-validate.d.ts'
+		);
+		const declarationBytes = await readFile(declaration);
+		await writeFile(declaration, Buffer.concat([declarationBytes, Buffer.from('\n// drift')]));
+		await expect(buildModelAssets(path.join(root, 'drifted'), app)).rejects.toThrow(
+			'public declarations or catalogue do not match the verified build'
+		);
+		await writeFile(declaration, declarationBytes);
+
+		const timing = path.join(packageDirectory, 'specification', 'public-api', 'timing.md');
+		await rm(timing);
+		await expect(buildModelAssets(path.join(root, 'missing'), app)).rejects.toThrow(
+			`web-ml setup error at ${timing}`
+		);
+		await expect(readdir(path.join(root, 'tampered'))).rejects.toThrow();
 	});
 
 	test('WML-P3-ASSET-1: production headers permit WASM and isolate same-origin workers', async () => {

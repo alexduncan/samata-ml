@@ -1,6 +1,6 @@
 # Phase 4: Display shared single-model metrics and visuals in Section 6
 
-**Status:** ready | **Updated:** 2026-11-21T18:43:48Z
+**Status:** ready | **Updated:** 2026-11-21T19:08:27Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Codex (GPT-6) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Codex (GPT-6 Astra) | **Verified:** 2026-11-21T18:43:48Z | **Verification:** approved
 **Verified hash:** sha256:8bb5b4e4fe16d1c104758ae674e48ff1ad12ca414bd079667b5cdc879b4f2848
@@ -302,10 +302,10 @@ The closed element API is limited to the properties, events and methods named in
 - **Must not touch:** `package.json`, `bun.lock`, `node_modules/`, `public/_headers`, `src/features/models/training/`
 - **Implementation:** Keep the existing `file:../web-ml` mechanism. Provision an isolated Samata checkout next to a sibling named `web-ml` pointing to the verified prebuilt distribution in Codebase context. Run `bun install --frozen-lockfile --ignore-scripts` as workspace setup. Do not edit the sibling. Use revision `e568a7c9f37eb04f39463325c3314f8ca816dcc0` and require the public entry JS SHA-256 `8b1356550549140a42f9f5e680779c9bc3bfb633e3ca0c34a01bb7fe27dde68c` and package manifest SHA-256 `dce1e460e3fcbe201c052670295c964038d1aebd7c64b7f6333e218c14d8b8a3`. Keep the Phase 3 public input list and append the built declarations `dist/src/training/{holdout-validate,classifier-evaluation,fitted-model-hook,cross-validation}.d.ts`, `dist/src/metrics/{classification-curves,types}.d.ts` and `specification/public-api/timing.md`. The 33-file aggregate SHA-256 is `d3868b9f81bad7404d15bd1c2eef7e37c8f91ac6db3045d6b41090f360ada829`. Measure every shipped executable graph file listed by the existing asset guard from this distribution, compare installed and sibling copies and update the graph hash list and tests. Keep the existing content-addressed URL, same-origin workers, WASM paths, isolation and legal notices. Add hidden presentation policy entries for KNN `leafSize` and MLP `validationFraction` so the upstream defaults apply. Keep KNN `algorithm` hidden with its existing upstream default. Retain the original controls and exact catalogue coverage test. Record each digest, probe and baseline result. Refuse missing or mismatched inputs explicitly.
 - **Acceptance criteria:**
-    - [ ] `WML-P4-ASSET-1` — Installed public digests match and the deployed graph passes the existing tamper and missing-sibling tests. A modified graph asset, mismatched declaration or the old revision fails before app bundling. The catalogue policy remains bijective. KNN `leafSize` and MLP `validationFraction` stay hidden and absent from requests.
-    - [ ] `WML-P4-ASSET-2` — In dev and built app servers an isolated module worker loads the versioned graph in all three engines, completes a real One-Shot fit requesting evaluation and fitted artefacts, and exercises SVC WASM, ownership and cancellation through the runtime probe.
+    - [x] `WML-P4-ASSET-1` — Installed public digests match and the deployed graph passes the existing tamper and missing-sibling tests. A modified graph asset, mismatched declaration or the old revision fails before app bundling. The catalogue policy remains bijective. KNN `leafSize` and MLP `validationFraction` stay hidden and absent from requests.
+    - [x] `WML-P4-ASSET-2` — In dev and built app servers an isolated module worker loads the versioned graph in all three engines, completes a real One-Shot fit requesting evaluation and fitted artefacts, and exercises SVC WASM, ownership and cancellation through the runtime probe.
 - **Verification:** `bun test tests/model-assets.test.ts tests/model-options.test.ts`; `bun run test:e2e tests/training-runtime.e2e.ts`; `bun run typecheck`; `bun run check`; `bun run build`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-21T19:08:27Z)
 
 ### T2 — Add Observable Plot, chart tokens and the shared Plot controller
 
@@ -467,6 +467,7 @@ None.
 
 | 2026-11-21T13:06:32Z | — | Codex (GPT-6) | The scout rechecked canonical upstream main and the built public declarations and metrics prose in candidate 0abcf0e. No public holdout path returns detailed evaluation and fitted artefacts from one fit. |
 | 2026-11-21T18:39:02Z | — | Codex (GPT-6) | Rescouted landed holdout closure 8148579 and matching e568a7c9 distribution. Frozen Bun install and app typecheck passed. The 33 public assets byte-match the pinned distribution. Updated the exact worker contract, app verification seams and compatibility scope. |
+| 2026-11-21T19:08:27Z | T1 | Claude Code (claude-sonnet-5-5) | Verified e568a7c9 dist digests (entry JS 8b135655, manifest dce1e460), installed==sibling via diff; bun test model-assets+model-options 21 pass; test:e2e training-runtime 27 pass (3 engines, dev+prod); typecheck ok; bun run check 401 pass 0 fail; build ok. Changed: scripts/build-model-assets.ts, model-presentation-policy.ts, tests/{model-assets,model-options}.test.ts, tests/training-runtime.e2e.ts, tests/fixtures/training/runtime.worker.ts |
 
 ## Plan review history
 
