@@ -1,6 +1,6 @@
 # Phase 7: Configure, run and explain hyperparameter tuning
 
-**Status:** draft | **Updated:** 2026-11-19T08:47:35Z
+**Status:** draft | **Updated:** 2026-11-21T08:09:01Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
@@ -288,7 +288,7 @@ export interface StoredTuning {
 
 ## Risks and open questions
 
-- **Blocking:** Phases 1, 3, 4, 5 and 6 must be `ready`, and `web-ml` must publish WR-7, WR-10, WR-11 and WR-13 (umbrella ledger). Then re-scout, pin the `createTuner().search()` pipeline argument, the balanced-accuracy scorer name and the nested refit contract in T4, and submit for review.
+- **Blocking:** Phases 1, 3, 4, 5 and 6 must be `ready`, and `web-ml` must publish WR-7, WR-10, WR-11 and WR-13 (umbrella ledger). Then re-scout, pin the `createTuner().search()` pipeline argument, the balanced-accuracy scorer name and the nested refit contract in T4, and submit for review. **Status on 2026-11-21:** `NestedCVFoldResult` returns `bestParams` and `innerScore` but discards inner trials, and `nestedCrossValidate` has no `refit`; nested classification scoring accepts only `accuracy` and `f1`. Multiclass SVC tuning with `trialMetrics` fails with `numerical-failure` when folds observe two of three classes. WR-11 (trials, refit, scorer) and the trial-report fix are filed upstream as [`2026-11-21-nested-tuning-trials-fitted-model-hook-and-robust-trial-reports.md`](../../../web-ml/specification/requests/2026-11-21-nested-tuning-trials-fitted-model-hook-and-robust-trial-reports.md), with WR-13 as an optional item. WR-7 and WR-10 status is recorded in Phase 3 and Phase 4.
 - **Non-blocking:** Nested tuning cost grows as K² × trials (606 fits for five folds and 20 trials). The compute alert (D7) informs learners; TODO-45's performance budget may later cap `nTrials × K²`. Owner: human.
 - **Non-blocking:** Tuning drafts (03-4 tuning section, 03-7 Tuning section) await human styling (`specification/HUMAN.md`).
 
@@ -318,3 +318,4 @@ None.
 | -------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 2026-11-17T21:23:45Z | Initial stub (as Phase 5)             | Split from the monolithic integration plan.                                                                                                                                                                                                                                                                  |
 | 2026-11-19T08:47:35Z | Renumbered to Phase 7; expanded draft | User inserted Phases 5 (comparison) and 6 (model-specific) before tuning; `web-ml` owns folds and scoring (2026-11-19). Resolved the stub's questions: 60/20/20 One-Shot split (D1), public `createTuner` typing instead of a `train` overload. File renamed from `web-ml-phase-5-hyperparameter-tuning.md`. |
+| 2026-11-21T08:09:01Z | Linked upstream WR-11 request         | User asked for an upstream request covering the nested-CV and multiclass trial-report limitations; Blocking remains open.                                                                                                                                                                                    |
