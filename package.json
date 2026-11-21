@@ -60,6 +60,7 @@
 	"dependencies": {
 		"@nanostores/i18n": "^0.10.0",
 		"@nanostores/lit": "^0.2.3",
+		"@observablehq/plot": "0.6.17",
 		"idb": "^8.0.4",
 		"lit": "^3.3.3",
 		"nanostores": "^0.11.4",

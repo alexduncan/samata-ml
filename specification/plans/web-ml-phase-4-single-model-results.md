@@ -1,6 +1,6 @@
 # Phase 4: Display shared single-model metrics and visuals in Section 6
 
-**Status:** ready | **Updated:** 2026-11-21T19:08:27Z
+**Status:** ready | **Updated:** 2026-11-21T19:12:25Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Codex (GPT-6) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Codex (GPT-6 Astra) | **Verified:** 2026-11-21T18:43:48Z | **Verification:** approved
 **Verified hash:** sha256:8bb5b4e4fe16d1c104758ae674e48ff1ad12ca414bd079667b5cdc879b4f2848
@@ -315,11 +315,11 @@ The closed element API is limited to the properties, events and methods named in
 - **Must not touch:** `node_modules/`, `src/features/models/`, `specification/mockups/` — no feature wiring yet.
 - **Implementation:** Add the planned exact Plot dependency with `bun add --exact @observablehq/plot@0.6.17`. Add D7 aliases and implement D6. The controller constructor takes `(host: ReactiveControllerHost & HTMLElement, getContainer: () => HTMLElement | null, render: (chart: Pick<typeof Plot, "plot" | "barX" | "dot" | "rectY" | "lineY" | "ruleX" | "ruleY" | "text">, tokens: ChartTokens, width: number) => SVGSVGElement | HTMLElement | null)`. `ChartTokens` maps the nine D7 names to resolved values. Expose `whenSettled(): Promise<void>`. Reuse inherited type and surrounding styles. Record bundle sizes before and after. Mount the fixture host in Playwright using the route-free browser fixture pattern below, and exercise it in Storybook too.
 - **Acceptance criteria:**
-    - [ ] `WML-P4-CHART-1` — Every D7 token except `--chart-grid` has ≥ 3:1 contrast against `--surface`, computed from `css/root.css` hex values; `bun test tests/style-tokens.test.ts` still passes.
-    - [ ] `WML-P4-CHART-2` — Playwright in Chromium, Firefox and WebKit inserts the plot in the host Shadow DOM using the resolved colours. Resize to 320 px, disconnect, reattach and verify the rendered width updates only while connected. T9 tests reflow with actual app charts.
-    - [ ] `WML-P4-CHART-3` — Chart sources use token-backed colours and SVG inherits typography. Named data tables remain readable in forced colours.
+    - [x] `WML-P4-CHART-1` — Every D7 token except `--chart-grid` has ≥ 3:1 contrast against `--surface`, computed from `css/root.css` hex values; `bun test tests/style-tokens.test.ts` still passes.
+    - [x] `WML-P4-CHART-2` — Playwright in Chromium, Firefox and WebKit inserts the plot in the host Shadow DOM using the resolved colours. Resize to 320 px, disconnect, reattach and verify the rendered width updates only while connected. T9 tests reflow with actual app charts.
+    - [x] `WML-P4-CHART-3` — Chart sources use token-backed colours and SVG inherits typography. Named data tables remain readable in forced colours.
 - **Verification:** `bun test tests/chart-tokens.test.ts tests/style-tokens.test.ts`; `bun run test:e2e tests/plot-controller.e2e.ts`; `bun run test:stories`; `bun run build`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-21T19:12:25Z)
 
 ### T3 — Define `StoredEvaluation`, its decoder, fold statistics and the partition fingerprint
 
@@ -468,6 +468,7 @@ None.
 | 2026-11-21T13:06:32Z | — | Codex (GPT-6) | The scout rechecked canonical upstream main and the built public declarations and metrics prose in candidate 0abcf0e. No public holdout path returns detailed evaluation and fitted artefacts from one fit. |
 | 2026-11-21T18:39:02Z | — | Codex (GPT-6) | Rescouted landed holdout closure 8148579 and matching e568a7c9 distribution. Frozen Bun install and app typecheck passed. The 33 public assets byte-match the pinned distribution. Updated the exact worker contract, app verification seams and compatibility scope. |
 | 2026-11-21T19:08:27Z | T1 | Claude Code (claude-sonnet-5-5) | Verified e568a7c9 dist digests (entry JS 8b135655, manifest dce1e460), installed==sibling via diff; bun test model-assets+model-options 21 pass; test:e2e training-runtime 27 pass (3 engines, dev+prod); typecheck ok; bun run check 401 pass 0 fail; build ok. Changed: scripts/build-model-assets.ts, model-presentation-policy.ts, tests/{model-assets,model-options}.test.ts, tests/training-runtime.e2e.ts, tests/fixtures/training/runtime.worker.ts |
+| 2026-11-21T19:12:25Z | T2 | Claude Code (claude-sonnet-5-5) | bun add --exact @observablehq/plot@0.6.17; 9 chart tokens in root.css; PlotController + plot-host fixture + stories. bun test chart-tokens+style-tokens 10 pass; test:e2e plot-controller 15 pass (3 engines); test:stories 282 pass; bun run check 403 pass 0 fail; build ok. Bundle: app.js 340091 B before and after (controller not yet imported); controller+Plot alone minified 390831 B. Controller strips per-mark aria-label and sets role=img (axe aria-prohibited-attr). Changed: package.json, bun.lock, css/root.css, src/features/results/charts/*, .storybook/fixtures/plot-host.ts, tests/chart-tokens.test.ts, tests/plot-controller.e2e.ts |
 
 ## Plan review history
 
