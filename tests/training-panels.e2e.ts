@@ -347,6 +347,40 @@ test('a remote tab reads the running state and recovers a pending result without
 	}
 });
 
+type CleanupWindow = Window & { allowFinishCleanup?: () => void; releaseStateLock?: () => void };
+
+function savedRun(page: Page) {
+	return page.evaluate(() => {
+		const state = JSON.parse(localStorage.getItem('samata-ml:state')!) as PersistedAppState;
+		return {
+			generation: state.trainingDomainGeneration,
+			status: state.models[0]?.status,
+			revision: state.models[0]?.resultRevision,
+			open: state.models[0]?.ui.trainingLogOpen
+		};
+	});
+}
+
+function blockFinishCleanup(page: Page, generation: number) {
+	return page.evaluate((finishGeneration) => {
+		const put = IDBObjectStore.prototype.put;
+		IDBObjectStore.prototype.put = function (value, key) {
+			if (
+				this.name === 'model_results' &&
+				value?.kind === 'training-domain-checkpoint' &&
+				value.generation === finishGeneration &&
+				value.pending === null
+			) {
+				throw new DOMException('Fixture blocked finish cleanup', 'SecurityError');
+			}
+			return put.call(this, value, key);
+		};
+		(window as CleanupWindow).allowFinishCleanup = () => {
+			IDBObjectStore.prototype.put = put;
+		};
+	}, generation);
+}
+
 test('WML-P3-UI-1: retrying finish checkpoint cleanup keeps another tab’s saved disclosure', async ({
 	page,
 	context
@@ -354,49 +388,24 @@ test('WML-P3-UI-1: retrying finish checkpoint cleanup keeps another tab’s save
 	await controlTraining(page);
 	await start(page);
 	const other = await context.newPage();
-	const savedRun = () =>
-		page.evaluate(() => {
-			const state = JSON.parse(localStorage.getItem('samata-ml:state')!) as PersistedAppState;
-			return {
-				generation: state.trainingDomainGeneration,
-				status: state.models[0]?.status,
-				revision: state.models[0]?.resultRevision,
-				open: state.models[0]?.ui.trainingLogOpen
-			};
-		});
-	type CleanupWindow = Window & { allowFinishCleanup?: () => void };
 	try {
 		await controlTraining(other);
 		await other.goto('/models/1');
 		const remote = training(other);
 		await expect(remote.locator('summary')).toHaveText('Training in another tab');
-		const { generation } = await savedRun();
+		const { generation } = await savedRun(page);
 		await remote.locator('summary').press('Enter');
 		await expect(remote.locator('details')).toHaveAttribute('open', '');
-		await expect.poll(savedRun).toMatchObject({ generation, status: 'training', open: true });
+		await expect
+			.poll(() => savedRun(page))
+			.toMatchObject({ generation, status: 'training', open: true });
 		const owner = training(page);
 		await expect(owner.locator('details')).not.toHaveAttribute('open');
 
 		// Either tab can replay the checkpoint on a storage event. Block only the
 		// finish marker cleanup in both tabs so the owner's Retry saving is exercised.
 		for (const tab of [page, other]) {
-			await tab.evaluate((finishGeneration) => {
-				const put = IDBObjectStore.prototype.put;
-				IDBObjectStore.prototype.put = function (value, key) {
-					if (
-						this.name === 'model_results' &&
-						value?.kind === 'training-domain-checkpoint' &&
-						value.generation === finishGeneration &&
-						value.pending === null
-					) {
-						throw new DOMException('Fixture blocked finish cleanup', 'SecurityError');
-					}
-					return put.call(this, value, key);
-				};
-				(window as CleanupWindow).allowFinishCleanup = () => {
-					IDBObjectStore.prototype.put = put;
-				};
-			}, generation + 1);
+			await blockFinishCleanup(tab, generation + 1);
 		}
 		const runId = await succeed(page);
 		const retry = owner.getByRole('button', { name: 'Retry saving' });
@@ -407,23 +416,96 @@ test('WML-P3-UI-1: retrying finish checkpoint cleanup keeps another tab’s save
 			revision: runId,
 			open: true
 		};
-		expect(await savedRun()).toEqual(trained);
+		expect(await savedRun(page)).toEqual(trained);
 		await expect(owner.locator('details')).not.toHaveAttribute('open');
 
 		await page.evaluate(() => (window as CleanupWindow).allowFinishCleanup!());
 		await retry.press('Enter');
 		await expect(owner.getByRole('button', { name: 'View Results' })).toBeEnabled();
 		await expect(owner.locator('details')).toHaveAttribute('open', '');
-		expect(await savedRun()).toEqual(trained);
+		expect(await savedRun(page)).toEqual(trained);
 		expect(await requestCount(page)).toBe(1);
 		expect(await requestCount(other)).toBe(0);
 
 		await page.reload();
 		await expect(owner.getByRole('button', { name: 'View Results' })).toBeEnabled();
 		await expect(owner.locator('details')).toHaveAttribute('open', '');
-		expect(await savedRun()).toEqual(trained);
+		expect(await savedRun(page)).toEqual(trained);
 		expect(await requestCount(page)).toBe(0);
 	} finally {
+		await other.close();
+	}
+});
+
+test('WML-P3-UI-1: keeps a keyboard log toggle when the other tab clears the finish marker before refresh and save', async ({
+	page,
+	context
+}) => {
+	await controlTraining(page);
+	await start(page);
+	const other = await context.newPage();
+	const owner = training(page);
+	const stateLock = 'samata-ml:training-state';
+	const pending = () =>
+		page.evaluate(
+			async (name) =>
+				(await navigator.locks.query()).pending?.filter((lock) => lock.name === name)
+					.length ?? 0,
+			stateLock
+		);
+	try {
+		await controlTraining(other);
+		await other.goto('/models/1');
+		await expect(training(other).locator('summary')).toHaveText('Training in another tab');
+		const generation = (await savedRun(page)).generation + 1;
+		for (const tab of [page, other]) await blockFinishCleanup(tab, generation);
+		const revision = await succeed(page);
+		await expect(owner.getByRole('button', { name: 'Retry saving' })).toBeVisible();
+		const trained = { generation, status: 'trained', revision, open: false };
+		expect(await savedRun(page)).toEqual(trained);
+
+		await page.evaluate(
+			(name) =>
+				new Promise<void>((ready) => {
+					void navigator.locks.request(
+						name,
+						() =>
+							new Promise<void>((release) => {
+								(window as CleanupWindow).releaseStateLock = release;
+								ready();
+							})
+					);
+				}),
+			stateLock
+		);
+		// Queue remote marker cleanup and then owner refresh via the real storage listener.
+		await other.evaluate(() => (window as CleanupWindow).allowFinishCleanup!());
+		for (const tab of [other, page]) {
+			const queued = await pending();
+			await tab.evaluate(() =>
+				window.dispatchEvent(new StorageEvent('storage', { key: 'samata-ml:state' }))
+			);
+			await expect.poll(pending).toBeGreaterThan(queued);
+		}
+		const queued = await pending();
+		await owner.locator('summary').press('Enter');
+		await expect(owner.locator('details')).toHaveAttribute('open', '');
+		await expect.poll(pending).toBeGreaterThan(queued);
+		await page.evaluate(() => (window as CleanupWindow).releaseStateLock!());
+
+		const persisted = { ...trained, open: true };
+		await expect(owner.getByRole('button', { name: 'View Results' })).toBeEnabled();
+		await expect.poll(() => savedRun(page)).toEqual(persisted);
+		await expect(owner.locator('details')).toHaveAttribute('open', '');
+		expect(await requestCount(page)).toBe(1);
+		expect(await requestCount(other)).toBe(0);
+		await page.reload();
+		await expect(owner.getByRole('button', { name: 'View Results' })).toBeEnabled();
+		await expect(owner.locator('details')).toHaveAttribute('open', '');
+		expect(await savedRun(page)).toEqual(persisted);
+		expect(await requestCount(page)).toBe(0);
+	} finally {
+		await page.evaluate(() => (window as CleanupWindow).releaseStateLock?.());
 		await other.close();
 	}
 });

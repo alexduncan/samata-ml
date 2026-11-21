@@ -272,6 +272,8 @@ Ingestion stages rows and metadata under a fresh dataset ID. After ingestion, th
 
 IndexedDB and the v1 state key are shared. Tabs keep their own URL, active view, focus and local workers. On a state storage event, a tab validates the generation under the state lock and applies newer acknowledged protected state in place. The receiving tab keeps its local resume route and workflow focus. Scroll-key changes and general ordinary preference sync are outside this contract.
 
+An unsaved training log disclosure edit stays visible during refresh and can still be saved after a generation advance when the dataset, target, model number and model creation time match. A saved edit stops participating in later merges. A replaced identity drops its pending edit. Checkpoint replay keeps an existing saved disclosure unless a matching local edit is pending.
+
 Training takes the shared `samata-ml:ingestion` lock and the exclusive `samata-ml:training:{num}` lock through settlement. A confirmation cancels local attempts and waits for settlement before trying the exclusive ingestion lock. When another tab owns a shared training lock, keep the confirmation open with a remote-training notice. A different tab can replay a pending publication under the state lock. The owning tab and the recovering tab load the same validated result revision.
 
 ## 8. Versioning & Validation

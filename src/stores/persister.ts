@@ -306,7 +306,6 @@ let unbindLifecycle: (() => void) | undefined;
 type TrainingLogEdit = {
 	datasetId: string | undefined;
 	target: string | null;
-	generation: number;
 	createdAt: number;
 	open: boolean;
 };
@@ -316,15 +315,12 @@ type TrainingLogEdit = {
 const trainingLogEdits = new Map<number, TrainingLogEdit>();
 
 function recordTrainingLogEdits(previous: PersistedAppState, next: PersistedAppState): void {
-	if (
-		previous.dataset?.id !== next.dataset?.id ||
-		previous.target !== next.target ||
-		previous.trainingDomainGeneration !== next.trainingDomainGeneration
-	) {
+	if (previous.dataset?.id !== next.dataset?.id || previous.target !== next.target) {
 		trainingLogEdits.clear();
 		return;
 	}
 	if (previous.models === next.models) return;
+	pruneTrainingLogEdits(next);
 	for (const model of next.models) {
 		const before = previous.models.find(
 			(entry) => entry.num === model.num && entry.createdAt === model.createdAt
@@ -334,7 +330,6 @@ function recordTrainingLogEdits(previous: PersistedAppState, next: PersistedAppS
 			trainingLogEdits.set(model.num, {
 				datasetId: next.dataset?.id,
 				target: next.target,
-				generation: next.trainingDomainGeneration,
 				createdAt: model.createdAt,
 				open
 			});
@@ -344,41 +339,41 @@ function recordTrainingLogEdits(previous: PersistedAppState, next: PersistedAppS
 
 function findTrainingLogEdit(
 	state: PersistedAppState,
-	model: ModelRecord,
-	carryAcrossCheckpoint: boolean
+	model: ModelRecord
 ): TrainingLogEdit | undefined {
 	const edit = trainingLogEdits.get(model.num);
-	const generation = state.trainingDomainGeneration;
 	if (
 		edit &&
 		edit.datasetId === state.dataset?.id &&
 		edit.target === state.target &&
-		edit.createdAt === model.createdAt &&
-		(edit.generation === generation ||
-			(carryAcrossCheckpoint && edit.generation === generation - 1))
+		edit.createdAt === model.createdAt
 	) {
 		return edit;
 	}
 }
 
-function mergeTrainingLogEdit(
-	state: PersistedAppState,
-	model: ModelRecord,
-	carryAcrossCheckpoint = false
-): ModelRecord {
-	const edit = findTrainingLogEdit(state, model, carryAcrossCheckpoint);
+function pruneTrainingLogEdits(state: PersistedAppState, acknowledgeMatches = false): void {
+	for (const [num, edit] of trainingLogEdits) {
+		const model = state.models.find((entry) => entry.num === num);
+		if (
+			!model ||
+			!findTrainingLogEdit(state, model) ||
+			(acknowledgeMatches && edit.open === (model.ui.trainingLogOpen ?? false))
+		) {
+			trainingLogEdits.delete(num);
+		}
+	}
+}
+
+function mergeTrainingLogEdit(state: PersistedAppState, model: ModelRecord): ModelRecord {
+	const edit = findTrainingLogEdit(state, model);
 	if (!edit || edit.open === (model.ui.trainingLogOpen ?? false)) return model;
 	return { ...model, ui: { ...model.ui, trainingLogOpen: edit.open } };
 }
 
-function mergeTrainingLogEdits(
-	state: PersistedAppState,
-	carryAcrossCheckpoint = false
-): PersistedAppState {
+function mergeTrainingLogEdits(state: PersistedAppState): PersistedAppState {
 	if (!trainingLogEdits.size) return state;
-	const models = state.models.map((model) =>
-		mergeTrainingLogEdit(state, model, carryAcrossCheckpoint)
-	);
+	const models = state.models.map((model) => mergeTrainingLogEdit(state, model));
 	return models.some((model, index) => model !== state.models[index])
 		? { ...state, models }
 		: state;
@@ -466,30 +461,13 @@ export async function withTrainingStateLock<T>(
 	}
 }
 
-/** Applies a decoded authoritative snapshot without echoing it back to storage. */
+/** Applies a validated snapshot under the state lock, retaining unsaved edits to matching logs. */
 export function publishAcknowledgedAppSnapshot(state: PersistedAppState): void {
-	publishAppSnapshot(state, state);
-}
-
-function publishAppSnapshot(state: PersistedAppState, persisted: PersistedAppState): void {
-	acknowledgedState = persisted;
-	if (state === persisted) {
-		trainingLogEdits.clear();
-	} else {
-		// Retain best-effort edits carried into the just-published generation.
-		for (const [num] of trainingLogEdits) {
-			const model = state.models.find((entry) => entry.num === num);
-			const edit = model && findTrainingLogEdit(state, model, true);
-			if (model && edit && edit.open === (model.ui.trainingLogOpen ?? false)) {
-				edit.generation = state.trainingDomainGeneration;
-			} else {
-				trainingLogEdits.delete(num);
-			}
-		}
-	}
+	acknowledgedState = state;
+	pruneTrainingLogEdits(state);
 	publishingSnapshot = true;
 	try {
-		$appState.set(state);
+		$appState.set(mergeTrainingLogEdits(state));
 	} finally {
 		publishingSnapshot = false;
 	}
@@ -497,15 +475,11 @@ function publishAppSnapshot(state: PersistedAppState, persisted: PersistedAppSta
 
 function writeAcknowledgedSnapshot(
 	storage: StorageAdapter,
-	state: PersistedAppState,
-	carryAcrossCheckpoint = false
+	state: PersistedAppState
 ): PersistenceAck {
 	const written = safeSetItem(storage, STATE_STORAGE_KEY, serialiseAppState(state));
 	if (!written.ok) return written;
-	for (const model of state.models) {
-		const edit = findTrainingLogEdit(state, model, carryAcrossCheckpoint);
-		if (edit?.open === (model.ui.trainingLogOpen ?? false)) trainingLogEdits.delete(model.num);
-	}
+	pruneTrainingLogEdits(state, true);
 	return { ok: true, generation: state.trainingDomainGeneration };
 }
 
@@ -533,7 +507,8 @@ async function publishPending(
 			? keepLocalOrdinaryChanges(candidate, current, firstPublication)
 			: candidate;
 	if (!acknowledged) {
-		const ack = writeAcknowledgedSnapshot(context.storage, state, true);
+		state = mergeTrainingLogEdits(state);
+		const ack = writeAcknowledgedSnapshot(context.storage, state);
 		if (!ack.ok) return ack;
 		acknowledgedState = state;
 	}
@@ -543,14 +518,16 @@ async function publishPending(
 		pending.operationId
 	);
 	if (!cleared.ok) return cleared;
-	const visible = pending.kind === 'finish' ? mergeTrainingLogEdits(state, true) : state;
+	const visible = mergeTrainingLogEdits(state);
 	if (visible !== state) {
-		// The protected result is already durable. Saving the disclosure remains best effort.
-		const ack = writeAcknowledgedSnapshot(context.storage, visible, true);
+		// The protected state is already durable. Saving the disclosure remains best effort.
+		const ack = writeAcknowledgedSnapshot(context.storage, visible);
 		if (ack.ok) state = visible;
 		noteOrdinaryFailure(ack);
+	} else {
+		pruneTrainingLogEdits(state, true);
 	}
-	publishAppSnapshot(visible, state);
+	publishAcknowledgedAppSnapshot(state);
 	return { ok: true, state };
 }
 
@@ -590,7 +567,29 @@ export async function readGuardedTrainingSnapshot(
 	if (snapshot.state && snapshot.state.trainingDomainGeneration !== generation) {
 		return { ok: false, reason: 'conflict' };
 	}
+	if (snapshot.state) pruneTrainingLogEdits(snapshot.state);
 	return { ...snapshot, generation, replayed: false };
+}
+
+/** Refreshes a newer protected generation after a storage event, without echoing ordinary writes. */
+export function refreshTrainingSnapshot(
+	options?: TrainingPersistenceOptions
+): Promise<PersistenceAck> {
+	return withTrainingStateLock(async (context): Promise<PersistenceAck> => {
+		const snapshot = await readGuardedTrainingSnapshot(context);
+		if (!snapshot.ok) return snapshot;
+		if (!snapshot.state) return { ok: false, reason: 'conflict' };
+		const current = $appState.get();
+		if (snapshot.generation > current.trainingDomainGeneration) {
+			publishAcknowledgedAppSnapshot({
+				...snapshot.state,
+				onboarding: current.onboarding,
+				resumePath: current.resumePath,
+				results: current.results
+			});
+		}
+		return { ok: true, generation: snapshot.generation };
+	}, options);
 }
 
 const draftFields = [
@@ -780,17 +779,14 @@ function keepLocalOrdinaryChanges(
 		sameDomain && JSON.stringify(candidate.data) === JSON.stringify(previous.data)
 			? local.data
 			: candidate.data;
-	return mergeTrainingLogEdits(
-		{
-			...candidate,
-			onboarding: local.onboarding,
-			resumePath: local.resumePath,
-			results: local.results,
-			models,
-			data
-		},
-		true
-	);
+	return {
+		...candidate,
+		onboarding: local.onboarding,
+		resumePath: local.resumePath,
+		results: local.results,
+		models,
+		data
+	};
 }
 
 function writeOrdinaryGuarded(

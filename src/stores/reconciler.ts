@@ -271,14 +271,13 @@ export async function reconcileProtectedStartup(
 					);
 					if (!model.ok) return model;
 				}
-				const authoritative = await withTrainingStateLock(
-					readGuardedTrainingSnapshot,
-					persistence
-				);
-				if (!authoritative.ok || !authoritative.state)
-					return authoritative.ok ? { ok: false, reason: 'conflict' } : authoritative;
-				publishAcknowledgedAppSnapshot(authoritative.state);
-				return { ok: true, generation: authoritative.generation };
+				return withTrainingStateLock(async (context): Promise<PersistenceAck> => {
+					const authoritative = await readGuardedTrainingSnapshot(context);
+					if (!authoritative.ok) return authoritative;
+					if (!authoritative.state) return { ok: false, reason: 'conflict' };
+					publishAcknowledgedAppSnapshot(authoritative.state);
+					return { ok: true, generation: authoritative.generation };
+				}, persistence);
 			}
 		);
 		if (!repaired.ok) return repaired;

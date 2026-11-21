@@ -13,13 +13,7 @@ import { $route, initRouter, takeFocusRequest } from './router/router';
 import { getScrollKeyForRoute, initScrollRestorer, restoreScroll } from './router/scroll-restorer';
 import { $appState } from './stores/app.store';
 import { $datasetResources } from './stores/dataset.store';
-import {
-	$storageSaveNotice,
-	initPersister,
-	publishAcknowledgedAppSnapshot,
-	readGuardedTrainingSnapshot,
-	withTrainingStateLock
-} from './stores/persister';
+import { $storageSaveNotice, initPersister, refreshTrainingSnapshot } from './stores/persister';
 import { reconcileProtectedStartup } from './stores/reconciler';
 import { initGlobalStyles } from './styles/global';
 import { i18n } from './i18n';
@@ -256,20 +250,10 @@ export async function bootstrapApp(): Promise<void> {
 		storageMessages.listen(() => renderAppShell(root));
 		window.addEventListener('storage', (event) => {
 			if (event.key !== STATE_STORAGE_KEY && event.key !== null) return;
-			void withTrainingStateLock(readGuardedTrainingSnapshot).then((snapshot) => {
-				if (!snapshot.ok || !snapshot.state) {
+			void refreshTrainingSnapshot().then((ack) => {
+				if (!ack.ok) {
 					startupRecovery = true;
 					renderAppShell(root);
-					return;
-				}
-				const current = $appState.get();
-				if (snapshot.generation > current.trainingDomainGeneration) {
-					publishAcknowledgedAppSnapshot({
-						...snapshot.state,
-						onboarding: current.onboarding,
-						resumePath: current.resumePath,
-						results: current.results
-					});
 				}
 			});
 		});
