@@ -47,7 +47,7 @@ Section 6 gains a **Tuning** section: search summary, an inner-CV hyperparameter
 
 - `specification/plans/web-ml-classification-integration.md` §Scope (WR ledger: WR-7, WR-8, WR-10, WR-11, WR-13).
 - `specification/plans/web-ml-phase-1-configure-model.md` §Interfaces A–D — option documents, presentation policy, `<app-model-configuration>` API.
-- `specification/plans/web-ml-phase-3-model-training.md` §Interfaces A — progress and log normaliser.
+- [Phase 3 §Interfaces and behaviour](archive/web-ml-phase-3-model-training.md#interfaces-and-behaviour) — progress and log normaliser.
 - `specification/plans/web-ml-phase-4-single-model-results.md` §Interfaces A–C; `specification/plans/web-ml-phase-5-model-comparison.md` §Interfaces A; `specification/plans/web-ml-phase-6-model-specific-results.md` §Interfaces A.
 - `specification/notes/user-experience-decisions.md` §3, §4, §5, §6, §8 — boundary tiers, compute alert, Fixed/Tune checkboxes, numeric ranges, dependent controls.
 - `specification/notes/metrics-and-visuals.md` §1 (inner-CV items), §3 D.

@@ -44,7 +44,7 @@
 - `specification/plans/web-ml-classification-integration.md` §Scope (WR ledger) — the upstream contract every task consumes.
 - `specification/notes/metrics-and-visuals.md` §1 Shared Base and §3 A–B — source note (review below).
 - `specification/notes/user-experience-decisions.md` §4 — post-training diagnostic card.
-- `specification/plans/web-ml-phase-3-model-training.md` §Interfaces and behaviour, T3–T5 — `ResultEnvelope`, worker protocol, `result-repository.ts`, Section 5 **View Results**.
+- [Phase 3 §Interfaces and behaviour](archive/web-ml-phase-3-model-training.md#interfaces-and-behaviour), T3–T5 — `ResultEnvelope`, worker protocol, `result-repository.ts`, Section 5 **View Results**.
 - `specification/COMPONENTS.md` §2–§10; `specification/visual-design.md` §1.1, §2, §4, §6 — tiers, closed APIs, tokens, draft styling, Storybook.
 - `specification/state-and-storage.md` §3, §5, §6; `specification/app-state-and-navigation.md` §6.4, §8.4 (`whenSettled`).
 - `specification/mockups/ui-scaffold/drafts/03-7_train-models-5-results.html` — structure reference (rewritten in T8).

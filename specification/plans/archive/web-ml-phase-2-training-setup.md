@@ -29,7 +29,7 @@
 **Out of scope**
 
 - User-editable seed, custom holdout ratios and Missing Values controls (recorded in `specification/FUTURE.md`). Separate inner/outer fold controls and new storage keys.
-- Executing training, workers, Web Locks or `startTraining(num)` (Phase 3, `specification/plans/web-ml-phase-3-model-training.md`). Tuning search spaces (Phase 7).
+- Executing training, workers, Web Locks or `startTraining(num)` ([Phase 3](web-ml-phase-3-model-training.md)). Tuning search spaces (Phase 7).
 - Moved to their own stub plans (user decision, 2026-11-20; D8):
     - [`router-help-history-and-dynamic-topics.md`](../router-help-history-and-dynamic-topics.md) — replacing `inAppHistoryCount` with per-document entry ownership, and any dynamic `/help/{slug}` routing with an unlisted-topic message.
     - [`scroll-region-restoration.md`](../scroll-region-restoration.md) — named-region merge and restore, the fold-matrix offset, `pointerdown` cancellation, the dead `'Space'` key test and the §8.4 height retry.

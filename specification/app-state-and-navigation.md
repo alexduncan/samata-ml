@@ -513,7 +513,7 @@ All actions are guarded: an action that is invalid for the current state (for ex
 
 Pure logic runs under `bun:test` with an in-memory `Storage`. Anything that depends on real history, layout or `<dialog>` MUST run in Playwright (Chromium, Firefox, WebKit) per [COMPONENTS.md §9](COMPONENTS.md); `happy-dom` has no layout and does not implement session history faithfully enough for these checks.
 
-Unit and browser training checks exercise exact run identities, guarded state, result validation, storage failure before and after commit, non-isolation, cross-tab locks and saved-run acknowledgement. See the [Phase 3 evidence](plans/web-ml-phase-3-model-training.md#implementation-and-verification-log).
+Unit and browser training checks exercise exact run identities, guarded state, result validation, storage failure before and after commit, non-isolation, cross-tab locks and saved-run acknowledgement. See the [Phase 3 evidence](plans/archive/web-ml-phase-3-model-training.md#implementation-and-verification-log).
 
 **Unit (`bun:test`)**
 

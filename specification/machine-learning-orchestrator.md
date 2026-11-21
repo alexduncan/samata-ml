@@ -4,7 +4,7 @@
 
 ## 1. Runtime boundary
 
-Samatā owns the model builder, input transport, training coordination and durable results. The `web-ml` package owns stratification, fitted preprocessing, model fitting, evaluation, cross-validation and diagnostics. The [Phase 3 plan](plans/web-ml-phase-3-model-training.md#implementation-and-verification-log) records the verified prebuilt revision and its public and executable hashes. The build verifies the frozen local dependency and serves the unchanged module graph, relative workers, WASM files and notices from a versioned, content-addressed same-origin directory. See [Delivery and Caching](ARCHITECTURE.md#delivery-and-caching) for isolation and installation.
+Samatā owns the model builder, input transport, training coordination and durable results. The `web-ml` package owns stratification, fitted preprocessing, model fitting, evaluation, cross-validation and diagnostics. The [Phase 3 plan](plans/archive/web-ml-phase-3-model-training.md#implementation-and-verification-log) records the verified prebuilt revision and its public and executable hashes. The build verifies the frozen local dependency and serves the unchanged module graph, relative workers, WASM files and notices from a versioned, content-addressed same-origin directory. See [Delivery and Caching](ARCHITECTURE.md#delivery-and-caching) for isolation and installation.
 
 The app starts one module worker at `/training.worker.js` per accepted attempt. The worker imports the verified runtime and uses the package's own worker and WASM graph. A non-isolated page stays in Training Setup with a recovery message. The browser owns the WebAssembly and shared-memory resources used by the library.
 
