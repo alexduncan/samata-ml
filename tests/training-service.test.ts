@@ -16,6 +16,7 @@ import type {
 } from '../src/features/models/training/protocol';
 import {
 	$appState,
+	dismissWelcome,
 	reduceCreateModel,
 	setHyperparameters,
 	setResumePath,
@@ -511,9 +512,14 @@ test.each([false, true])(
 			});
 
 			cleanup.allow();
-			storage.reject = (state) =>
-				denyPreferenceWrite && !!state.models[0]?.ui.trainingLogOpen;
+			let preferenceWrites = 0;
+			storage.reject = (state) => {
+				if (!state.models[0]?.ui.trainingLogOpen) return false;
+				preferenceWrites++;
+				return denyPreferenceWrite;
+			};
 			expect(await service.retry(worker.identity)).toMatchObject({ ok: true });
+			expect(preferenceWrites).toBe(1);
 			expect(await readTrainingCheckpoint(db)).toMatchObject({
 				checkpoint: { generation: 2, pending: null }
 			});
@@ -679,6 +685,251 @@ function storedState(): PersistedAppState {
 	return saved.state;
 }
 
+function clearFinishFromAnotherTab() {
+	return locks.request(TRAINING_STATE_LOCK, async () => {
+		const marker = await readTrainingCheckpoint(db);
+		if (!marker.ok || marker.checkpoint?.pending?.kind !== 'finish')
+			throw new Error('Missing finish marker');
+		return clearPendingTrainingCheckpoint(
+			db,
+			marker.checkpoint.generation,
+			marker.checkpoint.pending.operationId
+		);
+	});
+}
+
+test.each(['untouched', 'unsaved', 'denied', 'remote', 'acknowledged'] as const)(
+	'WML-P3-TRAIN-5: owner recovers after foreign finish cleanup (%s disclosure)',
+	async (choice) => {
+		seed();
+		const persistence = guardedPersistence();
+		initPersister(storage, { trainingPersistence: persistence });
+		const cleanup = blockFinishCleanup();
+		const localEdit = choice === 'unsaved' || choice === 'denied';
+		const savedOpen = choice === 'unsaved' || choice === 'remote';
+		let revision: string;
+		try {
+			const run = service.start(1);
+			const worker = await workerAt(0);
+			revision = worker.identity.runId;
+			if (choice === 'acknowledged') {
+				expect(setTrainingLogOpen(1, true)).toBe(true);
+				flushNow();
+				await locks.request(TRAINING_STATE_LOCK, () => {});
+				expect(storedState().models[0]?.ui.trainingLogOpen).toBe(true);
+			}
+			if (choice === 'remote' || choice === 'acknowledged') {
+				await locks.request(TRAINING_STATE_LOCK, () => {
+					const wire = JSON.parse(
+						storage.getItem(STATE_STORAGE_KEY)!
+					) as PersistedAppState;
+					wire.models[0]!.ui.trainingLogOpen = choice === 'remote';
+					storage.setItem(STATE_STORAGE_KEY, JSON.stringify(wire));
+				});
+			}
+			worker.succeed();
+			expect(await run).toMatchObject({ ok: false, reason: 'security', pending: 'finish' });
+			expect(storedState().models[0]?.ui.trainingLogOpen).toBe(choice === 'remote');
+			if (localEdit) expect(setTrainingLogOpen(1, true)).toBe(true);
+			expect(setResumePath('/models/1')).toBe(true);
+			expect(dismissWelcome()).toBe(true);
+			$appState.set({ ...$appState.get(), results: { ui: { expanded: true } } });
+			flushNow();
+			await locks.request(TRAINING_STATE_LOCK, () => {});
+			expect($storageSaveNotice.get()).toMatchObject({ ok: false, reason: 'security' });
+			const localSettings = $appState.get();
+			const savedSettings = storedState();
+			expect(localSettings.resumePath).not.toBe(savedSettings.resumePath);
+			expect(localSettings.onboarding).not.toEqual(savedSettings.onboarding);
+			expect(localSettings.results).not.toEqual(savedSettings.results);
+			const original = await db.get('model_results', [metadata.id, 1]);
+			expect(original).toMatchObject({ runId: revision });
+			cleanup.allow();
+			expect(await clearFinishFromAnotherTab()).toMatchObject({ ok: true });
+			expect($appState.get().trainingDomainGeneration).toBe(1);
+			expect($appState.get().models[0]?.status).toBe('training');
+			expect(getTrainingSession(worker.identity)?.status).toBe('publication-pending');
+
+			$storageSaveNotice.set(null);
+			let writes = 0;
+			storage.reject = () => {
+				writes++;
+				return choice === 'denied';
+			};
+			const duringPublication: Promise<LockManagerSnapshot>[] = [];
+			const unlisten = $appState.listen(() => duringPublication.push(locks.query()));
+			try {
+				const outcomes = await Promise.all([
+					service.retry(worker.identity),
+					service.retry(worker.identity)
+				]);
+				expect(outcomes).toEqual([
+					{ ok: true, value: undefined },
+					{ ok: true, value: undefined }
+				]);
+			} finally {
+				unlisten();
+			}
+			expect(duringPublication).toHaveLength(1);
+			expect((await duringPublication[0]!).held).toContainEqual({
+				name: TRAINING_STATE_LOCK,
+				mode: 'exclusive',
+				clientId: 'fixture'
+			});
+			expect(writes).toBe(localEdit ? 1 : 0);
+			expect($storageSaveNotice.get()).toEqual(
+				choice === 'denied' ? { ok: false, reason: 'security' } : null
+			);
+			expect($publicationPending.get()).toBeNull();
+			expect(getTrainingSession(worker.identity)).toMatchObject({
+				status: 'complete',
+				progress: { percent: 100 }
+			});
+			for (const [state, settings, open] of [
+				[$appState.get(), localSettings, savedOpen || choice === 'denied'],
+				[storedState(), savedSettings, savedOpen]
+			] as const) {
+				expect(state).toMatchObject({
+					trainingDomainGeneration: 2,
+					resumePath: settings.resumePath,
+					onboarding: settings.onboarding,
+					results: settings.results,
+					models: [
+						{
+							status: 'trained',
+							resultRevision: revision,
+							ui: { trainingLogOpen: open }
+						}
+					]
+				});
+			}
+			expect(await readTrainingCheckpoint(db)).toMatchObject({
+				checkpoint: { generation: 2, pending: null }
+			});
+			expect(await db.get('model_results', [metadata.id, 1])).toEqual(original);
+		} finally {
+			cleanup.restore();
+			stopPersister();
+			await locks.request(TRAINING_STATE_LOCK, () => {});
+		}
+		$appState.set(INITIAL_APP_STATE);
+		$trainingSession.set(new Map());
+		expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({
+			ok: true,
+			generation: 2
+		});
+		expect($appState.get().models[0]).toMatchObject({
+			status: 'trained',
+			resultRevision: revision,
+			ui: { trainingLogOpen: savedOpen }
+		});
+		expect(workers).toHaveLength(1);
+		expect(workers[0]?.posted.map(({ kind }) => kind)).toEqual(['start']);
+	}
+);
+
+test.each(['add model', 'replace model', 'replace target', 'replace revision'] as const)(
+	'WML-P3-TRAIN-5: finish retry checks the current domain after an intervening change (%s)',
+	async (change) => {
+		const initial = seed().models[0]!;
+		initPersister(storage, { trainingPersistence: guardedPersistence() });
+		const cleanup = blockFinishCleanup();
+		try {
+			const run = service.start(1);
+			const worker = await workerAt(0);
+			worker.succeed();
+			expect(await run).toMatchObject({ ok: false, pending: 'finish' });
+			expect(setTrainingLogOpen(1, true)).toBe(true);
+			flushNow();
+			await locks.request(TRAINING_STATE_LOCK, () => {});
+			cleanup.allow();
+			expect(await clearFinishFromAnotherTab()).toMatchObject({ ok: true });
+			const current = storedState();
+			const matching = change === 'add model';
+			const next = matching
+				? reduceCreateModel(current, 20)
+				: {
+						...current,
+						target: change === 'replace target' ? 'measurement' : current.target,
+						models: [
+							change === 'replace revision'
+								? { ...current.models[0]!, resultRevision: 'replacement-run' }
+								: {
+										...initial,
+										createdAt:
+											change === 'replace model' ? 20 : initial.createdAt
+									}
+						]
+					};
+			if (!next) throw new Error('Could not advance the remote model domain');
+			const { dataset, target, data, models, nextModelNum } = next;
+			const operationId = 'remote-advance-before-retry';
+			const advance = locks.request(TRAINING_STATE_LOCK, async () => {
+				expect(
+					await commitTrainingCheckpoint(
+						db,
+						2,
+						{
+							operationId,
+							kind: 'recover',
+							domain: { dataset, target, data, models, nextModelNum }
+						},
+						{ type: 'none' }
+					)
+				).toMatchObject({ ok: true });
+				storage.setItem(
+					STATE_STORAGE_KEY,
+					JSON.stringify({
+						...next,
+						trainingDomainGeneration: 3,
+						models: models.map((model) => ({
+							...model,
+							trainingSetup: model.trainingSetup && {
+								...model.trainingSetup,
+								type: 'train_test_split'
+							}
+						}))
+					})
+				);
+				expect(await clearPendingTrainingCheckpoint(db, 3, operationId)).toMatchObject({
+					ok: true
+				});
+			});
+			const retry = service.retry(worker.identity);
+			await advance;
+			if (matching) {
+				expect(await retry).toMatchObject({ ok: true });
+				expect($appState.get()).toMatchObject({
+					trainingDomainGeneration: 3,
+					nextModelNum
+				});
+				expect($appState.get().models[0]?.resultRevision).toBe(worker.identity.runId);
+				expect(getTrainingSession(worker.identity)?.status).toBe('complete');
+			} else {
+				expect(await retry).toMatchObject({ ok: false, code: 'conflict' });
+				expect(getTrainingSession(worker.identity)?.status).toBe('publication-pending');
+				expect(await refreshTrainingSnapshot(guardedPersistence())).toMatchObject({
+					ok: true
+				});
+				expect($appState.get().models[0]?.ui.trainingLogOpen).toBe(
+					change === 'replace revision'
+				);
+			}
+			expect(storedState().trainingDomainGeneration).toBe(3);
+			expect(storedState().models[0]?.ui.trainingLogOpen).toBe(matching);
+			expect(storedState().models[0]?.resultRevision).toBe(models[0]?.resultRevision);
+			expect(await db.get('model_results', [metadata.id, 1])).toMatchObject({
+				runId: worker.identity.runId
+			});
+			expect(workers).toHaveLength(1);
+		} finally {
+			cleanup.restore();
+			stopPersister();
+			await locks.request(TRAINING_STATE_LOCK, () => {});
+		}
+	}
+);
+
 test.each([
 	{ tab: 'owner', queued: 'before', open: true, choice: 'toggle' },
 	{ tab: 'owner', queued: 'after', open: false, choice: 'toggle' },
@@ -724,19 +975,7 @@ test.each([
 			cleanup.allow();
 			storage.reject = (state) => denyWrite && state.models[0]?.ui.trainingLogOpen === open;
 			const finish =
-				tab === 'owner'
-					? service.retry(worker.identity)
-					: locks.request(TRAINING_STATE_LOCK, async () => {
-							// A different realm can clear the marker without seeing this tab's edits.
-							const marker = await readTrainingCheckpoint(db);
-							if (!marker.ok || !marker.checkpoint?.pending)
-								throw new Error('Missing finish marker');
-							return clearPendingTrainingCheckpoint(
-								db,
-								marker.checkpoint.generation,
-								marker.checkpoint.pending.operationId
-							);
-						});
+				tab === 'owner' ? service.retry(worker.identity) : clearFinishFromAnotherTab();
 			if (queued === 'after') expect(await finish).toMatchObject({ ok: true });
 			const refresh =
 				tab === 'foreign' && queued === 'before'

@@ -347,7 +347,11 @@ test('a remote tab reads the running state and recovers a pending result without
 	}
 });
 
-type CleanupWindow = Window & { allowFinishCleanup?: () => void; releaseStateLock?: () => void };
+type CleanupWindow = Window & {
+	allowFinishCleanup?: () => void;
+	deniedFinishCleanups?: number;
+	releaseStateLock?: () => void;
+};
 
 function savedRun(page: Page) {
 	return page.evaluate(() => {
@@ -363,6 +367,8 @@ function savedRun(page: Page) {
 
 function blockFinishCleanup(page: Page, generation: number) {
 	return page.evaluate((finishGeneration) => {
+		const fixture = window as CleanupWindow;
+		fixture.deniedFinishCleanups = 0;
 		const put = IDBObjectStore.prototype.put;
 		IDBObjectStore.prototype.put = function (value, key) {
 			if (
@@ -371,14 +377,109 @@ function blockFinishCleanup(page: Page, generation: number) {
 				value.generation === finishGeneration &&
 				value.pending === null
 			) {
+				fixture.deniedFinishCleanups!++;
 				throw new DOMException('Fixture blocked finish cleanup', 'SecurityError');
 			}
 			return put.call(this, value, key);
 		};
-		(window as CleanupWindow).allowFinishCleanup = () => {
+		fixture.allowFinishCleanup = () => {
 			IDBObjectStore.prototype.put = put;
 		};
 	}, generation);
+}
+
+for (const recovery of [
+	'keyboard retry without a log toggle',
+	'keyboard retry after a failed log write',
+	'result loading after a later storage event'
+] as const) {
+	test(`WML-P3-UI-1/2/5: owner recovers after foreign finish cleanup by ${recovery}`, async ({
+		page,
+		context
+	}) => {
+		const toggleLog = recovery !== 'keyboard retry without a log toggle';
+		await controlTraining(page);
+		await start(page);
+		const other = await context.newPage();
+		const owner = training(page);
+		const retry = owner.getByRole('button', { name: 'Retry saving' });
+		const viewResults = owner.getByRole('button', { name: 'View Results' });
+		const ownerState = () =>
+			page.evaluate(() => {
+				const state = window.__appState!.get();
+				const model = state.models[0]!;
+				return {
+					generation: state.trainingDomainGeneration,
+					status: model.status,
+					revision: model.resultRevision,
+					open: model.ui.trainingLogOpen
+				};
+			});
+		try {
+			await controlTraining(other);
+			await other.goto('/models/1');
+			await expect(training(other).locator('summary')).toHaveText('Training in another tab');
+			const generation = (await savedRun(page)).generation + 1;
+			for (const tab of [page, other]) await blockFinishCleanup(tab, generation);
+			const revision = await succeed(page);
+			await expect(retry).toBeVisible();
+			const remoteRetry = other.getByRole('button', { name: 'Retry saving' });
+			await expect(remoteRetry).toBeVisible();
+			if (toggleLog) {
+				const denials = () =>
+					page.evaluate(() => (window as CleanupWindow).deniedFinishCleanups!);
+				const beforeToggle = await denials();
+				await owner.locator('summary').press('Enter');
+				await expect(owner.locator('details')).toHaveAttribute('open', '');
+				await expect.poll(denials).toBeGreaterThan(beforeToggle);
+				await page.evaluate(() =>
+					navigator.locks.request('samata-ml:training-state', () => {})
+				);
+				await expect(
+					page.getByText(
+						'Your changes could not be saved. They are available in this tab.'
+					)
+				).toBeVisible();
+			}
+			await other.evaluate(() => (window as CleanupWindow).allowFinishCleanup!());
+			await remoteRetry.press('Enter');
+			await expect(
+				training(other).getByRole('button', { name: 'View Results' })
+			).toBeEnabled();
+			// Only the other tab can clear the marker. Its retry needs no localStorage write.
+			const trained = { generation, status: 'trained', revision, open: toggleLog };
+			expect(await savedRun(page)).toEqual({ ...trained, open: false });
+			expect(await ownerState()).toMatchObject({
+				generation: generation - 1,
+				status: 'training'
+			});
+			await expect(viewResults).toBeDisabled();
+
+			if (recovery === 'result loading after a later storage event') {
+				await other.locator('app-sidebar a[href="/models"]').click();
+				await expect(other).toHaveURL('/models');
+			} else {
+				await retry.press('Enter');
+			}
+			await expect(viewResults).toBeEnabled();
+			await expect(retry).toBeHidden();
+			await expect(owner.getByRole('progressbar')).toHaveAttribute('value', '100');
+			await expect(page).toHaveURL('/models/1');
+			expect(await ownerState()).toEqual(trained);
+			expect(await savedRun(page)).toEqual(trained);
+			expect(await requestCount(page)).toBe(1);
+			expect(await requestCount(other)).toBe(0);
+
+			await page.reload();
+			await expect(viewResults).toBeEnabled();
+			if (toggleLog) await expect(owner.locator('details')).toHaveAttribute('open', '');
+			else await expect(owner.locator('details')).not.toHaveAttribute('open');
+			expect(await ownerState()).toEqual(trained);
+			expect(await requestCount(page)).toBe(0);
+		} finally {
+			await other.close();
+		}
+	});
 }
 
 test('WML-P3-UI-1: retrying finish checkpoint cleanup keeps another tab’s saved disclosure', async ({

@@ -19,6 +19,7 @@ import {
 import {
 	commitProtectedTrainingChange,
 	flushSubmittedDraft,
+	publishRecoveredTrainingSnapshot,
 	readGuardedTrainingSnapshot,
 	retryTrainingPublication,
 	withTrainingStateLock,
@@ -591,14 +592,23 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 
 	async function retry(expected?: TrainingRunIdentity): Promise<TrainingCommandResult> {
 		const pending = $publicationPending.get();
-		const ack = await retryTrainingPublication(persistence);
-		if (!ack.ok) {
-			const pendingStop = expected
-				? stoppedRepairs.has(expected.runId)
-				: stoppedRepairs.size > 0;
-			return notice(ack, pending?.kind ?? (pendingStop ? 'recover' : undefined));
-		}
 		const identity = pending?.identity;
+		if (identity && pending?.kind === 'finish') {
+			const finished = await recoverCompletedResult(
+				identity.modelNum,
+				identity,
+				pending.operationId
+			);
+			if (!finished.ok) return finished;
+		} else {
+			const ack = await retryTrainingPublication(persistence);
+			if (!ack.ok) {
+				const pendingStop = expected
+					? stoppedRepairs.has(expected.runId)
+					: stoppedRepairs.size > 0;
+				return notice(ack, pending?.kind ?? (pendingStop ? 'recover' : undefined));
+			}
+		}
 		if (identity && pending?.kind === 'start') {
 			stoppedRepairs.set(identity.runId, {
 				identity,
@@ -615,10 +625,6 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 			setTrainingSessionStatus(identity, 'stopped-pending');
 		} else if (identity && pending?.stoppedStatus) {
 			finishStoppedSession(identity, pending.stoppedStatus);
-		} else if (identity && pending?.kind === 'finish') {
-			const result = await loadCompletedResult(identity.modelNum, identity);
-			if (!result) return { ok: false, code: 'conflict' };
-			setTrainingSessionStatus(identity, 'complete', result.logEntries);
 		}
 		if (pending?.kind === 'replace' && pendingDatasetCleanup) {
 			const cleanup = pendingDatasetCleanup;
@@ -660,17 +666,24 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		return { ok: true, value: undefined };
 	}
 
-	async function loadCompletedResult(
+	function recoverCompletedResult(
 		modelNum: number,
-		expected?: TrainingRunIdentity
-	): Promise<ResultEnvelope | null> {
-		const outcome = await withResource(INGESTION_LOCK, 'shared', false, () =>
+		expected?: TrainingRunIdentity,
+		finishOperationId?: string
+	): Promise<TrainingCommandResult<ResultEnvelope | null>> {
+		return withResource(INGESTION_LOCK, 'shared', false, () =>
 			withResource(
 				`samata-ml:training:${modelNum}`,
 				'shared',
 				false,
 				async (): Promise<TrainingCommandResult<ResultEnvelope | null>> => {
 					const fetched = await withTrainingStateLock(async (context) => {
+						if (
+							finishOperationId &&
+							$publicationPending.get()?.operationId !== finishOperationId
+						) {
+							return { ok: true as const, value: null };
+						}
 						const snapshot = await readGuardedTrainingSnapshot(context);
 						if (!snapshot.ok) return snapshot;
 						const state = snapshot.state;
@@ -697,28 +710,48 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 							result.configurationKey !==
 								getTrainingConfigurationKey(model, state.dataset.rowCount)
 						) {
+							return finishOperationId
+								? conflict
+								: { ok: true as const, value: null };
+						}
+						const pending = $publicationPending.get();
+						if (finishOperationId && pending?.operationId !== finishOperationId) {
 							return { ok: true as const, value: null };
+						}
+						const matchingFinish =
+							pending?.kind === 'finish' &&
+							pending.identity &&
+							sameTrainingRun(pending.identity, result);
+						if (matchingFinish) {
+							if ($appState.get().trainingDomainGeneration > snapshot.generation)
+								return conflict;
+							if (!snapshot.replayed)
+								publishRecoveredTrainingSnapshot(context, state, model);
+						}
+						createTrainingSession(result);
+						setTrainingSessionStatus(result, 'complete', result.logEntries);
+						if (
+							matchingFinish &&
+							$publicationPending.get()?.operationId === pending.operationId
+						) {
+							$publicationPending.set(null);
 						}
 						return { ok: true as const, value: result };
 					}, persistence);
-					return fetched.ok ? fetched : notice(fetched);
+					return fetched.ok
+						? fetched
+						: notice(fetched, finishOperationId ? 'finish' : undefined);
 				}
 			)
 		);
-		if (outcome.ok && outcome.value) {
-			createTrainingSession(outcome.value);
-			setTrainingSessionStatus(outcome.value, 'complete', outcome.value.logEntries);
-			const pending = $publicationPending.get();
-			if (
-				pending?.kind === 'finish' &&
-				pending.identity &&
-				sameTrainingRun(pending.identity, outcome.value)
-			) {
-				$publicationPending.set(null);
-			}
-			return outcome.value;
-		}
-		return null;
+	}
+
+	async function loadCompletedResult(
+		modelNum: number,
+		expected?: TrainingRunIdentity
+	): Promise<ResultEnvelope | null> {
+		const outcome = await recoverCompletedResult(modelNum, expected);
+		return outcome.ok ? outcome.value : null;
 	}
 
 	async function destructive(

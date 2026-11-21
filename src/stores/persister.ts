@@ -483,6 +483,21 @@ function writeAcknowledgedSnapshot(
 	return { ok: true, generation: state.trainingDomainGeneration };
 }
 
+function saveTrainingLogEdits(
+	storage: StorageAdapter,
+	state: PersistedAppState,
+	visible: PersistedAppState
+): PersistedAppState {
+	if (visible === state) {
+		pruneTrainingLogEdits(state, true);
+		return state;
+	}
+	// The protected state is already durable. Saving the disclosure remains best effort.
+	const ack = writeAcknowledgedSnapshot(storage, visible);
+	noteOrdinaryFailure(ack);
+	return ack.ok ? visible : state;
+}
+
 async function publishPending(
 	context: TrainingStateContext,
 	checkpoint: TrainingDomainCheckpoint,
@@ -518,15 +533,7 @@ async function publishPending(
 		pending.operationId
 	);
 	if (!cleared.ok) return cleared;
-	const visible = mergeTrainingLogEdits(state);
-	if (visible !== state) {
-		// The protected state is already durable. Saving the disclosure remains best effort.
-		const ack = writeAcknowledgedSnapshot(context.storage, visible);
-		if (ack.ok) state = visible;
-		noteOrdinaryFailure(ack);
-	} else {
-		pruneTrainingLogEdits(state, true);
-	}
+	state = saveTrainingLogEdits(context.storage, state, mergeTrainingLogEdits(state));
 	publishAcknowledgedAppSnapshot(state);
 	return { ok: true, state };
 }
@@ -571,6 +578,34 @@ export async function readGuardedTrainingSnapshot(
 	return { ...snapshot, generation, replayed: false };
 }
 
+function publishNewerTrainingSnapshot(state: PersistedAppState): void {
+	const current = $appState.get();
+	if (state.trainingDomainGeneration > current.trainingDomainGeneration) {
+		publishAcknowledgedAppSnapshot({
+			...state,
+			onboarding: current.onboarding,
+			resumePath: current.resumePath,
+			results: current.results
+		});
+	}
+}
+
+/** Applies an already verified finish after foreign cleanup, with the state lock held. */
+export function publishRecoveredTrainingSnapshot(
+	context: TrainingStateContext,
+	state: PersistedAppState,
+	model: ModelRecord
+): void {
+	const edited = mergeTrainingLogEdit(state, model);
+	const visible =
+		edited === model
+			? state
+			: { ...state, models: state.models.map((entry) => (entry === model ? edited : entry)) };
+	const saved = saveTrainingLogEdits(context.storage, state, visible);
+	if (saved !== state) acknowledgedState = saved;
+	publishNewerTrainingSnapshot(saved);
+}
+
 /** Refreshes a newer protected generation after a storage event, without echoing ordinary writes. */
 export function refreshTrainingSnapshot(
 	options?: TrainingPersistenceOptions
@@ -579,15 +614,7 @@ export function refreshTrainingSnapshot(
 		const snapshot = await readGuardedTrainingSnapshot(context);
 		if (!snapshot.ok) return snapshot;
 		if (!snapshot.state) return { ok: false, reason: 'conflict' };
-		const current = $appState.get();
-		if (snapshot.generation > current.trainingDomainGeneration) {
-			publishAcknowledgedAppSnapshot({
-				...snapshot.state,
-				onboarding: current.onboarding,
-				resumePath: current.resumePath,
-				results: current.results
-			});
-		}
+		publishNewerTrainingSnapshot(snapshot.state);
 		return { ok: true, generation: snapshot.generation };
 	}, options);
 }
