@@ -1,6 +1,6 @@
 # Mockup Review Improvements
 
-**Status:** ready | **Updated:** 2026-11-21T12:12:45Z
+**Status:** ready | **Updated:** 2026-11-21T19:48:47Z
 **Authors:** Google Antigravity (Gemini 4 Neon High), Google Antigravity (Gemini) | **Created:** 2026-11-20T17:44:07Z
 **Verified by:** Google Antigravity (Gemini 4 Neon High) | **Verified:** 2026-11-21T10:09:23Z | **Verification:** approved
 **Verified hash:** sha256:f34dd07a43da86070de76a354cfe9bafdcdb1745731459ae01f6ce09c0ab676f
@@ -317,15 +317,15 @@ Client-side filtering matches `#query` case-insensitively against `name`, `filen
         - Use flat temporary fixtures (`clean.html`, `failing.html`, `empty.html`, `clean.css`) and assert `?clean=1` URLs at `/<filename>?clean=1`, skipping empty HTML, rejecting non-HTML/empty/nested explicit targets with exit code `2`, and reporting `bun run mockups` when unreachable.
     6. Format edited files with `bun run format`.
 - **Acceptance criteria:**
-    - [ ] `GET /index.json` returns valid JSON array of all top-level `.html` mockups with accurate `filename`, `name`, `description`, `status`, `isEmpty`, `size`, and `mtime`.
-    - [ ] `GET /` serves HTML linking `/mockups.css` with `<body class="mockup-index">`, `<table class="mockups">`, `#query`, `#status-filter`, and client-side `/index.json` renderer.
-    - [ ] `GET /<file>.html` injects `/mockups.css` in `<head>` and light-DOM `#__mockup-review-helper-host` before `</body>` with no Shadow DOM, no `<label>`, and no **Go** button.
-    - [ ] `GET /<file>.html?clean=1` returns byte-for-byte identical file bytes with no injected CSS, helper DOM, or `<script>`.
-    - [ ] Malformed URIs (`400`), symlink/traversal escapes (`403`), missing files (`404`), non-`GET`/`HEAD` (`405`), and non-text `/__source/*` (`415`) are rejected cleanly.
-    - [ ] `scripts/audit-mockups.ts` targets `/<filename>?clean=1` and references `bun run mockups` on setup error.
-    - [ ] `bun run check` (`tsc --noEmit && bun test`), `bun test tests/serve-mockups.test.ts`, and `bun test tests/audit-mockups.test.ts` all pass completely with zero TypeScript or test errors.
+    - [x] `GET /index.json` returns valid JSON array of all top-level `.html` mockups with accurate `filename`, `name`, `description`, `status`, `isEmpty`, `size`, and `mtime`.
+    - [x] `GET /` serves HTML linking `/mockups.css` with `<body class="mockup-index">`, `<table class="mockups">`, `#query`, `#status-filter`, and client-side `/index.json` renderer.
+    - [x] `GET /<file>.html` injects `/mockups.css` in `<head>` and light-DOM `#__mockup-review-helper-host` before `</body>` with no Shadow DOM, no `<label>`, and no **Go** button.
+    - [x] `GET /<file>.html?clean=1` returns byte-for-byte identical file bytes with no injected CSS, helper DOM, or `<script>`.
+    - [x] Malformed URIs (`400`), symlink/traversal escapes (`403`), missing files (`404`), non-`GET`/`HEAD` (`405`), and non-text `/__source/*` (`415`) are rejected cleanly.
+    - [x] `scripts/audit-mockups.ts` targets `/<filename>?clean=1` and references `bun run mockups` on setup error.
+    - [x] `bun run check` (`tsc --noEmit && bun test`), `bun test tests/serve-mockups.test.ts`, and `bun test tests/audit-mockups.test.ts` all pass completely with zero TypeScript or test errors.
 - **Verification:** `bun run check`, `bun test tests/serve-mockups.test.ts`, `bun test tests/audit-mockups.test.ts`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-21T19:48:47Z)
 
 ### T3 — Rename `scaffold` → `mockups` across scripts, tooling config, and source TSDoc comments
 
@@ -427,6 +427,7 @@ None.
 | ---------- | ---- | ------------- | ----------------------------- |
 | —          | —    | —             | Not started                   |
 | 2026-11-21T12:12:45Z | T1 | Google Antigravity (Gemini 4 Neon High) | Flattened specification/mockups/ (26 HTML, style.css, mockups.css verbatim, 18 css/*.css; removed 4 empty 0-byte duplicates and ui-scaffold/ + drafts/); added <meta name="name\|description\|status"> to all 26 HTML files; stripped prototype mockups.css links, orphan comments, static #__mockup-review-helper-host blocks, and placeholder titles; wrapped all multi-state fragments across all 11 multi-state product draft files (note: 03-6_train-models-5-train.html was refactored on main by web-ml-phase-3-model-training commit 18deeee to 11 fragments — 1 builder + 7 template + 3 section — all 11 wrapped). Verified: bun run format:check specification/mockups/*.html PASS, 26 HTML + 18 css/*.css, 0 empty HTML, 0 ../style.css or prototype hooks, 26/26 meta tags. |
+| 2026-11-21T19:48:47Z | T2 | Google Antigravity (Gemini 4 Neon High) | Updated scripts/config.ts, scripts/serve-mockups.ts, scripts/audit-mockups.ts, tests/serve-mockups.test.ts, tests/audit-mockups.test.ts for flat URLs, /index.json, body.mockup-index table index with client-side search/status filter, light-DOM #__mockup-review-helper-host + /mockups.css injection (omitted on ?clean=1), and bun run mockups audit error. Verified: bun run check PASS (tsc --noEmit 0 errors; 401 pass, 0 fail across 46 files), bun test tests/serve-mockups.test.ts PASS (10/10), bun test tests/audit-mockups.test.ts PASS (6/6), bun run format:check PASS. |
 
 ## Plan review history
 

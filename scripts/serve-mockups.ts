@@ -6,24 +6,29 @@ import { MOCKUPS_DIR } from './config';
 import { isPathInside } from './filesystem';
 import { contentTypeFromPath } from './static-server';
 
-/** Metadata for a regular file discovered beneath the mockups root. */
-export interface MockupFileInfo {
-	/** POSIX path relative to the mockups root. */
-	relativePath: string;
-	/** Extracted HTML title or a path-derived fallback. */
-	title: string;
+/** Lifecycle status declared by a mockup HTML document. */
+export type MockupStatus = 'draft' | 'ready' | 'implemented';
+
+/** Structured metadata parsed from a mockup HTML document's `<head>`. */
+export interface MockupMetadata {
+	/** Plain-English mockup name from `<meta name="name">` or fallback. */
+	name: string;
+	/** Plain-English summary of when the user encounters this UI. */
+	description: string;
+	/** Mockup lifecycle status (`draft`, `ready`, or `implemented`). */
+	status: MockupStatus;
+}
+
+/** Catalogue entry served by `GET /index.json` for a top-level HTML mockup. */
+export interface MockupIndexEntry extends MockupMetadata {
+	/** Top-level filename inside `specification/mockups/`. */
+	filename: string;
+	/** True when the file has zero bytes. */
+	isEmpty: boolean;
 	/** File size in bytes. */
 	size: number;
-	/** True when the file has no bytes. */
-	isEmpty: boolean;
-	/** Timestamp of the last modification. */
-	mtime: Date;
-	/** Broad file category used by the catalogue. */
-	kind: 'html' | 'css' | 'asset';
-	/** True when the file is under ui-scaffold/drafts/. */
-	isDraft: boolean;
-	/** Matching reference path when a draft has an exact counterpart. */
-	counterpartPath?: string;
+	/** ISO-8601 timestamp of the last modification. */
+	mtime: string;
 }
 
 /** Parsed command-line settings for the local mockup server. */
@@ -37,94 +42,171 @@ export interface ServerCliOptions {
 }
 
 type ReloadClient = ReadableStreamDefaultController<Uint8Array>;
-type CatalogueFilter = 'all' | 'needs-styling' | 'html' | 'css' | 'assets' | 'empty';
 
 const DEFAULT_PORT = 3333;
 const DEFAULT_HOSTNAME = 'localhost';
 const WATCH_DEBOUNCE_MS = 150;
 const TEXT_SOURCE_EXTENSION = /\.(html?|css|js|mjs|json|md|txt)$/i;
+const VALID_STATUSES: ReadonlySet<string> = new Set<MockupStatus>([
+	'draft',
+	'ready',
+	'implemented'
+]);
 const clients = new Set<ReloadClient>();
 let reloadVersion = Date.now();
 
-/** Formats a raw byte count into human-readable units. */
-export function formatBytes(bytes: number): string {
-	if (bytes === 0) return '0 B';
-	const units = ['B', 'KB', 'MB', 'GB'];
-	const index = Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1);
-	return parseFloat((bytes / 1024 ** index).toFixed(1)) + ' ' + units[index];
+function decodeHtmlEntities(value: string): string {
+	return value.replace(
+		/&(amp|lt|gt|quot|#39|#x27|#\d+|#x[0-9a-f]+);/gi,
+		(match, entity: string) => {
+			const lower = entity.toLowerCase();
+			if (lower === 'amp') return '&';
+			if (lower === 'lt') return '<';
+			if (lower === 'gt') return '>';
+			if (lower === 'quot') return '"';
+			if (lower === '#39' || lower === '#x27') return "'";
+			if (lower.startsWith('#x')) {
+				const codePoint = Number.parseInt(lower.slice(2), 16);
+				if (Number.isInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff)
+					return String.fromCodePoint(codePoint);
+				return match;
+			}
+			if (lower.startsWith('#')) {
+				const codePoint = Number.parseInt(lower.slice(1), 10);
+				if (Number.isInteger(codePoint) && codePoint >= 0 && codePoint <= 0x10ffff)
+					return String.fromCodePoint(codePoint);
+				return match;
+			}
+			return match;
+		}
+	);
 }
 
-/** Extracts the text content of an HTML title element. */
-export function extractHtmlTitle(html: string): string {
-	const match = html.match(/<title[^>]*>([^<]+)<\/title>/i);
-	return match ? match[1]!.trim() : '';
+function escapeHtml(value: string): string {
+	const entities: Record<string, string> = {
+		'&': '&amp;',
+		'<': '&lt;',
+		'>': '&gt;',
+		'"': '&quot;',
+		"'": '&#39;'
+	};
+	return value.replace(/[&<>"']/g, (character) => entities[character]!);
+}
+
+function escapeInlineScriptJson(value: unknown): string {
+	const escapes: Record<string, string> = {
+		'<': '\\u003c',
+		'>': '\\u003e',
+		'&': '\\u0026',
+		'\u2028': '\\u2028',
+		'\u2029': '\\u2029'
+	};
+	return JSON.stringify(value).replace(/[<>&\u2028\u2029]/g, (character) => escapes[character]!);
 }
 
 /**
- * Recursively discovers regular files beneath the mockups root.
+ * Extracts the text content of an HTML `<title>` element.
  *
- * @param dir - Absolute path to the mockups root.
- * @returns Sorted file metadata.
+ * @param html - Raw HTML document source.
+ * @returns Trimmed title text, or an empty string when absent.
  */
-export async function getMockupFiles(dir: string = MOCKUPS_DIR): Promise<MockupFileInfo[]> {
-	const relativePaths: string[] = [];
-	const visit = async (directory: string, prefix = ''): Promise<void> => {
-		for (const entry of await readdir(directory, { withFileTypes: true })) {
-			if (entry.name.startsWith('.')) continue;
-			const relativePath = prefix ? prefix + '/' + entry.name : entry.name;
-			if (entry.isDirectory()) await visit(path.join(directory, entry.name), relativePath);
-			else if (entry.isFile()) relativePaths.push(relativePath);
-		}
+export function extractHtmlTitle(html: string): string {
+	const match = html.match(/<title\b[^>]*>([^<]+)<\/title>/i);
+	return match ? decodeHtmlEntities(match[1]!).trim() : '';
+}
+
+function parseMetaAttributes(tag: string): Map<string, string> {
+	const attributes = new Map<string, string>();
+	const attributePattern = /([a-zA-Z_:][-a-zA-Z0-9_:.]*)\s*=\s*(?:"([^"]*)"|'([^']*)')/g;
+	for (const match of tag.matchAll(attributePattern)) {
+		const attrName = match[1]!.toLowerCase();
+		const attrValue = match[2] ?? match[3] ?? '';
+		attributes.set(attrName, decodeHtmlEntities(attrValue));
+	}
+	return attributes;
+}
+
+/**
+ * Parses `<meta name="name|description|status">` headers from mockup HTML with safe fallbacks.
+ *
+ * @param html - Raw HTML document source.
+ * @param filename - Top-level mockup filename used as a last-resort name fallback.
+ * @returns Normalised mockup metadata.
+ */
+export function extractMockupMetadata(html: string, filename: string): MockupMetadata {
+	let name = '';
+	let description = '';
+	let rawStatus = '';
+	for (const match of html.matchAll(/<meta\b[^>]*>/gi)) {
+		const attrs = parseMetaAttributes(match[0]);
+		const metaName = attrs.get('name')?.trim().toLowerCase();
+		const content = attrs.get('content');
+		if (!metaName || content === undefined) continue;
+		if (metaName === 'name' && !name) name = content.trim();
+		else if (metaName === 'description' && !description) description = content.trim();
+		else if (metaName === 'status' && !rawStatus) rawStatus = content.trim().toLowerCase();
+	}
+	const fallbackTitle = extractHtmlTitle(html);
+	const resolvedName = name || fallbackTitle || filename.replace(/\.html$/i, '');
+	const status: MockupStatus = VALID_STATUSES.has(rawStatus)
+		? (rawStatus as MockupStatus)
+		: 'draft';
+	return {
+		name: resolvedName,
+		description,
+		status
 	};
-	await visit(dir);
-	const discovered = new Set(relativePaths);
+}
+
+/**
+ * Discovers top-level regular non-symlink `.html` mockup files directly inside a directory.
+ *
+ * @param dir - Absolute path to the mockups directory.
+ * @returns Sorted mockup index entries with parsed `<meta>` metadata.
+ */
+export async function getMockupFiles(dir: string = MOCKUPS_DIR): Promise<MockupIndexEntry[]> {
+	const entries = await readdir(dir, { withFileTypes: true });
+	const filenames = entries
+		.filter((entry) => {
+			if (entry.name.startsWith('.')) return false;
+			if (!entry.isFile() || entry.isSymbolicLink()) return false;
+			const lower = entry.name.toLowerCase();
+			return lower.endsWith('.html') && lower !== 'index.html';
+		})
+		.map((entry) => entry.name);
+
 	const files = await Promise.all(
-		relativePaths.map(async (relativePath): Promise<MockupFileInfo> => {
-			const filePath = path.join(dir, ...relativePath.split('/'));
+		filenames.map(async (filename): Promise<MockupIndexEntry> => {
+			const filePath = path.join(dir, filename);
 			const fileStat = await stat(filePath);
-			const lowerPath = relativePath.toLowerCase();
-			const kind = lowerPath.endsWith('.html')
-				? 'html'
-				: lowerPath.endsWith('.css')
-					? 'css'
-					: 'asset';
-			let title = '';
-			if (kind === 'html' && fileStat.size > 0) {
+			const isEmpty = fileStat.size === 0;
+			let html = '';
+			if (!isEmpty) {
 				try {
-					title = extractHtmlTitle(await readFile(filePath, 'utf8'));
+					html = await readFile(filePath, 'utf8');
 				} catch {
-					/* Use fallback. */
+					/* Use metadata fallbacks. */
 				}
 			}
-			const isDraft = relativePath.startsWith('ui-scaffold/drafts/');
-			const counterpartPath = isDraft
-				? relativePath.replace('ui-scaffold/drafts/', 'ui-scaffold/')
-				: undefined;
+			const metadata = extractMockupMetadata(html, filename);
 			return {
-				relativePath,
-				title:
-					title ||
-					path.posix
-						.basename(relativePath)
-						.replace(/\.[^.]+$/, '')
-						.replace(/[_-]/g, ' '),
+				filename,
+				...metadata,
+				isEmpty,
 				size: fileStat.size,
-				isEmpty: fileStat.size === 0,
-				mtime: fileStat.mtime,
-				kind,
-				isDraft,
-				...(kind === 'html' && counterpartPath && discovered.has(counterpartPath)
-					? { counterpartPath }
-					: {})
+				mtime: fileStat.mtime.toISOString()
 			};
 		})
 	);
-	return files.sort((left, right) =>
-		left.relativePath.localeCompare(right.relativePath, undefined, { numeric: true })
-	);
+	return files.sort((left, right) => left.filename.localeCompare(right.filename, 'en'));
 }
 
-/** Parses command-line arguments and the PORT environment variable. */
+/**
+ * Parses command-line arguments and the `PORT` environment variable.
+ *
+ * @param argv - Raw CLI argument slice (typically `process.argv.slice(2)`).
+ * @returns Resolved server binding and browser-launch options.
+ */
 export function parseCliArgs(argv: string[]): ServerCliOptions {
 	const envPort = Number.parseInt(process.env.PORT ?? '', 10);
 	let port = Number.isInteger(envPort) && envPort >= 0 ? envPort : DEFAULT_PORT;
@@ -146,256 +228,255 @@ export function parseCliArgs(argv: string[]): ServerCliOptions {
 	return { port, hostname, open };
 }
 
-function escapeHtml(value: string): string {
-	const entities: Record<string, string> = {
-		'&': '&amp;',
-		'<': '&lt;',
-		'>': '&gt;',
-		'"': '&quot;',
-		"'": '&#39;'
+/**
+ * Renders the `/` mockup catalogue document backed by `GET /index.json`.
+ *
+ * @returns Complete HTML5 index document linking `/mockups.css`.
+ */
+export function renderIndexHtml(): string {
+	const script = `(() => {
+	const queryInput = document.getElementById('query');
+	const statusSelect = document.getElementById('status-filter');
+	const resultsCount = document.getElementById('results-count');
+	const tbody = document.querySelector('table.mockups tbody');
+	let allEntries = [];
+
+	const renderRows = () => {
+		const query = (queryInput ? queryInput.value : '').trim().toLowerCase();
+		const status = statusSelect ? statusSelect.value : 'all';
+		const filtered = allEntries.filter((entry) => {
+			if (status !== 'all' && entry.status !== status) return false;
+			if (!query) return true;
+			return (
+				entry.name.toLowerCase().includes(query) ||
+				entry.filename.toLowerCase().includes(query) ||
+				entry.description.toLowerCase().includes(query)
+			);
+		});
+		if (resultsCount) {
+			resultsCount.textContent =
+				'Showing ' + filtered.length + ' of ' + allEntries.length + ' mockups';
+		}
+		if (!tbody) return;
+		tbody.replaceChildren();
+		if (filtered.length === 0) {
+			const tr = document.createElement('tr');
+			const td = document.createElement('td');
+			td.setAttribute('colspan', '4');
+			td.textContent = 'No mockups match your filter.';
+			tr.append(td);
+			tbody.append(tr);
+			return;
+		}
+		for (const entry of filtered) {
+			const encoded = encodeURIComponent(entry.filename);
+			const tr = document.createElement('tr');
+
+			const nameCell = document.createElement('td');
+			const nameLink = document.createElement('a');
+			nameLink.setAttribute('href', '/' + encoded);
+			nameLink.textContent = entry.name;
+			const br = document.createElement('br');
+			const small = document.createElement('small');
+			small.textContent = entry.filename;
+			nameCell.append(nameLink, br, small);
+
+			const descCell = document.createElement('td');
+			descCell.textContent = entry.description;
+
+			const statusCell = document.createElement('td');
+			const statusBadge = document.createElement('span');
+			statusBadge.setAttribute('class', 'mockup-status mockup-status-' + entry.status);
+			statusBadge.textContent = entry.status;
+			statusCell.append(statusBadge);
+
+			const actionsCell = document.createElement('td');
+			const sourceLink = document.createElement('a');
+			sourceLink.setAttribute('href', '/__source/' + encoded);
+			sourceLink.textContent = 'View source';
+			const cleanLink = document.createElement('a');
+			cleanLink.setAttribute('href', '/' + encoded + '?clean=1');
+			cleanLink.textContent = 'Clean preview';
+			actionsCell.append(sourceLink, document.createTextNode(' '), cleanLink);
+
+			tr.append(nameCell, descCell, statusCell, actionsCell);
+			tbody.append(tr);
+		}
 	};
-	return value.replace(/[&<>"']/g, (character) => entities[character]!);
-}
 
-function encodePath(relativePath: string): string {
-	return relativePath.split('/').map(encodeURIComponent).join('/');
-}
+	if (queryInput) queryInput.addEventListener('input', renderRows);
+	if (statusSelect) statusSelect.addEventListener('change', renderRows);
 
-function fileUrl(relativePath: string): string {
-	return '/files/' + encodePath(relativePath);
-}
-function sourceUrl(relativePath: string): string {
-	return '/__source/' + encodePath(relativePath);
-}
+	fetch('/index.json', { cache: 'no-store' })
+		.then((response) => {
+			if (!response.ok) throw new Error('HTTP ' + response.status);
+			return response.json();
+		})
+		.then((entries) => {
+			allEntries = Array.isArray(entries) ? entries : [];
+			renderRows();
+		})
+		.catch(() => {
+			if (resultsCount) resultsCount.textContent = 'Failed to load mockups.';
+		});
 
-function matchesFilter(file: MockupFileInfo, filter: CatalogueFilter): boolean {
-	if (filter === 'needs-styling') return file.kind === 'html' && file.isDraft;
-	if (filter === 'html') return file.kind === 'html';
-	if (filter === 'css') return file.kind === 'css';
-	if (filter === 'assets') return file.kind === 'asset';
-	if (filter === 'empty') return file.isEmpty;
-	return true;
-}
+	const connect = () => {
+		const source = new EventSource('/__hmr');
+		source.onmessage = (event) => {
+			if (event.data === 'reload') location.reload();
+		};
+		source.onerror = () => {
+			source.close();
+			setTimeout(connect, 1000);
+		};
+	};
+	connect();
+})();`;
 
-function renderFileItem(file: MockupFileInfo, files: MockupFileInfo[]): string {
-	const type =
-		file.kind === 'html'
-			? file.isDraft
-				? 'Draft — needs styling'
-				: 'Reference'
-			: file.kind.toUpperCase() + ' resource';
-	const openLink =
-		file.kind === 'html'
-			? '<p><a href="' +
-				fileUrl(file.relativePath) +
-				'">Preview: ' +
-				escapeHtml(file.relativePath) +
-				'</a></p><p><a href="' +
-				fileUrl(file.relativePath) +
-				'?clean=1">Clean preview: ' +
-				escapeHtml(file.relativePath) +
-				'</a></p>'
-			: '<p><a href="' +
-				fileUrl(file.relativePath) +
-				'">Open file: ' +
-				escapeHtml(file.relativePath) +
-				'</a></p>';
-	const source = TEXT_SOURCE_EXTENSION.test(file.relativePath)
-		? '<p><a href="' +
-			sourceUrl(file.relativePath) +
-			'">View source: ' +
-			escapeHtml(file.relativePath) +
-			'</a></p>'
-		: '';
-	let counterpart = '';
-	if (file.counterpartPath) {
-		const counterpartFile = files.find((entry) => entry.relativePath === file.counterpartPath);
-		counterpart =
-			'<p><a href="' +
-			fileUrl(file.counterpartPath) +
-			'">Compare with reference: ' +
-			escapeHtml(file.counterpartPath) +
-			(counterpartFile?.isEmpty ? ' (empty)' : '') +
-			'</a></p>';
-	}
-	const modified = file.mtime.toLocaleString('en-GB', {
-		year: 'numeric',
-		month: 'short',
-		day: 'numeric',
-		hour: '2-digit',
-		minute: '2-digit',
-		second: '2-digit',
-		timeZoneName: 'short'
-	});
 	return (
-		'<li><a href="' +
-		fileUrl(file.relativePath) +
-		'"><code>' +
-		escapeHtml(file.relativePath) +
-		'</code></a>' +
-		'<p>' +
-		escapeHtml(file.title) +
-		'. ' +
-		type +
-		(file.isEmpty ? ' — empty (0 B)' : '') +
-		'. ' +
-		formatBytes(file.size) +
-		'. Modified <time datetime="' +
-		file.mtime.toISOString() +
-		'">' +
-		escapeHtml(modified) +
-		'</time>.</p>' +
-		openLink +
-		source +
-		counterpart +
-		'</p></li>'
-	);
-}
-
-/** Renders the native searchable catalogue without application styles. */
-export function renderIndexHtml(
-	files: MockupFileInfo[],
-	query = '',
-	requestedFilter = 'all'
-): string {
-	const options: Array<[CatalogueFilter, string]> = [
-		['all', 'All files'],
-		['needs-styling', 'Needs styling'],
-		['html', 'HTML'],
-		['css', 'CSS'],
-		['assets', 'Other resources'],
-		['empty', 'Empty files']
-	];
-	const filter = options.some(([value]) => value === requestedFilter)
-		? (requestedFilter as CatalogueFilter)
-		: 'all';
-	const normalizedQuery = query.trim().toLocaleLowerCase();
-	const matches = files.filter(
-		(file) =>
-			matchesFilter(file, filter) &&
-			(!normalizedQuery ||
-				file.relativePath.toLocaleLowerCase().includes(normalizedQuery) ||
-				file.title.toLocaleLowerCase().includes(normalizedQuery))
-	);
-	const drafts = matches.filter((file) => file.kind === 'html' && file.isDraft);
-	const references = matches.filter((file) => file.kind === 'html' && !file.isDraft);
-	const resources = matches.filter((file) => file.kind !== 'html');
-	const list = (items: MockupFileInfo[]) =>
-		items.length
-			? '<ul>' + items.map((file) => renderFileItem(file, files)).join('') + '</ul>'
-			: '<p>No files in this group.</p>';
-	const section = (id: string, heading: string, items: MockupFileInfo[]) =>
-		'<section' +
-		(id ? ' id="' + id + '"' : '') +
-		'><h2>' +
-		heading +
-		'</h2>' +
-		list(items) +
-		'</section>';
-	const filterOptions = options
-		.map(
-			([value, label]) =>
-				'<option value="' +
-				value +
-				'"' +
-				(value === filter ? ' selected' : '') +
-				'>' +
-				label +
-				'</option>'
-		)
-		.join('');
-	const noResults = matches.length
-		? ''
-		: '<p>No files match these filters. <a href="/">Reset filters</a>.</p>';
-	return (
-		'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">' +
-		'<title>Mockup review catalogue — samatā.ml</title><style>:where(*) { box-sizing: border-box; max-inline-size: 100%; overflow-wrap: anywhere; }</style></head><body>' +
-		'<header><h1>Mockup review</h1><p>Browse every file in specification/mockups. Drafts need human styling.</p></header>' +
-		'<main id="catalogue"><form role="search" action="/" method="get"><label for="query">Search paths and titles</label>' +
-		'<input id="query" name="q" type="search" value="' +
-		escapeHtml(query) +
-		'"><label for="filter">Show files</label>' +
-		'<select id="filter" name="filter">' +
-		filterOptions +
-		'</select><button type="submit">Apply filters</button> <a href="/">Reset filters</a></form>' +
-		'<p>Showing ' +
-		matches.length +
-		' of ' +
-		files.length +
-		' files. A reference file is not evidence of review approval.</p>' +
-		noResults +
-		section('needs-styling', 'Needs styling', drafts) +
-		section('', 'References', references) +
-		section('resources', 'Resources', resources) +
-		'<section><h2>Review workflow</h2><p>Edit local HTML and CSS in your editor. Save DevTools experiments to disk before live reload.</p>' +
-		'<p>Run <code>bun run audit:mockups ui-scaffold/drafts/03-0_models-overview.html</code> with the mockup server running. Automated results need manual keyboard, screen-reader and responsive checks.</p>' +
-		'<p>Request markup changes with a file path, section, current problem, desired change and affected states. Human promotion and application integration are separate steps.</p></section></main>' +
-		'<script>(() => { const connect = () => { const source = new EventSource("/__hmr"); source.onmessage = (event) => { if (event.data === "reload") location.reload(); }; source.onerror = () => { source.close(); setTimeout(connect, 1000); }; }; connect(); })();</script></body></html>'
+		'<!doctype html>\n' +
+		'<html lang="en">\n' +
+		'\t<head>\n' +
+		'\t\t<meta charset="utf-8" />\n' +
+		'\t\t<meta name="viewport" content="width=device-width, initial-scale=1" />\n' +
+		'\t\t<title>Mockup review catalogue — samatā.ml</title>\n' +
+		'\t\t<link rel="stylesheet" href="/mockups.css" />\n' +
+		'\t</head>\n' +
+		'\t<body class="mockup-index">\n' +
+		'\t\t<header>\n' +
+		'\t\t\t<h1>Mockup review</h1>\n' +
+		'\t\t\t<p>Browse HTML mockups in specification/mockups/.</p>\n' +
+		'\t\t</header>\n' +
+		'\t\t<main id="catalogue">\n' +
+		'\t\t\t<div class="mockup-filters">\n' +
+		'\t\t\t\t<label for="query">Search mockups</label>\n' +
+		'\t\t\t\t<input id="query" name="q" type="search" placeholder="Search by name, filename, or description" />\n' +
+		'\t\t\t\t<label for="status-filter">Status</label>\n' +
+		'\t\t\t\t<select id="status-filter" name="status">\n' +
+		'\t\t\t\t\t<option value="all" selected>All statuses</option>\n' +
+		'\t\t\t\t\t<option value="draft">Draft</option>\n' +
+		'\t\t\t\t\t<option value="ready">Ready</option>\n' +
+		'\t\t\t\t\t<option value="implemented">Implemented</option>\n' +
+		'\t\t\t\t</select>\n' +
+		'\t\t\t</div>\n' +
+		'\t\t\t<p id="results-count" aria-live="polite"></p>\n' +
+		'\t\t\t<table class="mockups">\n' +
+		'\t\t\t\t<thead>\n' +
+		'\t\t\t\t\t<tr>\n' +
+		'\t\t\t\t\t\t<th scope="col">Name</th>\n' +
+		'\t\t\t\t\t\t<th scope="col">Description</th>\n' +
+		'\t\t\t\t\t\t<th scope="col">Status</th>\n' +
+		'\t\t\t\t\t\t<th scope="col">Actions</th>\n' +
+		'\t\t\t\t\t</tr>\n' +
+		'\t\t\t\t</thead>\n' +
+		'\t\t\t\t<tbody></tbody>\n' +
+		'\t\t\t</table>\n' +
+		'\t\t</main>\n' +
+		'\t\t<script>' +
+		script +
+		'</script>\n' +
+		'\t</body>\n' +
+		'</html>\n'
 	);
 }
 
 /**
- * Adds a normal-flow, open-shadow-root helper to an HTML preview.
+ * Injects `/mockups.css` into `<head>` and the light-DOM `#__mockup-review-helper-host`
+ * review bar plus live-reload script immediately before `</body>`.
  *
- * @param html - Original HTML source.
- * @param relativePath - POSIX path relative to the mockups root.
- * @param allFiles - Current mockup inventory.
- * @returns HTML containing preview controls and live reload.
+ * @param html - Original HTML document source.
+ * @param entry - Parsed catalogue metadata for the previewed mockup.
+ * @returns Preview HTML with helper stylesheet, navigation bar, and HMR listener.
  */
-export function injectPreviewHelper(
-	html: string,
-	relativePath: string,
-	allFiles: MockupFileInfo[]
-): string {
-	const current = allFiles.find((file) => file.relativePath === relativePath);
-	const payload = {
-		relativePath,
-		isDraft: current?.isDraft ?? relativePath.startsWith('ui-scaffold/drafts/'),
-		isEmpty: current?.isEmpty ?? html.length === 0,
-		counterpartPath: current?.counterpartPath,
-		files: allFiles
-			.filter((file) => file.kind === 'html')
-			.map((file) => ({ relativePath: file.relativePath, isEmpty: file.isEmpty }))
-	};
-	const dataId = '__mockup-review-data-' + crypto.randomUUID();
-	const escapes: Record<string, string> = {
-		'<': '\\u003c',
-		'>': '\\u003e',
-		'&': '\\u0026',
-		'\u2028': '\\u2028',
-		'\u2029': '\\u2029'
-	};
-	const json = JSON.stringify(payload).replace(
-		/[<>&\u2028\u2029]/g,
-		(character) => escapes[character]!
-	);
-	const helper =
-		'<script type="application/json" id="' +
-		dataId +
+export function injectPreviewHelper(html: string, entry: MockupIndexEntry): string {
+	const stylesheetLink = '<link rel="stylesheet" href="/mockups.css" />';
+	const withStylesheet = /<\/head>/i.test(html)
+		? html.replace(/<\/head>/i, (closing) => stylesheetLink + '\n' + closing)
+		: stylesheetLink + '\n' + html;
+
+	const safeStatus = VALID_STATUSES.has(entry.status) ? entry.status : 'draft';
+	const helperHtml =
+		'<div id="__mockup-review-helper-host">\n' +
+		'\t<div id="mockup-details">\n' +
+		'\t\t<h4 class="mockup-name">\n' +
+		'\t\t\t' +
+		escapeHtml(entry.name) +
+		'\n' +
+		'\t\t\t<span class="mockup-status mockup-status-' +
+		safeStatus +
 		'">' +
-		json +
-		'</script><script>(() => {' +
-		'const dataNode = document.getElementById("' +
-		dataId +
-		'"); const data = JSON.parse(dataNode.textContent || "{}"); dataNode.remove();' +
-		'const host = document.createElement("div"); host.id = "__mockup-review-helper-host"; const shadow = host.attachShadow({mode:"open"});' +
-		'const style = document.createElement("style"); style.textContent = ":host{display:block;max-inline-size:100%;box-sizing:border-box;overflow-wrap:anywhere}*{max-inline-size:100%;box-sizing:border-box;overflow-wrap:anywhere}"; shadow.append(style);' +
-		'const nav = document.createElement("nav"); nav.id = "preview-controls"; nav.setAttribute("aria-label","Mockup review");' +
-		'const status = document.createElement("p"); status.textContent = data.relativePath + " — " + (data.isDraft ? "Draft — needs styling" : "Reference"); nav.append(status);' +
-		'const addLink = (label, href) => { const a = document.createElement("a"); a.textContent = label; a.href = href; nav.append(a); };' +
-		'const encode = (value) => value.split("/").map(encodeURIComponent).join("/"); addLink("Catalogue","/"); addLink("Source","/__source/" + encode(data.relativePath)); addLink("Clean preview","/files/" + encode(data.relativePath) + "?clean=1");' +
-		'if (data.counterpartPath) addLink("Compare with reference: " + data.counterpartPath, "/files/" + encode(data.counterpartPath));' +
-		'if (data.isEmpty) { const p = document.createElement("p"); p.textContent = "This HTML file is empty."; nav.append(p); }' +
-		'const label = document.createElement("label"); label.htmlFor = "preview-page"; label.textContent = "Preview HTML file"; const select = document.createElement("select"); select.id = "preview-page";' +
-		'for (const file of data.files) { const option = document.createElement("option"); option.value = "/files/" + encode(file.relativePath); option.textContent = file.relativePath + (file.isEmpty ? " (empty)" : ""); option.selected = file.relativePath === data.relativePath; select.append(option); }' +
-		'const go = document.createElement("button"); go.type = "button"; go.textContent = "Go"; go.addEventListener("click", () => window.location.assign(select.value)); nav.append(label,select,go); shadow.append(nav);' +
-		'const source = new EventSource("/__hmr"); source.onmessage = (event) => { if (event.data === "reload") location.reload(); }; source.onerror = () => { source.close(); setTimeout(() => location.reload(),1000); };' +
-		'const install = () => { const main = document.querySelector("main"); if (main) main.prepend(host); else if (document.body) document.body.prepend(host); else document.documentElement.append(host); };' +
-		'if (document.readyState === "loading") document.addEventListener("DOMContentLoaded",install,{once:true}); else install(); })();</script>';
-	const bodyOpen = /<body\b[^>]*>/i;
-	return bodyOpen.test(html)
-		? html.replace(bodyOpen, (opening) => opening + helper)
-		: helper + html;
+		safeStatus +
+		'</span>\n' +
+		'\t\t</h4>\n' +
+		'\t\t<p class="mockup-description">' +
+		escapeHtml(entry.description) +
+		'</p>\n' +
+		'\t</div>\n' +
+		'\t<nav id="mockup-controls" aria-label="Mockup review">\n' +
+		'\t\t<select id="preview-page"></select>\n' +
+		'\t\t<a href="/" class="index-link">\n' +
+		'\t\t\t<svg\n' +
+		'\t\t\t\tclass="index-link-icon"\n' +
+		'\t\t\t\txmlns="http://www.w3.org/2000/svg"\n' +
+		'\t\t\t\twidth="24"\n' +
+		'\t\t\t\theight="24"\n' +
+		'\t\t\t\tviewBox="0 0 24 24"\n' +
+		'\t\t\t\tfill="none"\n' +
+		'\t\t\t\tstroke="currentColor"\n' +
+		'\t\t\t\tstroke-width="1.5"\n' +
+		'\t\t\t\tstroke-linecap="round"\n' +
+		'\t\t\t\tstroke-linejoin="round">\n' +
+		'\t\t\t\t<path d="M14 3v4a1 1 0 0 0 1 1h4" />\n' +
+		'\t\t\t\t<path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" />\n' +
+		'\t\t\t\t<path d="M9 9l1 0" />\n' +
+		'\t\t\t\t<path d="M9 13l6 0" />\n' +
+		'\t\t\t\t<path d="M9 17l6 0" />\n' +
+		'\t\t\t</svg>\n' +
+		'\t\t\t<span class="index-link-text">Index</span>\n' +
+		'\t\t</a>\n' +
+		'\t</nav>\n' +
+		'</div>';
+
+	const currentFileJson = escapeInlineScriptJson(entry.filename);
+	const helperScript =
+		'<script>(() => {' +
+		'const currentFile = ' +
+		currentFileJson +
+		';' +
+		'const select = document.getElementById("preview-page");' +
+		'if (select) {' +
+		'fetch("/index.json", { cache: "no-store" })' +
+		'.then((response) => (response.ok ? response.json() : []))' +
+		'.then((items) => {' +
+		'if (!Array.isArray(items)) return;' +
+		'select.replaceChildren();' +
+		'for (const item of items) {' +
+		'const option = document.createElement("option");' +
+		'option.value = item.filename;' +
+		'option.textContent = item.name + " (" + item.filename + ")";' +
+		'option.selected = item.filename === currentFile;' +
+		'select.append(option);' +
+		'}' +
+		'})' +
+		'.catch(() => {});' +
+		'select.addEventListener("change", () => {' +
+		'if (select.value && select.value !== currentFile) {' +
+		'window.location.assign("/" + encodeURIComponent(select.value));' +
+		'}' +
+		'});' +
+		'}' +
+		'const connect = () => {' +
+		'const source = new EventSource("/__hmr");' +
+		'source.onmessage = (event) => { if (event.data === "reload") location.reload(); };' +
+		'source.onerror = () => { source.close(); setTimeout(connect, 1000); };' +
+		'};' +
+		'connect();' +
+		'})();</script>';
+
+	const footerBlock = helperHtml + '\n' + helperScript;
+	return /<\/body>/i.test(withStylesheet)
+		? withStylesheet.replace(/<\/body>/i, (closing) => footerBlock + '\n' + closing)
+		: withStylesheet + '\n' + footerBlock;
 }
 
 function sendReload(): void {
@@ -552,79 +633,69 @@ export async function startMockupsServer(
 		hostname: options.hostname,
 		async fetch(request, bunServer) {
 			const url = new URL(request.url);
-			if (request.method !== 'GET' && request.method !== 'HEAD')
-				return new Response('Method not allowed', {
-					status: 405,
-					headers: { Allow: 'GET, HEAD' }
-				});
+			if (request.method !== 'GET' && request.method !== 'HEAD') {
+				const headers = noStoreHeaders('text/plain; charset=utf-8');
+				headers.set('Allow', 'GET, HEAD');
+				return new Response('Method not allowed', { status: 405, headers });
+			}
 			if (url.pathname === '/__hmr') {
 				bunServer?.timeout(request, 0);
 				return createReloadStream();
 			}
 			if (url.pathname === '/' || url.pathname === '/index.html') {
-				const files = await getMockupFiles(rootDir);
-				return new Response(
-					renderIndexHtml(
-						files,
-						url.searchParams.get('q') ?? '',
-						url.searchParams.get('filter') ?? 'all'
-					),
-					{ headers: noStoreHeaders('text/html; charset=utf-8') }
-				);
+				return new Response(request.method === 'HEAD' ? null : renderIndexHtml(), {
+					headers: noStoreHeaders('text/html; charset=utf-8')
+				});
+			}
+			if (url.pathname === '/index.json') {
+				const entries = await getMockupFiles(rootDir);
+				return new Response(request.method === 'HEAD' ? null : JSON.stringify(entries), {
+					headers: noStoreHeaders('application/json; charset=utf-8')
+				});
 			}
 			const decoded = decodePath(url.pathname);
 			if (decoded instanceof Response) return decoded;
 			let mode: 'file' | 'source' = 'file';
 			let relativePath: string;
-			if (decoded[0] === 'files' || decoded[0] === '__source') {
-				mode = decoded[0] === '__source' ? 'source' : 'file';
+			if (decoded[0] === '__source') {
+				mode = 'source';
 				relativePath = decoded.slice(1).join('/');
 			} else {
-				const oldPath = decoded.join('/');
-				if (
-					oldPath === 'specification/mockups' ||
-					oldPath === 'specification/mockups/index.html'
-				)
-					return Response.redirect(new URL('/' + url.search, url), 302);
-				if (oldPath.startsWith('specification/mockups/'))
-					relativePath = oldPath.slice('specification/mockups/'.length);
-				else if (oldPath.startsWith('ui-scaffold/')) relativePath = oldPath;
-				else if (oldPath.startsWith('drafts/')) relativePath = 'ui-scaffold/' + oldPath;
-				else relativePath = 'ui-scaffold/' + oldPath;
-				if (!relativePath || relativePath === 'index.html')
-					return Response.redirect(new URL('/' + url.search, url), 302);
-				return Response.redirect(
-					new URL('/files/' + encodePath(relativePath) + url.search, url),
-					302
-				);
+				relativePath = decoded.join('/');
 			}
 			if (!relativePath) return missingFile('');
 			const resolved = await resolveRegularFile(rootDir, relativePath);
 			if (resolved instanceof Response) return resolved;
 			const file = Bun.file(resolved);
 			if (mode === 'source') {
-				if (!TEXT_SOURCE_EXTENSION.test(relativePath))
+				if (!TEXT_SOURCE_EXTENSION.test(relativePath)) {
 					return new Response('Source view is available for text files only.', {
 						status: 415,
 						headers: noStoreHeaders('text/plain; charset=utf-8')
 					});
+				}
 				const headers = noStoreHeaders('text/plain; charset=utf-8');
 				headers.set('X-Content-Type-Options', 'nosniff');
 				return new Response(request.method === 'HEAD' ? null : file, { headers });
 			}
 			if (relativePath.toLowerCase().endsWith('.html')) {
 				const bytes = new Uint8Array(await file.arrayBuffer());
-				if (url.searchParams.get('clean') === '1')
+				if (url.searchParams.get('clean') === '1') {
 					return new Response(request.method === 'HEAD' ? null : bytes, {
 						headers: noStoreHeaders('text/html; charset=utf-8')
 					});
-				const currentFiles = await getMockupFiles(rootDir);
+				}
+				const html = new TextDecoder().decode(bytes);
+				const fileStat = await stat(resolved);
+				const entry: MockupIndexEntry = {
+					filename: relativePath,
+					...extractMockupMetadata(html, relativePath),
+					isEmpty: bytes.byteLength === 0,
+					size: bytes.byteLength,
+					mtime: fileStat.mtime.toISOString()
+				};
 				return new Response(
-					injectPreviewHelper(
-						new TextDecoder().decode(bytes),
-						relativePath,
-						currentFiles
-					),
+					request.method === 'HEAD' ? null : injectPreviewHelper(html, entry),
 					{ headers: noStoreHeaders('text/html; charset=utf-8') }
 				);
 			}
