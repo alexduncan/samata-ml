@@ -247,6 +247,7 @@ export async function bootstrapApp(): Promise<void> {
 		});
 		$storageSaveNotice.listen(() => renderAppShell(root));
 		$publicationPending.listen(() => renderAppShell(root));
+		getTrainingService().observePublishedStops();
 		storageMessages.listen(() => renderAppShell(root));
 		window.addEventListener('storage', (event) => {
 			if (event.key !== STATE_STORAGE_KEY && event.key !== null) return;

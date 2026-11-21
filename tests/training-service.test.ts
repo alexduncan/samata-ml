@@ -18,6 +18,7 @@ import {
 	$appState,
 	dismissWelcome,
 	reduceCreateModel,
+	reduceTrainingStart,
 	setHyperparameters,
 	setResumePath,
 	setTrainingLogOpen
@@ -28,9 +29,11 @@ import {
 	flushNow,
 	initPersister,
 	readAppSnapshot,
+	readGuardedTrainingSnapshot,
 	refreshTrainingSnapshot,
 	stopPersister,
-	TRAINING_STATE_LOCK
+	TRAINING_STATE_LOCK,
+	withTrainingStateLock
 } from '../src/stores/persister';
 import { reconcileProtectedStartup } from '../src/stores/reconciler';
 import {
@@ -685,11 +688,11 @@ function storedState(): PersistedAppState {
 	return saved.state;
 }
 
-function clearFinishFromAnotherTab() {
+function clearCheckpointFromAnotherTab(kind: 'cancel' | 'finish' | 'recover' = 'finish') {
 	return locks.request(TRAINING_STATE_LOCK, async () => {
 		const marker = await readTrainingCheckpoint(db);
-		if (!marker.ok || marker.checkpoint?.pending?.kind !== 'finish')
-			throw new Error('Missing finish marker');
+		if (!marker.ok || marker.checkpoint?.pending?.kind !== kind)
+			throw new Error(`Missing ${kind} marker`);
 		return clearPendingTrainingCheckpoint(
 			db,
 			marker.checkpoint.generation,
@@ -745,7 +748,7 @@ test.each(['untouched', 'unsaved', 'denied', 'remote', 'acknowledged'] as const)
 			const original = await db.get('model_results', [metadata.id, 1]);
 			expect(original).toMatchObject({ runId: revision });
 			cleanup.allow();
-			expect(await clearFinishFromAnotherTab()).toMatchObject({ ok: true });
+			expect(await clearCheckpointFromAnotherTab()).toMatchObject({ ok: true });
 			expect($appState.get().trainingDomainGeneration).toBe(1);
 			expect($appState.get().models[0]?.status).toBe('training');
 			expect(getTrainingSession(worker.identity)?.status).toBe('publication-pending');
@@ -843,7 +846,7 @@ test.each(['add model', 'replace model', 'replace target', 'replace revision'] a
 			flushNow();
 			await locks.request(TRAINING_STATE_LOCK, () => {});
 			cleanup.allow();
-			expect(await clearFinishFromAnotherTab()).toMatchObject({ ok: true });
+			expect(await clearCheckpointFromAnotherTab()).toMatchObject({ ok: true });
 			const current = storedState();
 			const matching = change === 'add model';
 			const next = matching
@@ -975,7 +978,7 @@ test.each([
 			cleanup.allow();
 			storage.reject = (state) => denyWrite && state.models[0]?.ui.trainingLogOpen === open;
 			const finish =
-				tab === 'owner' ? service.retry(worker.identity) : clearFinishFromAnotherTab();
+				tab === 'owner' ? service.retry(worker.identity) : clearCheckpointFromAnotherTab();
 			if (queued === 'after') expect(await finish).toMatchObject({ ok: true });
 			const refresh =
 				tab === 'foreign' && queued === 'before'
@@ -1202,6 +1205,390 @@ test('WML-P3-TRAIN-6: a committed stop repair is acknowledged without applying i
 	});
 	expect(getTrainingSession(worker.identity)?.status).toBe('failed');
 	expect(workers.map(({ terminations }) => terminations)).toEqual([1]);
+});
+
+for (const outcome of ['invalid-request', 'worker-crashed', 'cancelled'] as const) {
+	for (const denial of ['acknowledgement', 'cleanup'] as const) {
+		test.each(['owner', 'other tab'] as const)(
+			`WML-P3-TRAIN-5/6: ${outcome} after ${denial} denial and recovery by %s`,
+			async (tab) => {
+				seed();
+				const run = service.start(1);
+				const worker = await workerAt(0);
+				const owner = $appState.get();
+				const cancelled = outcome === 'cancelled';
+				const kind = cancelled ? 'cancel' : 'finish';
+				const status = cancelled ? 'cancelled' : 'failed';
+				const cleanup = denial === 'cleanup' ? blockFinishCleanup() : null;
+				storage.reject = (state) =>
+					denial === 'acknowledgement' && state.models[0]?.status === 'draft';
+				try {
+					worker.reply(
+						cancelled
+							? { kind: 'cancelled', identity: worker.identity }
+							: { kind: 'failed', code: outcome, identity: worker.identity }
+					);
+					expect(await run).toMatchObject({
+						ok: false,
+						pending: kind,
+						reason: 'security'
+					});
+					const committed = await readTrainingCheckpoint(db);
+					const pending = committed.ok && committed.checkpoint?.pending;
+					if (!pending) throw new Error('Missing stopped checkpoint');
+					const originalError = pending.domain.models[0]?.error;
+					expect(originalError).toMatchObject({
+						code: cancelled ? 'TRAINING_CANCELLED' : 'TRAINING_FAILED',
+						details: outcome
+					});
+					expect(getTrainingSession(worker.identity)?.status).toBe('stopped-pending');
+					expect(await service.retry(worker.identity)).toMatchObject({
+						ok: false,
+						pending: kind,
+						reason: 'security'
+					});
+					storage.reject = () => false;
+					cleanup?.allow();
+					if (tab === 'other tab') {
+						if (denial === 'acknowledgement') {
+							expect(
+								await withTrainingStateLock(
+									readGuardedTrainingSnapshot,
+									guardedPersistence()
+								)
+							).toMatchObject({ ok: true, replayed: true });
+							// The test services share a store. Restore the owner's view without a storage event.
+							$appState.set(owner);
+						} else {
+							expect(await clearCheckpointFromAnotherTab(kind)).toMatchObject({
+								ok: true
+							});
+						}
+					}
+					expect($appState.get().models[0]?.status).toBe('training');
+					const retries = await Promise.all([
+						service.retry(worker.identity),
+						service.retry(worker.identity)
+					]);
+					expect(retries).toEqual([
+						{ ok: true, value: undefined },
+						{ ok: true, value: undefined }
+					]);
+					for (const state of [$appState.get(), storedState()]) {
+						expect(state.trainingDomainGeneration).toBe(2);
+						expect(state.models[0]).toMatchObject({
+							status: 'draft',
+							resultRevision: null,
+							error: originalError
+						});
+					}
+					expect(await readTrainingCheckpoint(db)).toMatchObject({
+						checkpoint: { generation: 2, pending: null }
+					});
+					expect($publicationPending.get()).toBeNull();
+					const session = getTrainingSession(worker.identity);
+					expect(session?.status).toBe(status);
+					expect(
+						session?.logEntries.filter(({ message }) => message.key === status)
+					).toHaveLength(1);
+					expect(await db.get('model_results', [metadata.id, 1])).toBeUndefined();
+					expect(workers).toEqual([worker]);
+					expect(worker.terminations).toBe(1);
+				} finally {
+					cleanup?.restore();
+				}
+			}
+		);
+	}
+}
+
+test.each(['automatic recovery first', 'manual retry first'] as const)(
+	'WML-P3-TRAIN-6: foreign cleanup of a committed stop repair is idempotent with %s',
+	async (order) => {
+		seed();
+		const run = service.start(1);
+		const worker = await workerAt(0);
+		storage.denyRead = true;
+		worker.reply({ kind: 'failed', code: 'worker-crashed', identity: worker.identity });
+		expect(await run).toMatchObject({ ok: false, pending: 'recover', reason: 'security' });
+		storage.denyRead = false;
+		const cleanup = blockFinishCleanup();
+		try {
+			expect(await service.retry(worker.identity)).toMatchObject({
+				ok: false,
+				pending: 'recover'
+			});
+			cleanup.allow();
+			expect(await clearCheckpointFromAnotherTab('recover')).toMatchObject({ ok: true });
+			const refresh = () => refreshTrainingSnapshot(guardedPersistence());
+			const recover = async () => {
+				expect(await service.recoverStoppedPublication()).toMatchObject({ ok: true });
+			};
+			const retry = async () => {
+				expect(await service.retry(worker.identity)).toMatchObject({ ok: true });
+			};
+			const automaticFirst = order === 'automatic recovery first';
+			if (automaticFirst) expect(await refresh()).toMatchObject({ ok: true });
+			const barrier = Promise.withResolvers<void>();
+			const block = locks.request(TRAINING_STATE_LOCK, () => barrier.promise);
+			const first = automaticFirst ? recover() : retry();
+			let second: Promise<void>;
+			try {
+				for (let index = 0; index < 10; index++) {
+					if (
+						(await locks.query()).pending?.some(
+							({ name }) => name === TRAINING_STATE_LOCK
+						)
+					)
+						break;
+				}
+				expect((await locks.query()).pending?.map(({ name }) => name)).toContain(
+					TRAINING_STATE_LOCK
+				);
+				second = automaticFirst ? retry() : refresh().then(recover);
+			} finally {
+				barrier.resolve();
+			}
+			await Promise.all([block, first, second]);
+			expect($appState.get()).toEqual(storedState());
+			expect($appState.get().models[0]?.error?.details).toBe('worker-crashed');
+			expect($publicationPending.get()).toBeNull();
+			expect(getTrainingSession(worker.identity)).toMatchObject({
+				status: 'failed',
+				logEntries: [{ message: { key: 'failed' } }]
+			});
+			expect(await db.get('model_results', [metadata.id, 1])).toBeUndefined();
+			expect(workers).toEqual([worker]);
+		} finally {
+			cleanup.restore();
+		}
+	}
+);
+
+test('WML-P3-TRAIN-6: an ordinary writer that replays a committed stop settles the original session', async () => {
+	seed();
+	initPersister(storage, { trainingPersistence: guardedPersistence() });
+	const stopObserving = service.observePublishedStops();
+	const settled = Promise.withResolvers<void>();
+	const unlisten = $publicationPending.listen((pending) => {
+		if (!pending) settled.resolve();
+	});
+	try {
+		const run = service.start(1);
+		const worker = await workerAt(0);
+		storage.reject = (state) => state.models[0]?.status === 'draft';
+		worker.reply({ kind: 'failed', code: 'invalid-request', identity: worker.identity });
+		expect(await run).toMatchObject({ ok: false, pending: 'finish', reason: 'security' });
+		expect(getTrainingSession(worker.identity)?.status).toBe('stopped-pending');
+		storage.reject = () => false;
+		expect(setTrainingLogOpen(1, true)).toBe(true);
+		flushNow();
+		await settled.promise;
+		for (const state of [$appState.get(), storedState()]) {
+			expect(state.models[0]).toMatchObject({
+				status: 'draft',
+				resultRevision: null,
+				error: { details: 'invalid-request' },
+				ui: { trainingLogOpen: true }
+			});
+		}
+		expect(getTrainingSession(worker.identity)).toMatchObject({
+			status: 'failed',
+			logEntries: [{ message: { key: 'failed' } }]
+		});
+		expect(await readTrainingCheckpoint(db)).toMatchObject({
+			checkpoint: { generation: 2, pending: null }
+		});
+		expect(await db.get('model_results', [metadata.id, 1])).toBeUndefined();
+		expect(workers).toEqual([worker]);
+	} finally {
+		unlisten();
+		stopObserving();
+		stopPersister();
+		await locks.request(TRAINING_STATE_LOCK, () => {});
+	}
+});
+
+test.each([
+	'add model',
+	'replace dataset',
+	'replace target',
+	'replace model',
+	'edit configuration',
+	'restart',
+	'stop a newer run'
+] as const)(
+	'WML-P3-TRAIN-5: stopped retry checks the authoritative state after %s',
+	async (change) => {
+		seed();
+		const run = service.start(1);
+		const worker = await workerAt(0);
+		const cleanup = blockFinishCleanup();
+		try {
+			worker.reply({ kind: 'failed', code: 'invalid-request', identity: worker.identity });
+			expect(await run).toMatchObject({ ok: false, pending: 'finish' });
+			cleanup.allow();
+			expect(await clearCheckpointFromAnotherTab()).toMatchObject({ ok: true });
+			const state = storedState();
+			const stopped = state.models[0]!;
+			const restarted = reduceTrainingStart(state, {
+				...worker.identity,
+				runId: 'new-remote-run'
+			});
+			const next =
+				change === 'add model'
+					? reduceCreateModel(state, 20)
+					: change === 'restart'
+						? restarted
+						: {
+								...state,
+								dataset:
+									change === 'replace dataset'
+										? { ...state.dataset!, id: 'new-dataset' }
+										: state.dataset,
+								target: change === 'replace target' ? 'measurement' : state.target,
+								models: [
+									{
+										...stopped,
+										createdAt:
+											change === 'replace model' ? 20 : stopped.createdAt,
+										features:
+											change === 'edit configuration'
+												? ['other-feature']
+												: stopped.features,
+										error:
+											change === 'stop a newer run'
+												? {
+														...stopped.error!,
+														timestamp: stopped.error!.timestamp + 1
+													}
+												: stopped.error
+									}
+								]
+							};
+			if (!next) throw new Error('Missing revised state');
+			const { dataset, data, target, models, nextModelNum } = next;
+			const remote = locks.request(TRAINING_STATE_LOCK, async () => {
+				expect(
+					await commitTrainingCheckpoint(
+						db,
+						2,
+						{
+							operationId: 'remote-change',
+							kind: 'recover',
+							domain: { dataset, data, target, models, nextModelNum }
+						},
+						{ type: 'none' }
+					)
+				).toMatchObject({ ok: true });
+			});
+			const retry = service.retry(worker.identity);
+			await remote;
+			if (change === 'add model') {
+				expect(await retry).toMatchObject({ ok: true });
+				expect(getTrainingSession(worker.identity)?.status).toBe('failed');
+			} else {
+				expect(await retry).toMatchObject({ ok: true });
+				expect(getTrainingSession(worker.identity)?.status).toBe('stopped-pending');
+			}
+			expect($publicationPending.get()).toBeNull();
+			expect(storedState()).toMatchObject({
+				dataset,
+				target,
+				models,
+				nextModelNum,
+				trainingDomainGeneration: 3
+			});
+			expect($appState.get()).toEqual(storedState());
+			expect(await db.get('model_results', [metadata.id, 1])).toBeUndefined();
+			expect(workers).toEqual([worker]);
+		} finally {
+			cleanup.restore();
+		}
+	}
+);
+
+test('WML-P3-TRAIN-5: a new failure with the same reason and clock tick supersedes an older stop', async () => {
+	seed();
+	const run = service.start(1);
+	const worker = await workerAt(0);
+	const owner = $appState.get();
+	const cleanup = blockFinishCleanup();
+	try {
+		worker.reply({ kind: 'failed', code: 'invalid-request', identity: worker.identity });
+		expect(await run).toMatchObject({ ok: false, pending: 'finish' });
+		cleanup.allow();
+		expect(await clearCheckpointFromAnotherTab()).toMatchObject({ ok: true });
+		const prior = storedState();
+		const firstTimestamp = prior.models[0]!.error!.timestamp;
+		// Simulate a separate tab that already sees the first draft and starts a new run.
+		$appState.set(prior);
+		const other = createTrainingService({
+			locks,
+			persistence: { storage },
+			now: () => firstTimestamp,
+			isIsolated: () => true,
+			createWorker: () => {
+				const worker = new ScriptedWorker();
+				workers.push(worker);
+				return worker;
+			}
+		});
+		const restart = other.start(1);
+		const nextWorker = await workerAt(1);
+		nextWorker.reply({
+			kind: 'failed',
+			code: 'invalid-request',
+			identity: nextWorker.identity
+		});
+		expect(await restart).toMatchObject({ ok: false, code: 'invalid-request' });
+		const latest = storedState();
+		expect(latest.models[0]?.error).toMatchObject({
+			details: 'invalid-request',
+			timestamp: firstTimestamp + 1
+		});
+		$appState.set(owner);
+		expect(await service.retry(worker.identity)).toMatchObject({ ok: true });
+		expect($appState.get()).toEqual(latest);
+		expect(getTrainingSession(worker.identity)?.status).toBe('stopped-pending');
+		expect(getTrainingSession(nextWorker.identity)?.status).toBe('failed');
+		expect($publicationPending.get()).toBeNull();
+		expect(await db.get('model_results', [metadata.id, 1])).toBeUndefined();
+		expect(workers.map(({ terminations }) => terminations)).toEqual([1, 1]);
+	} finally {
+		cleanup.restore();
+	}
+});
+
+test('WML-P3-TRAIN-6: retry of a newer local stop repairs it after a superseded cancellation', async () => {
+	seed();
+	const run = service.start(1);
+	const worker = await workerAt(0);
+	const cleanup = blockFinishCleanup();
+	try {
+		worker.reply({ kind: 'cancelled', identity: worker.identity });
+		expect(await run).toMatchObject({ ok: false, pending: 'cancel' });
+		cleanup.allow();
+		expect(await clearCheckpointFromAnotherTab('cancel')).toMatchObject({ ok: true });
+		expect(await refreshTrainingSnapshot(guardedPersistence())).toMatchObject({ ok: true });
+		const restart = service.start(1);
+		const second = await workerAt(1);
+		storage.denyRead = true;
+		second.reply({ kind: 'failed', code: 'invalid-request', identity: second.identity });
+		expect(await restart).toMatchObject({ ok: false, pending: 'recover', reason: 'security' });
+		storage.denyRead = false;
+		expect(await service.retry(second.identity)).toMatchObject({ ok: true });
+		expect($appState.get().models[0]?.error?.details).toBe('invalid-request');
+		expect(getTrainingSession(second.identity)?.status).toBe('failed');
+		expect($publicationPending.get()).toBeNull();
+		expect(await readTrainingCheckpoint(db)).toMatchObject({
+			checkpoint: { generation: 4, pending: null }
+		});
+		expect(await db.get('model_results', [metadata.id, 1])).toBeUndefined();
+		expect(workers.map(({ terminations }) => terminations)).toEqual([1, 1]);
+	} finally {
+		cleanup.restore();
+	}
 });
 
 test('WML-P3-TRAIN-7: allocates concurrent models while merging the latest counter and rejects a stale start', async () => {

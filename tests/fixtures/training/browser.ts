@@ -16,6 +16,7 @@ type FixtureReply = {
 type BrowserTrainingFixture = {
 	requests: TrainingWorkerRequest[];
 	reply(event: FixtureReply, modelNum?: number): void;
+	crash(): void;
 	blockRead: boolean;
 	blockPublication: 'start' | 'finish' | 'stop' | null;
 	blockedWrites: number;
@@ -97,6 +98,7 @@ export async function controlTraining(page: Page, isolated = true): Promise<void
 		let worker:
 			| {
 					onmessage: ((event: MessageEvent<TrainingWorkerReply>) => void) | null;
+					onerror: ((event: ErrorEvent) => void) | null;
 					request?: TrainingStartRequest;
 			  }
 			| undefined;
@@ -113,6 +115,10 @@ export async function controlTraining(page: Page, isolated = true): Promise<void
 					})
 				);
 			},
+			crash() {
+				if (!worker?.onerror) throw new Error('Expected a started training worker');
+				worker.onerror(new ErrorEvent('error', { message: 'Private worker details' }));
+			},
 			blockRead: false,
 			blockPublication: null,
 			blockedWrites: 0
@@ -125,6 +131,7 @@ export async function controlTraining(page: Page, isolated = true): Promise<void
 					return Reflect.construct(target, argumentsList, newTarget);
 				const mock = {
 					onmessage: null,
+					onerror: null,
 					request: undefined as TrainingStartRequest | undefined,
 					postMessage(message: TrainingWorkerRequest) {
 						fixture.requests.push(message);

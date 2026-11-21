@@ -1838,7 +1838,8 @@ export class AppModelBuilderView extends LitElement {
 			this.trainingNotice?.key === this.trainingNoticeKey(model)
 				? this.trainingNotice
 				: undefined;
-		const code = notice?.code ?? model.error?.details ?? model.error?.code;
+		const savedReason = model.error?.details ?? model.error?.code;
+		const code = (notice?.pending ? savedReason : undefined) ?? notice?.code ?? savedReason;
 		return code
 			? this.renderTrainingNotice(model, this.trainingFailureMessage(code), false)
 			: nothing;

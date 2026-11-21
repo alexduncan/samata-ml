@@ -388,6 +388,176 @@ function blockFinishCleanup(page: Page, generation: number) {
 	}, generation);
 }
 
+function storedStop(page: Page) {
+	return page.evaluate(async () => {
+		const state = JSON.parse(localStorage.getItem('samata-ml:state')!) as PersistedAppState;
+		const model = state.models[0]!;
+		const db = await new Promise<IDBDatabase>((resolve, reject) => {
+			const request = indexedDB.open('samata-db');
+			request.onsuccess = () => resolve(request.result);
+			request.onerror = () => reject(request.error);
+		});
+		try {
+			const store = db.transaction('model_results').objectStore('model_results');
+			const marker = store.get(['samata-ml:training-domain', 0]);
+			const result = store.get([state.dataset!.id, model.num]);
+			return await new Promise((resolve, reject) => {
+				store.transaction.oncomplete = () =>
+					resolve({
+						generation: state.trainingDomainGeneration,
+						status: model.status,
+						reason: model.error?.details,
+						revision: model.resultRevision,
+						logOpen: model.ui.trainingLogOpen ?? false,
+						marker: {
+							generation: marker.result?.generation,
+							pending: marker.result?.pending?.kind ?? null
+						},
+						hasResult: result.result !== undefined
+					});
+				store.transaction.onerror = () => reject(store.transaction.error);
+			});
+		} finally {
+			db.close();
+		}
+	});
+}
+
+for (const [outcome, recovery] of [
+	['invalid-request', 'owner acknowledgement'],
+	['worker-crashed', 'owner acknowledgement'],
+	['cancelled', 'owner acknowledgement'],
+	['invalid-request', 'foreign cleanup'],
+	['cancelled', 'foreign cleanup'],
+	['worker-crashed', 'later storage event']
+] as const) {
+	test(`WML-P3-UI-2: committed ${outcome} stop restores its reason after ${recovery}`, async ({
+		page,
+		context
+	}) => {
+		await controlTraining(page);
+		const setup = await start(page);
+		const submit = setup.getByRole('button', { name: 'Train Model' });
+		const retry = training(page).getByRole('button', { name: 'Retry saving' });
+		const generation = (await savedRun(page)).generation + 1;
+		const reason =
+			outcome === 'invalid-request'
+				? /The training library rejected this setup/
+				: outcome === 'worker-crashed'
+					? /Training could not finish/
+					: /Training was cancelled/;
+		const other = recovery === 'owner acknowledgement' ? undefined : await context.newPage();
+		try {
+			if (other) {
+				await controlTraining(other);
+				await other.goto('/models/1');
+				await expect(training(other).locator('summary')).toHaveText(
+					'Training in another tab'
+				);
+				for (const tab of [page, other]) await blockFinishCleanup(tab, generation);
+			} else {
+				await page.evaluate(() => (window.__trainingFixture!.blockPublication = 'stop'));
+			}
+			if (outcome === 'cancelled') {
+				await training(page)
+					.getByRole('button', { name: 'Cancel Training' })
+					.press('Enter');
+				await expect.poll(() => requestCount(page, 'cancel')).toBe(1);
+			}
+			await page.evaluate((code) => {
+				const fixture = window.__trainingFixture!;
+				if (code === 'cancelled') fixture.reply({ kind: 'cancelled' });
+				else if (code === 'worker-crashed') fixture.crash();
+				else fixture.reply({ kind: 'failed', code });
+			}, outcome);
+			await expect(retry).toBeEnabled();
+			await expect(
+				training(page).getByRole('button', { name: 'View Results' })
+			).toBeDisabled();
+			const openLog = recovery === 'foreign cleanup' && outcome === 'invalid-request';
+			if (openLog) {
+				const denials = () =>
+					page.evaluate(() => (window as CleanupWindow).deniedFinishCleanups!);
+				const beforeToggle = await denials();
+				await training(page).locator('summary').press('Enter');
+				await expect(training(page).locator('details')).toHaveAttribute('open', '');
+				await expect.poll(denials).toBeGreaterThan(beforeToggle);
+				await page.evaluate(() =>
+					navigator.locks.request('samata-ml:training-state', () => {})
+				);
+			}
+			expect(await storedStop(page)).toMatchObject({
+				marker: { generation, pending: outcome === 'cancelled' ? 'cancel' : 'finish' },
+				hasResult: false
+			});
+			if (other) {
+				const remoteRetry = other.getByRole('button', { name: 'Retry saving' });
+				await expect(remoteRetry).toBeVisible();
+				await other.evaluate(() => (window as CleanupWindow).allowFinishCleanup!());
+				await remoteRetry.press('Enter');
+				await expect(other.getByRole('button', { name: 'Train Model' })).toBeEnabled();
+				await expect
+					.poll(() => storedStop(other))
+					.toMatchObject({ marker: { generation, pending: null } });
+				// Clearing an already acknowledged marker makes no localStorage write.
+				expect(await page.evaluate(() => window.__appState!.get().models[0]?.status)).toBe(
+					'training'
+				);
+				if (recovery === 'later storage event') {
+					await other.locator('app-sidebar a[href="/models"]').click();
+					await expect(other).toHaveURL('/models');
+				}
+			} else {
+				await retry.evaluate((button) => {
+					// Keep writes denied until the keyboard activates Retry saving.
+					button.addEventListener(
+						'click',
+						() => (window.__trainingFixture!.blockPublication = null),
+						{
+							capture: true,
+							once: true
+						}
+					);
+				});
+			}
+			if (recovery !== 'later storage event') await retry.press('Enter');
+			const notice = page
+				.locator('section[aria-labelledby="step-4-title"]')
+				.getByRole('alert');
+			await expect(submit).toBeEnabled();
+			await expect(notice).toHaveText(reason);
+			await expect(page.getByText('Private worker details')).toHaveCount(0);
+			await expect(training(page)).toHaveCount(0);
+			await expect(page.getByRole('button', { name: 'Retry saving' })).toHaveCount(0);
+			expect(await storedStop(page)).toEqual({
+				generation,
+				status: 'draft',
+				reason: outcome,
+				revision: null,
+				logOpen: openLog,
+				marker: { generation, pending: null },
+				hasResult: false
+			});
+			expect(
+				await page.evaluate(() => window.__appState!.get().models[0]?.error?.details)
+			).toBe(outcome);
+			expect(await requestCount(page)).toBe(1);
+			if (other) expect(await requestCount(other)).toBe(0);
+			await page.reload();
+			await expect(submit).toBeEnabled();
+			await expect(notice).toHaveText(reason);
+			expect(await storedStop(page)).toMatchObject({
+				logOpen: openLog,
+				reason: outcome,
+				hasResult: false
+			});
+			expect(await requestCount(page)).toBe(0);
+		} finally {
+			await other?.close();
+		}
+	});
+}
+
 for (const recovery of [
 	'keyboard retry without a log toggle',
 	'keyboard retry after a failed log write',

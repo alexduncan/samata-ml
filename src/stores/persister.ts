@@ -578,7 +578,8 @@ export async function readGuardedTrainingSnapshot(
 	return { ...snapshot, generation, replayed: false };
 }
 
-function publishNewerTrainingSnapshot(state: PersistedAppState): void {
+/** Applies a verified newer snapshot under the state lock, preserving current-tab preferences. */
+export function publishNewerTrainingSnapshot(state: PersistedAppState): void {
 	const current = $appState.get();
 	if (state.trainingDomainGeneration > current.trainingDomainGeneration) {
 		publishAcknowledgedAppSnapshot({
@@ -590,7 +591,7 @@ function publishNewerTrainingSnapshot(state: PersistedAppState): void {
 	}
 }
 
-/** Applies an already verified finish after foreign cleanup, with the state lock held. */
+/** Applies a verified training outcome after foreign cleanup, with the state lock held. */
 export function publishRecoveredTrainingSnapshot(
 	context: TrainingStateContext,
 	state: PersistedAppState,
