@@ -225,7 +225,7 @@ async function workerAt(index: number): Promise<ScriptedWorker> {
 	throw new Error('Training worker did not start');
 }
 
-function blockFinishCleanup() {
+function blockFinishCleanup(generation = 2) {
 	const put = IDBObjectStore.prototype.put;
 	let denied = true;
 	IDBObjectStore.prototype.put = function (value, key) {
@@ -233,7 +233,7 @@ function blockFinishCleanup() {
 			denied &&
 			this.name === 'model_results' &&
 			value?.kind === 'training-domain-checkpoint' &&
-			value.generation === 2 &&
+			value.generation === generation &&
 			value.pending === null
 		) {
 			throw new DOMException('Test marker cleanup failure', 'SecurityError');
@@ -1408,6 +1408,101 @@ test('WML-P3-TRAIN-6: an ordinary writer that replays a committed stop settles t
 		await locks.request(TRAINING_STATE_LOCK, () => {});
 	}
 });
+
+test.each(['foreign marker cleanup', 'checkpoint replay by the next stop'] as const)(
+	'WML-P3-TRAIN-5/6: two committed stops keep their original sessions after %s',
+	async (ordering) => {
+		seed(2);
+		const foreignCleanup = ordering === 'foreign marker cleanup';
+		const stopObserving = foreignCleanup ? undefined : service.observePublishedStops();
+		const cleanup = foreignCleanup ? blockFinishCleanup(3) : undefined;
+		try {
+			const first = service.start(1);
+			const one = await workerAt(0);
+			const second = service.start(2);
+			const two = await workerAt(1);
+			storage.reject = (state) => !foreignCleanup && state.models[0]?.status === 'draft';
+			one.reply({ kind: 'cancelled', identity: one.identity });
+			expect(await first).toMatchObject({ ok: false, pending: 'cancel', reason: 'security' });
+			expect(getTrainingSession(one.identity)?.status).toBe('stopped-pending');
+			const cancelled = await readTrainingCheckpoint(db);
+			const originalError =
+				cancelled.ok && cancelled.checkpoint?.pending?.domain.models[0]?.error;
+			expect(originalError).toMatchObject({
+				code: 'TRAINING_CANCELLED',
+				details: 'cancelled'
+			});
+			if (foreignCleanup) {
+				cleanup?.allow();
+				expect(await clearCheckpointFromAnotherTab('cancel')).toMatchObject({ ok: true });
+			}
+			expect($appState.get().models[0]?.status).toBe('training');
+
+			storage.reject = (state) => state.models[1]?.status === 'draft';
+			two.reply({ kind: 'failed', code: 'invalid-request', identity: two.identity });
+			expect(await second).toMatchObject({
+				ok: false,
+				pending: 'finish',
+				reason: 'security'
+			});
+			const failed = await readTrainingCheckpoint(db);
+			const failureError = failed.ok && failed.checkpoint?.pending?.domain.models[1]?.error;
+			expect(failureError).toMatchObject({
+				code: 'TRAINING_FAILED',
+				details: 'invalid-request'
+			});
+			const newerNotice = $publicationPending.get();
+			expect(newerNotice?.identity).toEqual(two.identity);
+			expect(getTrainingSession(two.identity)?.status).toBe('stopped-pending');
+
+			if (!foreignCleanup) {
+				// Wait behind the observer's model lock while the later acknowledgement is denied.
+				await locks.request('samata-ml:training:1', () => {});
+				expect(getTrainingSession(one.identity)?.status).toBe('cancelled');
+				expect($publicationPending.get()).toBe(newerNotice);
+			} else {
+				expect(getTrainingSession(one.identity)?.status).toBe('stopped-pending');
+			}
+
+			storage.reject = () => false;
+			const expected = foreignCleanup ? one.identity : two.identity;
+			expect(await service.retry(expected)).toMatchObject({ ok: true });
+			for (const [worker, status] of [
+				[one, 'cancelled'],
+				[two, 'failed']
+			] as const) {
+				const settled = getTrainingSession(worker.identity);
+				expect(settled).toMatchObject({
+					status,
+					logEntries: [{ message: { key: status } }]
+				});
+				expect(await service.retry(worker.identity)).toMatchObject({ ok: true });
+				expect(getTrainingSession(worker.identity)).toBe(settled);
+				expect(
+					await db.get('model_results', [metadata.id, worker.identity.modelNum])
+				).toBeUndefined();
+				expect(worker.posted.map(({ kind }) => kind)).toEqual(['start']);
+				expect(worker.terminations).toBe(1);
+			}
+			for (const state of [$appState.get(), storedState()]) {
+				expect(state.trainingDomainGeneration).toBe(4);
+				expect(state.models).toMatchObject([
+					{ status: 'draft', resultRevision: null, error: originalError },
+					{ status: 'draft', resultRevision: null, error: failureError }
+				]);
+			}
+			expect(await readTrainingCheckpoint(db)).toMatchObject({
+				checkpoint: { generation: 4, pending: null }
+			});
+			expect($publicationPending.get()).toBeNull();
+			expect(workers).toEqual([one, two]);
+		} finally {
+			stopObserving?.();
+			cleanup?.restore();
+			await locks.request(TRAINING_STATE_LOCK, () => {});
+		}
+	}
+);
 
 test.each([
 	'add model',

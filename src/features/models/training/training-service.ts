@@ -1,8 +1,10 @@
 import { atom } from 'nanostores';
 import { INGESTION_LOCK, deleteDataset, getMetadata } from '../../../common/storage/db';
 import {
+	readTrainingCheckpoint,
 	type PendingTrainingDomain,
 	type PersistenceFailure,
+	type ProtectedDomainSnapshot,
 	type TrainingDomainMutation
 } from '../../../common/storage/training-domain';
 import {
@@ -82,14 +84,19 @@ export type TrainingCommandResult<Value = undefined> =
 	| { ok: true; value: Value }
 	| TrainingCommandFailure;
 
+type StopPublication = {
+	identity: TrainingRunIdentity;
+	stoppedStatus: 'cancelled' | 'failed';
+	stop: { error: TrainingError; generation: number };
+};
+
 /** An operation whose IndexedDB mutation committed and whose publication needs retry. */
 export type PublicationPending = {
 	operationId: string;
 	kind: PendingTrainingDomain['kind'];
-	identity?: TrainingRunIdentity;
-	stoppedStatus?: 'cancelled' | 'failed';
-	stop?: { error: TrainingError; generation: number };
-};
+} & Partial<StopPublication>;
+
+type CommittedStop = PublicationPending & StopPublication;
 
 /** Route-independent notification for an operation whose state still needs to be published. */
 export const $publicationPending = atom<PublicationPending | null>(null);
@@ -128,7 +135,10 @@ type StoppedRepair = {
 
 const conflict = { ok: false, reason: 'conflict' } as const;
 
-function modelIn(state: PersistedAppState, identity: TrainingRunIdentity): ModelRecord | undefined {
+function modelIn(
+	state: ProtectedDomainSnapshot,
+	identity: TrainingRunIdentity
+): ModelRecord | undefined {
 	if (state.dataset?.id !== identity.datasetId || state.target !== identity.target)
 		return undefined;
 	return state.models.find(
@@ -183,6 +193,26 @@ export function getTrainingConfigurationKey(model: ModelRecord, rowCount: number
 	} catch {
 		return null;
 	}
+}
+
+function stoppedDraft(state: ProtectedDomainSnapshot, publication: CommittedStop) {
+	const model = modelIn(state, publication.identity);
+	const error = model?.error;
+	const original = publication.stop.error;
+	if (
+		state.dataset &&
+		model?.status === 'draft' &&
+		model.resultRevision === null &&
+		error &&
+		error.code === original.code &&
+		error.message === original.message &&
+		error.timestamp === original.timestamp &&
+		error.details === original.details &&
+		getTrainingConfigurationKey(model, state.dataset.rowCount) ===
+			publication.identity.configurationKey
+	)
+		return model;
+	return undefined;
 }
 
 function metadataAllows(metadata: DatasetMetadata, request: TrainingStartRequest): boolean {
@@ -245,6 +275,7 @@ function domain(state: PersistedAppState) {
 export function createTrainingService(options: TrainingServiceOptions = {}) {
 	const active = new Map<number, ActiveAttempt>();
 	const stoppedRepairs = new Map<string, StoppedRepair>();
+	const committedStops = new Map<string, CommittedStop>();
 	const exclusiveIntents = new Set<string>();
 	let pendingDatasetCleanup: { id: string; cleanup: () => Promise<void> } | null = null;
 	const newId = options.newId ?? (() => crypto.randomUUID());
@@ -299,17 +330,19 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 			}
 		);
 		if (!ack.ok && committedGeneration !== undefined) {
-			const stop = stopped && {
-				error: stopped.outcome.error,
-				generation: committedGeneration
-			};
-			$publicationPending.set({
-				operationId,
-				kind,
-				identity,
-				stoppedStatus: stopped?.status,
-				stop
-			});
+			if (stopped) {
+				const publication = {
+					operationId,
+					kind,
+					identity: stopped.identity,
+					stoppedStatus: stopped.status,
+					stop: { error: stopped.outcome.error, generation: committedGeneration }
+				};
+				committedStops.set(stopped.identity.runId, publication);
+				$publicationPending.set(publication);
+			} else {
+				$publicationPending.set({ operationId, kind, identity });
+			}
 		} else if (ack.ok && $publicationPending.get()?.operationId === operationId) {
 			$publicationPending.set(null);
 		}
@@ -615,6 +648,11 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 	async function retry(expected?: TrainingRunIdentity): Promise<TrainingCommandResult> {
 		const pending = $publicationPending.get();
 		const identity = pending?.identity;
+		const expectedStop = expected && committedStops.get(expected.runId);
+		const matchingStop =
+			expectedStop && expected && sameTrainingRun(expected, expectedStop.identity)
+				? expectedStop
+				: undefined;
 		if (identity && pending?.stop) {
 			const expectedRepair = expected && stoppedRepairs.get(expected.runId);
 			const hasExpectedRepair =
@@ -622,10 +660,11 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 			if (
 				expected?.modelNum === identity.modelNum &&
 				!sameTrainingRun(expected, identity) &&
-				!hasExpectedRepair
+				!hasExpectedRepair &&
+				!matchingStop
 			)
 				return notice(conflict, pending.kind);
-			const stopped = await recoverStoppedPublication(pending);
+			const stopped = await recoverStoppedPublication(currentCommittedStop(pending));
 			if (!stopped.ok) return stopped;
 		} else if (identity && pending?.kind === 'finish') {
 			const finished = await recoverCompletedResult(
@@ -676,6 +715,14 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		if (pending && $publicationPending.get()?.operationId === pending.operationId)
 			$publicationPending.set(null);
 
+		const stop =
+			matchingStop ??
+			(!pending && !expected ? committedStops.values().next().value : undefined);
+		if (stop && stop.operationId !== pending?.operationId) {
+			const stopped = await recoverStoppedPublication(stop);
+			if (!stopped.ok) return stopped;
+		}
+
 		const repairIdentity = expected ?? (pending?.kind === 'start' ? identity : undefined);
 		const repair = repairIdentity
 			? stoppedRepairs.get(repairIdentity.runId)
@@ -698,73 +745,83 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		return { ok: true, value: undefined };
 	}
 
+	function currentCommittedStop(pending = $publicationPending.get()): CommittedStop | undefined {
+		const stop = pending?.identity && committedStops.get(pending.identity.runId);
+		return stop?.operationId === pending?.operationId ? stop : undefined;
+	}
+
 	/** Settles an acknowledged stop, including after another tab has cleared its checkpoint. */
 	function recoverStoppedPublication(
-		pending = $publicationPending.get()
+		publication = currentCommittedStop(),
+		automatic = false
 	): Promise<TrainingCommandResult> {
-		const stop = pending?.stop;
-		const identity = pending?.identity;
-		const status = pending?.stoppedStatus;
 		const done = { ok: true, value: undefined } as const;
-		if (!stop || !identity || !status) return Promise.resolve(done);
+		if (!publication) return Promise.resolve(done);
+		const { identity, operationId, kind, stop, stoppedStatus } = publication;
 		return withResource(INGESTION_LOCK, 'shared', false, () =>
 			withResource(`samata-ml:training:${identity.modelNum}`, 'shared', false, async () => {
 				const recovered = await withTrainingStateLock(async (context) => {
-					if ($publicationPending.get()?.operationId !== pending.operationId) return done;
+					if (committedStops.get(identity.runId) !== publication) return done;
 					const snapshot = await readGuardedTrainingSnapshot(context);
-					if (!snapshot.ok) return snapshot;
-					if ($publicationPending.get()?.operationId !== pending.operationId) return done;
-					const state = snapshot.state;
-					if (
-						!state ||
-						snapshot.generation < stop.generation ||
-						$appState.get().trainingDomainGeneration > snapshot.generation
-					)
-						return conflict;
-					const model = modelIn(state, identity);
-					const error = model?.error;
-					const matches =
-						state.dataset &&
-						model?.status === 'draft' &&
-						model.resultRevision === null &&
-						error &&
-						error.code === stop.error.code &&
-						error.message === stop.error.message &&
-						error.timestamp === stop.error.timestamp &&
-						error.details === stop.error.details &&
-						getTrainingConfigurationKey(model, state.dataset.rowCount) ===
-							identity.configurationKey;
-					if (matches) {
-						if (!snapshot.replayed)
-							publishRecoveredTrainingSnapshot(context, state, model);
-						finishStoppedSession(identity, status);
-					} else if (!snapshot.replayed) {
-						// Retire the old operation while adopting the authoritative newer state.
-						publishNewerTrainingSnapshot(state);
+					let matches: boolean;
+					if (snapshot.ok) {
+						const state = snapshot.state;
+						if (
+							!state ||
+							snapshot.generation < stop.generation ||
+							$appState.get().trainingDomainGeneration > snapshot.generation
+						)
+							return conflict;
+						const model = stoppedDraft(state, publication);
+						matches = Boolean(model);
+						if (!snapshot.replayed) {
+							if (model) publishRecoveredTrainingSnapshot(context, state, model);
+							else publishNewerTrainingSnapshot(state);
+						}
+					} else {
+						if (!automatic) return snapshot;
+						// A later denied publication can still carry a stop already visible in this tab.
+						const stored = await readTrainingCheckpoint(context.db);
+						const checkpoint = stored.ok && stored.checkpoint;
+						const visible = $appState.get();
+						if (
+							!checkpoint ||
+							!checkpoint.pending ||
+							checkpoint.generation <= visible.trainingDomainGeneration ||
+							visible.trainingDomainGeneration < stop.generation ||
+							!stoppedDraft(visible, publication) ||
+							!stoppedDraft(checkpoint.pending.domain, publication)
+						)
+							return snapshot;
+						matches = true;
 					}
-					$publicationPending.set(null);
+					committedStops.delete(identity.runId);
+					if (matches) finishStoppedSession(identity, stoppedStatus);
+					if ($publicationPending.get()?.operationId === operationId)
+						$publicationPending.set(null);
 					return done;
 				}, persistence);
-				return recovered.ok ? recovered : notice(recovered, pending.kind);
+				return recovered.ok ? recovered : notice(recovered, kind);
 			})
 		);
 	}
 
 	/** Settles committed stops when this tab advances through a guarded write or refresh. */
 	function observePublishedStops(): () => void {
-		let recoveringOperation: string | undefined;
+		const recovering = new Set<CommittedStop>();
+		let observing = true;
 		const recover = () => {
-			const pending = $publicationPending.get();
-			if (
-				!pending?.stop ||
-				pending.operationId === recoveringOperation ||
-				$appState.get().trainingDomainGeneration < pending.stop.generation
-			)
-				return;
-			recoveringOperation = pending.operationId;
-			void recoverStoppedPublication(pending).finally(() => {
-				if (recoveringOperation === pending.operationId) recoveringOperation = undefined;
-			});
+			const generation = $appState.get().trainingDomainGeneration;
+			for (const publication of committedStops.values()) {
+				if (recovering.has(publication) || generation < publication.stop.generation)
+					continue;
+				recovering.add(publication);
+				void recoverStoppedPublication(publication, true).finally(() => {
+					recovering.delete(publication);
+					if (observing && $appState.get().trainingDomainGeneration > generation)
+						recover();
+				});
+			}
 		};
 		const unlistenState = $appState.listen((state, previous) => {
 			if (state.trainingDomainGeneration !== previous?.trainingDomainGeneration) recover();
@@ -772,6 +829,7 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		const unlistenPending = $publicationPending.listen(recover);
 		recover();
 		return () => {
+			observing = false;
 			unlistenState();
 			unlistenPending();
 		};
