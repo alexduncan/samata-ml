@@ -303,6 +303,87 @@ let ordinaryBase: PersistedAppState | undefined;
 let acknowledgedState: PersistedAppState | undefined;
 let unbindLifecycle: (() => void) | undefined;
 
+type TrainingLogEdit = {
+	datasetId: string | undefined;
+	target: string | null;
+	generation: number;
+	createdAt: number;
+	open: boolean;
+};
+
+// Ordinary writes consume ordinaryBase when they are queued. Keep local disclosure edits
+// until a write acknowledges them or publication replaces their model context.
+const trainingLogEdits = new Map<number, TrainingLogEdit>();
+
+function recordTrainingLogEdits(previous: PersistedAppState, next: PersistedAppState): void {
+	if (
+		previous.dataset?.id !== next.dataset?.id ||
+		previous.target !== next.target ||
+		previous.trainingDomainGeneration !== next.trainingDomainGeneration
+	) {
+		trainingLogEdits.clear();
+		return;
+	}
+	if (previous.models === next.models) return;
+	for (const model of next.models) {
+		const before = previous.models.find(
+			(entry) => entry.num === model.num && entry.createdAt === model.createdAt
+		);
+		const open = model.ui.trainingLogOpen ?? false;
+		if (before && open !== (before.ui.trainingLogOpen ?? false)) {
+			trainingLogEdits.set(model.num, {
+				datasetId: next.dataset?.id,
+				target: next.target,
+				generation: next.trainingDomainGeneration,
+				createdAt: model.createdAt,
+				open
+			});
+		}
+	}
+}
+
+function findTrainingLogEdit(
+	state: PersistedAppState,
+	model: ModelRecord,
+	carryAcrossCheckpoint: boolean
+): TrainingLogEdit | undefined {
+	const edit = trainingLogEdits.get(model.num);
+	const generation = state.trainingDomainGeneration;
+	if (
+		edit &&
+		edit.datasetId === state.dataset?.id &&
+		edit.target === state.target &&
+		edit.createdAt === model.createdAt &&
+		(edit.generation === generation ||
+			(carryAcrossCheckpoint && edit.generation === generation - 1))
+	) {
+		return edit;
+	}
+}
+
+function mergeTrainingLogEdit(
+	state: PersistedAppState,
+	model: ModelRecord,
+	carryAcrossCheckpoint = false
+): ModelRecord {
+	const edit = findTrainingLogEdit(state, model, carryAcrossCheckpoint);
+	if (!edit || edit.open === (model.ui.trainingLogOpen ?? false)) return model;
+	return { ...model, ui: { ...model.ui, trainingLogOpen: edit.open } };
+}
+
+function mergeTrainingLogEdits(
+	state: PersistedAppState,
+	carryAcrossCheckpoint = false
+): PersistedAppState {
+	if (!trainingLogEdits.size) return state;
+	const models = state.models.map((model) =>
+		mergeTrainingLogEdit(state, model, carryAcrossCheckpoint)
+	);
+	return models.some((model, index) => model !== state.models[index])
+		? { ...state, models }
+		: state;
+}
+
 /** A best-effort write failed and the current tab's edits remain available in memory. */
 export const $storageSaveNotice = atom<PersistenceFailure | null>(null);
 
@@ -392,6 +473,20 @@ export function publishAcknowledgedAppSnapshot(state: PersistedAppState): void {
 
 function publishAppSnapshot(state: PersistedAppState, persisted: PersistedAppState): void {
 	acknowledgedState = persisted;
+	if (state === persisted) {
+		trainingLogEdits.clear();
+	} else {
+		// Retain best-effort edits carried into the just-published generation.
+		for (const [num] of trainingLogEdits) {
+			const model = state.models.find((entry) => entry.num === num);
+			const edit = model && findTrainingLogEdit(state, model, true);
+			if (model && edit && edit.open === (model.ui.trainingLogOpen ?? false)) {
+				edit.generation = state.trainingDomainGeneration;
+			} else {
+				trainingLogEdits.delete(num);
+			}
+		}
+	}
 	publishingSnapshot = true;
 	try {
 		$appState.set(state);
@@ -402,10 +497,16 @@ function publishAppSnapshot(state: PersistedAppState, persisted: PersistedAppSta
 
 function writeAcknowledgedSnapshot(
 	storage: StorageAdapter,
-	state: PersistedAppState
+	state: PersistedAppState,
+	carryAcrossCheckpoint = false
 ): PersistenceAck {
 	const written = safeSetItem(storage, STATE_STORAGE_KEY, serialiseAppState(state));
-	return written.ok ? { ok: true, generation: state.trainingDomainGeneration } : written;
+	if (!written.ok) return written;
+	for (const model of state.models) {
+		const edit = findTrainingLogEdit(state, model, carryAcrossCheckpoint);
+		if (edit?.open === (model.ui.trainingLogOpen ?? false)) trainingLogEdits.delete(model.num);
+	}
+	return { ok: true, generation: state.trainingDomainGeneration };
 }
 
 async function publishPending(
@@ -432,7 +533,7 @@ async function publishPending(
 			? keepLocalOrdinaryChanges(candidate, current, firstPublication)
 			: candidate;
 	if (!acknowledged) {
-		const ack = writeAcknowledgedSnapshot(context.storage, state);
+		const ack = writeAcknowledgedSnapshot(context.storage, state, true);
 		if (!ack.ok) return ack;
 		acknowledgedState = state;
 	}
@@ -442,59 +543,15 @@ async function publishPending(
 		pending.operationId
 	);
 	if (!cleared.ok) return cleared;
-	const visible =
-		acknowledged && pending.kind === 'finish' ? keepLocalTrainingLogDisclosure(state) : state;
+	const visible = pending.kind === 'finish' ? mergeTrainingLogEdits(state, true) : state;
 	if (visible !== state) {
 		// The protected result is already durable. Saving the disclosure remains best effort.
-		const ack = writeAcknowledgedSnapshot(context.storage, visible);
+		const ack = writeAcknowledgedSnapshot(context.storage, visible, true);
 		if (ack.ok) state = visible;
-		else ordinaryBase ??= state;
 		noteOrdinaryFailure(ack);
 	}
 	publishAppSnapshot(visible, state);
 	return { ok: true, state };
-}
-
-function keepLocalTrainingLogDisclosure(state: PersistedAppState): PersistedAppState {
-	const local = $appState.get();
-	const generation = state.trainingDomainGeneration;
-	// If this tab wrote the candidate before cleanup failed, compare against what it wrote.
-	const base =
-		acknowledgedState?.trainingDomainGeneration === generation
-			? acknowledgedState
-			: (ordinaryBase ?? acknowledgedState);
-	if (
-		!protectedPersistence ||
-		!base ||
-		local.trainingDomainGeneration < generation - 1 ||
-		local.trainingDomainGeneration > generation ||
-		(base.trainingDomainGeneration !== generation &&
-			base.trainingDomainGeneration !== local.trainingDomainGeneration) ||
-		local.dataset?.id !== state.dataset?.id ||
-		base.dataset?.id !== state.dataset?.id ||
-		local.target !== state.target ||
-		base.target !== state.target
-	) {
-		return state;
-	}
-	const models = state.models.map((stored) => {
-		const sameModel = (model: ModelRecord) =>
-			model.num === stored.num && model.createdAt === stored.createdAt;
-		const before = base.models.find(sameModel);
-		const open = local.models.find(sameModel)?.ui.trainingLogOpen;
-		if (
-			!before ||
-			typeof open !== 'boolean' ||
-			open === (before.ui.trainingLogOpen ?? false) ||
-			open === (stored.ui.trainingLogOpen ?? false)
-		) {
-			return stored;
-		}
-		return { ...stored, ui: { ...stored.ui, trainingLogOpen: open } };
-	});
-	return models.some((model, index) => model !== state.models[index])
-		? { ...state, models }
-		: state;
 }
 
 /** Freshly validated localStorage state and the current durable fence. */
@@ -590,7 +647,10 @@ export function flushSubmittedDraft(
 			return { ok: false, reason: 'conflict' };
 		}
 	}
-	const patched = mergeOrdinaryModel(stored, stored, model, true);
+	const patched = mergeTrainingLogEdit(
+		latest,
+		mergeOrdinaryModel(stored, stored, model, true, !protectedPersistence)
+	);
 	const state = {
 		...latest,
 		models: latest.models.map((record) => (record === stored ? patched : record))
@@ -605,10 +665,12 @@ function mergeOrdinaryModel(
 	stored: ModelRecord,
 	base: ModelRecord,
 	captured: ModelRecord,
-	sameGeneration: boolean
+	sameGeneration: boolean,
+	includeTrainingLog = false
 ): ModelRecord {
 	const ui = { ...stored.ui };
 	for (const key of new Set([...Object.keys(base.ui), ...Object.keys(captured.ui)])) {
+		if (key === 'trainingLogOpen' && !includeTrainingLog) continue;
 		if (base.ui[key] === captured.ui[key]) continue;
 		if (Object.hasOwn(captured.ui, key)) ui[key] = captured.ui[key];
 		else delete ui[key];
@@ -718,14 +780,17 @@ function keepLocalOrdinaryChanges(
 		sameDomain && JSON.stringify(candidate.data) === JSON.stringify(previous.data)
 			? local.data
 			: candidate.data;
-	return {
-		...candidate,
-		onboarding: local.onboarding,
-		resumePath: local.resumePath,
-		results: local.results,
-		models,
-		data
-	};
+	return mergeTrainingLogEdits(
+		{
+			...candidate,
+			onboarding: local.onboarding,
+			resumePath: local.resumePath,
+			results: local.results,
+			models,
+			data
+		},
+		true
+	);
 }
 
 function writeOrdinaryGuarded(
@@ -828,7 +893,9 @@ function writeAppStateNow(storage: StorageAdapter, state: PersistedAppState): vo
 	ordinaryBase = undefined;
 	writeOrdinaryGuarded(storage, (context, snapshot) => {
 		if (!snapshot.state && snapshot.generation !== 0) return { ok: false, reason: 'conflict' };
-		const stateToWrite = mergeOrdinaryState(snapshot.state ?? INITIAL_APP_STATE, base, state);
+		const stateToWrite = mergeTrainingLogEdits(
+			mergeOrdinaryState(snapshot.state ?? INITIAL_APP_STATE, base, state)
+		);
 		const ack = writeAcknowledgedSnapshot(context.storage, stateToWrite);
 		if (ack.ok) acknowledgedState = stateToWrite;
 		return ack;
@@ -1022,6 +1089,9 @@ export function initPersister(storage?: StorageAdapter, options: PersisterOption
 			return;
 		}
 		if (protectedPersistence && previousAppState === nextState) return;
+		if (protectedPersistence && previousAppState) {
+			recordTrainingLogEdits(previousAppState, nextState);
+		}
 		ordinaryBase ??= previousAppState;
 		const sync = isSynchronousChange(previousAppState, nextState);
 		const progressOnly = !sync && isProgressOnlyChange(previousAppState, nextState);
@@ -1104,5 +1174,6 @@ export function stopPersister(): void {
 	unbindLifecycle?.();
 	unbindLifecycle = undefined;
 	ordinaryBase = undefined;
+	trainingLogEdits.clear();
 	protectedPersistence = undefined;
 }

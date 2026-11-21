@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import type { PersistedAppState } from '../src/types/state';
 import { configureDraft, controlTraining, openSetup } from './fixtures/training/browser';
 import { fixtureTrainingResult } from './fixtures/training/results';
 
@@ -341,6 +342,87 @@ test('a remote tab reads the running state and recovers a pending result without
 		expect(await other.evaluate(() => window.__appState!.get().models[0]?.resultRevision)).toBe(
 			runId
 		);
+	} finally {
+		await other.close();
+	}
+});
+
+test('WML-P3-UI-1: retrying finish checkpoint cleanup keeps another tab’s saved disclosure', async ({
+	page,
+	context
+}) => {
+	await controlTraining(page);
+	await start(page);
+	const other = await context.newPage();
+	const savedRun = () =>
+		page.evaluate(() => {
+			const state = JSON.parse(localStorage.getItem('samata-ml:state')!) as PersistedAppState;
+			return {
+				generation: state.trainingDomainGeneration,
+				status: state.models[0]?.status,
+				revision: state.models[0]?.resultRevision,
+				open: state.models[0]?.ui.trainingLogOpen
+			};
+		});
+	type CleanupWindow = Window & { allowFinishCleanup?: () => void };
+	try {
+		await controlTraining(other);
+		await other.goto('/models/1');
+		const remote = training(other);
+		await expect(remote.locator('summary')).toHaveText('Training in another tab');
+		const { generation } = await savedRun();
+		await remote.locator('summary').press('Enter');
+		await expect(remote.locator('details')).toHaveAttribute('open', '');
+		await expect.poll(savedRun).toMatchObject({ generation, status: 'training', open: true });
+		const owner = training(page);
+		await expect(owner.locator('details')).not.toHaveAttribute('open');
+
+		// Either tab can replay the checkpoint on a storage event. Block only the
+		// finish marker cleanup in both tabs so the owner's Retry saving is exercised.
+		for (const tab of [page, other]) {
+			await tab.evaluate((finishGeneration) => {
+				const put = IDBObjectStore.prototype.put;
+				IDBObjectStore.prototype.put = function (value, key) {
+					if (
+						this.name === 'model_results' &&
+						value?.kind === 'training-domain-checkpoint' &&
+						value.generation === finishGeneration &&
+						value.pending === null
+					) {
+						throw new DOMException('Fixture blocked finish cleanup', 'SecurityError');
+					}
+					return put.call(this, value, key);
+				};
+				(window as CleanupWindow).allowFinishCleanup = () => {
+					IDBObjectStore.prototype.put = put;
+				};
+			}, generation + 1);
+		}
+		const runId = await succeed(page);
+		const retry = owner.getByRole('button', { name: 'Retry saving' });
+		await expect(retry).toBeVisible();
+		const trained = {
+			generation: generation + 1,
+			status: 'trained',
+			revision: runId,
+			open: true
+		};
+		expect(await savedRun()).toEqual(trained);
+		await expect(owner.locator('details')).not.toHaveAttribute('open');
+
+		await page.evaluate(() => (window as CleanupWindow).allowFinishCleanup!());
+		await retry.press('Enter');
+		await expect(owner.getByRole('button', { name: 'View Results' })).toBeEnabled();
+		await expect(owner.locator('details')).toHaveAttribute('open', '');
+		expect(await savedRun()).toEqual(trained);
+		expect(await requestCount(page)).toBe(1);
+		expect(await requestCount(other)).toBe(0);
+
+		await page.reload();
+		await expect(owner.getByRole('button', { name: 'View Results' })).toBeEnabled();
+		await expect(owner.locator('details')).toHaveAttribute('open', '');
+		expect(await savedRun()).toEqual(trained);
+		expect(await requestCount(page)).toBe(0);
 	} finally {
 		await other.close();
 	}

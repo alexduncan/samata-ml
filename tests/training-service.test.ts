@@ -14,6 +14,7 @@ import {
 	$appState,
 	reduceCreateModel,
 	setHyperparameters,
+	setResumePath,
 	setTrainingLogOpen
 } from '../src/stores/app.store';
 import {
@@ -210,6 +211,27 @@ async function workerAt(index: number): Promise<ScriptedWorker> {
 		await new Promise<void>((resolve) => setTimeout(resolve, 2));
 	}
 	throw new Error('Training worker did not start');
+}
+
+function blockFinishCleanup() {
+	const put = IDBObjectStore.prototype.put;
+	let denied = true;
+	IDBObjectStore.prototype.put = function (value, key) {
+		if (
+			denied &&
+			this.name === 'model_results' &&
+			value?.kind === 'training-domain-checkpoint' &&
+			value.generation === 2 &&
+			value.pending === null
+		) {
+			throw new DOMException('Test marker cleanup failure', 'SecurityError');
+		}
+		return put.call(this, value, key);
+	};
+	return {
+		allow: () => (denied = false),
+		restore: () => (IDBObjectStore.prototype.put = put)
+	};
 }
 
 test('WML-P3-TRAIN-1: rejects non-isolation and duplicate starts while preserving concurrent model outcomes', async () => {
@@ -455,20 +477,7 @@ test.each([false, true])(
 				withStateLock: (operation) => locks.request(TRAINING_STATE_LOCK, operation)
 			}
 		});
-		const put = IDBObjectStore.prototype.put;
-		let denyCleanup = true;
-		IDBObjectStore.prototype.put = function (value, key) {
-			if (
-				denyCleanup &&
-				this.name === 'model_results' &&
-				value?.kind === 'training-domain-checkpoint' &&
-				value.generation === 2 &&
-				value.pending === null
-			) {
-				throw new DOMException('Test marker cleanup failure', 'SecurityError');
-			}
-			return put.call(this, value, key);
-		};
+		const cleanup = blockFinishCleanup();
 		const savedState = () =>
 			JSON.parse(storage.getItem(STATE_STORAGE_KEY)!) as PersistedAppState;
 		let runId: string;
@@ -493,7 +502,7 @@ test.each([false, true])(
 				checkpoint: { generation: 2, pending: { kind: 'finish' } }
 			});
 
-			denyCleanup = false;
+			cleanup.allow();
 			storage.reject = (state) =>
 				denyPreferenceWrite && !!state.models[0]?.ui.trainingLogOpen;
 			expect(await service.retry(worker.identity)).toMatchObject({ ok: true });
@@ -511,7 +520,7 @@ test.each([false, true])(
 				ui: { trainingLogOpen: !denyPreferenceWrite }
 			});
 		} finally {
-			IDBObjectStore.prototype.put = put;
+			cleanup.restore();
 			stopPersister();
 			await locks.request(TRAINING_STATE_LOCK, () => {});
 		}
@@ -526,6 +535,110 @@ test.each([false, true])(
 			status: 'trained',
 			resultRevision: runId,
 			ui: { trainingLogOpen: !denyPreferenceWrite }
+		});
+		expect(workers).toHaveLength(1);
+		expect(workers[0]?.posted.map(({ kind }) => kind)).toEqual(['start']);
+	}
+);
+
+test.each(['untouched', 'unsaved local edit', 'previously saved local edit'] as const)(
+	'WML-P3-UI-1: finish retry preserves the cross-tab disclosure (%s)',
+	async (localChoice) => {
+		seed();
+		initPersister(storage, {
+			trainingPersistence: {
+				withStateLock: (operation) => locks.request(TRAINING_STATE_LOCK, operation)
+			}
+		});
+		const cleanup = blockFinishCleanup();
+		const savedState = () =>
+			JSON.parse(storage.getItem(STATE_STORAGE_KEY)!) as PersistedAppState;
+		let runId: string;
+		try {
+			const run = service.start(1);
+			const worker = await workerAt(0);
+			runId = worker.identity.runId;
+			const previouslySaved = localChoice === 'previously saved local edit';
+			const remotelySavedOpen = !previouslySaved;
+			if (previouslySaved) {
+				expect(setTrainingLogOpen(1, true)).toBe(true);
+				flushNow();
+				await locks.request(TRAINING_STATE_LOCK, () => {});
+				expect(savedState().models[0]?.ui.trainingLogOpen).toBe(true);
+			}
+
+			// A same-generation preference write in another tab does not replace live memory.
+			await locks.request(TRAINING_STATE_LOCK, () => {
+				const state = savedState();
+				expect(state.trainingDomainGeneration).toBe(1);
+				state.models[0]!.ui.trainingLogOpen = remotelySavedOpen;
+				storage.setItem(STATE_STORAGE_KEY, JSON.stringify(state));
+			});
+			worker.succeed();
+			expect(await run).toMatchObject({ ok: false, reason: 'security', pending: 'finish' });
+			expect(savedState()).toMatchObject({
+				trainingDomainGeneration: 2,
+				models: [
+					{
+						status: 'trained',
+						resultRevision: runId,
+						ui: { trainingLogOpen: remotelySavedOpen }
+					}
+				]
+			});
+			expect($appState.get().models[0]?.ui.trainingLogOpen).toBe(previouslySaved);
+
+			// Queue an ordinary write while cleanup is still denied. In the edit case the
+			// latest local choice is closed, even though the tab started out closed.
+			if (localChoice === 'unsaved local edit') {
+				expect(setTrainingLogOpen(1, true)).toBe(true);
+				expect(setTrainingLogOpen(1, false)).toBe(true);
+			}
+			expect(setResumePath('/target')).toBe(true);
+			flushNow();
+			expect(await service.retry(worker.identity)).toMatchObject({
+				ok: false,
+				reason: 'security',
+				pending: 'finish'
+			});
+			expect(savedState().models[0]?.ui.trainingLogOpen).toBe(remotelySavedOpen);
+			cleanup.allow();
+			const retry = service.retry(worker.identity);
+			// Let a queued ordinary write also run after replay has changed what is visible.
+			expect(setResumePath('/models/1')).toBe(true);
+			expect(await retry).toMatchObject({ ok: true });
+			await locks.request(TRAINING_STATE_LOCK, () => {});
+			expect(await readTrainingCheckpoint(db)).toMatchObject({
+				checkpoint: { generation: 2, pending: null }
+			});
+			for (const state of [$appState.get(), savedState()]) {
+				expect(state).toMatchObject({
+					trainingDomainGeneration: 2,
+					models: [
+						{
+							status: 'trained',
+							resultRevision: runId,
+							ui: { trainingLogOpen: localChoice === 'untouched' }
+						}
+					]
+				});
+			}
+		} finally {
+			cleanup.restore();
+			stopPersister();
+			await locks.request(TRAINING_STATE_LOCK, () => {});
+		}
+
+		$appState.set(INITIAL_APP_STATE);
+		$trainingSession.set(new Map());
+		expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({
+			ok: true,
+			generation: 2
+		});
+		expect($appState.get().models[0]).toMatchObject({
+			status: 'trained',
+			resultRevision: runId,
+			ui: { trainingLogOpen: localChoice === 'untouched' }
 		});
 		expect(workers).toHaveLength(1);
 		expect(workers[0]?.posted.map(({ kind }) => kind)).toEqual(['start']);
