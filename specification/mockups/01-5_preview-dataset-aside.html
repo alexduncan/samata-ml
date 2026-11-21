@@ -1,9 +1,13 @@
 <!doctype html>
-<!-- DRAFT: structure only, not normative for appearance. Source: workflow-steps.md §3.1; plans/step-3-train-models-overview-and-setup.md. Open questions: none (scoped defaults accepted by the user). -->
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="stylesheet" href="../style.css" />
+		<meta name="name" content="Column Details Panel" />
+		<meta
+			name="description"
+			content="Slide-over inspector panel showing summary statistics and distributions for a selected dataset column." />
+		<meta name="status" content="implemented" />
+		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Pen</title>
 	</head>
@@ -102,29 +106,77 @@
 
 		<main>
 			<header class="page-header">
-				<h1>Train Models</h1>
-				<p>Model description states.</p>
+				<h1>Preview Dataset: {dataset_name: string}</h1>
+				<p>
+					{num_rows: int} rows &nbsp;&nbsp;|&nbsp;&nbsp; {num_columns: int} columns<br />
+					{dataset_description: string}
+				</p>
+				<button class="btn btn-red" disabled>Delete Dataset</button>
 			</header>
-			<section>
-				<h2>Model Description: Logistic Regression</h2>
-				<p>Render the existing compiled model article here, with its recorded language.</p>
-				<button class="btn">Close</button>
-			</section>
-			<section>
-				<h2>Loading</h2>
-				<p role="status">Loading model description…</p>
-			</section>
-			<section>
-				<h2>Missing article</h2>
-				<p>A detailed description is not available for this model yet.</p>
-				<p>Show the library specification's plain-text description.</p>
-				<button class="btn">Close</button>
-			</section>
-			<section>
-				<h2>Load error</h2>
-				<p role="alert">The model description could not be loaded.</p>
-				<button class="btn">Retry</button><button class="btn">Close</button>
-			</section>
+			<section>{Virtual Table Component}</section>
+			<aside class="overlay">
+				<div class="overlay-title">
+					<h4>Column Name</h4>
+					<button>
+						<svg class="icon" aria-hidden="true" focusable="false">
+							<use href="#close"></use>
+						</svg>
+					</button>
+				</div>
+				<code>{column_type: string}</code>
+				<p>{column_description: string}</p>
+				<!-- if column_type is Categorical -->
+				<table class="table table-compact">
+					<thead>
+						<tr>
+							<th>Category</th>
+							<th><abbr title="Frequency: Number of occurrences">Freq.</abbr></th>
+							<th>
+								<abbr title="Percentage: Proportion of total occurrences">%</abbr>
+							</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>{category: string}</td>
+							<td>{frequency: int}</td>
+							<td>{percentage: float}</td>
+						</tr>
+					</tbody>
+				</table>
+				<!-- end if column_type is Categorical -->
+				<!-- if column_type is Numerical -->
+				<table class="table table-compact">
+					<tbody>
+						<tr>
+							<td>Min</td>
+							<td>{min: int | float}</td>
+						</tr>
+						<tr>
+							<td>Max</td>
+							<td>{max: int | float}</td>
+						</tr>
+						<tr>
+							<td>Mean</td>
+							<td>{mean: float}</td>
+						</tr>
+						<tr>
+							<td>Median</td>
+							<td>{median: int | float}</td>
+						</tr>
+						<tr>
+							<td>Standard Deviation</td>
+							<td>{std_dev: float}</td>
+						</tr>
+					</tbody>
+				</table>
+				<!-- end if column_type is Numerical -->
+				<p>
+					Rows: {num_rows: int}<br />
+					Columns: {num_columns: int}<br />
+					Description: {dataset_description: string}
+				</p>
+			</aside>
 		</main>
 	</body>
 </html>

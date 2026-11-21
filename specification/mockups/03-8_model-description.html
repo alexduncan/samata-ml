@@ -1,9 +1,14 @@
 <!doctype html>
-<!-- DRAFT: structure only, not normative for appearance. Source: workflow-steps.md §3; plans/step-3-train-models-overview-and-setup.md. Open questions: none (scoped defaults accepted by the user). -->
+<!-- DRAFT: structure only, not normative for appearance. Source: workflow-steps.md §3.1; plans/step-3-train-models-overview-and-setup.md. Open questions: none (scoped defaults accepted by the user). -->
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="stylesheet" href="../style.css" />
+		<meta name="name" content="Model Description Modal" />
+		<meta
+			name="description"
+			content="Modal dialog displaying plain-English educational documentation for a classifier, plus loading, missing, and error states." />
+		<meta name="status" content="draft" />
+		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Pen</title>
 	</head>
@@ -103,59 +108,43 @@
 		<main>
 			<header class="page-header">
 				<h1>Train Models</h1>
-				<p>Train and compare models for the selected target.</p>
-				<button class="btn btn-primary">Train New Model</button
-				><button class="btn" disabled>Compare Results</button>
+				<p>Model description states.</p>
 			</header>
+			<!-- Loaded Model Description -->
+			<!-- This will display when the educational article for the selected model loads successfully. -->
 			<section>
-				<h2>Blocked</h2>
-				<p class="notification notification-alert">
-					Load a dataset and choose a target before training a model.
-					<a href="/data">Load Data</a> <a href="/target">Set Target</a>
-				</p>
+				<h2>Model Description: Logistic Regression</h2>
+				<p>Render the existing compiled model article here, with its recorded language.</p>
+				<button class="btn">Close</button>
 			</section>
-			<section>
-				<h2>Empty</h2>
-				<p>No models yet. Train a new model to get started.</p>
-			</section>
-			<section>
-				<h2>Models</h2>
-				<table class="table">
-					<caption>
-						Models for Palmer Penguins
-					</caption>
-					<thead>
-						<tr>
-							<th scope="col">Model Name</th>
-							<th scope="col">Features</th>
-							<th scope="col">Configuration</th>
-							<th scope="col">Training Setup</th>
-							<th scope="col">Duration</th>
-							<th scope="col">Action</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<th scope="row">Model 1 — Logistic Regression</th>
-							<td>bill_length_mm, bill_depth_mm</td>
-							<td>Not configured</td>
-							<td>Not configured</td>
-							<td>Not trained</td>
-							<td><a href="/models/1">Continue</a></td>
-						</tr>
-					</tbody>
-				</table>
-				<p>Train at least two models to compare results.</p>
-			</section>
+			<!-- / Loaded Model Description -->
+
+			<!-- Loading Model Description -->
+			<!-- This will display while the model description article is being fetched. -->
 			<section>
 				<h2>Loading</h2>
-				<p role="status">Loading model information…</p>
+				<p role="status">Loading model description…</p>
 			</section>
+			<!-- / Loading Model Description -->
+
+			<!-- Missing Model Article -->
+			<!-- This will display when no full educational article exists yet and the specification fallback summary is shown. -->
 			<section>
-				<h2>Error</h2>
-				<p role="alert">Model information could not be loaded.</p>
-				<button class="btn">Retry</button>
+				<h2>Missing article</h2>
+				<p>A detailed description is not available for this model yet.</p>
+				<p>Show the library specification's plain-text description.</p>
+				<button class="btn">Close</button>
 			</section>
+			<!-- / Missing Model Article -->
+
+			<!-- Model Description Load Error -->
+			<!-- This will display when fetching the model description article fails. -->
+			<section>
+				<h2>Load error</h2>
+				<p role="alert">The model description could not be loaded.</p>
+				<button class="btn">Retry</button><button class="btn">Close</button>
+			</section>
+			<!-- / Model Description Load Error -->
 		</main>
 	</body>
 </html>

@@ -1,6 +1,6 @@
 # Mockup Review Improvements
 
-**Status:** ready | **Updated:** 2026-11-21T10:09:23Z
+**Status:** ready | **Updated:** 2026-11-21T12:12:45Z
 **Authors:** Google Antigravity (Gemini 4 Neon High), Google Antigravity (Gemini) | **Created:** 2026-11-20T17:44:07Z
 **Verified by:** Google Antigravity (Gemini 4 Neon High) | **Verified:** 2026-11-21T10:09:23Z | **Verification:** approved
 **Verified hash:** sha256:f34dd07a43da86070de76a354cfe9bafdcdb1745731459ae01f6ce09c0ab676f
@@ -279,13 +279,13 @@ Client-side filtering matches `#query` case-insensitively against `name`, `filen
     6. Wrap each UI-state fragment in the exact 11 multi-state product draft files (`00-2_content-modal.html` [2 dialog states], `01-7_data-states.html` [7], `01-8_table-loading.html` [3], `02-3_target-states.html` [5], `03-0_models-overview.html` [5], `03-4_train-models-3-configure-model.html` [9: 1 builder + 8 variant/error sections], `03-5_train-models-4-configure-training.html` [4: 1 builder + 3 alternate sections], `03-6_train-models-5-train.html` [14: 1 builder — also completing explanatory second comment lines and closing `<!-- / ... -->` comments on its 3 protocol sub-blocks — + 13 phase/outcome sections], `03-7_train-models-5-results.html` [12], `03-8_model-description.html` [4], `03-9_choose-model-text-entries.html` [6]) with `<!-- {State Name} -->`, `<!-- This will display when ... -->`, and `<!-- / {State Name} -->` without altering rendered elements or classes. Leave `00-3_mockup-review.html` body markup untouched (no multi-state comments).
     7. Format edited HTML files with `bun run format`.
 - **Acceptance criteria:**
-    - [ ] Exactly 26 `.html` files, `style.css`, `mockups.css`, and `css/` (18 `.css` files) exist in `specification/mockups/`; `ui-scaffold/` and `drafts/` directories no longer exist.
-    - [ ] Zero HTML files in `specification/mockups/` are 0 bytes, zero reference `../style.css`, and zero contain hardcoded `#__mockup-review-helper-host` markup.
-    - [ ] Zero product mockup HTML files link `mockups.css` directly on disk (at most developer reference `00-3_mockup-review.html` may link `./mockups.css` if present) so `?clean=1` on every product mockup omits `mockups.css`.
-    - [ ] All 26 HTML files declare non-empty `<meta name="name">`, `<meta name="description">`, and valid `<meta name="status">` (`draft` or `implemented` per §1 table).
-    - [ ] All 11 multi-state product draft HTML files wrap every listed state fragment (including all 9 top-level sections in `03-4`, all 4 in `03-5`, and all 14 top-level sections plus 3 protocol sub-blocks in `03-6`) in matching `<!-- {State} -->` / `<!-- / {State} -->` comments with an explanatory second comment line.
+    - [x] Exactly 26 `.html` files, `style.css`, `mockups.css`, and `css/` (18 `.css` files) exist in `specification/mockups/`; `ui-scaffold/` and `drafts/` directories no longer exist.
+    - [x] Zero HTML files in `specification/mockups/` are 0 bytes, zero reference `../style.css`, and zero contain hardcoded `#__mockup-review-helper-host` markup.
+    - [x] Zero product mockup HTML files link `mockups.css` directly on disk (at most developer reference `00-3_mockup-review.html` may link `./mockups.css` if present) so `?clean=1` on every product mockup omits `mockups.css`.
+    - [x] All 26 HTML files declare non-empty `<meta name="name">`, `<meta name="description">`, and valid `<meta name="status">` (`draft` or `implemented` per §1 table).
+    - [x] All 11 multi-state product draft HTML files wrap every listed state fragment (including all 9 top-level sections in `03-4`, all 4 in `03-5`, and all 14 top-level sections plus 3 protocol sub-blocks in `03-6`) in matching `<!-- {State} -->` / `<!-- / {State} -->` comments with an explanatory second comment line.
 - **Verification:** `bun run format:check` on changed mockup files / verify file count, zero `../style.css` hits, zero static `#__mockup-review-helper-host` hits, and `<meta>` presence across all 26 HTML files.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-21T12:12:45Z)
 
 ### T2 — Update `scripts/serve-mockups.ts`, `scripts/audit-mockups.ts`, `scripts/config.ts`, and their unit tests
 
@@ -426,6 +426,7 @@ None.
 | When (UTC) | Task | Agent (model) | Outcome / commands / evidence |
 | ---------- | ---- | ------------- | ----------------------------- |
 | —          | —    | —             | Not started                   |
+| 2026-11-21T12:12:45Z | T1 | Google Antigravity (Gemini 4 Neon High) | Flattened specification/mockups/ (26 HTML, style.css, mockups.css verbatim, 18 css/*.css; removed 4 empty 0-byte duplicates and ui-scaffold/ + drafts/); added <meta name="name\|description\|status"> to all 26 HTML files; stripped prototype mockups.css links, orphan comments, static #__mockup-review-helper-host blocks, and placeholder titles; wrapped all multi-state fragments across all 11 multi-state product draft files (note: 03-6_train-models-5-train.html was refactored on main by web-ml-phase-3-model-training commit 18deeee to 11 fragments — 1 builder + 7 template + 3 section — all 11 wrapped). Verified: bun run format:check specification/mockups/*.html PASS, 26 HTML + 18 css/*.css, 0 empty HTML, 0 ../style.css or prototype hooks, 26/26 meta tags. |
 
 ## Plan review history
 

@@ -3,11 +3,14 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="stylesheet" href="../style.css" />
-		<!-- Mockup-specific styles -->
-		<link rel="stylesheet" href="../mockups.css" />
+		<meta name="name" content="Virtual Table Preview" />
+		<meta
+			name="description"
+			content="Populated virtualised dataset preview table with column edit actions and horizontal scrolling." />
+		<meta name="status" content="draft" />
+		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>{Simple Plain English Name of Mockup}</title>
+		<title>Virtual Table Preview</title>
 	</head>
 	<body>
 		<svg style="display: none" aria-hidden="true" focusable="false">
@@ -1120,50 +1123,5 @@
 				</div>
 			</div>
 		</main>
-
-		<div id="__mockup-review-helper-host">
-			<div id="mockup-details">
-				<h4 class="mockup-name">
-					{Simple Plain English Name of Mockup}
-					<span class="mockup-status mockup-status-{status}">
-						{draft|ready|implemented}
-					</span>
-				</h4>
-				<p class="mockup-description">
-					{Simple description of the situation in which a user will encounter this ui.}
-				</p>
-			</div>
-			<nav id="mockup-controls" aria-label="Mockup review">
-				<label for="preview-page">Switch Mockup</label>
-				<select id="preview-page">
-					<option value="/files/basic-html-structure.html">
-						basic-html-structure.html
-					</option>
-					<!-- {remaining mockup options} -->
-				</select>
-
-				<a href="/" class="index-link">
-					<svg
-						class="index-link-icon"
-						xmlns="http://www.w3.org/2000/svg"
-						width="24"
-						height="24"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="1.5"
-						stroke-linecap="round"
-						stroke-linejoin="round">
-						<path d="M14 3v4a1 1 0 0 0 1 1h4" />
-						<path
-							d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" />
-						<path d="M9 9l1 0" />
-						<path d="M9 13l6 0" />
-						<path d="M9 17l6 0" />
-					</svg>
-					<span class="index-link-text">Index</span>
-				</a>
-			</nav>
-		</div>
 	</body>
 </html>

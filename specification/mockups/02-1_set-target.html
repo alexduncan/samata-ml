@@ -1,11 +1,15 @@
 <!doctype html>
-<!-- DRAFT: structure only, not normative for appearance. Source: workflow-steps.md §1; plans/step-1-load-data-and-preview.md. Open questions: none (scoped defaults accepted by the user). -->
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="stylesheet" href="../style.css" />
+		<meta name="name" content="Select Target" />
+		<meta
+			name="description"
+			content="Step 2 view listing dataset columns before a target variable has been chosen." />
+		<meta name="status" content="implemented" />
+		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Pen</title>
+		<title>samatā.ml | Select Target</title>
 	</head>
 	<body>
 		<svg style="display: none" aria-hidden="true" focusable="false">
@@ -59,8 +63,8 @@
 			</section>
 			<nav class="workflow" aria-label="Workflow">
 				<ol class="steps">
-					<li class="step" aria-current="step">
-						<div class="step-link">
+					<li class="step">
+						<a href="/data" class="step-link">
 							<span class="step-num">1</span>
 							<span class="step-label-small">Dataset</span>
 							<span class="step-value">{Dataset Name}</span>
@@ -68,14 +72,13 @@
 								<span class="chiclet">999 rows</span>
 								<span class="chiclet">999 columns</span>
 							</span>
-						</div>
+						</a>
 					</li>
-					<li class="step">
-						<a href="/target" class="step-link">
+					<li class="step" aria-current="step">
+						<div class="step-link">
 							<span class="step-num">2</span>
 							<span class="step-label">Select Target</span>
-							<div class="dot"></div>
-						</a>
+						</div>
 					</li>
 					<li class="step">
 						<a href="/models" class="step-link">
@@ -102,99 +105,44 @@
 
 		<main>
 			<header class="page-header">
-				<h1>Load Data</h1>
-				<p>Dataset loading and column details: proposed states for review.</p>
+				<h1>Set Target</h1>
+				<p>
+					Choose the column from your dataset that you want to train models to predict.
+					<a href="">learn more...</a>
+				</p>
 			</header>
 			<section>
-				<h2>Remote sample</h2>
-				<p>
-					COMPAS is fetched from GitHub when loaded. An internet connection is required.
-				</p>
-				<button class="btn">Load Dataset</button>
-			</section>
-			<section>
-				<h2>Loading a dataset</h2>
-				<label for="load-progress">Calculating column statistics</label
-				><progress id="load-progress"></progress><button class="btn">Cancel</button>
-			</section>
-			<section>
-				<h2>Upload error</h2>
-				<p role="alert">This CSV has no usable data rows. Choose another file.</p>
-				<label for="csv-file">Choose a CSV file</label
-				><input id="csv-file" type="file" accept=".csv,text/csv" />
-			</section>
-			<section>
-				<h2>Import summary</h2>
-				<p>344 rows loaded. Short rows padded: 0. Rows skipped: 0. Invalid values: 0.</p>
-			</section>
-			<section>
-				<h2>Column details: body_mass_g</h2>
-				<p>Numeric. Empty: 2. Invalid: 0.</p>
-				<dl>
-					<dt>Minimum</dt>
-					<dd>2,700</dd>
-					<dt>Median</dt>
-					<dd>4,050</dd>
-					<dt>Mean</dt>
-					<dd>4,201.75</dd>
-					<dt>Maximum</dt>
-					<dd>6,300</dd>
-				</dl>
-				<table>
-					<caption>
-						Histogram bins
-					</caption>
+				<table class="table">
 					<thead>
 						<tr>
-							<th scope="col">Range</th>
-							<th scope="col">Count</th>
+							<th>Column Name</th>
+							<th>Type</th>
+							<th></th>
 						</tr>
 					</thead>
 					<tbody>
 						<tr>
-							<td>2,700–3,200</td>
-							<td>Representative bin; use stored counts</td>
+							<td>Column 1</td>
+							<td><code>String</code></td>
+							<td><button class="btn btn-primary">Set as Target</button></td>
+						</tr>
+						<tr>
+							<td>Column 2</td>
+							<td><code>Number</code></td>
+							<td><button class="btn btn-primary">Set as Target</button></td>
+						</tr>
+						<tr>
+							<td>Column 3</td>
+							<td><code>Categorical</code></td>
+							<td><button class="btn btn-primary">Set as Target</button></td>
+						</tr>
+						<tr>
+							<td>Column 4</td>
+							<td><code>Boolean</code></td>
+							<td><button class="btn btn-primary">Set as Target</button></td>
 						</tr>
 					</tbody>
 				</table>
-			</section>
-			<section>
-				<h2>Column details: species</h2>
-				<table>
-					<caption>
-						Category frequencies
-					</caption>
-					<thead>
-						<tr>
-							<th scope="col">Category</th>
-							<th scope="col">Frequency</th>
-							<th scope="col">Percentage</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<th scope="row">Adelie</th>
-							<td>152</td>
-							<td>44.19%</td>
-						</tr>
-						<tr>
-							<th scope="row">Gentoo</th>
-							<td>124</td>
-							<td>36.05%</td>
-						</tr>
-						<tr>
-							<th scope="row">Chinstrap</th>
-							<td>68</td>
-							<td>19.77%</td>
-						</tr>
-					</tbody>
-				</table>
-			</section>
-			<section>
-				<h2>Change dataset confirmation</h2>
-				<p>Remove this dataset and reset the target and all models?</p>
-				<button class="btn">Cancel</button
-				><button class="btn btn-primary">Change Dataset</button>
 			</section>
 		</main>
 	</body>

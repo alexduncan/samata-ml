@@ -2,6 +2,11 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
+		<meta name="name" content="Dataset Card Modal" />
+		<meta
+			name="description"
+			content="Datasheet modal dialog shown when inspecting a sample dataset's metadata and ethics notes." />
+		<meta name="status" content="implemented" />
 		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>samatā.ml | Select Data</title>
@@ -177,33 +182,21 @@
 			</section>
 		</main>
 
-		<dialog class="modal" id="dataset-card-modal">
+		<dialog class="modal" aria-modal="true" id="dataset-card-modal">
 			<header class="modal-header">
-				<h1>Upload Custom Dataset</h1>
-				<button class="btn-icon" aria-label="Close modal">
+				<span>Dataset Card</span>
+				<h1>{dataset_name: string}</h1>
+				<button aria-label="Close modal">
 					<svg class="icon" aria-hidden="true" focusable="false">
 						<use href="#close"></use>
 					</svg>
 				</button>
 			</header>
-			<section class="dropzone">
-				<label for="dataset-file"
-					>Click to upload or drag and drop your dataset here.</label
-				>
-				<label class="file-picker">
-					<span class="file-picker-button">Select file</span>
-					<input type="file" id="dataset-file" name="dataset" accept=".csv,text/csv" />
-				</label>
-				<p>or</p>
-				<input type="text" placeholder="Paste url to dataset..." />
-				<p>
-					<small>
-						Must be
-						<code>.csv</code>
-						format
-						<a href="/help/dataset-requirements"> read the dataset requirements </a>
-						.
-					</small>
+			<section class="modal-content">
+				<p>{dataset_description: string}</p>
+				<p class="card-stats">
+					<span class="stat">{dataset_columns: int} columns</span>
+					<span class="stat">{dataset_rows: int} rows</span>
 				</p>
 			</section>
 		</dialog>

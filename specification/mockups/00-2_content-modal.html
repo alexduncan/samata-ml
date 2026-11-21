@@ -1,10 +1,16 @@
 <!doctype html>
+<!-- DRAFT: structure only, not normative for appearance. Source: plan static-content-pipeline (content-and-i18n.md target; app-state-and-navigation §5.4). Shows the reserved-route content dialog with compiled Markdown (loaded) and the load-failure state (open with #error). Open questions: TODO-20 (terms route). -->
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
+		<meta name="name" content="Content Modal" />
+		<meta
+			name="description"
+			content="Reserved-route modal dialog displaying About, Privacy, or Help Markdown prose and its load-error state." />
+		<meta name="status" content="draft" />
 		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>samatā.ml | Select Data</title>
+		<title>samatā.ml | About</title>
 	</head>
 	<body>
 		<svg style="display: none" aria-hidden="true" focusable="false">
@@ -177,28 +183,95 @@
 			</section>
 		</main>
 
-		<dialog class="modal" aria-modal="true" id="dataset-card-modal">
+		<!-- Content Loaded -->
+		<!-- This will display when the reserved-route Markdown content loads successfully. -->
+		<!-- State: loaded. Title from front matter; body is the compiled fragment (headings start at h2). -->
+		<dialog id="content-loaded" class="modal" aria-labelledby="content-loaded-title">
 			<header class="modal-header">
-				<span>Dataset Card</span>
-				<h1>{dataset_name: string}</h1>
-				<button aria-label="Close modal">
+				<h1 id="content-loaded-title">Privacy Policy</h1>
+				<button aria-label="Close">
 					<svg class="icon" aria-hidden="true" focusable="false">
 						<use href="#close"></use>
 					</svg>
 				</button>
 			</header>
 			<section class="modal-content">
-				<p>{dataset_description: string}</p>
-				<p class="card-stats">
-					<span class="stat">{dataset_columns: int} columns</span>
-					<span class="stat">{dataset_rows: int} rows</span>
+				<p>
+					Because samatā.ml runs entirely in your browser, your data
+					<strong>never leaves your machine</strong>. All data processing, model training
+					and evaluation happen locally.
+				</p>
+				<h2 id="what-is-stored">What is stored</h2>
+				<ul>
+					<li>Your session state, in <code>localStorage</code>.</li>
+					<li>The dataset you load, in IndexedDB on this device.</li>
+				</ul>
+				<h3 id="clearing-your-data">Clearing your data</h3>
+				<ol>
+					<li>Open your browser's site settings.</li>
+					<li>Choose <em>Clear data</em> for this site.</li>
+				</ol>
+				<blockquote>
+					<p>We don't even track page views.</p>
+				</blockquote>
+				<table>
+					<thead>
+						<tr>
+							<th scope="col">Store</th>
+							<th scope="col">Contents</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><code>localStorage</code></td>
+							<td>Workflow progress and model settings</td>
+						</tr>
+						<tr>
+							<td>IndexedDB</td>
+							<td>Rows of the Palmer Penguins dataset (344 rows, 9 columns)</td>
+						</tr>
+					</tbody>
+				</table>
+				<pre><code class="language-text">samata-db › datasets › palmer-penguins</code></pre>
+				<hr />
+				<p>
+					Read more about
+					<a
+						href="https://allisonhorst.github.io/palmerpenguins/"
+						target="_blank"
+						rel="noopener noreferrer"
+						>the Palmer Penguins data</a
+					>
+					or return to the <a href="/data">Load Data</a> step.
 				</p>
 			</section>
 		</dialog>
+		<!-- / Content Loaded -->
+
+		<!-- Content Load Error -->
+		<!-- This will display when the content fragment or index fails to load. -->
+		<!-- State: error. The fragment or index could not be loaded. -->
+		<dialog id="error" class="modal" aria-labelledby="content-error-title">
+			<header class="modal-header">
+				<h1 id="content-error-title">Privacy Policy</h1>
+				<button aria-label="Close">
+					<svg class="icon" aria-hidden="true" focusable="false">
+						<use href="#close"></use>
+					</svg>
+				</button>
+			</header>
+			<section class="modal-content">
+				<p role="alert">
+					This content could not be loaded. Check your connection, then close this dialog
+					and try again.
+				</p>
+			</section>
+		</dialog>
+		<!-- / Content Load Error -->
 
 		<script>
-			const modal = document.getElementById("dataset-card-modal");
-			modal.showModal();
+			const id = location.hash === "#error" ? "error" : "content-loaded";
+			document.getElementById(id).showModal();
 		</script>
 	</body>
 </html>

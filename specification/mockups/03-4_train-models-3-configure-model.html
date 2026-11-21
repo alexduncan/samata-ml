@@ -3,8 +3,12 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="stylesheet" href="../style.css" />
-		<link rel="stylesheet" href="../mockups.css" />
+		<meta name="name" content="Configure Model" />
+		<meta
+			name="description"
+			content="Step 3 builder Section 3 hyperparameter form, advanced search options, and loading/error/invalid states." />
+		<meta name="status" content="draft" />
+		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>samatā.ml | Train Models</title>
 	</head>
@@ -117,6 +121,8 @@
 				<p>Choose a model to predict your target variable.</p>
 			</header>
 
+			<!-- Configure Model Builder -->
+			<!-- This will display when the user reaches Step 3 Section 3 to configure manual hyperparameters. -->
 			<section class="page-body" data-testid="model-builder">
 				<ol class="train-model" aria-label="Model training steps">
 					<li class="train-step">
@@ -427,11 +433,18 @@
 					</li>
 				</ol>
 			</section>
+			<!-- / Configure Model Builder -->
 
+			<!-- Model Context Summary -->
+			<!-- This will display alongside the configuration panel to show the selected dataset, target, and classification mode. -->
 			<section>
 				<h2>3. Configure Model — Logistic Regression</h2>
 				<p>Palmer Penguins · Target: species · One-vs-Rest classification</p>
 			</section>
+			<!-- / Model Context Summary -->
+
+			<!-- SGD Rate and Bounded Fractions -->
+			<!-- This will display when the chosen solver or penalty exposes a logarithmic learning rate or elastic-net L1 ratio. -->
 			<section>
 				<h2>SGD rate and bounded fractions</h2>
 				<p>
@@ -476,6 +489,10 @@
 					step="any"
 					value="0.5" />
 			</section>
+			<!-- / SGD Rate and Bounded Fractions -->
+
+			<!-- Structured Classifier Controls -->
+			<!-- This will display when configuring models with structured options such as MLP hidden layers, tree depth, SVC gamma, or class weights. -->
 			<section>
 				<h2>Structured controls used by other classifiers</h2>
 				<fieldset>
@@ -535,6 +552,10 @@
 						value="1" />
 				</fieldset>
 			</section>
+			<!-- / Structured Classifier Controls -->
+
+			<!-- Advanced Random Search -->
+			<!-- This will display when the user selects Random Search mode to configure hyperparameter search ranges and trials. -->
 			<section>
 				<h2>Advanced Random Search</h2>
 				<p>
@@ -577,16 +598,28 @@
 					select parameters.
 				</p>
 			</section>
+			<!-- / Advanced Random Search -->
+
+			<!-- Loading Model Specification -->
+			<!-- This will display while the model hyperparameter specification is being fetched. -->
 			<section>
 				<h2>Loading model specification</h2>
 				<p>Loading model options…</p>
 				<progress aria-label="Loading model specification"></progress>
 			</section>
+			<!-- / Loading Model Specification -->
+
+			<!-- Specification Error -->
+			<!-- This will display when the model specification cannot be loaded or has an unsupported schema version. -->
 			<section>
 				<h2>Specification error</h2>
 				<p role="alert">Model options could not be loaded or use an unsupported version.</p>
 				<button type="button" class="btn">Retry</button>
 			</section>
+			<!-- / Specification Error -->
+
+			<!-- Invalid Configuration -->
+			<!-- This will display when incompatible hyperparameter choices fail validation on save. -->
 			<section>
 				<h2>Invalid configuration</h2>
 				<p role="alert">
@@ -607,11 +640,16 @@
 				</p>
 				<button type="submit" class="btn btn-primary">Save &amp; Continue</button>
 			</section>
+			<!-- / Invalid Configuration -->
+
+			<!-- No Classification Model Available -->
+			<!-- This will display when the selected target column is numeric and no classification model applies. -->
 			<section>
 				<h2>No classification model available</h2>
 				<p>This target is numeric. Regression will be added later.</p>
 				<a href="/target">Choose a categorical or boolean target</a>
 			</section>
+			<!-- / No Classification Model Available -->
 		</main>
 	</body>
 </html>

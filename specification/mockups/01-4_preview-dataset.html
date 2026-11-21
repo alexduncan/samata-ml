@@ -2,9 +2,14 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
+		<meta name="name" content="Preview Dataset" />
+		<meta
+			name="description"
+			content="Step 1 view shown after loading a dataset, presenting the dataset summary header and data preview table." />
+		<meta name="status" content="implemented" />
 		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>samatā.ml | Compare Results</title>
+		<title>Pen</title>
 	</head>
 	<body>
 		<svg style="display: none" aria-hidden="true" focusable="false">
@@ -48,8 +53,8 @@
 			<h1>samat&amacr;.ml</h1>
 			<p class="tagline">Machine Learning in Your Browser</p>
 			<section class="project">
-				<span class="project-label">Project</span>
-				<span class="project-name">New Project</span>
+				<h4>Project</h4>
+				<span class="project-name">{New Project}</span>
 				<button class="btn-icon project-settings" aria-label="Project settings">
 					<svg class="icon" aria-hidden="true" focusable="false">
 						<use href="#settings"></use>
@@ -58,8 +63,8 @@
 			</section>
 			<nav class="workflow" aria-label="Workflow">
 				<ol class="steps">
-					<li class="step">
-						<a href="/load-data" class="step-link">
+					<li class="step" aria-current="step">
+						<div class="step-link">
 							<span class="step-num">1</span>
 							<span class="step-label-small">Dataset</span>
 							<span class="step-value">{Dataset Name}</span>
@@ -67,42 +72,26 @@
 								<span class="chiclet">999 rows</span>
 								<span class="chiclet">999 columns</span>
 							</span>
-						</a>
-					</li>
-					<li class="step">
-						<a href="/select-target" class="step-link">
-							<span class="step-num">2</span>
-							<span class="step-label-small">Target</span>
-							<span class="step-value">{Target Variable Column Name}</span>
-							<span class="step-chiclets">
-								<span class="chiclet">Categorical</span>
-							</span>
-						</a>
-					</li>
-					<li class="step">
-						<div class="step-link">
-							<span class="step-num">3</span>
-							<span class="step-label-small">Models</span>
-							<ul class="step-models">
-								<li class="step-model">
-									<a href="/models/1" class="step-model-link">
-										Logistic Regression
-									</a>
-								</li>
-								<li class="step-model">
-									<a href="/models/2" class="step-model-link">Decision Tree</a>
-								</li>
-								<li class="step-model">
-									<a href="/models/3" class="step-train-new">Train New Model </a>
-								</li>
-							</ul>
 						</div>
 					</li>
-					<li class="step" aria-current="step">
-						<div class="step-link">
+					<li class="step">
+						<a href="/target" class="step-link">
+							<span class="step-num">2</span>
+							<span class="step-label">Select Target</span>
+							<div class="dot"></div>
+						</a>
+					</li>
+					<li class="step">
+						<a href="/models" class="step-link">
+							<span class="step-num">3</span>
+							<span class="step-label">Train Models</span>
+						</a>
+					</li>
+					<li class="step">
+						<a href="/results" class="step-link">
 							<span class="step-num">4</span>
 							<span class="step-label">Compare Results</span>
-						</div>
+						</a>
 					</li>
 				</ol>
 			</nav>
@@ -116,7 +105,15 @@
 		</div>
 
 		<main>
-			<article>{Compare Trained Model Results}</article>
+			<header class="page-header">
+				<h1>Preview Dataset: {dataset_name: string}</h1>
+				<p>
+					{num_rows: int} rows &nbsp;&nbsp;|&nbsp;&nbsp; {num_columns: int} columns<br />
+					{dataset_description: string}
+				</p>
+				<button class="btn btn-red" disabled>Delete Dataset</button>
+			</header>
+			<section>{Virtual Table Component}</section>
 		</main>
 	</body>
 </html>
