@@ -659,7 +659,7 @@ export function updateTrainingProgress(
 
 /** Terminal outcome of a single protected training attempt. */
 export type TrainingOutcome =
-	| { kind: 'success'; durationMs: number }
+	| { kind: 'success'; durationMs: number; metrics?: Record<string, number> | null }
 	| { kind: 'stopped'; error: TrainingError };
 
 /** Creates the terminal candidate only for the current model creation and run ID. */
@@ -675,7 +675,7 @@ export function reduceTrainingOutcome(
 				status: 'trained',
 				error: null,
 				progress: null,
-				metrics: null,
+				metrics: outcome.metrics ?? null,
 				timings: null,
 				durationMs: outcome.durationMs,
 				completedSteps: model.completedSteps.includes('training')

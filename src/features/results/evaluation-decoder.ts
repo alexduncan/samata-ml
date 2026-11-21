@@ -31,6 +31,8 @@ const RANKING_SOURCES: ReadonlySet<unknown> = new Set(['probability', 'decision-
 const SWEEP_LENGTH = 101;
 const CALIBRATION_BINS = 10;
 const MAX_CLASSES = 65_535;
+/** Rates and probabilities may exceed their bounds by floating-point representation error. */
+const TOLERANCE = 1e-6;
 
 /** Thrown internally to abandon decoding; never escapes `decodeStoredEvaluation`. */
 class Invalid extends Error {}
@@ -54,7 +56,12 @@ function count(value: unknown, what: string): number {
 }
 
 function finite(value: unknown, what: string, min = -Infinity, max = Infinity): number {
-	if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max) {
+	if (
+		typeof value !== 'number' ||
+		!Number.isFinite(value) ||
+		value < min - TOLERANCE ||
+		value > max + TOLERANCE
+	) {
 		fail(`${what} must be a finite number in range`);
 	}
 	return value;
@@ -72,7 +79,8 @@ function typed<T extends Float32Array | Float64Array | Uint16Array | Uint32Array
 }
 
 function unit(array: Float32Array | Float64Array, what: string): void {
-	for (const entry of array) if (!Number.isFinite(entry) || entry < 0 || entry > 1) fail(what);
+	for (const entry of array)
+		if (!Number.isFinite(entry) || entry < -TOLERANCE || entry > 1 + TOLERANCE) fail(what);
 }
 
 function metric(value: unknown, what: string, min: number, max: number): StoredMetric {

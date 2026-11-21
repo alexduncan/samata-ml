@@ -49,7 +49,8 @@ import {
 	STATE_STORAGE_KEY,
 	type PersistedAppState
 } from '../src/types/state';
-import { fixtureTrainingResult } from './fixtures/training/results';
+import { headlineMetrics } from '../src/common/evaluation/headline-metrics';
+import { fixtureLegacyTrainingResult, fixtureTrainingResult } from './fixtures/training/results';
 import { installFakeIndexedDB } from './helpers/fake-indexeddb';
 import { createTrainingTestLocks } from './helpers/training-locks';
 
@@ -310,6 +311,67 @@ test('WML-P3-TRAIN-3: lost results demote only the matching trained model during
 		durationMs: null
 	});
 	expect($appState.get().models[1]).toEqual(second);
+});
+
+test.each(['one_shot'] as const)(
+	'WML-P4-EVAL-5: publishes the %s headline metrics and restores them on reload',
+	async (strategy) => {
+		seed(1);
+		const run = service.start(1);
+		const worker = await workerAt(0);
+		const result = fixtureTrainingResult(strategy);
+		worker.succeed(result);
+		expect(await run).toMatchObject({ ok: true });
+		const published = $appState.get().models[0]!.metrics;
+		expect(published).toEqual(headlineMetrics(result.evaluation));
+		expect(published).toMatchObject({ balancedAccuracy: expect.any(Number) });
+		expect(Object.hasOwn(published ?? {}, 'balancedAccuracySd')).toBe(false);
+		const stored = await db.get('model_results', [metadata.id, 1]);
+		expect(stored).toMatchObject({ schemaVersion: 2, strategy });
+
+		$appState.set(INITIAL_APP_STATE);
+		expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({ ok: true });
+		expect($appState.get().models[0]).toMatchObject({ status: 'trained', metrics: published });
+	}
+);
+
+test('WML-P4-EVAL-6: a valid version 1 result stays trained with no metrics through startup', async () => {
+	seed(1);
+	const run = service.start(1);
+	const worker = await workerAt(0);
+	worker.succeed();
+	expect(await run).toMatchObject({ ok: true });
+	const identity = worker.identity;
+	const legacy = fixtureLegacyTrainingResult();
+	await db.put('model_results', {
+		...legacy,
+		...identity,
+		algorithm: 'gaussian-nb',
+		durationMs: 10,
+		logEntries: []
+	});
+	expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({ ok: true });
+	expect($appState.get().models[0]).toMatchObject({ status: 'trained', metrics: null });
+});
+
+test('WML-P4-EVAL-6: a corrupt result envelope follows result-loss recovery with its configuration intact', async () => {
+	seed(1);
+	const run = service.start(1);
+	const worker = await workerAt(0);
+	worker.succeed();
+	expect(await run).toMatchObject({ ok: true });
+	const before = $appState.get().models[0]!;
+	const stored = await db.get('model_results', [metadata.id, 1]);
+	await db.put('model_results', { ...stored, evaluation: { schemaVersion: 1 } } as never);
+	expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({ ok: true });
+	expect($appState.get().models[0]).toMatchObject({
+		status: 'draft',
+		metrics: null,
+		resultRevision: null,
+		modelId: before.modelId,
+		features: before.features,
+		trainingSetup: before.trainingSetup
+	});
 });
 
 test.each(['target', 'dataset'] as const)(

@@ -6,7 +6,8 @@ import type {
 } from '../src/features/models/training/protocol';
 import type { ClassifierId } from '../src/features/models/model-catalogue';
 import { configureDraft } from './fixtures/training/browser';
-import { dismissWelcomeModal } from './journeys/helpers';
+import type { StoredEvaluation } from '../src/types/model-evaluation';
+import { dismissWelcomeModal, loadSampleDataset } from './journeys/helpers';
 
 const holdout = { type: 'one_shot', testRatio: 0.2, randomState: 42 } as const;
 const crossValidation = {
@@ -66,11 +67,12 @@ async function run(
 	datasetId: string,
 	classifier: TrainingStartRequest['classifier'],
 	setup: TrainingStartRequest['setup'],
-	features = ['first', 'second']
+	features = ['first', 'second'],
+	target = 'label'
 ) {
 	const identity: TrainingRunIdentity = {
 		datasetId,
-		target: 'label',
+		target,
 		modelNum: 1,
 		modelCreatedAt: 1,
 		configurationKey: 'real-worker-fixture',
@@ -128,7 +130,8 @@ test.describe('Deployed Chromium classification worker', () => {
 				'one_shot'
 			);
 			if (oneShot?.kind !== 'success' || oneShot.result.strategy !== 'one_shot') return;
-			const { report, testIndices, trainIndices } = oneShot.result.holdout;
+			const { testIndices, trainIndices } = oneShot.result.holdout;
+			const report = oneShot.result.evaluation.partitions[0]!.test;
 			expect(trainIndices.length).toBe(48);
 			expect(testIndices.length).toBe(12);
 			expect(new Set([...trainIndices, ...testIndices]).size).toBe(60);
@@ -155,6 +158,95 @@ test.describe('Deployed Chromium classification worker', () => {
 			expect(cv.result.modelJson).toBeTruthy();
 		});
 	}
+
+	test('WML-P4-EVAL-5: Iris five-fold Logistic Regression persists five partitions and probabilities', async ({
+		page
+	}) => {
+		await page.goto('/data');
+		await loadSampleDataset(page, 'iris');
+		const datasetId = await page.evaluate(() => window.__appState!.get().dataset!.id);
+		const features = ['sepal length', 'sepal width', 'petal length', 'petal width'];
+		const fiveFold = {
+			type: 'nested_cv',
+			outerFolds: 5,
+			innerFolds: 5,
+			randomState: 42
+		} as const;
+		const final = (
+			await run(
+				page,
+				datasetId,
+				{ algorithm: 'logistic-regression', options: {} },
+				fiveFold,
+				features,
+				'class'
+			)
+		).at(-1);
+		expect(final?.kind).toBe('success');
+		if (final?.kind !== 'success' || final.result.strategy !== 'cross_validation') return;
+		const { evaluation, crossValidation, modelJson, preprocessorJson } = final.result;
+		expect(evaluation.protocol).toEqual({
+			kind: 'cross_validation',
+			folds: 5,
+			randomState: 42
+		});
+		expect(evaluation.partitions).toHaveLength(5);
+		expect(crossValidation.folds).toHaveLength(5);
+		expect(evaluation.classLabels).toHaveLength(3);
+		expect(evaluation.positiveClassIndex).toBeNull();
+		expect(evaluation.outputs.probabilities).not.toBeNull();
+		expect(evaluation.outputs.probabilitySource).toBe('native');
+		expect(evaluation.curves.thresholdSweep).toBeNull();
+		expect(evaluation.curves.ranking).toHaveLength(3);
+		expect(evaluation.outputs.sourceRowIndex).toHaveLength(150);
+		expect(evaluation.partitionFingerprint).toMatch(/^[0-9a-f]{64}$/);
+		expect(modelJson).toBeTruthy();
+		expect(preprocessorJson.columns).toHaveLength(4);
+	});
+
+	test('WML-P4-EVAL-5: breast-cancer One-Shot persists one partition; only SVC lacks probabilities', async ({
+		page
+	}) => {
+		await page.goto('/data');
+		await loadSampleDataset(page, 'breast-cancer-wisconsin');
+		const datasetId = await page.evaluate(() => window.__appState!.get().dataset!.id);
+		const features = ['radius1', 'texture1'];
+		const outcomes = [] as { algorithm: string; evaluation: StoredEvaluation }[];
+		for (const algorithm of ['gaussian-nb', 'support-vector-classifier'] as const) {
+			const final = (
+				await run(
+					page,
+					datasetId,
+					{ algorithm, options: {} },
+					holdout,
+					features,
+					'Diagnosis'
+				)
+			).at(-1);
+			expect(final?.kind).toBe('success');
+			if (final?.kind !== 'success' || final.result.strategy !== 'one_shot') return;
+			outcomes.push({ algorithm, evaluation: final.result.evaluation });
+			expect(final.result.evaluation.partitions).toHaveLength(1);
+			expect(final.result.evaluation.positiveClassIndex).toBe(1);
+			expect(final.result.holdout).not.toHaveProperty('report');
+			expect(final.result.modelJson).toBeTruthy();
+		}
+		const [bayes, svc] = outcomes;
+		expect(bayes!.evaluation.outputs.probabilities).not.toBeNull();
+		expect(bayes!.evaluation.curves.thresholdSweep?.thresholds).toHaveLength(101);
+		expect(bayes!.evaluation.curves.calibration).not.toBeNull();
+		expect(svc!.evaluation.outputs.probabilities).toBeNull();
+		expect(svc!.evaluation.outputs.probabilitySource).toBeNull();
+		expect(svc!.evaluation.curves.thresholdSweep).toBeNull();
+		expect(svc!.evaluation.curves.calibration).toBeNull();
+		expect(svc!.evaluation.outputs.rankingScoreSource).toBe('decision-function');
+		expect(svc!.evaluation.curves.ranking?.[0]?.roc).not.toBeNull();
+		expect(svc!.evaluation.pooled.test.logLoss).toEqual({
+			available: false,
+			reason: 'probabilities-unavailable'
+		});
+		expect(svc!.evaluation.pooled.test.rocAuc.available).toBe(true);
+	});
 
 	test('rejects an infeasible partition and an out-of-domain Multinomial NB fit with safe reasons', async ({
 		page

@@ -16,6 +16,7 @@ import {
 import { isClassifierId } from '../features/models/model-catalogue';
 import { getTrainingConfigurationKey } from '../features/models/training/training-service';
 import { readModelResult } from '../features/models/training/result-repository';
+import { headlineMetrics } from '../common/evaluation/headline-metrics';
 import type { ResultEnvelope } from '../types/model-result';
 import { $appState, reduceDatasetReplacement } from './app.store';
 import {
@@ -80,7 +81,7 @@ function restoreModelDomain(
 				status: 'trained',
 				progress: null,
 				error: null,
-				metrics: null,
+				metrics: envelope.schemaVersion === 2 ? headlineMetrics(envelope.evaluation) : null,
 				timings: null,
 				durationMs: envelope.durationMs,
 				completedSteps: completedSteps.includes('training')

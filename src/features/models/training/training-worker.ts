@@ -5,7 +5,10 @@ import {
 	snapshotCrossValidationResult,
 	snapshotHoldoutResult
 } from './classifier-adapters';
+import { FIXED_TRAINING_RANDOM_STATE } from '../../../types/state';
+import { evaluationTransferables } from './evaluation-mapper';
 import { prepareClassification } from './prepare-classification';
+import { isTrainingResultPayload } from './result-validation';
 import { createTrainingProgressMapper, type TrainingUpdate } from './progress';
 import {
 	decodeTrainingWorkerRequest,
@@ -21,7 +24,7 @@ type WebMlRuntime = typeof import('web-ml');
 export interface TrainingWorkerScope {
 	crossOriginIsolated: boolean;
 	onmessage: ((event: MessageEvent<unknown>) => void) | null;
-	postMessage(reply: TrainingWorkerReply): void;
+	postMessage(reply: TrainingWorkerReply, transfer?: Transferable[]): void;
 }
 
 async function consumeEvents<Event>(
@@ -54,12 +57,7 @@ async function execute(
 		signal
 	).finally(() => db.close());
 	signal.throwIfAborted();
-	const execution = buildClassificationRequest(
-		runtime,
-		request.classifier,
-		prepared,
-		request.setup
-	);
+	const execution = buildClassificationRequest(request.classifier, prepared, request.setup);
 	const captured = {
 		webMlRevision,
 		excludedTargetRows: prepared.excludedTargetRows,
@@ -68,28 +66,59 @@ async function execute(
 	const mapper = createTrainingProgressMapper(
 		execution.strategy === 'cross_validation' ? execution.request.folds : null
 	);
+	const context = {
+		datasetId: request.identity.datasetId,
+		sourceRowIndices: prepared.sourceRowIndices
+	};
 
 	if (execution.strategy === 'one_shot') {
-		const run = runtime.createTrainingClient().train(execution.request, { signal });
-		const [snapshot] = await Promise.all([
-			run.result.then((fit) =>
-				snapshotHoldoutResult(fit, {
-					trainIndices: execution.trainIndices,
-					testIndices: execution.testIndices
-				})
+		const run = runtime.holdoutValidate(execution.request, { signal });
+		const protocol = {
+			kind: 'one_shot',
+			testRatio: execution.request.testRatio,
+			randomState: execution.request.randomState ?? FIXED_TRAINING_RANDOM_STATE
+		} as const;
+		const [snapshot] = await settleAll([
+			run.result.then((result) =>
+				snapshotHoldoutResult(runtime, result, { ...context, protocol })
 			),
 			run.trainingMetrics,
-			consumeEvents(run.events, mapper.training, send)
+			consumeEvents(
+				run.events,
+				(event) => (event.type === 'fold-progress' ? mapper.training(event.event) : null),
+				send
+			)
 		]);
 		return { ...snapshot, ...captured, strategy: execution.strategy };
 	}
 	const run = runtime.crossValidate(execution.request, { signal });
-	const [snapshot] = await Promise.all([
-		run.result.then(snapshotCrossValidationResult),
+	const protocol = {
+		kind: 'cross_validation',
+		folds: execution.request.folds,
+		randomState: execution.request.randomState ?? FIXED_TRAINING_RANDOM_STATE
+	} as const;
+	const [snapshot] = await settleAll([
+		run.result.then((result) =>
+			snapshotCrossValidationResult(runtime, result, { ...context, protocol })
+		),
 		run.trainingMetrics,
 		consumeEvents(run.events, mapper.crossValidation, send)
 	]);
 	return { ...snapshot, ...captured, strategy: execution.strategy };
+}
+
+/**
+ * Waits for every promise, including the library's own terminal handling after a failure or
+ * cancellation, then rethrows the first rejection.
+ */
+async function settleAll<T extends readonly unknown[]>(promises: {
+	[K in keyof T]: Promise<T[K]>;
+}): Promise<T> {
+	const outcomes = await Promise.allSettled(promises);
+	for (const outcome of outcomes) if (outcome.status === 'rejected') throw outcome.reason;
+	return outcomes.map(
+		(outcome) => (outcome as PromiseFulfilledResult<unknown>).value
+	) as unknown as T;
 }
 
 /** Installs the request handler for a worker that owns exactly one training attempt. */
@@ -113,10 +142,10 @@ export function installTrainingWorker(
 		const controller = new AbortController();
 		const { identity } = request;
 		active = { identity, controller };
-		function send(reply: TrainingWorkerReply): void {
+		function send(reply: TrainingWorkerReply, transfer?: Transferable[]): void {
 			if (settled || (reply.kind === 'progress' && controller.signal.aborted)) return;
 			if (reply.kind !== 'progress') settled = true;
-			scope.postMessage(reply);
+			scope.postMessage(reply, transfer);
 		}
 
 		if (!scope.crossOriginIsolated) {
@@ -143,7 +172,12 @@ export function installTrainingWorker(
 			})
 			.then((result) => {
 				controller.signal.throwIfAborted();
-				send({ kind: 'success', identity, result });
+				if (!isTrainingResultPayload(result))
+					throw new ClassificationError('contract-error');
+				send(
+					{ kind: 'success', identity, result },
+					evaluationTransferables(result.evaluation)
+				);
 			})
 			.catch((error: unknown) => {
 				if (controller.signal.aborted) {
