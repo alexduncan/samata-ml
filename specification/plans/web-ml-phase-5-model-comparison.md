@@ -314,6 +314,13 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 ## Escalations
 
+**Task:** T1 (2026-11-22)
+**Blocker:** The integrated Phase 4 runtime suite cannot verify the development server in this worktree.
+**Evidence:** After `bun install --frozen-lockfile`, `bun run check` passed typecheck and 540 tests. `bun run test:e2e tests/training-runtime.e2e.ts` passed 15 and failed 12: in all three browsers the development and non-isolation cases reported “Runtime probe worker failed to load”; production cases passed. Playwright reused an existing server on port 3000, so it did not start this worktree's server with `SAMATA_TRAINING_RUNTIME_PROBE=1`.
+**Conflict:** The plan requires Phase 4's runtime tests and gates to verify the integrated release before T1. The current test run does not establish the development runtime result.
+**Impact:** T1 remains unchecked; no comparison implementation has started.
+**Decision needed:** Free port 3000 or otherwise provide an isolated, probe-enabled development server, then rerun the runtime suite before T1.
+
 **Task:** T1
 **Blocker:** The required Phase 4 implementation is not integrated into the Phase 5 base.
 **Evidence:** `specification/plans/web-ml-phase-4-single-model-results.md` remains `ready`, and `src/features/results/` is absent. The Phase 5 baseline `bun run check` also fails because `tsc` is unavailable in this worktree.
@@ -330,7 +337,7 @@ None.
 
 | When (UTC)           | Task | Agent (model)                 | Outcome / commands / evidence                                                                                                                                      |
 | -------------------- | ---- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 2026-11-22T13:37:03Z | — | Codex (GPT-6) | T1 blocked by missing Phase 4 integration; `bun run check` failed because `tsc` was not found. Approval and task gates passed. |
+| 2026-11-22T13:37:03Z | —    | Codex (GPT-6)                 | T1 blocked by missing Phase 4 integration; `bun run check` failed because `tsc` was not found. Approval and task gates passed.                                     |
 | 2026-11-19T08:47:35Z | —    | Claude Code (claude-opus-5-5) | Planning: `codebase-scout` verified `/results` placeholder, focus/parity tests, `$canCompare`, page-header adoption; no `web-ml` statistical tests exist in 0.1.0. |
 
 ## Plan review history
