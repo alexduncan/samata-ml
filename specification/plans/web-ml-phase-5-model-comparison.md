@@ -314,6 +314,13 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 ## Escalations
 
+**Task:** T2
+**Blocker:** The required modern web guidance search is outside the implement skill's permitted shell commands.
+**Evidence:** `modern-web-guidance` requires running its search and retrieval CLI before client-side worker implementation; `implement` restricts terminal execution to the repository's Verification Commands and plan gates. The repository does not list the guidance CLI as a Verification Command and mandates Bun rather than npx.
+**Conflict:** Both workflows apply to T2, but the requested guidance search cannot run within the implement command restriction.
+**Impact:** T2 remains unchecked and no T2 code has been changed.
+**Decision needed:** Authorise the Bun equivalent of the modern web guidance search and retrieval commands as an exception to the implement shell restriction, then resume T2.
+
 Both T1 entry blockers below are resolved: Phase 4 is integrated and archived, dependencies are installed, `bun run check` passed 540 tests, and `bun run test:e2e tests/training-runtime.e2e.ts` passed all 27 cases across Chromium, Firefox and WebKit after port 3000 was free.
 
 **Task:** T1 (2026-11-22)
