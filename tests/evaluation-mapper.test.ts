@@ -346,6 +346,37 @@ describe('snapshots', () => {
 			sampleCount: 2
 		};
 	}
+	/** A well-formed two-fold cross-validation result whose evaluation fields may be overridden. */
+	function crossValidationResult(
+		overrides: Record<string, unknown>,
+		refit: ReturnType<typeof fit>
+	) {
+		const half = upstreamReport(2, [1, 0, 0, 1]);
+		const evaluation = evaluationFor(binary) as unknown as {
+			outputs: { partitionIndex: Uint32Array };
+			reports: { partitions: unknown[] };
+			trainingReports: unknown[];
+			baselines: { partitions: unknown[] }[];
+		};
+		evaluation.outputs.partitionIndex = Uint32Array.of(0, 0, 1, 1);
+		evaluation.reports.partitions = [half, half];
+		evaluation.trainingReports = [half, half];
+		for (const baseline of evaluation.baselines) baseline.partitions = [half, half];
+		return {
+			folds: [0, 1].map((foldIndex) => ({
+				foldIndex,
+				score: 1,
+				durationMs: 2,
+				validationSampleCount: 2,
+				validationIndices: Uint32Array.of(1, 2)
+			})),
+			diagnostics: {},
+			meanScore: 1,
+			standardDeviation: 0,
+			evaluation: { ...evaluation, ...overrides },
+			refit
+		} as never;
+	}
 	const context = {
 		datasetId: 'fixture',
 		sourceRowIndices: [0, 2, 3, 5, 6, 9],
@@ -436,13 +467,51 @@ describe('snapshots', () => {
 	});
 
 	test('WML-P4-EVAL-4: rejects an upstream class axis that differs from the request axis', async () => {
-		const axes = [
-			[...binary.labels].reverse(),
+		// Each case keeps `positiveLabel` equal to its own second label, so `mapEvaluation`
+		// accepts the axis on its own and only `confirmClassAxis` can reject it.
+		const cases = [
+			{
+				axis: [...binary.labels].reverse(),
+				positiveLabel: String([...binary.labels].reverse()[1]),
+				requested: binary.labels
+			},
+			{
+				axis: [0, 1] as (string | number | boolean)[],
+				positiveLabel: 1 as unknown as string,
+				requested: ['0', '1']
+			}
+		];
+		for (const { axis, positiveLabel, requested } of cases) {
+			const evaluation = { ...evaluationFor(binary), classLabels: axis, positiveLabel };
+			const holdoutDisposals = { count: 0 };
+			await expect(
+				snapshotHoldoutResult(
+					runtime,
+					holdout({ fit: fit(holdoutDisposals), evaluation }),
+					{ ...context, classLabels: requested }
+				)
+			).rejects.toThrow('contract-error');
+			expect(holdoutDisposals.count).toBe(1);
+
+			const cvDisposals = { count: 0 };
+			await expect(
+				snapshotCrossValidationResult(
+					runtime,
+					crossValidationResult({ classLabels: axis, positiveLabel }, fit(cvDisposals)),
+					{
+						...context,
+						classLabels: requested,
+						protocol: { kind: 'cross_validation', folds: 2, randomState: 42 } as const
+					}
+				)
+			).rejects.toThrow('contract-error');
+			expect(cvDisposals.count).toBe(1);
+		}
+		// Differing axes that `mapEvaluation` would also reject keep their own disposal guarantee.
+		for (const axis of [
 			binary.labels.map((label) => String(label) + '!'),
 			[binary.labels[0]!]
-		];
-		const cvEvaluation = evaluationFor(binary);
-		for (const axis of axes) {
+		]) {
 			const disposals = { count: 0 };
 			await expect(
 				snapshotHoldoutResult(
@@ -455,36 +524,6 @@ describe('snapshots', () => {
 				)
 			).rejects.toThrow('contract-error');
 			expect(disposals.count).toBe(1);
-
-			const cvDisposals = { count: 0 };
-			await expect(
-				snapshotCrossValidationResult(
-					runtime,
-					{
-						folds: [],
-						refit: fit(cvDisposals),
-						evaluation: { ...cvEvaluation, classLabels: axis }
-					} as never,
-					{
-						...context,
-						protocol: { kind: 'cross_validation', folds: 2, randomState: 42 } as const
-					}
-				)
-			).rejects.toThrow('contract-error');
-			expect(cvDisposals.count).toBe(1);
 		}
-		// A numeric axis against a string request axis (and the reverse) is a type change.
-		const disposals = { count: 0 };
-		await expect(
-			snapshotHoldoutResult(
-				runtime,
-				holdout({
-					fit: fit(disposals),
-					evaluation: { ...evaluationFor(binary), classLabels: [0, 1] }
-				}),
-				{ ...context, classLabels: ['0', '1'] }
-			)
-		).rejects.toThrow('contract-error');
-		expect(disposals.count).toBe(1);
 	});
 });
