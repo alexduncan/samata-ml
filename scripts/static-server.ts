@@ -1,6 +1,12 @@
 import path from 'node:path';
 import { isPathInside } from './filesystem';
 
+const isolationHeaders = {
+	'Cross-Origin-Opener-Policy': 'same-origin',
+	'Cross-Origin-Embedder-Policy': 'require-corp',
+	'Cross-Origin-Resource-Policy': 'same-origin'
+};
+
 /**
  * Returns the HTTP content type header value for a static file path.
  */
@@ -8,6 +14,7 @@ export function contentTypeFromPath(filePath: string): string {
 	if (filePath.endsWith('.html')) return 'text/html; charset=utf-8';
 	if (filePath.endsWith('.css')) return 'text/css; charset=utf-8';
 	if (filePath.endsWith('.js')) return 'application/javascript; charset=utf-8';
+	if (filePath.endsWith('.wasm')) return 'application/wasm';
 	if (filePath.endsWith('.json')) return 'application/json; charset=utf-8';
 	if (filePath.endsWith('.csv')) return 'text/csv; charset=utf-8';
 	if (filePath.endsWith('.map')) return 'application/json; charset=utf-8';
@@ -51,16 +58,13 @@ export async function serveStaticFile(options: {
 		}
 	}
 
+	const headers = { ...isolationHeaders, 'Content-Type': contentTypeFromPath(resolved) };
 	if (resolved.endsWith('.html')) {
 		const html = await file.text();
 		return new Response(options.transformHtml ? options.transformHtml(html) : html, {
-			headers: { 'Content-Type': 'text/html; charset=utf-8' }
+			headers
 		});
 	}
 
-	return new Response(file, {
-		headers: {
-			'Content-Type': contentTypeFromPath(resolved)
-		}
-	});
+	return new Response(file, { headers });
 }

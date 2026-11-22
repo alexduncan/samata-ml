@@ -80,7 +80,7 @@ function isWhitelisted(cmd: string): boolean {
 	// Whitelist patterns for samata-ml repository
 	const WHITELIST_PATTERNS: RegExp[] = [
 		// Bun commands
-		/^bun\s+run\s+(check|typecheck|build|server|serve:mockups|serve:scaffold|audit:mockups|format|format:check|test:e2e|storybook|storybook:build|storybook:manifest|test:stories|now|plans:(check|task|review|close|baseline)|git:(sync|land|status|release|tidy))(\s+.*)?$/,
+		/^bun\s+run\s+(check|typecheck|build|server|mockups|audit:mockups|format|format:check|test:e2e|storybook|storybook:build|storybook:manifest|test:stories|now|plans:(check|task|review|close|baseline)|git:(sync|land|status|release|tidy))(\s+.*)?$/,
 		/^bun\s+run\s+--silent\s+now$/,
 		/^bun\s+test(\s+.*)?$/,
 		/^bun\s+(install|add|remove)(\s+.*)?$/,

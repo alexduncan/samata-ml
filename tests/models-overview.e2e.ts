@@ -1,22 +1,14 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { configureDraft, openSetup } from './fixtures/training/browser';
+import { dismissWelcomeModal } from './journeys/helpers';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
 test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/data');
-		// Dismiss welcome modal if open
-		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
-		try {
-			await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
-			await getStartedBtn.click();
-			await page
-				.locator('app-welcome-modal dialog')
-				.waitFor({ state: 'hidden', timeout: 2000 });
-		} catch {
-			// Already dismissed
-		}
+		await dismissWelcomeModal(page);
 	});
 
 	test('WML-P2-UI-9 / MOD-HUB-1: overview guards, model links and persisted training setup summaries', async ({
@@ -58,6 +50,7 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		});
 		const classRow = targetView.locator('tbody tr:has(th:has-text("class"))');
 		await classRow.locator('button').click();
+		await expect(classRow.locator('button')).toHaveText('Current Target');
 
 		// Navigate to /models -> should show empty state
 		await page.goto('/models');
@@ -141,10 +134,14 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		const unexpectedViolations = axeResults.violations.filter((v) => v.id !== 'color-contrast');
 		expect(unexpectedViolations).toEqual([]);
 
+		await overview.getByRole('button', { name: 'Train New Model' }).click();
+		await expect(page).toHaveURL(/\/models\/3$/);
+		await page.goto('/models');
+		await expect(rows).toHaveCount(3);
 		await page.evaluate(() => {
 			const store = window.__appState!;
 			const state = store.get();
-			const [first, second] = state.models;
+			const [first, second, third] = state.models;
 			const completedSteps = [
 				'choose-model',
 				'select-features',
@@ -171,18 +168,26 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 							randomState: 42
 						}
 					},
-					{ ...second!, num: 3 }
-				],
-				nextModelNum: 4
+					third!
+				]
 			});
 		});
 		const setups = table.locator('tbody tr td:nth-child(4)');
 		const summaries = ['One-Shot (80% / 20%)', 'Cross-Validation (7 folds)', 'Not configured'];
 		await expect(setups).toHaveText(summaries);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:state')!).models[1]
+							?.trainingSetup?.outerFolds
+				)
+			)
+			.toBe(7);
 		await page.reload();
 		await expect(setups).toHaveText(summaries);
 
-		// Read a trained record with an unusable v1 setup and a surviving IndexedDB result.
+		// A historical key-only row does not provide a recoverable result.
 		const historicalState = await page.evaluate(async () => {
 			const datasetId = window.__appState!.get().dataset!.id;
 			const db = await new Promise<IDBDatabase>((resolve, reject) => {
@@ -218,151 +223,55 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		);
 		await page.reload();
 		await expect(setups).toHaveText([...summaries, 'Not configured']);
-		await expect(rows.last().getByRole('link', { name: 'View Results' })).toHaveAttribute(
+		await expect(rows.last().getByRole('link', { name: 'Continue' })).toHaveAttribute(
 			'href',
 			'/models/4'
 		);
-		expect(await page.evaluate(() => window.__appState!.get().models[3]?.status)).toBe(
-			'trained'
-		);
+		expect(await page.evaluate(() => window.__appState!.get().models[3]?.status)).toBe('draft');
 	});
 
-	test('MOD-HUB-2: Compare disabled until two trained models; view results link when trained', async ({
+	test('MOD-HUB-2: comparison and result links follow acknowledged training', async ({
 		page
 	}) => {
-		// Seed dataset, target and 2 models
-		await page.goto('/data');
-		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
-		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
-		await irisCard.locator('button.btn-primary').click();
-		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
-
-		await page.goto('/target');
-		const targetView = page.locator('app-target-view');
-		await expect(targetView.locator('[data-testid="target-ready"]')).toBeVisible({
-			timeout: 10000
-		});
-		await targetView.locator('tbody tr:has(th:has-text("class")) button').click();
-
-		// Seed 2 draft models
-		await page.evaluate(() => {
-			const s = window.__appState!.get();
-			window.__appState!.set({
-				...s,
-				models: [
-					{
-						num: 1,
-						createdAt: Date.now(),
-						status: 'draft',
-						completedSteps: ['choose-model', 'select-features'],
-						modelId: 'logistic-regression',
-						features: ['sepal length'],
-						modelOptions: {},
-						hyperparameters: { mode: 'manual', values: {} },
-						multiclass: null,
-						trainingSetup: null,
-						progress: null,
-						error: null,
-						timings: null,
-						durationMs: null,
-						metrics: null,
-						ui: {}
-					},
-					{
-						num: 2,
-						createdAt: Date.now() + 100,
-						status: 'draft',
-						completedSteps: ['choose-model', 'select-features'],
-						modelId: 'decision-tree-classifier',
-						features: ['sepal width'],
-						modelOptions: {},
-						hyperparameters: { mode: 'manual', values: {} },
-						multiclass: null,
-						trainingSetup: null,
-						progress: null,
-						error: null,
-						timings: null,
-						durationMs: null,
-						metrics: null,
-						ui: {}
-					}
-				],
-				nextModelNum: 3
-			});
-		});
-
-		await page.goto('/models');
+		const setup = await openSetup(page);
+		const sidebar = page.locator('app-sidebar a[href="/models"]');
+		await sidebar.click();
 		const overview = page.locator('app-models-view');
-		await expect(overview.locator('[data-testid="models-list"]')).toBeVisible();
-
-		// With 0 trained models: Compare Results is disabled and hint is visible
-		const compareDisabled = overview.locator('button:has-text("Compare Results")');
-		await expect(compareDisabled).toBeDisabled();
-		const compareHint = overview.locator('.compare-hint');
-		await expect(compareHint).toContainText('Train at least two models to compare results.');
-
-		// Train 1 model: duration formatted, status trained
-		await page.evaluate(() => {
-			const s = window.__appState!.get();
-			window.__appState!.set({
-				...s,
-				models: [
-					{
-						...s.models[0]!,
-						status: 'trained',
-						durationMs: 3420,
-						completedSteps: [
-							'choose-model',
-							'select-features',
-							'configure-model',
-							'configure-training',
-							'training',
-							'results'
-						]
-					},
-					s.models[1]!
-				]
-			});
-		});
-
-		// Model 1 now shows '3.4s' duration and 'View Results' action
 		const rows = overview.locator('table.table tbody tr');
-		await expect(rows.nth(0).locator('td').nth(3)).toHaveText('3.4s');
-		await expect(rows.nth(0).locator('td').nth(4).locator('a')).toHaveText('View Results');
-
-		// Compare Results still disabled with 1 trained model
+		const compareDisabled = overview.getByRole('button', { name: 'Compare Results' });
+		const compareHint = overview.locator('.compare-hint');
 		await expect(compareDisabled).toBeDisabled();
 		await expect(compareHint).toBeVisible();
-
-		// Train Model 2
-		await page.evaluate(() => {
-			const s = window.__appState!.get();
-			window.__appState!.set({
-				...s,
-				models: [
-					s.models[0]!,
-					{
-						...s.models[1]!,
-						status: 'trained',
-						durationMs: 1250,
-						completedSteps: [
-							'choose-model',
-							'select-features',
-							'configure-model',
-							'configure-training',
-							'training',
-							'results'
-						]
-					}
-				]
-			});
+		await rows.first().getByRole('link', { name: 'Continue' }).click();
+		await setup.getByRole('button', { name: 'Train Model' }).click();
+		await expect(page.getByRole('button', { name: 'View Results' })).toBeEnabled({
+			timeout: 45_000
 		});
 
-		// Now 2 models are trained: Compare Results becomes an active link to /results
-		const compareLink = overview.locator('a.btn:has-text("Compare Results")');
-		await expect(compareLink).toBeVisible();
-		await expect(compareLink).toHaveAttribute('href', '/results');
-		// Compare hint disappears
+		await sidebar.click();
+		const firstResults = rows.first().getByRole('link', { name: 'View Results' });
+		await expect(firstResults).toHaveAttribute('href', '/models/1');
+		await expect(rows.first().locator('td:nth-child(5)')).toHaveText(/^\d+(?:\.\d+)?s$/);
+		await expect(compareDisabled).toBeDisabled();
+		await firstResults.click();
+		await expect(page.locator('.train-step[aria-current="step"] h2')).toHaveText(
+			'5. Train Model'
+		);
+		await page.getByRole('button', { name: 'View Results' }).click();
+		await expect(page.getByRole('heading', { name: '6. Model Results' })).toBeFocused();
+		await sidebar.click();
+
+		const second = await configureDraft(page, 2);
+		await second.getByRole('button', { name: 'Train Model' }).click();
+		await expect(page.getByRole('button', { name: 'View Results' })).toBeEnabled({
+			timeout: 45_000
+		});
+		await sidebar.click();
+		await expect(rows.getByRole('link', { name: 'View Results' })).toHaveCount(2);
+		await expect(overview.getByRole('link', { name: 'Compare Results' })).toHaveAttribute(
+			'href',
+			'/results'
+		);
 		await expect(compareHint).toHaveCount(0);
 	});
 });

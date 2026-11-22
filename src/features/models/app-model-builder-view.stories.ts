@@ -1,8 +1,15 @@
 import { html } from 'lit';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
+import { expect, fn, waitFor } from 'storybook/test';
 import { $route } from '../../router/router';
 import { $appState } from '../../stores/app.store';
 import { $datasetResources, type ResourceStatus } from '../../stores/dataset.store';
+import {
+	$trainingSession,
+	appendTrainingLog,
+	createTrainingSession,
+	setTrainingSessionStatus
+} from '../../stores/training.store';
 import {
 	DEFAULT_ONE_SHOT_SETUP,
 	INITIAL_APP_STATE,
@@ -10,7 +17,13 @@ import {
 	type PersistedAppState
 } from '../../types/state';
 import type { DatasetMetadata } from '../../types/dataset';
+import type { TrainingRunIdentity } from '../../types/model-result';
 import { featureA11yFindings } from '../../../tests/a11y-feature-findings';
+import {
+	$publicationPending,
+	createTrainingService,
+	setTrainingServiceForTesting
+} from './training/training-service';
 import './app-model-builder-view';
 
 const builderFindings = featureA11yFindings.filter(
@@ -30,6 +43,7 @@ function model(overrides: Partial<ModelRecord>): ModelRecord {
 		multiclass: null,
 		trainingSetup: null,
 		progress: null,
+		resultRevision: null,
 		error: null,
 		timings: null,
 		durationMs: null,
@@ -164,7 +178,7 @@ export const ConfigureTraining: Story = {
 	name: 'WML-P2-UI-8: ConfigureTraining',
 	beforeEach: () => seedTraining()
 };
-/** WML-P2-UI-8: the completed setup and the pending training step. */
+/** A saved draft from before training became available can reopen its setup. */
 export const TrainingSetupCompleted: Story = {
 	name: 'WML-P2-UI-8: TrainingSetupCompleted',
 	beforeEach: () => seedTraining('ready', true)
@@ -178,6 +192,142 @@ export const TrainingSetupLoading: Story = {
 export const TrainingSetupRetry: Story = {
 	name: 'WML-P2-UI-8: TrainingSetupRetry',
 	beforeEach: () => seedTraining('error')
+};
+
+const identity: TrainingRunIdentity = {
+	datasetId: 'iris',
+	target: 'class',
+	modelNum: 1,
+	modelCreatedAt: 1,
+	configurationKey: 'story-config',
+	runId: 'story-run'
+};
+
+function seedRun(status: 'training' | 'trained', completed: boolean) {
+	const restore = seedTraining('ready', true);
+	const state = $appState.get();
+	const previousSessions = $trainingSession.get();
+	const previousPublication = $publicationPending.get();
+	const record = state.models[0]!;
+	$appState.set({
+		...state,
+		models: [
+			{
+				...record,
+				status,
+				resultRevision: identity.runId,
+				durationMs: status === 'trained' ? 2100 : null,
+				completedSteps: completed
+					? [...record.completedSteps, 'training']
+					: record.completedSteps
+			}
+		]
+	});
+	$trainingSession.set(new Map());
+	createTrainingSession(identity);
+	return () => {
+		setTrainingServiceForTesting();
+		$trainingSession.set(previousSessions);
+		$publicationPending.set(previousPublication);
+		restore();
+	};
+}
+
+const runtimeUnavailable = fn(
+	async () => ({ ok: false, code: 'environment-not-supported' }) as const
+);
+
+/** Start refusal stays in Section 4 with a localised reason and usable controls. */
+export const RuntimeUnavailable: Story = {
+	beforeEach: () => {
+		const restore = seedTraining();
+		runtimeUnavailable.mockClear();
+		setTrainingServiceForTesting({ ...createTrainingService(), start: runtimeUnavailable });
+		return () => {
+			setTrainingServiceForTesting();
+			restore();
+		};
+	},
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const setup = builder.shadowRoot!.querySelector('app-training-setup')!;
+		await setup.updateComplete;
+		const submit = setup.shadowRoot!.querySelector<HTMLButtonElement>('button[type=submit]')!;
+		submit.click();
+		await waitFor(() => {
+			expect(runtimeUnavailable).toHaveBeenCalledTimes(1);
+			expect(builder.shadowRoot!.querySelector('[role=alert]')).toHaveTextContent(
+				'This page cannot start training'
+			);
+		});
+		expect(submit).toBeEnabled();
+	}
+};
+
+const retryPublication = fn(async () => {
+	const state = $appState.get();
+	$appState.set({
+		...state,
+		models: state.models.map((entry) => ({
+			...entry,
+			status: 'trained',
+			durationMs: 2100,
+			completedSteps: [...entry.completedSteps, 'training']
+		}))
+	});
+	setTrainingSessionStatus(identity, 'complete', appendTrainingLog([], { key: 'completed' }, 1));
+	$publicationPending.set(null);
+	return { ok: true, value: undefined } as const;
+});
+
+/** Committed result recovery retries saving through the service and enables View Results. */
+export const ResultPublicationPending: Story = {
+	beforeEach: () => {
+		const restore = seedRun('training', false);
+		setTrainingSessionStatus(identity, 'saving');
+		setTrainingSessionStatus(identity, 'publication-pending');
+		$publicationPending.set({ operationId: 'story-save', kind: 'finish', identity });
+		retryPublication.mockClear();
+		setTrainingServiceForTesting({ ...createTrainingService(), retry: retryPublication });
+		return restore;
+	},
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const panel = builder.shadowRoot!.querySelector('[data-testid=training-step]')!;
+		expect(panel.querySelector('[role=alert]')).toHaveTextContent('The result is saved');
+		const viewResults = panel.querySelector<HTMLButtonElement>('header button:last-child')!;
+		expect(viewResults).toBeDisabled();
+		panel.querySelector<HTMLButtonElement>('.notification button')!.click();
+		await waitFor(() => {
+			expect(retryPublication).toHaveBeenCalledTimes(1);
+			expect(viewResults).toBeEnabled();
+		});
+	}
+};
+
+/** A stopped run with an unsaved repair shows Retry saving on that model. */
+export const StoppedRepairPending: Story = {
+	beforeEach: () => {
+		const restore = seedRun('training', false);
+		setTrainingSessionStatus(identity, 'stopped-pending');
+		$publicationPending.set(null);
+		return restore;
+	}
+};
+
+/** A completed result is available for acknowledgement, with history still inspectable. */
+export const TrainingComplete: Story = {
+	beforeEach: () => {
+		const restore = seedRun('trained', true);
+		setTrainingSessionStatus(
+			identity,
+			'complete',
+			appendTrainingLog([], { key: 'completed' }, 1)
+		);
+		return restore;
+	}
 };
 /** A numeric target has no classification model. */
 export const NoClassifierNumericTarget: Story = {

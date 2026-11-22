@@ -1,6 +1,6 @@
 # System Architecture
 
-**Status:** partial — feature/component placement, development-only Storybook, history router, stores, hydration, root-absolute assets, Markdown reserved routes and single-page fallback are implemented. Service-worker caching, dynamically imported views, per-model configuration and no-inlining remain target (see [Known gaps](README.md#known-gaps) 3, 6).
+**Status:** partial — feature placement, development-only Storybook, routing, hydration, root-absolute assets, Markdown, SPA fallback and the same-origin training graph are implemented. Service-worker caching, dynamically imported views, per-model configuration and no-inlining remain target. See [Known gaps](README.md#known-gaps).
 
 This document defines the target system shape and the architectural invariants that changes must preserve.
 
@@ -14,8 +14,8 @@ This repository MUST NOT contain actual training algorithms. The only responsibi
 
 ### Local mockup review tooling
 
-- Run `bun run serve:mockups` to browse every regular file under `specification/mockups/` at `http://localhost:3333/`. The server reads files only, serves nested files under `/files/`, and injects a review helper into normal HTML previews. `?clean=1` returns the original HTML without injected controls or live reload. `bun run serve:scaffold` remains a deprecated alias for old instructions.
-- Run `bun run audit:mockups [relative-path ...] [--port 3333]` with the mockup server running to audit selected HTML files, or omit paths to scan every non-empty HTML file. It uses local Playwright Chromium and axe, writes `test-results/mockup-a11y/latest.json` and `latest.html`, and never suppresses contrast findings. A clean automated result is not an accessibility approval; review incomplete results and perform the manual checks in [mockup-review.md](mockup-review.md).
+- Run `bun run mockups` to browse the flat `specification/mockups/` directory at `http://localhost:3333/`. The server is read-only, serves files directly at `/<relativePath>`, exposes live metadata at `/index.json`, serves plain-text source at `/__source/<relativePath>` (`X-Content-Type-Options: nosniff`), and streams live-reload events over `/__hmr`. `/` renders a `<body class="mockup-index">` catalogue containing a JS-populated `<table class="mockups">` with client-side search and status filtering. Normal HTML previews inject `/mockups.css` into `<head>` and a light-DOM `#__mockup-review-helper-host` bar before `</body>`; `?clean=1` returns untouched file bytes from disk without injected CSS, helper markup, or scripts.
+- Run `bun run audit:mockups [filename ...] [--port 3333]` with the mockup server running to audit selected top-level HTML files, or omit filenames to scan every non-empty HTML mockup. It uses local Playwright Chromium and axe against `/<filename>?clean=1`, writes `test-results/mockup-a11y/latest.json` and `latest.html`, and never suppresses contrast findings. A clean automated result is not an accessibility approval; review incomplete results and perform the manual checks in [mockup-review.md](mockup-review.md).
 
 ## Directory Structure (Feature-Based)
 
@@ -37,6 +37,7 @@ The repository strictly adheres to a domain-driven, feature-based directory stru
 - `/datasets/` (build output): `index.json` catalogue and, per sample, `descriptor.json` and compiled `datasheet.html`; bundled samples also have `data.csv`, while remote samples do not.
 - `/tests/`: Non-component `bun:test` files (`*.test.ts`) and Playwright acceptance/E2E files (`*.e2e.ts`). Co-located `src/**/*.stories.ts` run in the separate Vitest browser project.
 - `/.storybook/`: Development preview/configuration and test-only fixtures. Generated CEM and built Storybook are ignored artifacts, never production entry points.
+- `/vendor/web-ml/`: The versioned prebuilt `web-ml` release tarball and its SHA-256 checksum.
 - `/specification/`: System architecture rules.
 
 ## Delivery and Caching
@@ -47,6 +48,8 @@ The repository strictly adheres to a domain-driven, feature-based directory stru
 - **Single-page fallback:** Every workflow and reserved path (`/`, `/data`, `/target`, `/models`, `/models/{num}`, `/results`, `/about`, `/privacy`, `/help`) MUST return the app shell. Production uses `"not_found_handling": "single-page-application"` in `wrangler.jsonc`; the dev server (`scripts/static-server.ts`) MUST fall back only for extension-less paths so a missing `.js`/`.css` still returns 404.
 - **Content and dataset fragments:** `/content/*` and `/datasets/*` carry `X-Robots-Tag: noindex, nofollow` in `public/_headers`, are never `Disallow`ed in `robots.txt`, and are never linked directly with `<a href>`. Compiled fragments contain no inline scripts or third-party images (compatible with the production CSP).
 - **Remote sample CSVs:** the sole production `connect-src` exception is `https://raw.githubusercontent.com/propublica/compas-analysis/`. It must match the `REMOTE_CSV_PREFIXES` allow-list in `scripts/generate-datasets.ts`; the worker verifies remote bytes against the descriptor SHA-256 before parsing.
+- **Training assets.** The app bundles its integration entry as `/training.worker.js`. The locked Bun install resolves the tarball in `vendor/web-ml/` into `node_modules/web-ml`. The build verifies the installed manifest, public contract inputs and runtime hashes, then copies the prebuilt module graph, relative workers, WASM files and notices to `/web-ml/{version}-{graph-digest}/`. Serve JavaScript and WASM with their respective MIME types and preserve `wasm/` beside the worker modules. See the [contributor upgrade procedure](../README.md#upgrade-web-ml).
+- **Training isolation.** Development and production serve COOP `same-origin` and COEP `require-corp`. Same-origin assets follow CORP `same-origin`. Allow-listed remote sample CSVs are fetched using CORS and verified with the descriptor hash. The isolated runtime probe exercises the app delivery headers in Chromium, Firefox and WebKit. The model service checks `crossOriginIsolated` before accepting an attempt.
 - **Service Worker:** The application MUST implement an offline-first Progressive Web App (PWA) Service Worker to cache the compiled assets locally for instant subsequent loads. Navigation requests for any path above MUST be answered with the cached app shell.
 
 ## Routing, Flow Control, and Code Splitting
@@ -67,7 +70,7 @@ The workflow is specified in [workflow-steps.md](workflow-steps.md); routing, st
 
 ## Future Improvements
 
-- Add a regular GitHub Actions workflow that installs the pinned Bun, Zig, and Emscripten versions, runs bun install --frozen-lockfile, and gates pull requests with bun run test. The existing workflow only runs the scikit-learn benchmark, so it does not yet provide full-suite CI.
+- Automate the locked Bun install and app verification suite in CI with the pinned prebuilt web-ml package. Native compilation and library benchmarks belong to the web-ml build.
 - Add a bun run doctor or setup-check command that reads the version files, checks the required tools and dependencies, and prints actionable fix instructions.
 - Offer a pinned devcontainer or Codespaces configuration for contributors who prefer a preconfigured environment.
 - Research security requirements and add `SECURITY.md`.

@@ -1,7 +1,7 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, state } from 'lit/decorators.js';
 import { StoreController } from '@nanostores/lit';
-import { $appState, confirmDiscardModels, setTarget } from '../../stores/app.store';
+import { $appState } from '../../stores/app.store';
 import { $datasetResources, loadDatasetResources } from '../../stores/dataset.store';
 import { buttonStyles } from '../../styles/button.styles';
 import { dialogStyles } from '../../styles/dialog.styles';
@@ -9,12 +9,27 @@ import { headingFocusStyles } from '../../styles/heading-focus.styles';
 import { notificationStyles } from '../../styles/notification.styles';
 import { tableStyles } from '../../styles/table.styles';
 import type { ColumnStats, DatasetMetadata } from '../../types/dataset';
+import { i18n } from '../../i18n';
+import {
+	getTrainingService,
+	type TrainingCommandFailure
+} from '../models/training/training-service';
 import {
 	buildTargetRows,
 	formatTargetNote,
 	type TargetColumnRow,
 	type TargetNoteCode
 } from './target-eligibility';
+
+const targetChangeMessages = i18n('app-target-change', {
+	remote: 'Training in another tab',
+	busy: 'The dataset is busy. Try again.',
+	failed: 'The target could not be changed. Try again.',
+	pending: 'The change is saved, but finishing is pending. Retry saving.',
+	retry: 'Retry saving',
+	changed: 'Change Target',
+	changing: 'Changing…'
+});
 
 /**
  * Connected root workflow view for Step 2: Set Target.
@@ -146,6 +161,11 @@ export class AppTargetView extends LitElement {
 
 	@state() private accessor pendingTarget: string | null = null;
 	@state() private accessor dialogDatasetId: string | null = null;
+	@state() private accessor targetChanging = false;
+	@state() private accessor targetPublicationPending = false;
+	@state() private accessor targetChangeError: string | null = null;
+	private originalTarget: string | null = null;
+	private readonly targetMessages = new StoreController(this, targetChangeMessages);
 
 	private loadPromise: Promise<void> | null = null;
 	private get confirmDialogEl(): HTMLDialogElement | null {
@@ -229,7 +249,8 @@ export class AppTargetView extends LitElement {
 
 	private requestSetTarget(column: string, invoker: HTMLElement | null): void {
 		const appState = this.appStateController.value;
-		if (!appState.dataset) return;
+		if (!appState.dataset || this.targetChanging || this.targetPublicationPending) return;
+		this.targetChangeError = null;
 
 		// No-op for current target
 		if (appState.target === column) {
@@ -240,6 +261,7 @@ export class AppTargetView extends LitElement {
 		if (appState.models.length > 0) {
 			this.pendingTarget = column;
 			this.dialogDatasetId = appState.dataset.id;
+			this.originalTarget = appState.target;
 			this.dialogInvoker = invoker;
 			if (this.confirmDialogEl && !this.confirmDialogEl.open) {
 				this.confirmDialogEl.showModal();
@@ -248,16 +270,38 @@ export class AppTargetView extends LitElement {
 		}
 
 		// No models exist: set target directly
-		setTarget(column);
+		this.targetChanging = true;
+		void getTrainingService()
+			.chooseTarget(column)
+			.then((result) => {
+				if (!result.ok) this.showTargetFailure(result);
+			})
+			.finally(() => {
+				this.targetChanging = false;
+			});
+	}
+
+	private showTargetFailure(result: TrainingCommandFailure): void {
+		const labels = this.targetMessages.value;
+		this.targetPublicationPending ||= result.pending === 'discard';
+		this.targetChangeError = this.targetPublicationPending
+			? labels.pending
+			: result.code === 'remote-training'
+				? labels.remote
+				: result.code === 'busy'
+					? labels.busy
+					: labels.failed;
 	}
 
 	private handleCancelConfirm = (): void => {
+		if (this.targetChanging || this.targetPublicationPending) return;
 		if (this.confirmDialogEl && this.confirmDialogEl.open) {
 			this.confirmDialogEl.close();
 			this.confirmDialogEl.returnValue = '';
 		}
 		this.pendingTarget = null;
 		this.dialogDatasetId = null;
+		this.targetChangeError = null;
 		if (this.dialogInvoker && typeof this.dialogInvoker.focus === 'function') {
 			this.dialogInvoker.focus();
 		}
@@ -276,26 +320,40 @@ export class AppTargetView extends LitElement {
 		this.dialogInvoker = null;
 	};
 
-	private handleConfirmTargetChange = (): void => {
-		const currentState = $appState.get();
+	private handleConfirmTargetChange = async (): Promise<void> => {
 		const targetColumn = this.pendingTarget;
 		const initialDatasetId = this.dialogDatasetId;
-
-		this.handleCancelConfirm();
-
-		if (!targetColumn || !initialDatasetId) return;
-
-		// Revalidate dataset ID and selected column
-		if (!currentState.dataset || currentState.dataset.id !== initialDatasetId) {
-			return; // Stale modal cancels with no mutation
-		}
-
-		const columnExists = currentState.dataset.columns.some((c) => c.name === targetColumn);
-		if (!columnExists) return;
-
-		confirmDiscardModels();
-		setTarget(targetColumn);
+		if (this.targetChanging || !targetColumn || !initialDatasetId) return;
+		this.targetChanging = true;
+		this.targetChangeError = null;
+		const result = this.targetPublicationPending
+			? await getTrainingService().retry()
+			: await getTrainingService().discardTarget(
+					initialDatasetId,
+					this.originalTarget,
+					targetColumn
+				);
+		this.targetChanging = false;
+		if (result.ok) {
+			this.targetPublicationPending = false;
+			this.handleCancelConfirm();
+		} else this.showTargetFailure(result);
 	};
+
+	private handleDialogCancel(event: Event): void {
+		if (this.targetChanging || this.targetPublicationPending) event.preventDefault();
+	}
+
+	private async retryTargetPublication(): Promise<void> {
+		if (this.targetChanging) return;
+		this.targetChanging = true;
+		const result = await getTrainingService().retry();
+		this.targetChanging = false;
+		if (result.ok) {
+			this.targetPublicationPending = false;
+			this.targetChangeError = null;
+		} else this.showTargetFailure(result);
+	}
 
 	private renderHeader(showContinue: boolean): TemplateResult {
 		return html`
@@ -466,9 +524,24 @@ export class AppTargetView extends LitElement {
 
 		return html`
 			${this.renderReadyState()}
+			${this.targetChangeError && !this.pendingTarget
+				? html`<p class="notification notification-alert" role="alert">
+							${this.targetChangeError}
+						</p>
+						${this.targetPublicationPending
+							? html`<button
+									type="button"
+									class="btn"
+									?disabled=${this.targetChanging}
+									@click=${this.retryTargetPublication}>
+									${this.targetMessages.value.retry}
+								</button>`
+							: nothing}`
+				: nothing}
 			<dialog
 				class="confirm-dialog"
 				aria-labelledby="confirm-target-title"
+				@cancel=${this.handleDialogCancel}
 				@close=${this.handleDialogClose}>
 				<div class="modal-header">
 					<h2 id="confirm-target-title">Change Target</h2>
@@ -481,16 +554,31 @@ export class AppTargetView extends LitElement {
 						Confirmation: discard all models and set ${this.pendingTarget ?? ''} as the
 						target?
 					</p>
+					${this.targetChangeError
+						? html`<p class="notification notification-alert" role="alert">
+								${this.targetChangeError}
+							</p>`
+						: nothing}
 				</div>
 				<div class="modal-footer">
-					<button type="button" class="btn" autofocus @click=${this.handleCancelConfirm}>
+					<button
+						type="button"
+						class="btn"
+						autofocus
+						?disabled=${this.targetChanging || this.targetPublicationPending}
+						@click=${this.handleCancelConfirm}>
 						Cancel
 					</button>
 					<button
 						type="button"
 						class="btn btn-primary"
+						?disabled=${this.targetChanging}
 						@click=${this.handleConfirmTargetChange}>
-						Change Target
+						${this.targetPublicationPending
+							? this.targetMessages.value.retry
+							: this.targetChanging
+								? this.targetMessages.value.changing
+								: this.targetMessages.value.changed}
 					</button>
 				</div>
 			</dialog>

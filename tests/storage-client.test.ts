@@ -7,6 +7,11 @@ import type { DatasetMetadata } from '../src/types/dataset';
 import { openSamataDb } from '../src/common/storage/db';
 import { IngestionError } from '../src/features/data/ingestion/errors';
 import { loadDataset } from '../src/features/data/load-dataset';
+import { MemoryStorage } from '../src/stores/persister';
+import {
+	createTrainingService,
+	setTrainingServiceForTesting
+} from '../src/features/models/training/training-service';
 import {
 	createStorageClient,
 	type StorageClient
@@ -105,10 +110,14 @@ beforeEach(async () => {
 	});
 	restore = installFakeIndexedDB();
 	db = await openSamataDb();
+	setTrainingServiceForTesting(
+		createTrainingService({ persistence: { storage: new MemoryStorage() } })
+	);
 	$appState.set(INITIAL_APP_STATE);
 });
 
 afterEach(() => {
+	setTrainingServiceForTesting();
 	for (const client of clients) client.dispose();
 	for (const cleanup of cleanups) cleanup();
 	clients = [];
@@ -245,7 +254,11 @@ describe('storage worker client and dataset service', () => {
 		]);
 
 		const sampleClient = {
-			ingest: async () => metadata('sample-loaded', 'penguins'),
+			ingest: async () => {
+				const result = metadata('sample-loaded', 'penguins');
+				await db!.put('metadata', result);
+				return result;
+			},
 			getMetadata: async () => null,
 			fetchRows: async () => [],
 			deleteDatasetsExcept: async () => undefined,

@@ -1,5 +1,6 @@
 import { openDB, type DBSchema, type IDBPDatabase } from 'idb';
 import type { DatasetMetadata, RawRecord } from '../../types/dataset';
+import { TRAINING_DOMAIN_DATASET_ID } from '../../types/state';
 
 /** IndexedDB database name shared by ingestion and reconciliation. */
 export const DB_NAME = 'samata-db';
@@ -9,6 +10,12 @@ export const DB_VERSION = 2;
 
 /** Exclusive Web Lock held while dataset rows are being ingested. */
 export const INGESTION_LOCK = 'samata-ml:ingestion';
+
+/** Key of the coordination row in the existing result store. */
+export const TRAINING_DOMAIN_KEY: [typeof TRAINING_DOMAIN_DATASET_ID, 0] = [
+	TRAINING_DOMAIN_DATASET_ID,
+	0
+];
 
 type StoredModelResult = { datasetId: string; modelNum: number } & Record<string, unknown>;
 
@@ -59,6 +66,7 @@ export async function putMetadata(
 	db: IDBPDatabase<SamataDBSchema>,
 	metadata: DatasetMetadata
 ): Promise<void> {
+	if (metadata.id === TRAINING_DOMAIN_DATASET_ID) throw new RangeError('Reserved dataset ID');
 	await db.put('metadata', metadata);
 }
 
@@ -83,6 +91,7 @@ export async function getRows(
 
 /** Deletes a dataset's metadata, rows and model results in one transaction. */
 export async function deleteDataset(db: IDBPDatabase<SamataDBSchema>, id: string): Promise<void> {
+	if (id === TRAINING_DOMAIN_DATASET_ID) throw new RangeError('Reserved dataset ID');
 	const tx = db.transaction(['metadata', 'raw_records', 'model_results'], 'readwrite');
 	await Promise.all([
 		tx.objectStore('metadata').delete(id),
@@ -97,25 +106,48 @@ export async function deleteDatasetsExcept(
 	db: IDBPDatabase<SamataDBSchema>,
 	keepId: string | null
 ): Promise<void> {
+	if (keepId === TRAINING_DOMAIN_DATASET_ID) throw new RangeError('Reserved dataset ID');
 	const tx = db.transaction(['metadata', 'raw_records', 'model_results'], 'readwrite');
+	const results = tx.objectStore('model_results');
+	const checkpoint = await results.get(TRAINING_DOMAIN_KEY);
+	if (
+		checkpoint &&
+		(checkpoint.kind !== 'training-domain-checkpoint' ||
+			checkpoint.schemaVersion !== 1 ||
+			typeof checkpoint.generation !== 'number' ||
+			!Number.isSafeInteger(checkpoint.generation) ||
+			checkpoint.generation < 0 ||
+			checkpoint.pending !== null)
+	) {
+		await tx.done;
+		throw new DOMException(
+			'Training state must be recovered before cleanup',
+			'InvalidStateError'
+		);
+	}
 	if (keepId === null) {
 		await Promise.all([
 			tx.objectStore('metadata').clear(),
 			tx.objectStore('raw_records').clear(),
-			tx.objectStore('model_results').clear()
+			results.delete(IDBKeyRange.upperBound(TRAINING_DOMAIN_KEY, true)),
+			results.delete(IDBKeyRange.lowerBound(TRAINING_DOMAIN_KEY, true))
 		]);
 	} else {
-		const metadataKeys = await tx.objectStore('metadata').getAllKeys();
+		const [metadataKeys, resultKeys] = await Promise.all([
+			tx.objectStore('metadata').getAllKeys(),
+			results.getAllKeys()
+		]);
 		await Promise.all([
 			...metadataKeys
 				.filter((key) => key !== keepId)
 				.map((key) => tx.objectStore('metadata').delete(key)),
 			tx.objectStore('raw_records').delete(IDBKeyRange.upperBound([keepId, -Infinity], true)),
 			tx.objectStore('raw_records').delete(IDBKeyRange.lowerBound([keepId, Infinity], true)),
-			tx
-				.objectStore('model_results')
-				.delete(IDBKeyRange.upperBound([keepId, -Infinity], true)),
-			tx.objectStore('model_results').delete(IDBKeyRange.lowerBound([keepId, Infinity], true))
+			...resultKeys
+				.filter(
+					([id, num]) => id !== keepId && (id !== TRAINING_DOMAIN_DATASET_ID || num !== 0)
+				)
+				.map((key) => results.delete(key))
 		]);
 	}
 	await tx.done;
@@ -127,5 +159,6 @@ export async function hasModelResults(
 	datasetId: string,
 	modelNum: number
 ): Promise<boolean> {
+	if (datasetId === TRAINING_DOMAIN_DATASET_ID || modelNum < 1) return false;
 	return (await db.get('model_results', [datasetId, modelNum])) !== undefined;
 }

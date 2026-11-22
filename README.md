@@ -14,8 +14,30 @@ brew install mkcert
 ## Install Dependencies
 
 ```bash
-bun install
+bun install --frozen-lockfile --ignore-scripts
 ```
+
+The lockfile installs the prebuilt `web-ml` release committed in `vendor/web-ml/`. The
+same install works in standalone clones, worktrees and CI.
+
+### Upgrade web-ml
+
+1. Copy the upstream `web-ml-<version>.tgz` and `web-ml-<version>.tgz.sha256`
+   into `vendor/web-ml/`. Always use a new versioned filename for a new release.
+2. From `vendor/web-ml/`, run `shasum -a 256 -c web-ml-<version>.tgz.sha256`.
+   Confirm it reports `OK` and the digest matches the upstream release SHA-256.
+3. From the repository root, run `bun add ./vendor/web-ml/web-ml-<version>.tgz`.
+   If Bun retains the previous dependency in the lockfile, run `bun remove web-ml`
+   before retrying the add. Confirm `package.json` and `bun.lock` resolve only the new
+   tarball, then run `bun install --frozen-lockfile --ignore-scripts`.
+4. Delete the old tarball and its checksum file. Refresh the version, release SHA-256,
+   package manifest hash, public contract digest and runtime hashes in
+   `scripts/build-model-assets.ts`, using bytes from the verified release. Update the
+   expected asset graph and release URL in the model asset and training runtime tests.
+   Check the catalogue against samata-ml's model option policy.
+5. Run `bun run check`, `bun run build` and
+   `bun run test:e2e tests/training-runtime.e2e.ts tests/classification-training.e2e.ts`.
+   Commit the new tarball and checksum along with the lockfile and integration changes.
 
 ## Create a Localhost SSL Certificate
 
@@ -48,6 +70,8 @@ The build scripts live in `scripts/` and share their core logic through helper m
 - `scripts/build.ts` is the production build entrypoint.
 - `scripts/server.ts` runs the HTTPS local server.
 - `scripts/build-assets.ts` contains the shared dev and production bundle steps.
+- `scripts/build-model-assets.ts` verifies the installed `web-ml` release and copies its
+  browser modules, workers, WASM and notices to a versioned same-origin directory.
 - `scripts/html.ts` applies template variables and rewrites asset tags.
 - `scripts/static-server.ts` serves files from either `dev/` or `dist/`.
 - `scripts/certificates.ts` manages localhost HTTPS certificate paths and fallback generation.
@@ -114,18 +138,18 @@ Use `Ctrl-C` to stop the server.
 
 ## Review mockups
 
-Browse the complete mockup tree, including drafts, source files and empty placeholders:
+Browse the flat mockup directory (`specification/mockups/`), including drafts and implemented references:
 
 ```bash
-bun run serve:mockups
+bun run mockups
 ```
 
-Open `http://localhost:3333/`. The review server is read-only. It offers clean previews that omit the in-flow review controls. The old `bun run serve:scaffold` command remains as a deprecated alias for historical instructions.
+Open `http://localhost:3333/`. The review server is read-only. Normal HTML previews inject `/mockups.css` and a light-DOM navigation bar; `?clean=1` returns untouched file bytes from disk.
 
-With the mockup server running, audit one or more HTML files or the whole tree:
+With the mockup server running, audit one or more HTML files or every non-empty mockup:
 
 ```bash
-bun run audit:mockups ui-scaffold/drafts/03-0_models-overview.html
+bun run audit:mockups 03-0_models-overview.html
 bun run audit:mockups
 ```
 

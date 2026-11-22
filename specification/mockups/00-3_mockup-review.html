@@ -1,0 +1,160 @@
+<!doctype html>
+<!-- DRAFT: structure only, not normative for appearance. Source: plans/serve-mockups-review-workflow.md, Interfaces and behaviour. Open questions: none. TOOL-01: developer catalogue uses native document presentation rather than the product sidebar and stylesheet. -->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="name" content="Mockup Review Catalogue" />
+		<meta
+			name="description"
+			content="Developer reference mockup for the local mockup index table and review controls." />
+		<meta name="status" content="draft" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<link rel="stylesheet" href="../mockups.css" />
+		<title>Mockup review catalogue — samatā.ml</title>
+	</head>
+	<body class="mockup-index">
+		<header>
+			<h1>Mockup review</h1>
+			<p>Browse every file in specification/mockups. Drafts need human styling.</p>
+		</header>
+		<main id="catalogue">
+			<form role="search" action="/" method="get">
+				<label for="query">Search paths and titles</label>
+				<input id="query" name="q" type="search" />
+				<label for="filter">Show files</label>
+				<select id="filter" name="filter">
+					<option value="all">All files</option>
+					<option value="needs-styling">Needs styling</option>
+					<option value="html">HTML</option>
+					<option value="css">CSS</option>
+					<option value="assets">Other resources</option>
+					<option value="empty">Empty files</option>
+				</select>
+				<button type="submit">Apply filters</button>
+				<a href="/">Reset filters</a>
+			</form>
+			<p>
+				Example results: 3 of 3 files. Reference location does not indicate review approval.
+			</p>
+			<section id="needs-styling">
+				<h2>Needs styling</h2>
+				<table class="mockups">
+					<thead>
+						<tr>
+							<th>Name</th>
+							<th>Description</th>
+							<th>Status</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>
+								{Simple Plain English Name of Mockup}<br />
+								<small>{mockup-filename}</small>
+							</td>
+							<td>
+								{Simple description of the situation in which a user will encounter
+								this ui.}
+							</td>
+							<td>{draft|ready|implemented}</td>
+							<td>
+								<a href="/__source/ui-scaffold/drafts/03-0_models-overview.html"
+									>View source</a
+								>
+								<a
+									href="/files/ui-scaffold/drafts/03-0_models-overview.html?clean=1"
+									>Clean preview</a
+								>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+
+				<ul>
+					<li>
+						<a href="/files/ui-scaffold/drafts/03-0_models-overview.html"
+							>ui-scaffold/drafts/03-0_models-overview.html</a
+						>
+						<p>
+							Models overview. Draft — needs styling. Size and full modification date
+							appear here.
+						</p>
+						<a href="/__source/ui-scaffold/drafts/03-0_models-overview.html"
+							>View source: models overview draft</a
+						>
+						<a href="/files/ui-scaffold/drafts/03-0_models-overview.html?clean=1"
+							>Clean preview: models overview draft</a
+						>
+					</li>
+				</ul>
+			</section>
+			<section>
+				<h2>References</h2>
+				<ul>
+					<li>
+						<a href="/files/ui-scaffold/03-4_train-models-3-configure-model.html"
+							>ui-scaffold/03-4_train-models-3-configure-model.html</a
+						>
+						<p>Reference — empty, 0 B. No completed design is implied.</p>
+						<a href="/files/ui-scaffold/drafts/03-4_train-models-3-configure-model.html"
+							>Open counterpart draft: configure model</a
+						>
+					</li>
+				</ul>
+			</section>
+			<section id="resources">
+				<h2>Resources</h2>
+				<ul>
+					<li>
+						<a href="/files/ui-scaffold/style.css">ui-scaffold/style.css</a>
+						<p>CSS resource.</p>
+						<a href="/__source/ui-scaffold/style.css">View source: shared stylesheet</a>
+					</li>
+				</ul>
+			</section>
+			<section>
+				<h2>No matching files example</h2>
+				<p>No files match these filters. <a href="/">Reset filters</a>.</p>
+			</section>
+			<section>
+				<h2>Review workflow</h2>
+				<p>
+					Edit local HTML and CSS in your editor. Save DevTools experiments to disk before
+					live reload.
+				</p>
+				<p>
+					After the audit command is implemented, run
+					<code>bun run audit:mockups ui-scaffold/drafts/03-0_models-overview.html</code>.
+					Review findings and complete manual keyboard, screen-reader and responsive
+					checks.
+				</p>
+				<p>
+					Request markup changes with a file path, section, problem, desired change and
+					affected states. Human promotion and application integration are separate steps.
+				</p>
+			</section>
+			<section>
+				<h2>Preview controls example</h2>
+				<p>
+					The server places these controls in an isolated, normal-flow helper on an HTML
+					preview. Clean preview omits the helper.
+				</p>
+				<nav id="preview-controls" aria-label="Mockup review">
+					<p>ui-scaffold/drafts/03-0_models-overview.html — Draft, needs styling</p>
+					<a href="/">Catalogue</a>
+					<a href="/__source/ui-scaffold/drafts/03-0_models-overview.html">Source</a>
+					<a href="/files/ui-scaffold/drafts/03-0_models-overview.html?clean=1"
+						>Clean preview</a
+					>
+					<label for="preview-page">Preview HTML file</label>
+					<select id="preview-page">
+						<option selected>ui-scaffold/drafts/03-0_models-overview.html</option>
+						<option>ui-scaffold/00_first-load.html</option>
+					</select>
+					<button type="button">Go</button>
+				</nav>
+			</section>
+		</main>
+	</body>
+</html>

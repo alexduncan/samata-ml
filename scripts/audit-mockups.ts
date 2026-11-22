@@ -3,7 +3,7 @@ import { chromium, type Page } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { getMockupFiles, type MockupFileInfo } from './serve-mockups';
+import { getMockupFiles, type MockupIndexEntry } from './serve-mockups';
 
 const DEFAULT_PORT = 3333;
 const REPORT_DIR = path.resolve('test-results/mockup-a11y');
@@ -229,22 +229,23 @@ async function getAxeVersion(): Promise<string> {
 function safeAuditPath(value: string): boolean {
 	return (
 		value.length > 0 &&
-		!value.startsWith('/') &&
+		value !== '.' &&
+		value !== '..' &&
+		!value.includes('/') &&
 		!value.includes('\\') &&
-		!value.includes('\0') &&
-		value.split('/').every((part) => part !== '' && part !== '.' && part !== '..')
+		!value.includes('\0')
 	);
 }
 
 async function extractPageResult(
 	page: Page,
-	file: MockupFileInfo,
+	file: MockupIndexEntry,
 	url: string
 ): Promise<MockupAuditFileResult> {
 	const response = await page.goto(url, { waitUntil: 'networkidle' });
 	if (!response || !response.ok()) {
 		return {
-			file: file.relativePath,
+			file: file.filename,
 			url,
 			status: 'error',
 			violations: [],
@@ -274,7 +275,7 @@ async function extractPageResult(
 		helpUrl: item.helpUrl
 	}));
 	return {
-		file: file.relativePath,
+		file: file.filename,
 		url,
 		status: violations.length > 0 ? 'violations' : 'passed',
 		violations,
@@ -315,16 +316,16 @@ export async function runMockupAudit(
 	}
 	const report = emptyReport(server, axeVersion);
 	const files = await getMockupFiles(options.rootDir);
-	const fileMap = new Map(files.map((file) => [file.relativePath, file]));
-	let selected: MockupFileInfo[] = [];
+	const fileMap = new Map(files.map((file) => [file.filename, file]));
+	let selected: MockupIndexEntry[] = [];
 	if (options.paths?.length) {
 		for (const target of options.paths) {
 			if (!safeAuditPath(target)) {
-				report.setupError = `Invalid relative path: ${target}`;
+				report.setupError = `Invalid mockup filename: ${target}`;
 				break;
 			}
 			const file = fileMap.get(target);
-			if (!file || file.kind !== 'html') {
+			if (!file) {
 				report.setupError = `Not an HTML mockup file: ${target}`;
 				break;
 			}
@@ -335,9 +336,8 @@ export async function runMockupAudit(
 			selected.push(file);
 		}
 	} else {
-		const allHtml = files.filter((file) => file.kind === 'html');
-		report.skipped = allHtml.filter((file) => file.isEmpty).map((file) => file.relativePath);
-		selected = allHtml.filter((file) => !file.isEmpty);
+		report.skipped = files.filter((file) => file.isEmpty).map((file) => file.filename);
+		selected = files.filter((file) => !file.isEmpty);
 		if (selected.length === 0) report.setupError = 'No non-empty HTML mockups were found.';
 	}
 	if (!report.setupError) {
@@ -346,7 +346,7 @@ export async function runMockupAudit(
 			if (!response.ok) report.setupError = `Mockup server returned HTTP ${response.status}.`;
 			await response.arrayBuffer();
 		} catch {
-			report.setupError = `Cannot reach ${server}. Start it with bun run serve:mockups.`;
+			report.setupError = `Cannot reach ${server}. Start it with bun run mockups.`;
 		}
 	}
 	if (!report.setupError) {
@@ -357,16 +357,12 @@ export async function runMockupAudit(
 			const context = await browser.newContext({ viewport: VIEWPORT });
 			const page = await context.newPage();
 			for (const file of selected) {
-				const fileUrl =
-					server +
-					'/files/' +
-					file.relativePath.split('/').map(encodeURIComponent).join('/') +
-					'?clean=1';
+				const fileUrl = `${server}/${encodeURIComponent(file.filename)}?clean=1`;
 				try {
 					report.results.push(await extractPageResult(page, file, fileUrl));
 				} catch (error) {
 					report.results.push({
-						file: file.relativePath,
+						file: file.filename,
 						url: fileUrl,
 						status: 'error',
 						violations: [],

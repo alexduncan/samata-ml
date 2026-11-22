@@ -2,7 +2,7 @@ import { css, type CSSResult } from 'lit';
 
 /**
  * Shared hyperparameter form styles: the `.field` grid family, `.form-note` and `.field-error`.
- * Ported from `specification/mockups/ui-scaffold/css/hyperparameters.css` (`.field` family and
+ * Ported from `specification/mockups/css/hyperparameters.css` (`.field` family and
  * the fold matrix, and the `max-width: 700px` rule)
  * and the `input`/`select` rules of `base.css`, which are scoped under `.field` so ranges,
  * checkboxes and inputs elsewhere keep their look. Adopt in a shadow root only.

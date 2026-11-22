@@ -10,7 +10,7 @@
 
 The presentational form receives the model's saved value and the target-specific fold limit. This keeps persistence, metadata and navigation in the connected model builder. Native select, range and number controls provide familiar keyboard behaviour. The number field gives precise entry alongside the range.
 
-Samatā's input rule requires at least two observed classes, each with two or more rows. Cross-Validation folds run from 2 through the smallest observed class count, capped at 10. The UI rule applies to both strategies. Web-ml may still reject the requested partition once training runs. [The workflow spec](../workflow-steps.md#4-training-setup) describes the builder's loading, retry and completion states.
+Samatā's input rule requires at least two observed classes, each with two or more rows. Cross-Validation folds run from 2 through the smallest observed class count, capped at 10. The UI rule applies to both strategies. Web-ml decides whether the classifier and requested partition can execute. A safe rejection reopens this form with the saved settings and an explanatory alert. [The workflow spec](../workflow-steps.md#4-training-setup) describes the builder's loading, retry and completion states.
 
 ## 3. Public API (closed)
 
@@ -46,13 +46,13 @@ The model builder binds the saved value and current fold limit with Lit property
 
 The first switch to Cross-Validation uses five folds or the supplied maximum, whichever is lower. The two CV counts in a committed setup are equal. With a saved value above the current maximum, the number and matrix keep the saved count and the slider clamps to the maximum. Submission requires a correction. Empty, unfinished or out-of-range input keeps the last valid matrix and leaves the store untouched. Switching to One-Shot clears the fold error.
 
-The builder keys the form by dataset ID, target name and model number. It checks the route, draft status and current eligible metadata before applying an intent. The same instance stays mounted during Help, retaining its invalid draft and link focus on return. Changing the dataset, target or model creates a fresh form for the current setup. Valid submission saves the setup and opens the pending Section 5.
+The builder keys the form by dataset ID, target name and model number. It checks the route, draft status and current eligible metadata before applying an intent. The same instance stays mounted during Help, retaining its invalid draft and link focus on return. Changing the dataset, target or model creates a fresh form for the current setup. Valid submission captures the setup and starts the protected training service. An accepted start opens Section 5. A start rejected before worker launch, or a cancelled or failed run, leaves the form available with a safe reason.
 
 ## 5. Visual specification
 
-The unstyled [03-5 draft](../mockups/ui-scaffold/drafts/03-5_train-models-4-configure-training.html) records the control order, matrix, legend and alternate states. The component uses shared button, notification, train-model and hyperparameter styles with existing tokens. Only the named matrix wrapper scrolls horizontally. Fold columns are 2rem wide with a 3.5rem run column and 0.25rem cell spacing. At ten folds the matrix spans at least 26.5rem. The summary, legend and form actions wrap within the available inline size.
+The unstyled [03-5 draft](../mockups/03-5_train-models-4-configure-training.html) records the control order, matrix, legend and alternate states. The component uses shared button, notification, train-model and hyperparameter styles with existing tokens. Only the named matrix wrapper scrolls horizontally. Fold columns are 2rem wide with a 3.5rem run column and 0.25rem cell spacing. At ten folds the matrix spans at least 26.5rem. The summary, legend and form actions wrap within the available inline size.
 
-Changes from mockup CSS follow [the deviation registers](../visual-design.md#5-deviation-registers), including widths and contained overflow (MODELS-UI-05), visible role markers (SEM-14), matrix and Help focus outlines (A11Y-11), and the builder's pending-notice contrast (A11Y-12). The draft awaits human styling and has no visual parity target.
+Changes from mockup CSS follow [the deviation registers](../visual-design.md#5-deviation-registers), including widths and contained overflow (MODELS-UI-05), visible role markers (SEM-14), and matrix and Help focus outlines (A11Y-11). The draft awaits human styling and has no visual parity target.
 
 ## 6. Accessibility
 
@@ -60,6 +60,8 @@ Changes from mockup CSS follow [the deviation registers](../visual-design.md#5-d
 - A blocked form disables all form controls. Its alert describes the submit control. A disabled form with no blocked reason omits the alert and its description.
 - A table caption names both the table and its focusable scroll region. The table uses scoped row and column headers and a visually hidden “Training” or “Validation” label per cell. Visible en dashes and check marks, dashed and solid borders, and matching legend swatches distinguish roles in forced colours. Keyboard focus is visible on the wrapper and Learn more.
 - Safari's accessibility tree exposed the Strategy select, both fold inputs, matrix headers, cell labels and the named Help dialog. The maintainer verified the corresponding spoken announcements with VoiceOver in Safari. NVDA and Orca were unavailable on the test host.
+
+- After an explicit accepted submit, the builder focuses the Section 5 heading. When failure or cancellation removes a focused local training control, Section 4 restores focus to Train Model and presents the reason beside the form. Background runs and cross-tab updates preserve the current focus.
 
 ## 7. Internationalisation
 
@@ -85,7 +87,7 @@ OneShot, CrossValidation, MinFolds, MaxFolds, SavedAboveMaximum, InvalidFolds, B
 
 ## 11. Non-goals
 
-Training execution, row membership, partition feasibility from web-ml, editable seeds, custom holdout ratios and missing-value controls belong to later work. Persisted fold-matrix scrolling is tracked in [scroll-region restoration](../plans/scroll-region-restoration.md).
+The form delegates execution and partition membership to the training service and web-ml. A public preflight feasibility check, editable seeds, custom holdout ratios and missing-value controls remain follow-up work. Persisted fold-matrix scrolling is tracked in [scroll-region restoration](../plans/scroll-region-restoration.md).
 
 ## 12. Open questions
 

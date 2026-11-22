@@ -1,0 +1,655 @@
+<!doctype html>
+<!-- DRAFT: structure only, not normative for appearance. Source: plans/web-ml-classification-integration.md, interfaces and behaviour B–G. Open questions: plan approval. -->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="name" content="Configure Model" />
+		<meta
+			name="description"
+			content="Step 3 builder Section 3 hyperparameter form, advanced search options, and loading/error/invalid states." />
+		<meta name="status" content="draft" />
+		<link rel="stylesheet" href="./style.css" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>samatā.ml | Train Models</title>
+	</head>
+	<body>
+		<svg style="display: none" aria-hidden="true" focusable="false">
+			<symbol
+				id="settings"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<path
+					d="M12 21.5c2 0 .8-2.3 2.7-3 1.8-.8 2.6 1.6 4 .2s-1-2.2-.2-4c.7-1.9 3-.7 3-2.7s-2.3-.8-3-2.7c-.8-1.8 1.6-2.6.2-4s-2.2 1-4 .2c-1.9-.7-.7-3-2.7-3s-.8 2.3-2.7 3c-1.8.8-2.6-1.6-4-.2s1 2.2.2 4c-.7 1.9-3 .7-3 2.7s2.3.8 3 2.7c.8 1.8-1.6 2.6-.2 4s2.2-1 4-.3c1.9.8.7 3.1 2.7 3.1Z" />
+				<circle cx="12" cy="12" r="3.5" />
+			</symbol>
+
+			<symbol
+				id="close"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<line x1="18" y1="6" x2="6" y2="18" />
+				<line x1="6" y1="6" x2="18" y2="18" />
+			</symbol>
+
+			<symbol id="check" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m5.73 5.29a1 1 0 0 0-1.41 0L10 14.6l-2.31-2.32a1 1 0 1 0-1.42 1.42l3.02 3.02a1 1 0 0 0 1.42 0l7.02-7.03a1 1 0 0 0 0-1.41" />
+			</symbol>
+
+			<symbol id="question" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m0 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2m0-10.2A3 3 0 0 0 8.8 9a.8.8 0 0 0 1.4 0q.2-1.6 1.8-1.7T13.8 9q0 .6-.8 1.5l-.3.3-1 1.2a4 4 0 0 0-.4 2 .7.7 0 1 0 1.4 0q0-1.2 1.1-2.2l.3-.3q1.2-1.2 1.2-2.5c0-2-1.4-3.2-3.3-3.2" />
+			</symbol>
+		</svg>
+
+		<div class="sidebar">
+			<h1>samat&amacr;.ml</h1>
+			<p class="tagline">Machine Learning in Your Browser</p>
+			<section class="project">
+				<h4>Project</h4>
+				<span class="project-name">New Project</span>
+				<button class="btn-icon project-settings" aria-label="Project settings">
+					<svg class="icon" aria-hidden="true" focusable="false">
+						<use href="#settings"></use>
+					</svg>
+				</button>
+			</section>
+			<nav class="workflow" aria-label="Workflow">
+				<ol class="steps">
+					<li class="step">
+						<a href="/load-data" class="step-link">
+							<span class="step-num">1</span>
+							<span class="step-label-small">Dataset</span>
+							<span class="step-value">{Dataset Name}</span>
+							<span class="step-chiclets">
+								<span class="chiclet">999 rows</span>
+								<span class="chiclet">999 columns</span>
+							</span>
+						</a>
+					</li>
+					<li class="step">
+						<a href="/select-target" class="step-link">
+							<span class="step-num">2</span>
+							<span class="step-label-small">Target</span>
+							<span class="step-value">{Target Variable Column Name}</span>
+							<span class="step-chiclets">
+								<span class="chiclet">Categorical</span>
+							</span>
+						</a>
+					</li>
+					<li class="step">
+						<div class="step-link">
+							<span class="step-num">3</span>
+							<span class="step-label-small">Models</span>
+							<ul class="step-models">
+								<li class="step-model">
+									<div class="step-model-link" aria-current="step">
+										Training New Model...
+									</div>
+								</li>
+							</ul>
+						</div>
+					</li>
+					<li class="step">
+						<a href="/compare-results" class="step-link">
+							<span class="step-num">4</span>
+							<span class="step-label">Compare Results</span>
+						</a>
+					</li>
+				</ol>
+			</nav>
+			<footer>
+				<a href="/about">about</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/privacy">privacy</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/help">help</a>
+			</footer>
+		</div>
+
+		<main>
+			<header class="page-header">
+				<h1>Train Models</h1>
+				<p>Choose a model to predict your target variable.</p>
+			</header>
+
+			<!-- Configure Model Builder -->
+			<!-- This will display when the user reaches Step 3 Section 3 to configure manual hyperparameters. -->
+			<section class="page-body" data-testid="model-builder">
+				<ol class="train-model" aria-label="Model training steps">
+					<li class="train-step">
+						<section class="train-step-panel" aria-labelledby="step-1-title">
+							<header class="train-step-header">
+								<h2 id="step-1-title">1. {Model Name}</h2>
+
+								<span class="train-step-action train-step-status">
+									<button
+										type="button"
+										class="btn reopen-btn"
+										aria-label="Edit Choose Model">
+										Edit
+									</button>
+									<span class="visually-hidden">Completed</span>
+									<svg
+										aria-hidden="true"
+										width="20"
+										height="20"
+										viewBox="0 0 24 24"
+										fill="currentColor">
+										<path
+											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									</svg>
+								</span>
+							</header>
+
+							<div class="train-step-content" hidden="">
+								<div class="completed-summary">
+									<p>
+										Selected model:
+										<strong>Gaussian Naive Bayes</strong>
+									</p>
+								</div>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step">
+						<section class="train-step-panel" aria-labelledby="step-2-title">
+							<header class="train-step-header">
+								<h2 id="step-2-title">2. {number_of_features} Features Selected</h2>
+
+								<span class="train-step-action train-step-status">
+									<button
+										type="button"
+										class="btn reopen-btn"
+										aria-label="Edit Select Features">
+										Edit
+									</button>
+									<span class="visually-hidden">Completed</span>
+									<svg
+										aria-hidden="true"
+										width="20"
+										height="20"
+										viewBox="0 0 24 24"
+										fill="currentColor">
+										<path
+											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									</svg>
+								</span>
+							</header>
+
+							<div class="train-step-content" hidden="">
+								<div class="completed-summary">
+									<p>
+										Selected features (24):
+										<strong
+											>sex, age, age_cat, race, juv_fel_count, juv_misd_count,
+											juv_other_count, priors_count, days_b_screening_arrest,
+											c_days_from_compas, c_charge_degree, is_recid,
+											r_charge_degree, r_days_from_arrest, priors_count_1,
+											start, end, event, v_score_text, v_decile_score,
+											score_text, decile_score_1, vr_charge_degree,
+											is_violent_recid</strong
+										>
+									</p>
+								</div>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step step-active" aria-current="step">
+						<section class="train-step-panel" aria-labelledby="step-3-title">
+							<header class="train-step-header">
+								<h2 id="step-3-title">
+									3. Configure Model
+									<a href="/help/configure-model" class="help-link"
+										>What do these settings mean?
+									</a>
+								</h2>
+							</header>
+							<div class="train-step-content">
+								<form aria-labelledby="step-3-title">
+									<!-- Mode -->
+									<div class="field">
+										<label for="mode" class="field-name">Mode</label>
+
+										<select
+											id="mode"
+											name="mode"
+											class="field-control"
+											aria-describedby="mode-help">
+											<option value="manual">Manual</option>
+											<!-- disabled until Phase 5 -->
+											<option value="tuning" disabled>
+												Random Search (advanced)
+											</option>
+										</select>
+										<div id="mode-help" class="field-description">
+											<p>
+												Selects the optimisation algorithm used to train the
+												model.
+											</p>
+										</div>
+									</div>
+
+									<!-- Solver -->
+									<div class="field">
+										<label for="solver" class="field-name">Solver</label>
+
+										<select
+											id="solver"
+											name="solver"
+											class="field-control"
+											aria-describedby="solver-help">
+											<option value="adam">adam</option>
+											<option value="sgd">sgd</option>
+											<option value="lbfgs">lbfgs</option>
+											<option value="coordinate_descent">
+												coordinate_descent
+											</option>
+										</select>
+
+										<div id="solver-help" class="field-description">
+											<p>
+												Selects the optimisation algorithm used to train the
+												model.
+											</p>
+											<p class="field-dependent">
+												Adam uses a fixed learning rate of 0.001. Select SGD
+												to adjust the rate.
+											</p>
+											<p class="field-dependent">
+												Learning rate: 0.001 (fixed by Adam)
+											</p>
+										</div>
+									</div>
+
+									<!-- Penalty -->
+									<div class="field">
+										<label for="penalty" class="field-name">Penalty</label>
+
+										<select
+											id="penalty"
+											name="penalty"
+											class="field-control"
+											aria-describedby="penalty-help">
+											<option value="none">none</option>
+											<option value="l1">l1</option>
+											<option value="l2">l2</option>
+											<option value="elasticnet">elasticnet</option>
+										</select>
+
+										<div id="penalty-help" class="field-description">
+											<p>
+												Controls the regularisation applied to the model to
+												help prevent overfitting.
+											</p>
+										</div>
+									</div>
+
+									<!-- Fit intercept -->
+									<div class="field">
+										<label for="intercept" class="field-name">
+											Fit an intercept
+										</label>
+
+										<input
+											id="intercept"
+											name="fitIntercept"
+											type="checkbox"
+											class="field-control"
+											aria-describedby="intercept-help"
+											checked />
+
+										<div id="intercept-help" class="field-description">
+											<p>
+												Includes an intercept (bias) term in the model,
+												allowing predictions to have a non-zero baseline.
+											</p>
+										</div>
+									</div>
+
+									<!-- Maximum iterations -->
+									<div class="field">
+										<label
+											id="iterations-label"
+											for="iterations-range"
+											class="field-name">
+											Maximum iterations
+										</label>
+
+										<div
+											class="field-controls"
+											role="group"
+											aria-labelledby="iterations-label">
+											<input
+												id="iterations-range"
+												type="range"
+												min="1"
+												max="5000"
+												step="1"
+												value="1000"
+												aria-describedby="iterations-help" />
+
+											<label class="visually-hidden" for="iterations-number">
+												Maximum iterations (exact value)
+											</label>
+
+											<input
+												id="iterations-number"
+												name="maxIter"
+												type="number"
+												min="1"
+												max="5000"
+												step="1"
+												value="1000"
+												aria-describedby="iterations-help" />
+										</div>
+
+										<div id="iterations-help" class="field-description">
+											<p>
+												Sets the maximum number of iterations the solver can
+												perform before stopping.
+											</p>
+										</div>
+									</div>
+
+									<!-- Tolerance -->
+									<div class="field">
+										<label for="tolerance" class="field-name">
+											Tolerance
+										</label>
+
+										<div class="field-controls field-controls--with-action">
+											<input
+												id="tolerance"
+												name="tol"
+												type="number"
+												min="0"
+												step="any"
+												value="0.000001"
+												aria-describedby="tolerance-help" />
+
+											<button type="button" class="btn">
+												Reset tolerance
+											</button>
+										</div>
+
+										<div id="tolerance-help" class="field-description">
+											<p>
+												Controls the stopping threshold used to determine
+												when the optimisation algorithm has converged.
+											</p>
+										</div>
+									</div>
+
+									<button type="button" class="btn btn-primary">
+										Save & Continue
+									</button>
+								</form>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step train-step-pending">
+						<section class="train-step-panel" aria-labelledby="step-4-title">
+							<header class="train-step-header">
+								<h2 id="step-4-title">4. Training Setup</h2>
+							</header>
+							<div class="train-step-content" hidden="">
+								<p class="pending-notice">Not available yet.</p>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step train-step-pending">
+						<section class="train-step-panel" aria-labelledby="step-5-title">
+							<header class="train-step-header">
+								<h2 id="step-5-title">5. Train Model</h2>
+							</header>
+							<div class="train-step-content" hidden="">
+								<p class="pending-notice">Not available yet.</p>
+							</div>
+						</section>
+					</li>
+
+					<li class="train-step train-step-pending">
+						<section class="train-step-panel" aria-labelledby="step-6-title">
+							<header class="train-step-header">
+								<h2 id="step-6-title">6. Model Results</h2>
+							</header>
+							<div class="train-step-content" hidden="">
+								<p class="pending-notice">Not available yet.</p>
+							</div>
+						</section>
+					</li>
+				</ol>
+			</section>
+			<!-- / Configure Model Builder -->
+
+			<!-- Model Context Summary -->
+			<!-- This will display alongside the configuration panel to show the selected dataset, target, and classification mode. -->
+			<section>
+				<h2>3. Configure Model — Logistic Regression</h2>
+				<p>Palmer Penguins · Target: species · One-vs-Rest classification</p>
+			</section>
+			<!-- / Model Context Summary -->
+
+			<!-- SGD Rate and Bounded Fractions -->
+			<!-- This will display when the chosen solver or penalty exposes a logarithmic learning rate or elastic-net L1 ratio. -->
+			<section>
+				<h2>SGD rate and bounded fractions</h2>
+				<p>
+					These examples appear only when the chosen option is applicable. Both controls
+					edit one value.
+				</p>
+				<label for="rate-range">Learning rate (logarithmic convenience slider)</label
+				><input
+					id="rate-range"
+					name="rate-range"
+					type="range"
+					min="-6"
+					max="0"
+					step="0.1"
+					value="-2"
+					aria-valuetext="0.01" />
+				<label for="rate-number">Exact learning rate</label
+				><input
+					id="rate-number"
+					name="learningRate"
+					type="number"
+					min="0"
+					step="any"
+					value="0.01" />
+				<p>Positive values outside the slider span can be entered exactly.</p>
+				<label for="ratio-range">Elastic-net L1 ratio</label
+				><input
+					id="ratio-range"
+					name="ratio-range"
+					type="range"
+					min="0"
+					max="1"
+					step="0.01"
+					value="0.5" />
+				<label for="ratio-number">Exact L1 ratio</label
+				><input
+					id="ratio-number"
+					name="l1Ratio"
+					type="number"
+					min="0"
+					max="1"
+					step="any"
+					value="0.5" />
+			</section>
+			<!-- / SGD Rate and Bounded Fractions -->
+
+			<!-- Structured Classifier Controls -->
+			<!-- This will display when configuring models with structured options such as MLP hidden layers, tree depth, SVC gamma, or class weights. -->
+			<section>
+				<h2>Structured controls used by other classifiers</h2>
+				<fieldset>
+					<legend>MLP hidden layers</legend>
+					<label for="layer-1">Units in layer 1</label
+					><input
+						id="layer-1"
+						name="layer-1"
+						type="number"
+						min="1"
+						step="1"
+						value="100" /><button type="button" class="btn">Add layer</button
+					><button type="button" class="btn">Remove layer 1</button>
+				</fieldset>
+				<label for="depth-mode">Tree maximum depth</label
+				><select id="depth-mode" name="depth-mode">
+					<option>Unlimited</option>
+					<option>Value</option>
+				</select>
+				<label for="gamma-mode">SVC gamma</label
+				><select id="gamma-mode" name="gamma-mode">
+					<option>scale</option>
+					<option>auto</option>
+					<option>Numeric value</option>
+				</select>
+				<fieldset>
+					<legend>Class weights</legend>
+					<label for="weight-mode">Weight mode</label
+					><select id="weight-mode" name="weight-mode">
+						<option>None</option>
+						<option>Balanced</option>
+						<option selected>Custom</option>
+					</select>
+					<label for="weight-adelie">Adelie weight</label
+					><input
+						id="weight-adelie"
+						name="weight-Adelie"
+						type="number"
+						min="0"
+						step="any"
+						value="1" />
+					<label for="weight-chinstrap">Chinstrap weight</label
+					><input
+						id="weight-chinstrap"
+						name="weight-Chinstrap"
+						type="number"
+						min="0"
+						step="any"
+						value="1" />
+					<label for="weight-gentoo">Gentoo weight</label
+					><input
+						id="weight-gentoo"
+						name="weight-Gentoo"
+						type="number"
+						min="0"
+						step="any"
+						value="1" />
+				</fieldset>
+			</section>
+			<!-- / Structured Classifier Controls -->
+
+			<!-- Advanced Random Search -->
+			<!-- This will display when the user selects Random Search mode to configure hyperparameter search ranges and trials. -->
+			<section>
+				<h2>Advanced Random Search</h2>
+				<p>
+					Choose at least one active parameter to tune. Solver and structured options stay
+					fixed.
+				</p>
+				<label for="search-mode">Maximum iterations</label
+				><select id="search-mode" name="search-mode">
+					<option>Fixed</option>
+					<option selected>Tune</option>
+				</select>
+				<label for="distribution">Distribution</label
+				><select id="distribution" name="distribution">
+					<option>Integer</option>
+				</select>
+				<label for="search-min">Minimum</label
+				><input id="search-min" name="min" type="number" min="1" step="1" value="100" />
+				<label for="search-max">Maximum</label
+				><input id="search-max" name="max" type="number" min="1" step="1" value="1000" />
+				<label for="trials">Trials</label
+				><input
+					id="trials"
+					name="trials"
+					type="number"
+					min="1"
+					max="50"
+					step="1"
+					value="10" />
+				<label for="search-seed">Search seed</label
+				><input
+					id="search-seed"
+					name="search-seed"
+					type="number"
+					min="0"
+					max="4294967295"
+					step="1"
+					value="42" />
+				<p>
+					Objective: maximise validation accuracy. The final test data is not used to
+					select parameters.
+				</p>
+			</section>
+			<!-- / Advanced Random Search -->
+
+			<!-- Loading Model Specification -->
+			<!-- This will display while the model hyperparameter specification is being fetched. -->
+			<section>
+				<h2>Loading model specification</h2>
+				<p>Loading model options…</p>
+				<progress aria-label="Loading model specification"></progress>
+			</section>
+			<!-- / Loading Model Specification -->
+
+			<!-- Specification Error -->
+			<!-- This will display when the model specification cannot be loaded or has an unsupported schema version. -->
+			<section>
+				<h2>Specification error</h2>
+				<p role="alert">Model options could not be loaded or use an unsupported version.</p>
+				<button type="button" class="btn">Retry</button>
+			</section>
+			<!-- / Specification Error -->
+
+			<!-- Invalid Configuration -->
+			<!-- This will display when incompatible hyperparameter choices fail validation on save. -->
+			<section>
+				<h2>Invalid configuration</h2>
+				<p role="alert">
+					L-BFGS supports only no penalty or L2. Choose a compatible penalty before
+					continuing.
+				</p>
+				<label for="solver-invalid">Solver</label>
+				<select
+					id="solver-invalid"
+					name="solver"
+					aria-invalid="true"
+					aria-describedby="solver-invalid-error">
+					<option>lbfgs</option>
+				</select>
+				<p id="solver-invalid-error">
+					L-BFGS supports only no penalty or L2. Choose a compatible penalty before
+					saving.
+				</p>
+				<button type="submit" class="btn btn-primary">Save &amp; Continue</button>
+			</section>
+			<!-- / Invalid Configuration -->
+
+			<!-- No Classification Model Available -->
+			<!-- This will display when the selected target column is numeric and no classification model applies. -->
+			<section>
+				<h2>No classification model available</h2>
+				<p>This target is numeric. Regression will be added later.</p>
+				<a href="/target">Choose a categorical or boolean target</a>
+			</section>
+			<!-- / No Classification Model Available -->
+		</main>
+	</body>
+</html>

@@ -62,6 +62,7 @@ describe('column eligibility', () => {
 					multiclass: null,
 					trainingSetup: null,
 					progress: null,
+					resultRevision: null,
 					error: null,
 					timings: null,
 					durationMs: null,

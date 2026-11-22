@@ -114,7 +114,10 @@ describe('requestOptions (WML-P1-OPT-2)', () => {
 		expect(result.overrides).toEqual({});
 		expect(run('gaussian-nb', { priors: [1] }).requestOptions).toEqual({});
 		expect(run('multinomial-nb', { classPrior: [1] }).overrides).toEqual({});
-		expect(run('k-neighbors-classifier', { algorithm: 'brute' }).overrides).toEqual({});
+		const knn = run('k-neighbors-classifier', { algorithm: 'brute', leafSize: 20 });
+		expect(knn.overrides).toEqual({});
+		expect(knn.requestOptions).toEqual({});
+		expect(run('mlp-classifier', { validationFraction: 0.2 }).requestOptions).toEqual({});
 	});
 
 	it('WML-P1-OPT-2: keeps SVC classWeight balanced and prunes null as the default', () => {

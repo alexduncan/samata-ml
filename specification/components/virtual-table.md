@@ -71,7 +71,7 @@ export class AppDatasetViewer extends LitElement {
 
 ## 5. Visual specification
 
-Structure follows draft `specification/mockups/ui-scaffold/drafts/01-6_virtual-table.html`. Styled appearance is pending promotion by the human.
+Structure follows draft `specification/mockups/01-6_virtual-table.html`. Styled appearance is pending promotion by the human.
 
 - **Layout & Geometry:** Host uses `display: block`. Row height is `2.5rem`, measured after render. Viewport has `max-block-size: 25rem` with `overflow: auto`. Column minimum inline size is `12rem`.
 - **Tokens:**

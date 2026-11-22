@@ -3,6 +3,7 @@ import type { DatasetMetadata } from '../src/types/dataset';
 import type { ModelSectionId, ValidationMethodology } from '../src/types/state';
 import type { AppTrainingSetup } from '../src/features/models/app-training-setup';
 import type { StorageRequest } from '../src/features/data/ingestion/protocol';
+import { openSetup } from './fixtures/training/browser';
 
 const earlierSteps: ModelSectionId[] = ['choose-model', 'select-features', 'configure-model'];
 const oneShot = { type: 'one_shot', testRatio: 0.2, randomState: 42 } as const;
@@ -33,41 +34,6 @@ function setupStep(page: Page): Locator {
 
 function setupForm(page: Page): Locator {
 	return setupStep(page).locator('app-training-setup');
-}
-
-async function openSetup(page: Page, saveConfiguration = true): Promise<Locator> {
-	await page.goto('/data');
-	await page.locator('app-welcome-modal button.btn-primary').click();
-	await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
-	await expect(page.locator('app-dataset-preview')).toBeAttached();
-
-	await page.goto('/target');
-	const target = page.locator('app-target-view');
-	await expect(target.getByTestId('target-ready')).toBeVisible({ timeout: 10_000 });
-	await target.locator('tbody tr:has(th:has-text("class")) button').click();
-	await page.goto('/models');
-	await page.getByRole('button', { name: 'Train New Model' }).click();
-	await expect(page).toHaveURL('/models/1');
-
-	await builder(page)
-		.locator('app-model-card[model-id="logistic-regression"]')
-		.getByRole('button', { name: 'Select Model' })
-		.click();
-	await builder(page)
-		.locator('.train-step')
-		.nth(0)
-		.getByRole('button', { name: 'Continue', exact: true })
-		.click();
-	await builder(page)
-		.locator('.train-step')
-		.nth(1)
-		.getByRole('button', { name: 'Continue', exact: true })
-		.click();
-	if (saveConfiguration) {
-		await builder(page).getByRole('button', { name: 'Save & Continue' }).click();
-		await expect(setupForm(page)).toBeVisible();
-	}
-	return setupForm(page);
 }
 
 async function mountStandalone(
@@ -442,7 +408,7 @@ test.describe('Standalone Training Setup component', () => {
 
 test.describe('Connected Training Setup', () => {
 	for (const strategy of ['one_shot', 'nested_cv'] as const) {
-		test(`WML-P2-UI-1: submits and reloads ${strategy} with Section 5 pending`, async ({
+		test(`WML-P2-UI-1: submits and reloads ${strategy} with a durable result`, async ({
 			page
 		}) => {
 			const form = await openSetup(page);
@@ -460,30 +426,13 @@ test.describe('Connected Training Setup', () => {
 			await expect(
 				setupStep(page).getByRole('heading', { name: `4. ${summary}` })
 			).toBeVisible();
-			const pending = builder(page).locator('.train-step').nth(4);
-			await expect(pending).toHaveAttribute('aria-current', 'step');
-			await expect(pending.getByText('Not available yet.')).toBeVisible();
-			const colours = await pending.locator('.pending-notice').evaluate((element) => {
-				const foreground = getComputedStyle(element).color;
-				let current: Element | null = element;
-				while (current) {
-					const background = getComputedStyle(current).backgroundColor;
-					if (background !== 'rgba(0, 0, 0, 0)') return { foreground, background };
-					const root = current.getRootNode();
-					current =
-						current.parentElement ?? (root instanceof ShadowRoot ? root.host : null);
-				}
-				return { foreground, background: 'rgb(255, 255, 255)' };
-			});
-			expect(colours).toEqual({
-				foreground: 'rgb(51, 65, 85)',
-				background: 'rgb(255, 255, 255)'
-			});
+			const progress = page.getByRole('progressbar', { name: 'Training progress' });
+			await expect(progress).toHaveAttribute('value', '100', { timeout: 45000 });
 			const before = await trainingState(page);
 			expect(before.models[0]).toMatchObject({
-				status: 'draft',
+				status: 'trained',
 				trainingSetup: value,
-				completedSteps: [...earlierSteps, 'configure-training']
+				completedSteps: [...earlierSteps, 'configure-training', 'training']
 			});
 			expect(before.wireModels[0].trainingSetup).toEqual(
 				strategy === 'one_shot' ? { ...oneShot, type: 'train_test_split' } : value
@@ -493,7 +442,7 @@ test.describe('Connected Training Setup', () => {
 				setupStep(page).getByRole('heading', { name: `4. ${summary}` })
 			).toBeVisible();
 			await expect(setupStep(page).locator('.completed-summary')).toContainText(summary);
-			await expect(pending.getByText('Not available yet.')).toBeVisible();
+			await expect(progress).toHaveAttribute('value', '100');
 			expect(await trainingState(page)).toEqual(before);
 		});
 	}
@@ -504,6 +453,9 @@ test.describe('Connected Training Setup', () => {
 		const form = await openSetup(page);
 		const strategy = form.getByRole('combobox');
 		await strategy.selectOption('nested_cv');
+		await expect
+			.poll(async () => (await trainingState(page)).wireModels[0]?.trainingSetup)
+			.toEqual(crossValidation(5));
 		const before = await trainingState(page);
 		const number = form.getByRole('spinbutton');
 		const submit = form.getByRole('button', { name: 'Train Model' });
@@ -576,11 +528,7 @@ test.describe('Connected Training Setup', () => {
 		const number = form.getByRole('spinbutton');
 		await expect(number).toHaveValue('4');
 		const submit = form.getByRole('button', { name: 'Train Model' });
-		await submit.click();
-		await expect(
-			setupStep(page).getByRole('heading', { name: '4. Cross-Validation (4 folds)' })
-		).toBeVisible();
-		await setupStep(page).getByRole('button', { name: 'Edit Training Setup' }).click();
+		await expect(form.getByRole('slider')).toHaveValue('4');
 		await seedSetup(page, crossValidation(5));
 		await expect(number).toHaveValue('5');
 		await expect(form.getByRole('slider')).toHaveValue('4');
@@ -602,6 +550,9 @@ test.describe('Connected Training Setup', () => {
 		const form = await openSetup(page);
 		await form.getByRole('combobox').selectOption('nested_cv');
 		await expect(form.getByRole('spinbutton')).toHaveValue('5');
+		await expect
+			.poll(async () => (await trainingState(page)).wireModels[0]?.trainingSetup)
+			.toEqual(crossValidation(5));
 		const before = await trainingState(page);
 		await form.evaluate(
 			(element, { setup, types }) => {
@@ -653,8 +604,7 @@ test.describe('Connected Training Setup', () => {
 		page
 	}) => {
 		const form = await openSetup(page);
-		const submit = form.getByRole('button', { name: 'Train Model' });
-		await submit.click();
+		await seedSetup(page, oneShot, true);
 		const edit = setupStep(page).getByRole('button', { name: 'Edit Training Setup' });
 		await expect(edit).toHaveText('Edit');
 		await edit.click();
@@ -713,8 +663,7 @@ test.describe('Connected Training Setup', () => {
 		await expect(number).toHaveAttribute('aria-invalid', 'true');
 		await expect(link).toBeFocused();
 
-		await number.fill('5');
-		await submit.click();
+		await seedSetup(page, crossValidation(5), true);
 		await page.evaluate(() => {
 			const state = window.__appState!;
 			const current = state.get();
@@ -936,11 +885,11 @@ test.describe('Connected Training Setup', () => {
 		await page.evaluate((metadata) => window.__metadataRequests![1]!(metadata), metadata);
 		await expect(form).toBeVisible();
 		expect(await page.evaluate(() => window.__metadataRequests!.length)).toBe(2);
-		await form.getByRole('button', { name: 'Train Model' }).click();
-		await expect(
-			setupStep(page).getByRole('heading', { name: '4. One-Shot (80% / 20%)' })
-		).toBeVisible();
+		await seedSetup(page, oneShot, true);
 		await setupStep(page).getByRole('button', { name: 'Edit Training Setup' }).click();
+		await expect
+			.poll(async () => (await trainingState(page)).wireModels[0]?.completedSteps)
+			.not.toContain('configure-training');
 		const reopened = await trainingState(page);
 		await form.evaluate(
 			(element, { setup, types }) => {
@@ -1051,10 +1000,8 @@ test.describe('Connected Training Setup', () => {
 			await expect(number).toHaveAttribute('aria-invalid', 'false');
 			await expect(form.locator('[aria-live]')).toBeEmpty();
 			await number.fill('6');
-			await form.getByRole('button', { name: 'Train Model' }).click();
-			await expect(
-				setupStep(page).getByRole('heading', { name: '4. Cross-Validation (6 folds)' })
-			).toBeVisible();
+			await number.press('Tab');
+			await expect(number).toHaveValue('6');
 			await sidebar.getByRole('link', { name: 'Model 1', exact: true }).click();
 			await expect(page).toHaveURL('/models/1');
 			await expect(number).toHaveValue('5');

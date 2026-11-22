@@ -54,7 +54,7 @@ The connected parent retains transient status/entry/fragment, AbortController, r
 
 ## 5. Visual specification
 
-Structure follows `drafts/00-2_content-modal.html`; prose has no promoted appearance and no parity entries. The child reuses dialogStyles and buttonStyles with display-contents/hidden host rules, a wrapping h2 and non-shrinking icon control. Connected host is display-contents/hidden. No new prose typography, colours, spacing system or sanitised-content CSS API exists.
+Structure follows `specification/mockups/00-2_content-modal.html`; prose has no promoted appearance and no parity entries. The child reuses dialogStyles and buttonStyles with display-contents/hidden host rules, a wrapping h2 and non-shrinking icon control. Connected host is display-contents/hidden. No new prose typography, colours, spacing system or sanitised-content CSS API exists.
 
 The shared dialog header translates its title to named h2 (SEM-04), and the native icon button uses SEM-08 decorative SVG. Paired draft/app screenshots document structure/shared styling only, not finished prose parity.
 

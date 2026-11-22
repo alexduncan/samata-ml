@@ -1,11 +1,16 @@
 import { html } from 'lit';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
-import { expect } from 'storybook/test';
+import { expect, userEvent } from 'storybook/test';
 import { $appState } from '../../stores/app.store';
 import { $datasetResources } from '../../stores/dataset.store';
 import { DEFAULT_ONE_SHOT_SETUP, INITIAL_APP_STATE, type ModelRecord } from '../../types/state';
 import { featureA11yFindings } from '../../../tests/a11y-feature-findings';
 import { createCrossValidationSetup } from './training-setup';
+import {
+	createTrainingService,
+	setTrainingServiceForTesting,
+	type TrainingCommandResult
+} from './training/training-service';
 import './app-models-view';
 
 function seedModels() {
@@ -23,6 +28,7 @@ function seedModels() {
 		multiclass: null,
 		trainingSetup: null,
 		progress: null,
+		resultRevision: null,
 		error: null,
 		timings: null,
 		durationMs: null,
@@ -155,5 +161,57 @@ export const RtlLongLabel: Story = {
 			document.documentElement.dir = direction;
 			restore();
 		};
+	}
+};
+
+function createStoryFixture(createModel: () => Promise<TrainingCommandResult<number>>) {
+	const restore = seedModels();
+	setTrainingServiceForTesting({ ...createTrainingService(), createModel });
+	return () => {
+		setTrainingServiceForTesting();
+		restore();
+	};
+}
+
+/** A pending model allocation keeps navigation idle. */
+export const PendingCreation: Story = {
+	beforeEach: () => {
+		let settle!: (result: TrainingCommandResult<number>) => void;
+		const pending = new Promise<TrainingCommandResult<number>>((resolve) => {
+			settle = resolve;
+		});
+		const restore = createStoryFixture(() => pending);
+		return () => {
+			settle({ ok: false, code: 'cancelled' });
+			restore();
+		};
+	},
+	play: async ({ canvasElement }) => {
+		const models = canvasElement.querySelector('app-models-view')!;
+		await models.updateComplete;
+		const button = models.shadowRoot!.querySelector<HTMLButtonElement>(
+			'.header-actions button.btn-primary'
+		)!;
+		await userEvent.click(button);
+		await expect(button).toHaveTextContent('Saving…');
+		await expect(button).toBeDisabled();
+	}
+};
+
+/** A failed model allocation stays on the overview and offers another attempt. */
+export const FailedCreation: Story = {
+	beforeEach: () => createStoryFixture(async () => ({ ok: false, code: 'storage-unavailable' })),
+	play: async ({ canvasElement }) => {
+		const models = canvasElement.querySelector('app-models-view')!;
+		await models.updateComplete;
+		const button = models.shadowRoot!.querySelector<HTMLButtonElement>(
+			'.header-actions button.btn-primary'
+		)!;
+		await userEvent.click(button);
+		await models.updateComplete;
+		await expect(models.shadowRoot!.querySelector('[role="alert"]')).toHaveTextContent(
+			'The new model could not be saved.'
+		);
+		await expect(button).toBeEnabled();
 	}
 };

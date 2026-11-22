@@ -40,7 +40,7 @@ These rules apply whenever a spec changes, whether in a plan's `Sync specificati
 | [data-ingestion.md](data-ingestion.md)                               | implemented | CSV upload/parsing, column statistics, IndexedDB dataset storage                                                         |
 | [sample-datasets.md](sample-datasets.md)                             | implemented | Typed sample descriptors, build-time validation, generated catalogue and datasheets                                      |
 | [preview-dataset.md](preview-dataset.md)                             | implemented | Dataset preview table and column inspector                                                                               |
-| [machine-learning-orchestrator.md](machine-learning-orchestrator.md) | stub        | Calling the `web-ml` library or training workers                                                                         |
+| [machine-learning-orchestrator.md](machine-learning-orchestrator.md) | implemented | Browser worker, evaluation and durable classification training                                                           |
 | [content-and-i18n.md](content-and-i18n.md)                           | partial     | Markdown content pipeline, localisation                                                                                  |
 | [testing.md](testing.md)                                             | partial     | Writing or running tests                                                                                                 |
 | [mockup-review.md](mockup-review.md)                                 | implemented | Reviewing and promoting mockups, requesting markup changes and commissioning an app port                                 |
@@ -59,6 +59,7 @@ Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only wh
 | [sidebar.md](components/sidebar.md)                         | implemented | Connected `app-sidebar`                                                                      |
 | [welcome-modal.md](components/welcome-modal.md)             | implemented | Connected `app-welcome-modal`                                                                |
 | [content-modal.md](components/content-modal.md)             | implemented | Connected `app-content-modal` and presentational `app-content-dialog`; prose styling pending |
+| [training-progress.md](components/training-progress.md)     | implemented | Native progress, ordered log, disclosure preference and live milestones                      |
 | [training-setup.md](components/training-setup.md)           | implemented | Training strategy form, paired fold inputs and accessible fold matrix                        |
 | [card.md](components/card.md)                               | implemented | Presentational `app-dataset-card`, `app-model-card`                                          |
 | [virtual-table.md](components/virtual-table.md)             | implemented | Presentational `ui-virtual-table` (styled appearance pending)                                |
@@ -73,7 +74,7 @@ Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only wh
 
 ### Other directories
 
-- [`mockups/`](mockups/) — static HTML/CSS wireframes, normative for appearance (see [visual-design.md](visual-design.md)); not for markup or behaviour. Browse every file with `bun run serve:mockups`; audit mockup accessibility with `bun run audit:mockups`. Reference only; don't edit unless a plan says to. Exception: agents write unstyled, non-normative drafts in `mockups/ui-scaffold/drafts/` ([visual-design §1.1](visual-design.md#11-draft-mockups)).
+- [`mockups/`](mockups/) — flat static HTML/CSS wireframes (`*.html`, `style.css`, human-owned `mockups.css`, and `css/*.css`), normative for appearance when `<meta name="status">` is `ready` or `implemented` (see [visual-design.md](visual-design.md)); not for markup or behaviour. Browse the catalogue with `bun run mockups`; audit mockup accessibility with `bun run audit:mockups`. Ready/implemented files and `mockups.css` are human-owned; agents may create or edit unstyled, non-normative drafts directly in `mockups/` with `<meta name="status" content="draft" />` ([visual-design §1.1](visual-design.md#11-draft-mockups)).
 - [`plans/`](plans/README.md) — implementation plans. Only files that follow the planning template go here.
 - [`notes/`](notes/README.md) — the human's rough notes, inbox for planners. Not normative; a plan that uses a note deletes it in its `Sync specification` task.
 
@@ -94,7 +95,7 @@ Known conflicts between specs, and between specs and code, as of 2026-11-16. A p
 11. **`npx` vs Bun.** The vendored `modern-web-guidance` skill runs `npx`; this repo uses Bun only, so run its commands with `bunx`.
 12. _Resolved._
 13. **Remaining feature accessibility/style coverage.** Shell tokens, mockup layout, semantic translations and document CSS consolidation are verified without token/parity exemptions. Existing data/model contrast findings remain: 24 exact elements with measured ratios of 2.61:1 to 4.10:1 across five feature owners, measured in [a11y-feature-findings.ts](../tests/a11y-feature-findings.ts) and separately queued in HUMAN.md. Feature-story migration and wider private-style consolidation are follow-up work. The static literal-colour checker covers TypeScript declarations/fallbacks; direct CSS declaration scanning remains narrower than the normative prohibition, so passing it alone does not establish complete token use. Mockup accessibility defects remain governed by visual-design's registers; strict shell scans never inherit feature allowances.
-14. **State, storage and navigation remaining undelivered scope.** Router decisions and cancellable component-owned route-heading focus, including nested preview delegation, are implemented and browser verified; the accepted T1 Safari/VoiceOver evidence covers heading/dialog focus. Remaining scope is stored-results deletion in IndexedDB (`model_results`), save-failure notifications and full multi-tab sync. Final shell manual display/assistive-technology checks remain explicitly unverified in the delivery plan, rather than a claim of complete WCAG validation.
+14. **Remaining state and navigation scope.** Acknowledged training lifecycle, saved-result insertion and deletion, protected cross-tab state and storage recovery are implemented. Broader ordinary multi-tab synchronisation, general future-schema migrations and later results-state contracts remain target. Final shell manual display and assistive-technology checks remain in the delivery evidence.
 15. _Resolved._
 16. _Resolved._
 17. _Resolved._

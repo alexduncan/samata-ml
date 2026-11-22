@@ -2,6 +2,7 @@ import { copyFile, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { CSS_DIR, DEV_DIR, DIST_DIR, PUBLIC_DIR, ROOT_DIR, SRC_DIR } from './config';
 import { buildContent, type ContentBuildReport } from './build-content';
+import { buildModelAssets, WEB_ML_REVISION } from './build-model-assets';
 import { generateSampleDatasets, type SampleDatasetBuildReport } from './generate-datasets';
 import { copyDirContents, resetDir, writeRevvedFile } from './filesystem';
 import { transformIndexHtml } from './html';
@@ -33,13 +34,18 @@ async function buildBrowserAssets(options: {
 	minify: boolean;
 	sourcemap: 'linked' | 'none';
 	debug: boolean;
+	modelRuntimeUrl: string;
 }): Promise<void> {
 	// JavaScript and CSS are built separately because Bun treats them as
 	// separate browser entrypoints for this app.
 	const entrypoints = [
 		path.join(SRC_DIR, 'app.ts'),
-		path.join(SRC_DIR, 'features/data/ingestion/storage.worker.ts')
+		path.join(SRC_DIR, 'features/data/ingestion/storage.worker.ts'),
+		path.join(SRC_DIR, 'features/models/training/training.worker.ts')
 	];
+	if (process.env.SAMATA_TRAINING_RUNTIME_PROBE === '1') {
+		entrypoints.push(path.join(ROOT_DIR, 'tests/fixtures/training/runtime.worker.ts'));
+	}
 
 	const jsResult = await Bun.build({
 		entrypoints,
@@ -50,8 +56,11 @@ async function buildBrowserAssets(options: {
 		minify: options.minify,
 		sourcemap: options.sourcemap,
 		splitting: true,
+		external: [options.modelRuntimeUrl],
 		define: {
-			DEBUG: options.debug ? 'true' : 'false'
+			DEBUG: options.debug ? 'true' : 'false',
+			WEB_ML_RUNTIME_URL: JSON.stringify(options.modelRuntimeUrl),
+			WEB_ML_RUNTIME_REVISION: JSON.stringify(WEB_ML_REVISION)
 		}
 	});
 	assertBuild(jsResult, 'JavaScript');
@@ -96,6 +105,7 @@ export async function buildDevBundle(): Promise<void> {
 
 	// Dev builds are disposable. Recreate the directory so deleted source files disappear.
 	await resetDir(DEV_DIR);
+	const modelRuntimeUrl = await buildModelAssets(DEV_DIR);
 	await copyDirContents(PUBLIC_DIR, DEV_DIR);
 	logContentReport(await buildContent(DEV_DIR));
 	logSampleDatasetReport(await generateSampleDatasets(DEV_DIR));
@@ -104,7 +114,8 @@ export async function buildDevBundle(): Promise<void> {
 		outdir: DEV_DIR,
 		minify: false,
 		sourcemap: 'linked',
-		debug: true
+		debug: true,
+		modelRuntimeUrl
 	});
 
 	await transformIndexHtml(devHtml, 'development', {
@@ -123,6 +134,7 @@ export async function buildProductionBundle(): Promise<ProductionBuildResult> {
 
 	// Production builds are also recreated from scratch so old revved assets do not linger.
 	await resetDir(DIST_DIR);
+	const modelRuntimeUrl = await buildModelAssets(DIST_DIR);
 	await copyDirContents(PUBLIC_DIR, DIST_DIR);
 	logContentReport(await buildContent(DIST_DIR));
 	logSampleDatasetReport(await generateSampleDatasets(DIST_DIR));
@@ -131,7 +143,8 @@ export async function buildProductionBundle(): Promise<ProductionBuildResult> {
 		outdir: DIST_DIR,
 		minify: true,
 		sourcemap: 'none',
-		debug: false
+		debug: false,
+		modelRuntimeUrl
 	});
 
 	const revJs = await writeRevvedFile(outJs);

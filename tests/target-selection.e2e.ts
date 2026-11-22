@@ -1,19 +1,10 @@
 import { expect, test } from '@playwright/test';
+import { dismissWelcomeModal } from './journeys/helpers';
 
 test.describe('Target Selection & Confirmation (TARG-E2E-1 .. TARG-E2E-3)', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/data');
-		// Dismiss welcome modal if open
-		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
-		try {
-			await getStartedBtn.waitFor({ state: 'visible', timeout: 3000 });
-			await getStartedBtn.click();
-			await page
-				.locator('app-welcome-modal dialog')
-				.waitFor({ state: 'hidden', timeout: 3000 });
-		} catch {
-			// Already dismissed
-		}
+		await dismissWelcomeModal(page);
 	});
 
 	test('TARG-E2E-1: blocked/loading/failure/ready views and Retry; no action enabled before correct metadata', async ({
@@ -184,6 +175,7 @@ test.describe('Target Selection & Confirmation (TARG-E2E-1 .. TARG-E2E-3)', () =
 						multiclass: null,
 						trainingSetup: null,
 						progress: null,
+						resultRevision: null,
 						error: null,
 						timings: null,
 						durationMs: null,
@@ -269,6 +261,7 @@ test.describe('Target Selection & Confirmation (TARG-E2E-1 .. TARG-E2E-3)', () =
 						multiclass: null,
 						trainingSetup: null,
 						progress: null,
+						resultRevision: null,
 						error: null,
 						timings: null,
 						durationMs: null,

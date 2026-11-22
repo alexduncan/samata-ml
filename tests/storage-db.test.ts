@@ -3,6 +3,7 @@ import { openDB } from 'idb';
 import {
 	DB_NAME,
 	DB_VERSION,
+	TRAINING_DOMAIN_KEY,
 	deleteDataset,
 	deleteDatasetsExcept,
 	getMetadata,
@@ -55,6 +56,40 @@ afterEach(() => {
 });
 
 describe('samata-db v2', () => {
+	it('WML-P3-EVENT-4: dataset and orphan cleanup preserve the coordination row', async () => {
+		db = await openSamataDb();
+		const checkpoint = {
+			kind: 'training-domain-checkpoint',
+			schemaVersion: 1,
+			datasetId: TRAINING_DOMAIN_KEY[0],
+			modelNum: 0,
+			generation: 7,
+			pending: null
+		};
+		await db.put('model_results', checkpoint);
+		await seedDataset('active');
+		await seedDataset('discarded');
+		await deleteDataset(db, 'discarded');
+		expect(await db.get('model_results', TRAINING_DOMAIN_KEY)).toEqual(checkpoint);
+		await seedDataset('orphan');
+		await deleteDatasetsExcept(db, 'active');
+		expect(await db.get('model_results', TRAINING_DOMAIN_KEY)).toEqual(checkpoint);
+		expect(await hasModelResults(db, ...TRAINING_DOMAIN_KEY)).toBe(false);
+		expect(await hasModelResults(db, 'active', 1)).toBe(true);
+		expect(await hasModelResults(db, 'orphan', 1)).toBe(false);
+		await deleteDatasetsExcept(db, null);
+		expect(await db.getAllKeys('model_results')).toEqual([TRAINING_DOMAIN_KEY]);
+		await expect(deleteDataset(db, TRAINING_DOMAIN_KEY[0])).rejects.toThrow(
+			'Reserved dataset ID'
+		);
+		await db.put('model_results', { ...checkpoint, schemaVersion: 2 });
+		await seedDataset('unknown-version');
+		await expect(deleteDatasetsExcept(db, null)).rejects.toMatchObject({
+			name: 'InvalidStateError'
+		});
+		expect(await hasModelResults(db, 'unknown-version', 1)).toBe(true);
+	});
+
 	it('creates all stores with their compound or inline key paths', async () => {
 		db = await openSamataDb();
 

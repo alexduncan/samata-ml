@@ -55,6 +55,18 @@ import {
 	type ValidationMethodology
 } from '../src/types/state';
 
+function trainingIdentity(modelNum: number) {
+	const state = $appState.get();
+	return {
+		datasetId: state.dataset?.id ?? 'no-dataset',
+		target: state.target ?? 'no-target',
+		modelNum,
+		modelCreatedAt: state.models.find((model) => model.num === modelNum)?.createdAt ?? 0,
+		configurationKey: 'test-configuration',
+		runId: 'test-run-' + modelNum
+	};
+}
+
 const sampleDataset: DatasetSummary = {
 	id: 'dataset-123',
 	name: 'Iris Flower Dataset',
@@ -117,8 +129,8 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			completeSection(1, 'select-features');
 			completeSection(1, 'configure-model');
 			setTrainingSetup(1, fiveFolds);
-			startTraining(1);
-			trainingSucceeded(1, { metrics: { accuracy: 0.95 } });
+			startTraining(trainingIdentity(1));
+			trainingSucceeded(trainingIdentity(1), 100);
 
 			expect($trainedModels.get().length).toBe(1);
 			expect($canCompare.get()).toBe(false);
@@ -128,8 +140,8 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			completeSection(2, 'select-features');
 			completeSection(2, 'configure-model');
 			setTrainingSetup(2, fiveFolds);
-			startTraining(2);
-			trainingSucceeded(2, { metrics: { accuracy: 0.92 } });
+			startTraining(trainingIdentity(2));
+			trainingSucceeded(trainingIdentity(2), 100);
 
 			expect($trainedModels.get().length).toBe(2);
 			expect($canCompare.get()).toBe(true);
@@ -180,6 +192,7 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 				multiclass: null,
 				trainingSetup: null,
 				progress: null,
+				resultRevision: null,
 				error: null,
 				timings: null,
 				durationMs: null,
@@ -332,38 +345,49 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			expect($appState.get().models[0]?.status).toBe('draft');
 
 			// Cannot start training before completing sections 1–3 and choosing setup
-			expect(startTraining(1)).toBe(false);
+			expect(startTraining(trainingIdentity(1))).toBe(false);
 
 			completeSection(1, 'choose-model');
 			setFeatures(1, ['sepal_length']);
 			completeSection(1, 'select-features');
 
 			// Sections 1-2 complete, but configure-model not complete and no setup
-			expect(startTraining(1)).toBe(false);
+			expect(startTraining(trainingIdentity(1))).toBe(false);
 
 			completeSection(1, 'configure-model');
 			// Sections 1-3 complete, but trainingSetup is still null
-			expect(startTraining(1)).toBe(false);
+			expect(startTraining(trainingIdentity(1))).toBe(false);
 
 			// Set training setup
 			setTrainingSetup(1, fiveFolds);
 
 			// Now training can start and completes configure-training per D8
-			expect(startTraining(1)).toBe(true);
+			expect(startTraining(trainingIdentity(1))).toBe(true);
 			expect($appState.get().models[0]?.status).toBe('training');
-			expect($appState.get().models[0]?.progress?.percent).toBe(0);
+			expect($appState.get().models[0]?.progress?.percent).toBeNull();
 			expect($appState.get().models[0]?.completedSteps).toContain('configure-training');
 
 			// Update progress
-			updateTrainingProgress(1, { percent: 50, statusMessage: 'Optimizing weights...' });
+			updateTrainingProgress(trainingIdentity(1), {
+				percent: 50,
+				stage: 'fitting',
+				phase: 'training',
+				statusMessage: 'training'
+			});
 			expect($appState.get().models[0]?.progress?.percent).toBe(50);
 
 			// Training success
-			trainingSucceeded(1, { metrics: { f1: 0.91 } });
+			expect(trainingSucceeded({ ...trainingIdentity(1), runId: 'obsolete' }, 100)).toBe(
+				false
+			);
+			expect($appState.get().models[0]?.status).toBe('training');
+			trainingSucceeded(trainingIdentity(1), 100);
 			const trainedModel = $appState.get().models[0];
 			expect(trainedModel?.status).toBe('trained');
 			expect(trainedModel?.progress).toBeNull();
-			expect(trainedModel?.metrics).toEqual({ f1: 0.91 });
+			expect(trainedModel?.metrics).toBeNull();
+			expect(trainedModel?.durationMs).toBe(100);
+			expect(trainedModel?.resultRevision).toBe('test-run-1');
 			expect(trainedModel?.completedSteps).toContain('training');
 		});
 
@@ -378,21 +402,22 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			setTrainingSetup(1, fiveFolds);
 
 			// 1. Training failed re-opens configure-training
-			startTraining(1);
+			startTraining(trainingIdentity(1));
 			expect($appState.get().models[0]?.completedSteps).toContain('configure-training');
-			trainingFailed(1, 'Matrix not positive definite');
+			trainingFailed(trainingIdentity(1), 'Matrix not positive definite');
 			let m = $appState.get().models[0];
 			expect(m?.status).toBe('draft');
 			expect(m?.error?.code).toBe('TRAINING_FAILED');
+			expect(m?.resultRevision).toBeNull();
 			expect(m?.error?.message).toBe('Matrix not positive definite');
 			expect(m?.completedSteps).not.toContain('configure-training');
 			expect(m?.completedSteps).not.toContain('training');
 			expect(m?.completedSteps).not.toContain('results');
 
 			// 2. Cancellation re-opens configure-training
-			startTraining(1);
+			startTraining(trainingIdentity(1));
 			expect($appState.get().models[0]?.completedSteps).toContain('configure-training');
-			cancelTraining(1);
+			cancelTraining(trainingIdentity(1));
 			m = $appState.get().models[0];
 			expect(m?.status).toBe('draft');
 			expect(m?.error?.code).toBe('TRAINING_CANCELLED');
@@ -401,9 +426,9 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			expect(m?.completedSteps).not.toContain('results');
 
 			// 3. Reload interruption re-opens configure-training
-			startTraining(1);
+			startTraining(trainingIdentity(1));
 			expect($appState.get().models[0]?.completedSteps).toContain('configure-training');
-			recoverInterrupted(1);
+			recoverInterrupted(trainingIdentity(1));
 			m = $appState.get().models[0];
 			expect(m?.status).toBe('draft');
 			expect(m?.error?.code).toBe('TRAINING_INTERRUPTED_BY_RELOAD');
@@ -564,7 +589,13 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 							'training'
 						],
 						status: 'training',
-						progress: { percent: 45, statusMessage: 'Training...' },
+						progress: {
+							percent: 45,
+							stage: 'fitting' as const,
+							phase: null,
+							statusMessage: 'Training...'
+						},
+						resultRevision: null,
 						error: null,
 						timings: null,
 						durationMs: null,
@@ -621,7 +652,13 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 							'training'
 						],
 						status: 'training',
-						progress: { percent: 70, statusMessage: 'Training...' },
+						progress: {
+							percent: 70,
+							stage: 'fitting' as const,
+							phase: null,
+							statusMessage: 'Training...'
+						},
+						resultRevision: null,
 						error: null,
 						timings: null,
 						durationMs: null,
@@ -763,6 +800,7 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 				multiclass: null,
 				trainingSetup: null,
 				progress: null,
+				resultRevision: null,
 				error: null,
 				timings: null,
 				durationMs: null,
@@ -950,12 +988,17 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			completeSection(1, 'select-features');
 			completeSection(1, 'configure-model');
 			setTrainingSetup(1, fiveFolds);
-			startTraining(1);
+			startTraining(trainingIdentity(1));
 			flushNow();
 
 			// 10 calls 10 ms apart
 			for (let i = 1; i <= 10; i++) {
-				updateTrainingProgress(1, { percent: i * 10, statusMessage: `Step ${i}` });
+				updateTrainingProgress(trainingIdentity(1), {
+					percent: i * 8,
+					stage: 'fitting',
+					phase: 'training',
+					statusMessage: `Step ${i}`
+				});
 				if (i === 5) {
 					// After 5 calls (approx 50ms): wait to verify first write produced within 60ms
 					await new Promise((resolve) => setTimeout(resolve, 20));
@@ -969,7 +1012,7 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			// Wait up to 50ms after final call
 			await new Promise((resolve) => setTimeout(resolve, 60));
 			const finalState = JSON.parse(storage.getItem(STATE_STORAGE_KEY)!);
-			expect(finalState.models[0].progress.percent).toBe(100);
+			expect(finalState.models[0].progress.percent).toBe(80);
 			expect(finalState.models[0].progress.statusMessage).toBe('Step 10');
 		});
 	});
@@ -1052,6 +1095,7 @@ describe('WML-P1-STATE-1: persisted hyperparameter value validation', () => {
 					multiclass: null,
 					trainingSetup: null,
 					progress: null,
+					resultRevision: null,
 					error: null,
 					timings: null,
 					durationMs: null,

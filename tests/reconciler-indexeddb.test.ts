@@ -93,6 +93,7 @@ function modelRecord(overrides: Partial<ModelRecord>): ModelRecord {
 		multiclass: null,
 		trainingSetup: null,
 		progress: null,
+		resultRevision: null,
 		error: null,
 		timings: null,
 		durationMs: null,
@@ -229,7 +230,8 @@ const validOneShotWire = { type: 'train_test_split', testRatio: 0.2 };
 const expectedOneShot = { type: 'one_shot', testRatio: 0.2, randomState: 42 } as const;
 
 const staleTrainingFields = {
-	progress: { percent: 65, statusMessage: 'Training' },
+	progress: { percent: 65, stage: 'fitting' as const, phase: null, statusMessage: 'Training' },
+	resultRevision: null,
 	timings: { steps: [{ label: 'Fit', durationMs: 20 }], totalMs: 20 },
 	durationMs: 20,
 	metrics: { accuracy: 0.9 }
@@ -377,6 +379,7 @@ describe('Phase 2 training setup persistence', () => {
 					...affected,
 					completedSteps: earlierSteps,
 					progress: null,
+					resultRevision: null,
 					timings: null,
 					durationMs: null,
 					metrics: null,
@@ -434,6 +437,7 @@ describe('Phase 2 training setup persistence', () => {
 				completedSteps: earlierSteps,
 				trainingSetup: null,
 				progress: null,
+				resultRevision: null,
 				timings: null,
 				durationMs: null,
 				metrics: null,
@@ -583,6 +587,7 @@ describe('Phase 2 training setup persistence', () => {
 				completedSteps: earlierSteps,
 				trainingSetup: null,
 				progress: null,
+				resultRevision: null,
 				timings: null,
 				durationMs: null,
 				metrics: null,

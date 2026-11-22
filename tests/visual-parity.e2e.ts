@@ -25,7 +25,7 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 			// Open the unmodified mockup document on the review server.
 			const mockupPage = await context.newPage();
 			await mockupPage.goto(
-				`http://localhost:3333/files/ui-scaffold/${encodeURIComponent(entry.mockupPage)}?clean=1`
+				`http://localhost:3333/${encodeURIComponent(entry.mockupPage)}?clean=1`
 			);
 			if (entry.fixture) await prepareSidebarReference(mockupPage, entry.fixture);
 			const mockupEl = mockupPage.locator(entry.mockupSelector).first();
@@ -92,6 +92,7 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 									multiclass: null,
 									trainingSetup: null,
 									progress: null,
+									resultRevision: null,
 									error: null,
 									timings: null,
 									durationMs: null,
@@ -131,33 +132,9 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 						.locator('app-target-view [data-testid="target-ready"]')
 						.waitFor({ state: 'visible', timeout: 5000 });
 					await page.locator('tbody tr:has(th:has-text("class")) button').click();
-					await page.evaluate(() => {
-						const s = window.__appState!.get();
-						window.__appState!.set({
-							...s,
-							models: [
-								{
-									num: 1,
-									createdAt: Date.now(),
-									status: 'draft',
-									completedSteps: [],
-									modelId: null,
-									features: [],
-									modelOptions: {},
-									hyperparameters: { mode: 'manual', values: {} },
-									multiclass: null,
-									trainingSetup: null,
-									progress: null,
-									error: null,
-									timings: null,
-									durationMs: null,
-									metrics: null,
-									ui: {}
-								}
-							]
-						});
-					});
-					await page.goto('/models/1');
+					await page.locator('app-target-view header a[href="/models"]').click();
+					await page.getByRole('button', { name: 'Train New Model' }).click();
+					await expect(page).toHaveURL(/\/models\/1$/);
 					await page
 						.locator('app-model-builder-view app-model-card')
 						.waitFor({ state: 'attached', timeout: 5000 });
@@ -179,38 +156,30 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 						.locator('app-target-view [data-testid="target-ready"]')
 						.waitFor({ state: 'visible', timeout: 5000 });
 					await page.locator('tbody tr:has(th:has-text("class")) button').click();
+					await page.locator('app-target-view header a[href="/models"]').click();
+					await page.getByRole('button', { name: 'Train New Model' }).click();
+					await expect(page).toHaveURL(/\/models\/1$/);
 					await page.evaluate(() => {
-						const s = window.__appState!.get();
-						window.__appState!.set({
-							...s,
+						const store = window.__appState!;
+						const state = store.get();
+						store.set({
+							...state,
 							models: [
 								{
-									num: 1,
-									createdAt: Date.now(),
-									status: 'draft',
-									completedSteps: ['choose-model'],
+									...state.models[0]!,
 									modelId: 'logistic-regression',
+									completedSteps: ['choose-model'],
 									features: [
 										'sepal length',
 										'sepal width',
 										'petal length',
 										'petal width'
 									],
-									modelOptions: {},
-									hyperparameters: { mode: 'manual', values: {} },
-									multiclass: null,
-									trainingSetup: null,
-									progress: null,
-									error: null,
-									timings: null,
-									durationMs: null,
-									metrics: null,
 									ui: { featureSelectionInitialised: true }
 								}
 							]
 						});
 					});
-					await page.goto('/models/1');
 					await page
 						.locator('app-model-builder-view table.table')
 						.waitFor({ state: 'attached', timeout: 5000 });

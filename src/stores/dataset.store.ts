@@ -1,11 +1,14 @@
 import { atom } from 'nanostores';
-import { INGESTION_LOCK } from '../common/storage/db';
+import {
+	getTrainingService,
+	type TrainingCommandResult
+} from '../features/models/training/training-service';
 import { IngestionError, type IngestionErrorCode } from '../features/data/ingestion/errors';
 import type { IngestionProgress, IngestionSource } from '../features/data/ingestion/pipeline';
 import { getStorageClient, type StorageClient } from '../features/data/ingestion/storage-client';
 import { loadDataset } from '../features/data/load-dataset';
 import { loadSampleDescriptor } from '../features/data/sample-datasets';
-import { $appState, clearDataset } from './app.store';
+import { $appState } from './app.store';
 import type { DatasetMetadata, RawRecord } from '../types/dataset';
 import type { SampleDatasetDescriptor } from '../types/sample-dataset';
 
@@ -301,45 +304,16 @@ export function clearDatasetResources(): void {
 	$previewRows.set(INITIAL_PREVIEW);
 }
 
-/**
- * Confirms and performs dataset removal from storage and state.
- * Rejects while training or ingestion is active. If another tab holds the lock, fails as busy.
- * Leaves state intact if storage deletion fails.
- *
- * @returns Resolves to true when removal succeeds.
- */
-export async function changeDataset(): Promise<boolean> {
-	const appState = $appState.get();
-	const hasTrainingModel = appState.models.some((m) => m.status === 'training');
-	if (hasTrainingModel || $datasetLoad.get().busy) {
-		throw new Error('Cannot change dataset while training or ingestion is active.');
-	}
-
-	const lockManager = typeof navigator === 'undefined' ? undefined : navigator.locks;
-	if (lockManager && typeof lockManager.request === 'function') {
-		let acquired = false;
-		await lockManager.request(INGESTION_LOCK, { ifAvailable: true }, async (lock) => {
-			if (!lock) return;
-			acquired = true;
-			const client = getEffectiveClient();
-			await client.deleteDatasetsExcept(null);
-			clearDataset();
-			clearDatasetResources();
-		});
-		if (!acquired) {
-			throw new IngestionError(
-				'BUSY',
-				'Another tab is currently holding the dataset storage lock.'
-			);
-		}
-		return true;
-	} else {
-		const client = getEffectiveClient();
-		await client.deleteDatasetsExcept(null);
-		clearDataset();
-		clearDatasetResources();
-		return true;
-	}
+/** Confirms removal using the captured dataset and target identity. */
+export async function changeDataset(
+	datasetId = $appState.get().dataset?.id,
+	target = $appState.get().target
+): Promise<TrainingCommandResult> {
+	if ($datasetLoad.get().busy) return { ok: false, code: 'busy' };
+	if (!datasetId) return { ok: false, code: 'conflict' };
+	const result = await getTrainingService().discardDataset(datasetId, target);
+	if (result.ok) clearDatasetResources();
+	return result;
 }
 
 /**

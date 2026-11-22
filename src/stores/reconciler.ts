@@ -14,12 +14,291 @@ import {
 	type ScrollSnapshot
 } from '../types/state';
 import { isClassifierId } from '../features/models/model-catalogue';
-import { $appState } from './app.store';
-import { getActiveStorage, persistNow, readPersistedState, type StorageAdapter } from './persister';
+import { getTrainingConfigurationKey } from '../features/models/training/training-service';
+import { readModelResult } from '../features/models/training/result-repository';
+import type { ResultEnvelope } from '../types/model-result';
+import { $appState, reduceDatasetReplacement } from './app.store';
+import {
+	commitProtectedTrainingChange,
+	getActiveStorage,
+	persistNow,
+	publishAcknowledgedAppSnapshot,
+	readGuardedTrainingSnapshot,
+	readPersistedState,
+	withTrainingStateLock,
+	type PersistenceAck,
+	type StorageAdapter,
+	type TrainingPersistenceOptions
+} from './persister';
+import { createTrainingSession, setTrainingSessionStatus } from './training.store';
 import { $scrollState } from './scroll.store';
 
 function isTrainingSetupOrLater(step: ModelSectionId): boolean {
 	return step === 'configure-training' || step === 'training' || step === 'results';
+}
+
+function protectedDomain(state: PersistedAppState) {
+	const { dataset, data, target, models, nextModelNum } = state;
+	return { dataset, data, target, models, nextModelNum };
+}
+
+function restoreModelDomain(
+	state: PersistedAppState,
+	model: ModelRecord,
+	badSetup: boolean,
+	envelope: ResultEnvelope | null
+): ModelRecord {
+	const columns = state.dataset?.columns ?? [];
+	const features = model.features.filter(
+		(feature) =>
+			feature !== state.target &&
+			columns.some(
+				(column) => column.name === feature && isModelEligibleColumnType(column.type)
+			)
+	);
+	const available = model.modelId === null || isClassifierId(model.modelId);
+	const changedFeatures = features.length !== model.features.length;
+	const completedSteps = !available
+		? []
+		: changedFeatures
+			? model.completedSteps.filter((section) => section === 'choose-model')
+			: model.completedSteps;
+	const repaired: ModelRecord = {
+		...model,
+		features,
+		completedSteps,
+		...(!available && {
+			modelId: null,
+			multiclass: null,
+			hyperparameters: { mode: 'manual', values: {} }
+		})
+	};
+	if (model.status !== 'draft') {
+		if (envelope && !badSetup && available && !changedFeatures) {
+			return {
+				...repaired,
+				status: 'trained',
+				progress: null,
+				error: null,
+				metrics: null,
+				timings: null,
+				durationMs: envelope.durationMs,
+				completedSteps: completedSteps.includes('training')
+					? completedSteps
+					: [...completedSteps, 'training']
+			};
+		}
+		const interrupted = model.status === 'training';
+		return {
+			...repaired,
+			status: 'draft',
+			trainingSetup: badSetup ? null : model.trainingSetup,
+			progress: null,
+			resultRevision: null,
+			timings: null,
+			metrics: null,
+			durationMs: null,
+			completedSteps: completedSteps.filter((section) => !isTrainingSetupOrLater(section)),
+			error: {
+				code: interrupted ? 'TRAINING_INTERRUPTED_BY_RELOAD' : 'TRAINING_FAILED',
+				message: interrupted
+					? 'Training was interrupted by a page reload'
+					: 'Stored model results were lost',
+				timestamp: Date.now()
+			}
+		};
+	}
+	if (!badSetup) return repaired;
+	return {
+		...repaired,
+		trainingSetup: null,
+		completedSteps: completedSteps.filter((section) => !isTrainingSetupOrLater(section)),
+		progress: null,
+		resultRevision: null,
+		timings: null,
+		metrics: null,
+		durationMs: null
+	};
+}
+
+/** Replays committed state first, then repairs validated resources under their locks. */
+export async function reconcileProtectedStartup(
+	options: TrainingPersistenceOptions = {},
+	locks = typeof navigator !== 'undefined' ? navigator.locks : undefined
+): Promise<PersistenceAck> {
+	if (!locks) return { ok: false, reason: 'unavailable' };
+	const persistence = {
+		...options,
+		withStateLock:
+			options.withStateLock ??
+			(<Value>(operation: () => Promise<Value>) =>
+				locks.request('samata-ml:training-state', operation))
+	};
+	const first = await withTrainingStateLock(readGuardedTrainingSnapshot, persistence);
+	if (!first.ok) return first;
+	const priorScroll = readPersistedState(options.storage).scroll;
+	$scrollState.set(priorScroll);
+
+	function recovery(state: PersistedAppState) {
+		return {
+			pending: {
+				operationId: crypto.randomUUID(),
+				kind: 'recover' as const,
+				domain: protectedDomain(state)
+			},
+			mutation: { type: 'none' as const }
+		};
+	}
+
+	try {
+		const repaired = await locks.request(
+			INGESTION_LOCK,
+			{ mode: 'shared' },
+			async (): Promise<PersistenceAck> => {
+				let modelNumbers: number[] = [];
+				let datasetId: string | null = null;
+				const dataset = await commitProtectedTrainingChange(async ({ state }, { db }) => {
+					if (!state) return recovery(INITIAL_APP_STATE);
+					if (state.dataset && !(await getMetadata(db, state.dataset.id))) {
+						return recovery(reduceDatasetReplacement(state, null));
+					}
+					datasetId = state.dataset?.id ?? null;
+					const validTarget =
+						state.target !== null &&
+						state.dataset?.columns.some(
+							(column) =>
+								column.name === state.target &&
+								isModelEligibleColumnType(column.type)
+						);
+					const nextModelNum = Math.max(
+						state.nextModelNum,
+						1,
+						...state.models.map((model) => model.num + 1)
+					);
+					const selectedColumn =
+						state.data.selectedColumn !== null &&
+						state.dataset?.columns.some(
+							(column) => column.name === state.data.selectedColumn
+						)
+							? state.data.selectedColumn
+							: null;
+					modelNumbers = validTarget ? state.models.map((model) => model.num) : [];
+					if (
+						(!validTarget && (state.target !== null || state.models.length > 0)) ||
+						nextModelNum !== state.nextModelNum ||
+						selectedColumn !== state.data.selectedColumn
+					) {
+						return recovery({
+							...state,
+							nextModelNum,
+							data: { ...state.data, selectedColumn },
+							...(!validTarget && { target: null, models: [] })
+						});
+					}
+					return null;
+				}, persistence);
+				if (!dataset.ok) return dataset;
+
+				for (const num of modelNumbers) {
+					const model = await locks.request(
+						`samata-ml:training:${num}`,
+						{ ifAvailable: true },
+						async (lock): Promise<PersistenceAck> => {
+							if (!lock) return dataset;
+							const restored: { result: ResultEnvelope | null } = { result: null };
+							const repairedModel = await commitProtectedTrainingChange(
+								async ({ state, trainingSetupDecodeOutcomes }, { db }) => {
+									if (!state || state.dataset?.id !== datasetId) return null;
+									const index = state.models.findIndex(
+										(candidate) => candidate.num === num
+									);
+									const current = state.models[index];
+									if (!current) return null;
+									const detail = trainingSetupDecodeOutcomes[index];
+									const badSetup =
+										detail === 'unusable' ||
+										(detail === 'explicit-null' &&
+											current.completedSteps.some(isTrainingSetupOrLater));
+									if (
+										current.status !== 'draft' &&
+										current.resultRevision !== null
+									) {
+										const configurationKey = getTrainingConfigurationKey(
+											current,
+											state.dataset!.rowCount
+										);
+										if (state.target && configurationKey) {
+											restored.result = await readModelResult(
+												db,
+												datasetId!,
+												num,
+												{
+													datasetId: datasetId!,
+													target: state.target,
+													modelNum: num,
+													modelCreatedAt: current.createdAt,
+													configurationKey,
+													runId: current.resultRevision
+												}
+											);
+										}
+									}
+									const next = restoreModelDomain(
+										state,
+										current,
+										badSetup,
+										restored.result
+									);
+									if (next.status !== 'trained') restored.result = null;
+									if (JSON.stringify(next) === JSON.stringify(current))
+										return null;
+									return recovery({
+										...state,
+										models: state.models.map((entry) =>
+											entry === current ? next : entry
+										)
+									});
+								},
+								persistence
+							);
+							if (repairedModel.ok && restored.result) {
+								const saved = restored.result;
+								createTrainingSession(saved);
+								setTrainingSessionStatus(saved, 'complete', saved.logEntries);
+							}
+							return repairedModel;
+						}
+					);
+					if (!model.ok) return model;
+				}
+				return withTrainingStateLock(async (context): Promise<PersistenceAck> => {
+					const authoritative = await readGuardedTrainingSnapshot(context);
+					if (!authoritative.ok) return authoritative;
+					if (!authoritative.state) return { ok: false, reason: 'conflict' };
+					publishAcknowledgedAppSnapshot(authoritative.state);
+					return { ok: true, generation: authoritative.generation };
+				}, persistence);
+			}
+		);
+		if (!repaired.ok) return repaired;
+
+		await locks.request(
+			INGESTION_LOCK,
+			{ ifAvailable: true, mode: 'exclusive' },
+			async (lock) => {
+				if (!lock) return;
+				await withTrainingStateLock(async (context) => {
+					const read = await readGuardedTrainingSnapshot(context);
+					if (read.ok && read.state && !read.replayed) {
+						await deleteDatasetsExcept(context.db, read.state.dataset?.id ?? null);
+					}
+				}, persistence);
+			}
+		);
+		return repaired;
+	} catch {
+		return { ok: false, reason: 'unavailable' };
+	}
 }
 
 /**

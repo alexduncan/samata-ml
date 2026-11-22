@@ -42,7 +42,7 @@ There are no slots, parts, methods or custom properties. Styles come from `butto
 
 ## 5. Visual specification
 
-Mapped from `specification/mockups/ui-scaffold/drafts/03-4_train-models-3-configure-model.html` and `css/hyperparameters.css`; the normative CSS is `src/styles/hyperparameters.styles.ts` (`.field` family, `A11Y-07`, `A11Y-08`, `SEM-10` applied). `.form-note` is a recorded deviation (`MODELS-UI-04`).
+Mapped from `specification/mockups/03-4_train-models-3-configure-model.html` and `css/hyperparameters.css`; the normative CSS is `src/styles/hyperparameters.styles.ts` (`.field` family, `A11Y-07`, `A11Y-08`, `SEM-10` applied). `.form-note` is a recorded deviation (`MODELS-UI-04`).
 
 ## 6. Accessibility
 

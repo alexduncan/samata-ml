@@ -1,12 +1,10 @@
 # Steps
 
-**Status:** partial — Steps 1–2 and the Step 3 overview and builder Sections 1–4 are implemented. Training execution, model results and Step 4 comparison remain target.
+**Status:** partial — Steps 1–2 and the Step 3 overview and builder through training are implemented. Detailed model results, comparison and tuning remain target.
 
 This web application has four sections.
 
-When the script loads it will check localStorage for saved app state.
-
-If no saved state is found in localStorage, the user will be shown a welcome modal as shown in [00_first-load.html](mockups/ui-scaffold/00_first-load.html).
+Startup reconciles saved browser state with IndexedDB before opening a workflow view. If a committed change cannot be published, Restore saved work offers Retry saving and withholds workflow actions. The [welcome modal](mockups/00_first-load.html) opens for a fresh workspace once saved-state recovery is clear.
 
 ## 1. Load Data
 
@@ -16,15 +14,15 @@ This is the first page the user sees when the app loads. It supports two modes: 
 
 ### Sample Datasets
 
-The page shows a card for each sample dataset in the generated catalogue at `/datasets/index.json` ([sample-datasets.md](sample-datasets.md)). Each card shows `name`, `tagline`, `stats.rowCount` and `stats.columnCount`, with buttons for "Datasheet" and "Load Dataset". This is shown in [01-1_select-data.html](mockups/ui-scaffold/01-1_select-data.html).
+The page shows a card for each sample dataset in the generated catalogue at `/datasets/index.json` ([sample-datasets.md](sample-datasets.md)). Each card shows `name`, `tagline`, `stats.rowCount` and `stats.columnCount`, with buttons for "Datasheet" and "Load Dataset". This is shown in [01-1_select-data.html](mockups/01-1_select-data.html).
 
 For any dataset where `csvOrigin === 'remote'` (such as COMPAS Recidivism), the card's enclosing item prominently displays a remote source notice: _"Downloaded from GitHub when loaded; internet connection required"_.
 
-Clicking the "Datasheet" button on a dataset card displays a modal containing sanitized markdown/HTML information about the sample dataset as shown in [01-2_dataset-card.html](mockups/ui-scaffold/01-2_dataset-card.html). Hostile markup (`<script>`, inline handlers, iframes) is stripped. Network failures display an alert with a "Retry" button, and closing the modal returns focus to the invoker button.
+Clicking the "Datasheet" button on a dataset card displays a modal containing sanitized markdown/HTML information about the sample dataset as shown in [01-2_dataset-card.html](mockups/01-2_dataset-card.html). Hostile markup (`<script>`, inline handlers, iframes) is stripped. Network failures display an alert with a "Retry" button, and closing the modal returns focus to the invoker button.
 
 ### Custom Dataset Upload
 
-The `.page-header` contains a button "Upload Dataset". Clicking the button displays a modal as shown in [01-3_upload-dataset.html](mockups/ui-scaffold/01-3_upload-dataset.html).
+The `.page-header` contains a button "Upload Dataset". Clicking the button displays a modal as shown in [01-3_upload-dataset.html](mockups/01-3_upload-dataset.html).
 
 The modal provides both a keyboard-reachable native file picker and a drag-and-drop zone. Upload criteria:
 
@@ -43,7 +41,7 @@ Dataset preview displays after successful loading of a dataset by:
 
 The dataset preview view displays:
 
-- A page header with the dataset name, row/column counts, and a "Change Dataset" button. Clicking "Change Dataset" opens a confirmation modal requiring explicit confirmation before discarding the active dataset.
+- A page header with the dataset name, row/column counts, and a "Change Dataset" button. Clicking "Change Dataset" opens a confirmation modal requiring explicit confirmation before discarding the active dataset. The confirmation cancels local training before the deletion and waits for its acknowledgement. If another tab is training, the confirmation stays open with an explanation. After a committed deletion that could not be published, Retry saving finishes the same change. New data enters preview after the staged dataset pointer is acknowledged.
 - A virtual table (`ui-virtual-table`) rendering a 10,000-row active segment with segment navigation controls and "Go to row" input. Up to 10,000,000 rows can be browsed without unbounded DOM expansion.
 - An inspector overlay panel (`app-column-details`) on the right when clicking a column header:
     - Column name, data type, and description.
@@ -66,7 +64,7 @@ The dataset preview view displays:
 
 **url:** `/target`
 
-The user chooses the target variable to predict from their loaded dataset. Visual layout follows [02-1_set-target.html](mockups/ui-scaffold/02-1_set-target.html) and [02-2_target-set.html](mockups/ui-scaffold/02-2_target-set.html).
+The user chooses the target variable to predict from their loaded dataset. Visual layout follows [02-1_set-target.html](mockups/02-1_set-target.html) and [02-2_target-set.html](mockups/02-2_target-set.html).
 
 ### Workflow States
 
@@ -95,14 +93,14 @@ The user chooses the target variable to predict from their loaded dataset. Visua
 ### Model Discard Warning and Confirmation
 
 - If any models exist (`models.length > 0`), an alert notification displays above the table: _"Changing the target will reset all existing models."_
-- Clicking "Set as Target" for a different column opens a native `<dialog class="confirm-dialog">` requiring explicit confirmation before discarding all existing models (`confirmDiscardModels()`) and setting the new target (`setTarget(column)`).
+- Clicking "Set as Target" for a different column opens a native `<dialog class="confirm-dialog">` requiring explicit confirmation before the protected target change discards existing models and results. The dialog stays usable when another tab is training. A committed change awaiting publication keeps the dialog open with Retry saving and disables duplicate deletion.
 - Dismissing the modal (via Cancel or Escape) retains all existing models and restores focus to the invoking button.
 - If the dataset is changed while the modal is open, the modal closes safely without applying pending mutations.
 - Clicking the button for the column that is already the current target is a no-op that never displays confirmation or alters models.
 
 ### Continuation
 
-- Setting a target updates state and keeps the user on `/target` to inspect the table.
+- After the target change is acknowledged, the user stays on `/target` to inspect the table.
 - A "Train Models" link (`<a href="/models" class="btn btn-primary">`) in the page header enables proceeding to Step 3 once a target is selected.
 
 ## 3. Train Models
@@ -116,7 +114,7 @@ If the user visits `/models` before selecting a dataset or setting a target vari
 Once a dataset and target are configured:
 
 - If no models exist, `/models` displays the empty notice _"No models yet. Train a new model to get started."_ (`data-testid="models-empty"`).
-- A primary button "Train New Model" creates a new model record with monotonic numbering (Model 1, Model 2, etc.) and navigates to `/models/{num}`.
+- A primary button "Train New Model" creates a new model record with monotonic numbering (Model 1, Model 2, etc.). The app navigates to `/models/{num}` after creation is acknowledged. A failed save leaves the learner on Models with recovery feedback.
 - If models exist, `/models` renders a table (`data-testid="models-list"`) with columns:
     - **Model Name:** Displays `Model {num} — {Library Name}` (e.g. "Model 1 — Logistic Regression") or `Model {num}` if no model is selected yet. Models cannot be renamed, deleted, or duplicated.
     - **Features:** A comma-separated list of selected features in dataset column order, or "Not selected".
@@ -170,25 +168,27 @@ Section 3 activates after Section 2 and renders `<app-model-configuration>` ([sp
 
 ### 4. Training Setup
 
-Choosing a strategy requires ready metadata for the current dataset and target. For classification, samatā requires at least two observed classes with two or more rows each. Categories with no observed rows are excluded from this check. This is an input rule in samatā. The training library web-ml may still reject the split when execution is available. If the target is ineligible or missing, the section explains why and links to Set Target. If metadata cannot be read, the section offers Retry.
+Choosing a strategy requires ready metadata for the current dataset and target. For classification, samatā requires at least two observed classes with two or more rows each. Categories with no observed rows are excluded from this check. This is an input rule in samatā. The training library web-ml determines whether it can execute the requested partition. If the target is ineligible or missing, the section explains why and links to Set Target. If metadata cannot be read, the section offers Retry.
 
 **One-Shot** is selected initially. It requests an 80% training and 20% test split with stratification and a fixed seed of 42. **Cross-Validation** starts at five folds or the eligible maximum, whichever is smaller. The range and exact number field accept integers from 2 through the smallest observed class count, capped at 10. A scrollable matrix shows the training and validation roles for each run and the summary gives their approximate percentages. Both Help links open the Training Setup article over the builder.
 
-**Train Model** is the form's submit button. A field error leaves it enabled and submission moves focus to the exact number field. The controls are disabled when the setup is blocked or read-only. Valid submission saves and completes Section 4, shows the chosen setup and Edit in its header, and activates Section 5. The **Training Setup** column on Models uses the same formatted summary. See [Training Setup](components/training-setup.md) for the controls and validation states.
+**Train Model** is the form's submit button. A field error leaves it enabled and submission moves focus to the exact number field. The controls are disabled when the setup is blocked or read-only. Valid submission requests a single training attempt. The builder activates Section 5 while the accepted start is pending and shows the chosen setup when the start is acknowledged. A rejected start leaves Section 4 open with a reason. The **Training Setup** column on Models uses the same formatted summary. See [Training Setup](components/training-setup.md) for the controls and validation states.
 
 For targets with more than two categories, the multiclass strategy is fixed by the model (native, One-vs-Rest or One-vs-One as the classifier supports) and shown read-only in Section 3. Selecting a strategy and Error-Correcting Output Codes remain future work.
 
 ### 5. Training
 
-In the current release the model remains a draft after Train Model, and Sections 5 and 6 display “Not available yet.” Actual execution is a Phase 3 target. Once implemented, valid Train Model submission will hand training to web-ml and open this section with a progress bar and status text updated from training events.
+Training runs in a dedicated worker while the app remains navigable. One-Shot evaluates an independent stratified holdout. Fixed Cross-Validation evaluates the chosen folds and refits the classifier on all eligible rows. See [Machine Learning Orchestrator](machine-learning-orchestrator.md) for the worker and storage contract.
 
-Once training is complete the section will display the time taken to train the model. In the case of "Nested Cross Validation" and "Hyperparameter Tuning" a table will display detailed results on the time for each step and a total row.
+The [training panel](components/training-progress.md) displays one labelled native progress bar and a disclosure with the latest status and chronological log. The disclosure preference survives reload. The tab that owns the attempt can cancel before saving. Other tabs display the training status. Cancellation, fitting failure and interruption return to Training Setup with a reason and the saved settings.
 
-When training is complete the "View Results" button in the `<header>` of the section will change from disabled to `.btn-primary`. The `<h2>` in the `<header>` of the section will change to display "Training Complete". After the user clicks the "View Results" button, the button will be replaced with an `<svg><use href="#check" /></svg>` and the class `.train-step-complete` is added to the `.train-step` element.
+Saving holds at 95%. If the result is committed and state publication fails, the panel offers Retry saving and keeps Cancel Training and View Results disabled. Acknowledged completion shows 100%, the elapsed time and View Results. View Results acknowledges Section 5, replaces the button with the completion check and focuses Section 6 on the same URL. The saved log remains inspectable. A trained model opened from Models displays Section 5 until this acknowledgement.
+
+Detailed timing tables for nested evaluation and tuning belong to the later results and tuning phases. The [03-6 draft](mockups/03-6_train-models-5-train.html) awaits human styling.
 
 ### 6. Single Model Results
 
-This step allows the user to view detailed results from the model training. Every model will display common metrics for the type of task (Classification | Regression).
+The Section 6 placeholder opens after the learner acknowledges a trained result. A later phase will display common metrics for each task, model-specific charts and details.
 
 A configuration file in `./src/config/models/{model-name}-results.ts` will be used to determine which specific charts are rendered for the trained model.
 

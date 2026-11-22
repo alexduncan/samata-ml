@@ -139,6 +139,12 @@ export class AppTrainingSetup extends LitElement {
 	private matrixFolds = DEFAULT_CV_FOLDS;
 	private displayText = String(DEFAULT_CV_FOLDS);
 
+	override firstUpdated(): void {
+		if (this.hasAttribute('autofocus') && !this.controlsDisabled) {
+			this.renderRoot.querySelector<HTMLButtonElement>('button[type="submit"]')?.focus();
+		}
+	}
+
 	override willUpdate(changed: PropertyValues<this>): void {
 		const externalSetupChanged = changed.has('value') && !this.matchesLastEmission();
 		if (externalSetupChanged) {

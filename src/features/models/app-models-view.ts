@@ -1,10 +1,10 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { customElement, state } from 'lit/decorators.js';
 import { StoreController } from '@nanostores/lit';
 import { params } from '@nanostores/i18n';
 import { i18n } from '../../i18n';
 import { navigate } from '../../router/router';
-import { $appState, createModel } from '../../stores/app.store';
+import { $appState } from '../../stores/app.store';
 import { $datasetResources, loadDatasetResources } from '../../stores/dataset.store';
 import { $canCompare, blockedReason } from '../../stores/predicates';
 import { buttonStyles } from '../../styles/button.styles';
@@ -14,11 +14,17 @@ import { headingFocusStyles } from '../../styles/heading-focus.styles';
 import type { ModelRecord } from '../../types/state';
 import { SUPERVISED_MODELS } from './model-catalogue';
 import { formatTrainingSetupSummary } from './training-setup';
+import { getTrainingService } from './training/training-service';
 
 const messages = i18n('app-models-view', {
 	oneShotSummary: 'One-Shot (80% / 20%)',
 	crossValidationSummary: params<{ folds: number }>('Cross-Validation ({folds} folds)'),
-	notConfigured: 'Not configured'
+	notConfigured: 'Not configured',
+	create: 'Train New Model',
+	creating: 'Saving…',
+	createFailed: 'The new model could not be saved. Try again.',
+	createPending: 'The new model is saved, but finishing is pending. Retry saving.',
+	retrySaving: 'Retry saving'
 });
 
 /**
@@ -122,8 +128,12 @@ export class AppModelsView extends LitElement {
 	private readonly resourcesController = new StoreController(this, $datasetResources);
 	private readonly translations = new StoreController(this, messages);
 	private readonly canCompareController = new StoreController(this, $canCompare);
+	private readonly messagesController = new StoreController(this, messages);
 
 	private loadPromise: Promise<void> | null = null;
+	@state() private accessor creatingModel = false;
+	@state() private accessor creationError = false;
+	@state() private accessor creationPending = false;
 
 	override willUpdate(_changed: PropertyValues<this>): void {
 		const appState = this.appStateController.value;
@@ -175,10 +185,24 @@ export class AppModelsView extends LitElement {
 		await this.updateComplete;
 	}
 
-	private handleTrainNew(): void {
-		const num = createModel();
-		if (num !== false) {
-			navigate(`/models/${num}`);
+	private async handleTrainNew(): Promise<void> {
+		if (this.creatingModel) return;
+		this.creationError = false;
+		this.creatingModel = true;
+		try {
+			const result = this.creationPending
+				? await getTrainingService().retry()
+				: await getTrainingService().createModel();
+			if (result.ok) {
+				this.creationPending = false;
+				if (typeof result.value === 'number' && this.isConnected)
+					navigate(`/models/${result.value}`);
+			} else {
+				this.creationError = true;
+				this.creationPending ||= Boolean(result.pending);
+			}
+		} finally {
+			this.creatingModel = false;
 		}
 	}
 
@@ -191,6 +215,7 @@ export class AppModelsView extends LitElement {
 
 	private renderHeader(canTrain: boolean): TemplateResult {
 		const canCompare = this.canCompareController.value;
+		const t = this.messagesController.value;
 
 		return html`
 			<div class="page-header">
@@ -200,9 +225,13 @@ export class AppModelsView extends LitElement {
 					<button
 						type="button"
 						class="btn btn-primary"
-						?disabled=${!canTrain}
+						?disabled=${!canTrain || this.creatingModel}
 						@click=${this.handleTrainNew}>
-						Train New Model
+						${this.creatingModel
+							? t.creating
+							: this.creationPending
+								? t.retrySaving
+								: t.create}
 					</button>
 					${canCompare
 						? html`<a href="/results" class="btn">Compare Results</a>`
@@ -214,6 +243,11 @@ export class AppModelsView extends LitElement {
 								Compare Results
 							</button>`}
 				</div>
+				${this.creationError
+					? html`<p class="notification notification-alert" role="alert">
+							${this.creationPending ? t.createPending : t.createFailed}
+						</p>`
+					: nothing}
 			</div>
 		`;
 	}

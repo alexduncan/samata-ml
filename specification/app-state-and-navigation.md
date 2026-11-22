@@ -1,6 +1,6 @@
 # Architecture Specification: Application State & Navigation (Hybrid Router + Store)
 
-**Status:** draft — open questions in §12 remain (Q1b, Q1c, Q2 and Q4 answered). Router/history/underlay/current links, shell components, cancellable owner-local heading focus, existing route-view whenSettled contracts and conformance actions/scroll rules are implemented. Later training/results, dynamic imports, training lock and service-worker behaviour remain target. Remaining storage/navigation delivery is listed in [Known gap](README.md#known-gaps) 14.
+**Status:** draft — routing, shell, route focus, scroll, protected storage coordination and classification training are implemented. Detailed results, dynamic view imports, broader synchronisation and service-worker delivery remain target. See [Known gap 14](README.md#known-gaps).
 
 > **History:** Replaces the previous five-step, single-FSM design (formerly `plans/finite-state-machine.md`; moved and renamed 2026-11-12).
 >
@@ -202,7 +202,7 @@ Notes:
 - All four section entries, and every model under step 3, are always links. Entries may _indicate_ progress (the dataset name, the target and its type, a check mark) but never disable.
 - **Current location is marked, not removed.** The entry whose `href` equals the current workflow path is `<a href="…" aria-current="page">`. An entry for a section that contains the current page but is not the page itself (e.g. "Train Models" while on `/models/3`) is `aria-current="true"`. There is never more than one `aria-current="page"` at a time. `aria-current="step"` is not used: these are links to URLs, so `page` is the correct announcement.
 - Current entries are styled as inactive (visual state keyed off `[aria-current]`, `cursor: default`) but remain focusable, keep their `href`, and keep a `:focus-visible` outline. Activating one is a no-op in the router (§5.2): no history entry, no scroll change. This preserves keyboard focus when the sidebar re-renders reactively, keeps the section link usable from a model page, and keeps the link list a reliable map for screen reader users.
-- The `ui-scaffold` mock-ups that render the current step as a non-link `<div>` are superseded by this rule and should be updated.
+- The mockups that render the current step as a non-link `<div>` are superseded by this rule and should be updated.
 - **Deliberate exception: the Compare Results button.** The **Compare Results** button in the `/models` header is disabled until `canCompare`, as specified in workflow-steps §3, and this is a **deliberate design choice, not an oversight**. The principle in §4 is about _navigation_: where the user may go. The button is a _call to action_ that invites the user to go and compare, and inviting them when there is nothing to compare would be misleading. The two are kept separate on purpose:
     - `/results` is always reachable from the sidebar and by URL, and explains itself with the §4.3 notification.
     - The button is the only control in the application that is disabled because of workflow state. New controls MUST NOT copy this pattern for navigation; a disabled call to action needs the same justification and an entry here.
@@ -303,7 +303,7 @@ Corresponds to workflow-steps §2.
     - Active target shows a disabled button reading "Current Target".
     - Eligible candidate columns show a primary button reading "Set as Target".
     - Disqualified columns show a disabled button reading "Set as Target".
-- `setTarget(column)` stores `target`. If models exist and the selected column differs from the current target, the user must confirm discarding all models first (§6.4).
+- The connected view requests a protected target change. If models exist and the target differs, the user confirms discarding the current models and results first (§6.4). The selected target updates after acknowledgement.
 - Selecting the already-active target is a no-op that never opens a modal or alters models.
 - Setting the target updates state and keeps the user on `/target`; a "Train Models" button (`<a href="/models" class="btn btn-primary">`) in the page header enables progressing to Step 3.
 - Without a dataset a `.notification` replaces the table body (§4.3).
@@ -312,7 +312,7 @@ Corresponds to workflow-steps §2.
 
 Corresponds to workflow-steps §3.
 
-**`/models`** (requires `hasTarget`): table of all models with columns _Model Name, Features, Configuration, Training Setup, Duration, View Results_, all derived from `ModelRecord`. The action cell reads **View Results** for `status === 'trained'` and **Continue** otherwise, linking to `/models/{num}`. The header holds the **Compare Results** button (link to `/results`, disabled while `!canCompare`) and the action that creates a model: `createModel()` allocates `num = nextModelNum`, increments `nextModelNum`, appends a draft `ModelRecord`, then the router pushes `/models/{num}`.
+**`/models`** (requires `hasTarget`): table of all models with columns _Model Name, Features, Configuration, Training Setup, Duration, View Results_, all derived from `ModelRecord`. The action cell reads **View Results** for `status === 'trained'` and **Continue** otherwise, linking to `/models/{num}`. The header holds the **Compare Results** button (link to `/results`, disabled while `!canCompare`) and the action that creates a model: the service allocates `num = nextModelNum` and acknowledges the new draft before the owner navigates to `/models/{num}`. A pending or failed save keeps the learner on Models with recovery feedback.
 
 **`/models/{num}`** shows six sections, in order, as a series down one page:
 
@@ -321,31 +321,29 @@ Corresponds to workflow-steps §3.
 | 1   | `choose-model`       | **Continue** after a model is selected        | Selected model name                           |
 | 2   | `select-features`    | **Continue** with ≥ 1 feature                 | "{n} features"                                |
 | 3   | `configure-model`    | **Continue** once all hyperparameters are set | "Model Configured" or "Hyperparameter Tuning" |
-| 4   | `configure-training` | **Train Model**                               | Chosen training setup                         |
-| 5   | `training`           | Training finishes                             | "Training Complete"                           |
-| 6   | `results`            | **View Results**                              | –                                             |
+| 4   | `configure-training` | Acknowledged worker start                     | Chosen training setup                         |
+| 5   | `training`           | Acknowledged saved result                     | “5. Train Model”                              |
+| 6   | `results`            | Acknowledged **View Results**                 | “6. Model Results”                            |
 
-A completed section shows the `#check` icon and adds `.train-step-complete` to its `.train-step`. In Section 4, the form is replaced by the saved setup summary and Edit for a draft. This presentation is a pure function of `ModelRecord.completedSteps`; no component keeps its own "completed" flag.
+The persisted markers drive the completion checks. Section 4 shows the saved setup summary after start acknowledgement. A historical completed draft can reopen setup through Edit. Section 5 shows its check after View Results acknowledges the saved run.
 
 Model-level rules:
 
-- **Eligible models** are filtered by the target type: classifiers for `boolean`/`categorical`, regressors for `numeric` (workflow-steps §3.1).
+- **Eligible models** are classifiers for boolean and categorical targets. Numeric targets show the current classification limit (workflow-steps §3.1).
 - **Features**: all columns are listed; the target is shown but not selectable; ineligible (`text`) columns are not selectable. The target can never be in `features`.
 - **Multiclass strategy** (`native | one-vs-rest | one-vs-one`) is required only when the target is categorical with more than two categories _and_ the `web-ml` model supports the choice. It is part of section 3.
-- **Training Setup** (Section 4) displays **One-Shot** before the first write. The builder checks that the route, active model, dataset and target still match ready eligible metadata before accepting a change or submit. Cross-Validation uses the current target’s observed class counts to bound folds and shows a scrollable matrix. Valid **Train Model** submission saves the setup, completes Section 4 and activates the pending Section 5 while the model remains a draft. Completed drafts show the formatted summary with **Edit**. The Models table uses the same summary and shows “Not configured” when there is no usable setup, including for read-only models.
+- **Training Setup** (Section 4) displays **One-Shot** before the first write. The builder checks that the route, active model, dataset and target still match ready eligible metadata before accepting a change or submit. Cross-Validation uses the current target’s observed class counts to bound folds and shows a scrollable matrix. Valid **Train Model** submission captures the setup and requests an attempt. Accepted start activates Section 5 and focuses its heading for the initiating action. Rejected start leaves Section 4 open with a reason. The Models table uses the same summary and shows “Not configured” when there is no usable setup, including for read-only models.
 - **Help and transient edits.** The Training Setup form is keyed by dataset ID, target name and model number. Opening Help leaves the same builder and form mounted and the router preserves the underlay's resume path. The form retains invalid drafts and focus returns to the Help link on close. An intent dispatched while Help is open cannot write. Changing the dataset, target or model creates a fresh form for the current setup.
 - **Editing earlier sections**: while `status === 'draft'`, a completed section can be re-opened and edited. If the edit **changes** its value, completion of all _later_ sections is removed (their values are kept where still valid and the user re-confirms with the section action). Re-selecting the same model, or re-confirming unchanged values, invalidates nothing. Selecting a **different** model resets `modelOptions`, `hyperparameters` and `multiclass` to the new model's defaults and un-completes sections 2 and 3; `features` and `trainingSetup` are kept.
+- **Training and acknowledgement.** Training continues across navigation. Section 5 displays run progress or the remote status. The owner can cancel before saving. A saved result awaiting publication stays at 95% and offers Retry saving. An acknowledged result reaches 100%, shows its elapsed time and enables View Results. Activating it opens and focuses Section 6 on the same URL. The saved log remains inspectable.
 - **Frozen configuration.** Once a model leaves `draft` (training starts), sections 1–4 are read-only so the configuration shown in `/models` and `/results` is exactly what was trained. To try different settings the user creates a new model.
 
 ### 6.4 Changing the dataset or target while models exist
 
-The previous design locked the target once any round was trained. With several independently configured models and a freely changeable dataset, a lock would trap the user. Instead:
-
-- `setTarget` (different column) or `loadDatasetSucceeded` (different dataset) on a project with `models.length > 0` requires an explicit confirmation dialog stating how many models, including trained results, will be discarded.
-- On confirm: `models = []`, `nextModelNum = 1`, associated IndexedDB results are deleted, scroll snapshots for `/target`-dependent pages (`/models`, `/models/*`, `/results`) are cleared.
-- On cancel nothing changes.
-- If the dataset changes while the target confirmation modal is open, the modal cancels safely with no mutation.
-- If the current route is `/models/{num}` the URL is left alone and the page re-renders into the "model not found" notification (§4.3).
+- The dataset and target views request explicit confirmation before discarding the current resources or models. A local cancellation settles before confirmed deletion. A remote run keeps the dialog open with a busy notice and allows the learner to return later.
+- A confirmed discard deletes the associated IndexedDB data in the protected commit. The acknowledged state resets the model list and counter and clears affected scroll snapshots. If publication fails after deletion, keep the dialog open with Retry saving and disable duplicate deletion.
+- Cancelling an uncommitted dialog preserves the current resources. A changed dataset invalidates a stale target confirmation.
+- A different tab observes the acknowledged state in place. A route naming a discarded model keeps its URL and displays the matching blocked-state notification.
 
 ### 6.5 Section 4 — Compare Results (`/results`)
 
@@ -358,43 +356,27 @@ Corresponds to workflow-steps §4, which is still marked TODO. This document def
 
 ## 7. Model Lifecycle (Small State Machine)
 
-A model's lifecycle is the one genuinely sequential flow, so it keeps a minimal explicit state machine.
+| Before   | Action                                                                                                                      | After    | Acknowledgement                                                   |
+| -------- | --------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------- |
+| Draft    | Train Model                                                                                                                 | Training | Store the exact run identity and setup before starting the worker |
+| Training | The training service owns start, cancel and retry. Run-scoped progress and the disclosure action update presentation state. |
+| Training | The training service owns start, cancel and retry. Run-scoped progress and the disclosure action update presentation state. |
+| Trained  | View Results                                                                                                                | Trained  | Validate the matching result and record the Results completion    |
+
+A failed start before worker launch presents its reason in Section 4. A committed start awaiting publication returns to an interrupted draft during recovery when no worker owns it. View Results acknowledges the result on the current URL. Background completion and cross-tab updates leave the current focus alone. After failure or cancellation, Section 4 restores focus to Train Model when a focused local Section 5 control was removed.
 
 ```typescript
-export type ModelStatus = 'draft' | 'training' | 'trained';
-```
-
-| Current status | Action                                 | Next status | Guard                                              | Mutation                                                                                                                                       |
-| :------------- | :------------------------------------- | :---------- | :------------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------- |
-| `draft`        | `startTraining`                        | `training`  | sections 1–3 complete and `trainingSetup !== null` | `error = null`; `progress = { percent: 0, statusMessage: 'Initializing...' }`; complete `configure-training`; acquire the training lock (§7.1) |
-| `training`     | `updateTrainingProgress`               | `training`  | none                                               | Update `progress` (persistence throttled)                                                                                                      |
-| `training`     | `trainingSucceeded`                    | `trained`   | none                                               | `progress = null`; `error = null`; store `metrics`, `timings`, `durationMs`; write detailed results to IndexedDB; complete `training`          |
-| `training`     | `trainingFailed`                       | `draft`     | none                                               | `progress = null`; `error = { code: 'TRAINING_FAILED', … }`; un-complete `configure-training`, `training`, `results`                           |
-| `training`     | `cancelTraining`                       | `draft`     | none                                               | `progress = null`; `error = { code: 'TRAINING_CANCELLED', … }`; un-complete `configure-training`, `training`, `results`                        |
-| `training`     | `recoverInterrupted` (on hydrate only) | `draft`     | training lock not held by any tab                  | `progress = null`; `error = { code: 'TRAINING_INTERRUPTED_BY_RELOAD', … }`; un-complete `configure-training`, `training`, `results`            |
-| `trained`      | `viewResults`                          | `trained`   | none                                               | Complete `results`                                                                                                                             |
-
-After `trainingFailed` / `cancelTraining` / `recoverInterrupted` the model is a draft with sections 1–3 complete and section 4 active with the error visible beside the **Train Model** button (matching the "Continue" behaviour in workflow-steps §3).
-
-```typescript
-export interface TrainingError {
-	code: 'TRAINING_FAILED' | 'TRAINING_CANCELLED' | 'TRAINING_INTERRUPTED_BY_RELOAD';
-	message: string;
-	timestamp: number;
-	details?: string;
-}
-
 export interface TrainingProgress {
-	percent: number; // 0..100
-	currentFold?: number;
-	totalFolds?: number;
+	percent: number | null;
+	stage: 'preparing' | 'fitting' | 'cross-validation' | 'refitting' | 'evaluating' | 'saving';
+	phase: string | null;
 	statusMessage: string;
 }
 ```
 
-### 7.1 Training lock
+### 7.1 Training locks
 
-While a model trains, the tab that owns the `web-ml` worker holds a [Web Lock](https://developer.mozilla.org/docs/Web/API/Web_Locks_API) named `samata-ml:training:{num}` for the run's duration. The browser releases it automatically if the tab closes or crashes. This lets a freshly loaded tab distinguish "training in another tab" (lock held) from "training was interrupted" (lock free). Details in [state-and-storage.md §7](state-and-storage.md#7-multi-tab-behaviour). _(Confirm the API against the project's Baseline target with `modern-web-guidance` before implementing.)_
+The training service holds shared `samata-ml:ingestion` and exclusive `samata-ml:training:{num}` locks for the attempt. The state lock serialises journal reads, migration and protected writes. A live lock indicates an active owner. Read completed results under shared data and model locks after the relevant publication. See [state-and-storage.md §7](state-and-storage.md#7-multi-tab-behaviour).
 
 ---
 
@@ -404,7 +386,7 @@ Goal G2: each workflow step remembers its own scroll position, and a new tab or 
 
 ### 8.1 Scroll container
 
-The **document** scrolls (`document.scrollingElement`). `<main>` MUST NOT be `overflow: scroll|auto` with a fixed height, and the sidebar is `position: fixed` (as in the scaffold). This keeps mobile browser chrome behaviour, keyboard scrolling, find-in-page and focus-into-view native. Inner scrollers (the virtual table, wide tables) are tracked as named **regions** (§8.3).
+The **document** scrolls (`document.scrollingElement`). `<main>` MUST NOT be `overflow: scroll|auto` with a fixed height, and the sidebar is `position: fixed` (as in the mockups). This keeps mobile browser chrome behaviour, keyboard scrolling, find-in-page and focus-into-view native. Inner scrollers (the virtual table, wide tables) are tracked as named **regions** (§8.3).
 
 ### 8.2 Scroll keys
 
@@ -470,7 +452,7 @@ The Training Setup matrix scrolls inside its own wrapper. Its horizontal offset 
 
 ### 9.1 Startup sequence
 
-1. Read persisted state (storage reads are wrapped in `try/catch`; absent, corrupt, wrong-shape or unsupported-version data yields fresh defaults and is never partially applied).
+1. Read persisted state and the protected IndexedDB checkpoint under the state lock. Replay a committed pending candidate before showing workflow views. A failed read or replay displays Restore saved work and Retry saving.
 2. Reconcile with IndexedDB and apply integrity checks and interrupted-training recovery ([state-and-storage.md §6](state-and-storage.md#6-indexeddb-reconciliation)).
 3. Initialise stores, **then** the router (hydrate-before-routing is retained from the previous design).
 4. Set `history.scrollRestoration = 'manual'`.
@@ -491,7 +473,7 @@ The Training Setup matrix scrolls inside its own wrapper. Its horizontal offset 
 
 ### 9.3 Interrupted training
 
-A persisted model with `status === 'training'` found during hydration is recovered per §7 (`recoverInterrupted`), but **only if** no other tab holds its training lock; otherwise it is left as `training` and shown as "Training in another tab" (read-only).
+Startup first replays committed pending operations. A published trained result then opens with its verified log. For a model still marked training, hydration attempts the exclusive model lock. With a live owner, show Training in another tab. When the lock is available, acknowledge an interrupted draft with the saved setup. Retry or reload publishes existing work without starting a new fit.
 
 ### 9.4 "Exact same UI" checklist
 
@@ -512,16 +494,16 @@ Deliberately **not** restored: reserved-route modals as persisted state (they re
 
 State changes occur only through exported action functions in the store modules (COMPONENTS.md §5). Names are normative; signatures live in the TSDoc of the implementation.
 
-| Area                       | Actions                                                                                                                                                                                                                                                                                                                   |
-| :------------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Onboarding                 | `dismissWelcome`                                                                                                                                                                                                                                                                                                          |
-| Navigation (router module) | `navigate(path)`, `openReserved(path)`, `closeReserved()`                                                                                                                                                                                                                                                                 |
-| Data                       | `loadDatasetSucceeded(dataset)`, `setDataMode(mode)`, `setSelectedColumn(name \| null)`                                                                                                                                                                                                                                   |
-| Target                     | `setTarget(column)`, `confirmDiscardModels()`                                                                                                                                                                                                                                                                             |
-| Models                     | `createModel()`, `chooseModel(num, modelId, defaults)`, `setFeatures(num, names)`, `toggleFeature(num, name)`, `setModelOptions(num, options)`, `setHyperparameters(num, config)`, `setMulticlassStrategy(num, strategy)`, `setTrainingSetup(num, setup)`, `completeSection(num, section)`, `reopenSection(num, section)` |
-| Training                   | `startTraining(num)`, `updateTrainingProgress(num, progress)`, `trainingSucceeded(num, result)`, `trainingFailed(num, message, details?)`, `cancelTraining(num)`, `recoverInterrupted(num)`                                                                                                                               |
-| Results                    | `viewResults(num)`                                                                                                                                                                                                                                                                                                        |
-| Scroll                     | `recordScroll(key, snapshot)`, `clearScroll(keys)`                                                                                                                                                                                                                                                                        |
+| Area                       | Actions                                                                                                                                                                                                                                                                                                                                                                            |
+| :------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Onboarding                 | `dismissWelcome`                                                                                                                                                                                                                                                                                                                                                                   |
+| Navigation (router module) | `navigate(path)`, `openReserved(path)`, `closeReserved()`                                                                                                                                                                                                                                                                                                                          |
+| Data                       | Dataset publication and discard use the training service. View settings use the ordinary actions.                                                                                                                                                                                                                                                                                  |
+| Target                     | The training service acknowledges the target change and any confirmed result deletion.                                                                                                                                                                                                                                                                                             |
+| Models                     | Acknowledged creation through the training service. Draft actions include `chooseModel(num, modelId, defaults)`, `setFeatures(num, names)`, `toggleFeature(num, name)`, `setModelOptions(num, options)`, `setHyperparameters(num, config)`, `setMulticlassStrategy(num, strategy)`, `setTrainingSetup(num, setup)`, `completeSection(num, section)`, `reopenSection(num, section)` |
+| Training                   | The training service owns start, cancel and retry. Run-scoped progress and the disclosure action update presentation state.                                                                                                                                                                                                                                                        |
+| Results                    | The training service acknowledges View Results for the exact run identity.                                                                                                                                                                                                                                                                                                         |
+| Scroll                     | `recordScroll(key, snapshot)`, `clearScroll(keys)`                                                                                                                                                                                                                                                                                                                                 |
 
 All actions are guarded: an action that is invalid for the current state (for example `toggleFeature` on a non-draft model, or `setFeatures` including the target) is a no-op that returns `false`; it does not throw and does not mutate.
 
@@ -530,6 +512,8 @@ All actions are guarded: an action that is invalid for the current state (for ex
 ## 11. Verification Requirements
 
 Pure logic runs under `bun:test` with an in-memory `Storage`. Anything that depends on real history, layout or `<dialog>` MUST run in Playwright (Chromium, Firefox, WebKit) per [COMPONENTS.md §9](COMPONENTS.md); `happy-dom` has no layout and does not implement session history faithfully enough for these checks.
+
+Unit and browser training checks exercise exact run identities, guarded state, result validation, storage failure before and after commit, non-isolation, cross-tab locks and saved-run acknowledgement. See the [Phase 3 evidence](plans/archive/web-ml-phase-3-model-training.md#implementation-and-verification-log).
 
 **Unit (`bun:test`)**
 
@@ -562,7 +546,7 @@ Pure logic runs under `bun:test` with an in-memory `Storage`. Anything that depe
 | NAV-E2E-6  | Reload during `training` returns to the model page with section 4 active and the interrupted error; a second tab loaded during training does not mark it interrupted.                                                                                                                                                                                                                                  |
 | NAV-E2E-7  | Selected column aside and virtual-table offset on `/data` survive a reload.                                                                                                                                                                                                                                                                                                                            |
 | NAV-E2E-8  | A user scroll during restoration cancels it.                                                                                                                                                                                                                                                                                                                                                           |
-| NAV-E2E-9  | Deep link `/models/3` loads with correct assets (root-absolute URLs) from a cold start and from the service worker.                                                                                                                                                                                                                                                                                    |
+| NAV-E2E-9  | Deep link `/models/3` loads with correct assets (root-absolute URLs) from a cold start. Service-worker routing remains target.                                                                                                                                                                                                                                                                         |
 
 ---
 

@@ -1,8 +1,10 @@
-import { loadDatasetSucceeded } from '../../stores/app.store';
+import { $appState } from '../../stores/app.store';
+import { getTrainingService } from '../models/training/training-service';
 import { toDatasetSummary } from '../../types/dataset';
 import type { DatasetSummary } from '../../types/state';
 import type { IngestOptions, StorageClient } from './ingestion/storage-client';
 import { getStorageClient } from './ingestion/storage-client';
+import { IngestionError } from './ingestion/errors';
 import type { IngestionSource } from './ingestion/pipeline';
 
 /** Options for loading a dataset into the preview workflow. */
@@ -17,16 +19,21 @@ export async function loadDataset(
 	options: LoadDatasetOptions = {}
 ): Promise<DatasetSummary> {
 	const client = options.client ?? getStorageClient();
+	const previousDataset = $appState.get().dataset?.id ?? null;
 	const metadata = await client.ingest(source, {
 		signal: options.signal,
 		onProgress: options.onProgress
 	});
 	const summary = toDatasetSummary(metadata);
-	loadDatasetSucceeded(summary);
-	try {
-		await client.deleteDatasetsExcept(metadata.id);
-	} catch (error) {
-		console.warn('The previous dataset could not be removed from browser storage.', error);
-	}
+	const publication = await getTrainingService().publishDataset(summary, previousDataset, () =>
+		client.deleteDatasetsExcept(metadata.id)
+	);
+	if (!publication.ok)
+		throw new IngestionError(
+			publication.code === 'busy' || publication.code === 'remote-training'
+				? 'BUSY'
+				: 'UNKNOWN',
+			'The loaded dataset could not be published.'
+		);
 	return summary;
 }
