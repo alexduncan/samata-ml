@@ -16,7 +16,7 @@ A missing mockup does not block a feature. When a surface has no `ready` or `imp
 
 **Writing a draft:**
 
-- **Location and governance:** `mockups/<name>.html`, named as the promoted mockup will be (e.g. `03-4_train-models-3-configure-model.html`). Agents may create and edit files in `specification/mockups/` only when `<meta name="status" content="draft" />` (or when explicitly authorised by a plan); `ready` and `implemented` mockups and `mockups.css` are human-owned. `bun run mockups` serves files flat at `http://localhost:3333/<name>.html` and lists them via `/index.json` in the `/` catalogue.
+- **Location and governance:** `mockups/<name>.html`, named as the promoted mockup will be (e.g. `03-4_train-models-3-configure-model.html`). Agents may create and edit files in `specification/mockups/` only when `<meta name="status" content="draft" />` (or when explicitly authorised by a plan); `ready` and `implemented` mockups and `mockups.css` are human-owned. `bun run mockups` serves files flat at `<checkout mockup URL>/<name>.html` (`http://localhost:3333/` in the primary checkout) and lists them via `/index.json` in the `/` catalogue.
 - **Required metadata:** every HTML file in `mockups/` declares three `<meta>` elements in `<head>`:
     - `<meta name="name" content="{Plain English Name}" />`
     - `<meta name="description" content="{When the user encounters this UI}" />`
@@ -189,7 +189,7 @@ Visual fidelity uses static guards, computed styles/geometry, reviewed screensho
     - TOK-5/6 reject physical inline-direction CSS, `!important` and `:host-context()` in actual CSS/template declarations, without treating JavaScript scroll coordinates as styles.
 
 2. **Visual parity test harness (`bun run test:e2e tests/visual-parity.e2e.ts`):**
-   A Playwright test running in Chromium at a 1440×900 viewport. It compares computed CSS styles between clean mockup pages served by `bun run mockups` (`http://localhost:3333/<filename>?clean=1`) and the running application routes (`https://localhost:3000`).
+   A Playwright test running in Chromium at a 1440×900 viewport. It compares computed CSS styles between clean mockup pages served by `bun run mockups` (`<checkout mockup URL>/<filename>?clean=1`) and the running application routes (the checkout's app URL); the primary checkout uses 3333 and 3000.
     - Mapped elements are defined in `tests/visual-parity/map.ts`.
     - Checks background, borders, typography, spacing, explicit grid areas/tracks and fixture-relative numeric geometry within at most 1 CSS px. Content-dependent tracks are compared numerically rather than as identical strings.
     - Deviations are validated against the approved deviation registers.
@@ -201,7 +201,7 @@ Visual fidelity uses static guards, computed styles/geometry, reviewed screensho
 3. **Accessibility scan (`bun run test:e2e tests/a11y.e2e.ts`):**
    Uses `@axe-core/playwright` with `wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa`. Shell-scoped scans have zero violations and no exclusions. Broad audits match only separately owned exact feature elements and measured evidence in `tests/a11y-feature-findings.ts`. Unlisted rules and elements fail. Phase 2 resolved the Section 4 notice contrast finding. The remaining 24 data and model contrast targets are tracked in [the human queue](HUMAN.md#1-workflow-and-plan-review).
 
-4. **Static mockup audit (`bun run audit:mockups [filename ...] [--port 3333]`):**
+4. **Static mockup audit (`bun run audit:mockups [filename ...] [--port <port>]` (default: the checkout's mockup port, 3333 in the primary checkout)):**
    With `bun run mockups` running, audits selected non-empty top-level HTML files or all eligible files at a 1440×900 viewport using Chromium and `@axe-core/playwright` via `/<filename>?clean=1`. It uses `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa` without rule exclusions. JSON and escaped HTML reports are written to `test-results/mockup-a11y/`. Violations, navigation/runtime errors, skipped empty files and incomplete checks remain distinct. A zero exit status means only that no automated violations were found; static markup cannot prove interactive states or replace manual keyboard, screen-reader, responsive, zoom, forced-colours and motion checks. The review server catalogue and helper behaviour are covered separately in `tests/mockup-review.e2e.ts`.
 
 5. **Adding a parity entry for a new view:**

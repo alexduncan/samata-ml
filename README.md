@@ -117,16 +117,18 @@ The same HTML transform also rewrites asset tags:
 bun run server
 ```
 
-Open:
+Open the URL the server logs. In the primary checkout it is:
 
 ```text
 https://localhost:3000/
 ```
 
+Ports belong to the checkout. The primary checkout uses 3000 (app), 3001 (Playwright's production-build server) and 3333 (mockups). A linked Git worktree derives a stable block of three ports in 20000 to 32762 from its real root path, so parallel worktrees never share servers. Set `SAMATA_PORT_BASE` (1024 to 65533) to choose the app port for any checkout; dist and mockups use the next two ports. `bun run server --port <n>` and `bun run mockups --port <n>` override a single server, and `PORT` is honoured when no `--port` is given. `scripts/ports.ts` is the single source for these values, and both servers answer `GET /__checkout` with their checkout root and mode so tools can tell which checkout owns a port.
+
 Development server features:
 
 - Builds development assets into `dev/` before the server starts.
-- Serves `dev/` over HTTPS at `https://localhost:3000/`.
+- Serves `dev/` over HTTPS at the checkout's app URL (`https://localhost:3000/` in the primary checkout).
 - Watches `src/`, `css/`, and `public/` for changes.
 - Debounces file events so one save does not trigger unnecessary rebuilds.
 - Tracks file content hashes so duplicate watcher events are ignored.
@@ -144,7 +146,7 @@ Browse the flat mockup directory (`specification/mockups/`), including drafts an
 bun run mockups
 ```
 
-Open `http://localhost:3333/`. The review server is read-only. Normal HTML previews inject `/mockups.css` and a light-DOM navigation bar; `?clean=1` returns untouched file bytes from disk.
+Open `http://localhost:3333/` (the primary checkout's mockup URL; a linked worktree uses its own mockup port, printed at start). The review server is read-only. Normal HTML previews inject `/mockups.css` and a light-DOM navigation bar; `?clean=1` returns untouched file bytes from disk.
 
 With the mockup server running, audit one or more HTML files or every non-empty mockup:
 
@@ -153,7 +155,7 @@ bun run audit:mockups 03-0_models-overview.html
 bun run audit:mockups
 ```
 
-Reports are written to `test-results/mockup-a11y/latest.json` and `latest.html`. Automated results do not replace manual keyboard, screen-reader, zoom and responsive checks. See [the mockup review guide](specification/mockup-review.md) for the CSS, markup-request, promotion and application-port workflow.
+The audit uses the checkout's mockup port and refuses a server that belongs to another checkout. Reports are written to `test-results/mockup-a11y/latest.json` and `latest.html`. Automated results do not replace manual keyboard, screen-reader, zoom and responsive checks. See [the mockup review guide](specification/mockup-review.md) for the CSS, markup-request, promotion and application-port workflow.
 
 ## Build the Production App
 
@@ -185,16 +187,26 @@ bun run build
 bun run server -- --dist
 ```
 
+Without `--port` the server binds the checkout's app port (3000 in the primary checkout), not 3001; only Playwright passes the dist port. To run it beside the development server, pass `--port`:
+
+```bash
+bun run server -- --dist --port 3001
+```
+
 Open:
 
 ```text
 https://localhost:3000/
 ```
 
-In `--dist` mode, the server:
+(or the port you passed). In `--dist` mode, the server:
 
 - Serves files from `dist/`.
 - Does not rebuild files.
 - Does not watch the filesystem.
 - Does not inject the live-reload script.
 - Does not expose the `/__hmr` live-reload workflow.
+
+## Previews in worktrees
+
+The desktop previews in `.claude/launch.json` use 3000 and 3333 in every checkout. The app preview fails if 3000 is taken; the mockup preview moves to a free port. A worktree preview that holds 3000 or 3333 makes the primary checkout's `bun run test:e2e` stop at `globalSetup` with the worktree's root. Playwright in a worktree uses that worktree's own ports regardless.
