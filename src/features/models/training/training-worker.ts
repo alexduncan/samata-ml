@@ -68,7 +68,8 @@ async function execute(
 	);
 	const context = {
 		datasetId: request.identity.datasetId,
-		sourceRowIndices: prepared.sourceRowIndices
+		sourceRowIndices: prepared.sourceRowIndices,
+		classLabels: prepared.classLabels
 	};
 
 	if (execution.strategy === 'one_shot') {

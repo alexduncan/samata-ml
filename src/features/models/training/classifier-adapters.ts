@@ -167,6 +167,22 @@ function copyFit(fit: DisposableFit, classLabels: readonly ClassificationLabel[]
 	};
 }
 
+/**
+ * Confirms that the upstream evaluation axis equals the request axis element for element,
+ * including element types, so the stored positive class is the one that was requested.
+ */
+function confirmClassAxis(
+	upstream: readonly ClassificationLabel[],
+	requested: readonly ClassificationLabel[]
+): void {
+	if (
+		upstream.length !== requested.length ||
+		upstream.some((label, i) => label !== requested[i])
+	) {
+		throw new ClassificationError('contract-error');
+	}
+}
+
 /** Disposes a caller-owned native model exactly once, whatever happened after it was returned. */
 function disposeModel(model: object): void {
 	if ('dispose' in model && typeof model.dispose === 'function') model.dispose();
@@ -182,6 +198,7 @@ export async function snapshotHoldoutResult(
 	context: {
 		datasetId: string;
 		sourceRowIndices: readonly number[];
+		classLabels: readonly ClassificationLabel[];
 		protocol: Extract<StoredEvaluation['protocol'], { kind: 'one_shot' }>;
 	}
 ) {
@@ -189,6 +206,7 @@ export async function snapshotHoldoutResult(
 	if (!fit) throw new ClassificationError('contract-error');
 	try {
 		if (!result.evaluation) throw new ClassificationError('contract-error');
+		confirmClassAxis(result.evaluation.classLabels, context.classLabels);
 		const artefacts = copyFit(fit, result.evaluation.classLabels);
 		const evaluation = await mapEvaluation(runtime, {
 			datasetId: context.datasetId,
@@ -226,6 +244,7 @@ export async function snapshotCrossValidationResult(
 	context: {
 		datasetId: string;
 		sourceRowIndices: readonly number[];
+		classLabels: readonly ClassificationLabel[];
 		protocol: Extract<StoredEvaluation['protocol'], { kind: 'cross_validation' }>;
 	}
 ) {
@@ -235,6 +254,7 @@ export async function snapshotCrossValidationResult(
 		if (!result.evaluation || result.folds.some((fold, index) => fold.foldIndex !== index)) {
 			throw new ClassificationError('contract-error');
 		}
+		confirmClassAxis(result.evaluation.classLabels, context.classLabels);
 		const artefacts = copyFit(refit, result.evaluation.classLabels);
 		const total = context.sourceRowIndices.length;
 		const evaluation = await mapEvaluation(runtime, {

@@ -349,6 +349,7 @@ describe('snapshots', () => {
 	const context = {
 		datasetId: 'fixture',
 		sourceRowIndices: [0, 2, 3, 5, 6, 9],
+		classLabels: binary.labels,
 		protocol: { kind: 'one_shot', testRatio: 0.2, randomState: 42 } as const
 	};
 	const holdout = (extra: object) =>
@@ -432,5 +433,58 @@ describe('snapshots', () => {
 		await expect(
 			snapshotCrossValidationResult(runtime, { refit: undefined } as never, cvContext)
 		).rejects.toThrow('contract-error');
+	});
+
+	test('WML-P4-EVAL-4: rejects an upstream class axis that differs from the request axis', async () => {
+		const axes = [
+			[...binary.labels].reverse(),
+			binary.labels.map((label) => String(label) + '!'),
+			[binary.labels[0]!]
+		];
+		const cvEvaluation = evaluationFor(binary);
+		for (const axis of axes) {
+			const disposals = { count: 0 };
+			await expect(
+				snapshotHoldoutResult(
+					runtime,
+					holdout({
+						fit: fit(disposals),
+						evaluation: { ...evaluationFor(binary), classLabels: axis }
+					}),
+					context
+				)
+			).rejects.toThrow('contract-error');
+			expect(disposals.count).toBe(1);
+
+			const cvDisposals = { count: 0 };
+			await expect(
+				snapshotCrossValidationResult(
+					runtime,
+					{
+						folds: [],
+						refit: fit(cvDisposals),
+						evaluation: { ...cvEvaluation, classLabels: axis }
+					} as never,
+					{
+						...context,
+						protocol: { kind: 'cross_validation', folds: 2, randomState: 42 } as const
+					}
+				)
+			).rejects.toThrow('contract-error');
+			expect(cvDisposals.count).toBe(1);
+		}
+		// A numeric axis against a string request axis (and the reverse) is a type change.
+		const disposals = { count: 0 };
+		await expect(
+			snapshotHoldoutResult(
+				runtime,
+				holdout({
+					fit: fit(disposals),
+					evaluation: { ...evaluationFor(binary), classLabels: [0, 1] }
+				}),
+				{ ...context, classLabels: ['0', '1'] }
+			)
+		).rejects.toThrow('contract-error');
+		expect(disposals.count).toBe(1);
 	});
 });
