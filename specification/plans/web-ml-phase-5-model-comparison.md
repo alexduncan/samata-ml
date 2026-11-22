@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-21T20:09:18Z
+**Status:** ready | **Updated:** 2026-11-22T13:37:03Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (gpt-6.2-astra) | **Verified:** 2026-11-21T20:09:18Z | **Verification:** approved
 **Verified hash:** sha256:c679357b13cc388e5a5188ab78f87cc09f1c1553fa92435016fc01958aefcc33
@@ -314,7 +314,13 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 ## Escalations
 
-None.
+**Task:** T1
+**Blocker:** The required Phase 4 implementation is not integrated into the Phase 5 base.
+**Evidence:** `specification/plans/web-ml-phase-4-single-model-results.md` remains `ready`, and `src/features/results/` is absent. The Phase 5 baseline `bun run check` also fails because `tsc` is unavailable in this worktree.
+**Conflict:** The implementation entry dependency requires the completed Phase 4 evaluation contracts, results store, fold aggregation, Plot controller and fold strip, reconciled and verified against the vendored 0.2.0 release before T1.
+**Impact:** T1 cannot extend the required evaluation fixtures or implement comparisons against the approved contracts, and the required baseline cannot currently run.
+**Decision needed:** Complete and integrate Phase 4 on the Phase 5 base, including its release reconciliation and verification, and provision the repository dependencies before resuming T1.
+**Work completed:** The plan approval fingerprint and T1 eligibility gates passed; no product code changed.
 
 ## Review fixes
 
@@ -324,6 +330,7 @@ None.
 
 | When (UTC)           | Task | Agent (model)                 | Outcome / commands / evidence                                                                                                                                      |
 | -------------------- | ---- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-11-22T13:37:03Z | — | Codex (GPT-6) | T1 blocked by missing Phase 4 integration; `bun run check` failed because `tsc` was not found. Approval and task gates passed. |
 | 2026-11-19T08:47:35Z | —    | Claude Code (claude-opus-5-5) | Planning: `codebase-scout` verified `/results` placeholder, focus/parity tests, `$canCompare`, page-header adoption; no `web-ml` statistical tests exist in 0.1.0. |
 
 ## Plan review history
