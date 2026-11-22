@@ -1,6 +1,6 @@
 # Human tasks
 
-**Updated:** 2026-11-21
+**Updated:** 2026-11-22
 
 This is the human's work queue: decisions, plan review, missing content and mockup styling. Detail lives in the linked plan/spec. TODO IDs refer to [TODO.md](TODO.md); Known gaps refer to [the index](README.md#known-gaps).
 
@@ -20,6 +20,7 @@ This is the human's work queue: decisions, plan review, missing content and mock
 
 ## 1. Workflow and plan review
 
+- [ ] **Decide the open R4 test gap after two review rounds (web-ml-phase-4-single-model-results E2):** The class-axis check that R2 asks for is in place and correct. Its regression test still passes when that check is removed, so the check has no test guarding it. Both closure review rounds are used up, so the plan stays `implemented` and cannot close. Choose A) authorise a third round: `/implement` adds the R4 test cases, then a fresh closure audit; or B) waive R4 with a recorded exception and a follow-up stub. Blocks Phase 4 closure and Phase 5. Recommended: A (test-only, bounded). → [decision record](plans/web-ml-phase-4-single-model-results.md#escalations)
 - [ ] **Hand off the semver package tarball request to the `web-ml` planner (vendor-web-ml-tarball):** Run `/create-plan` in `web-ml` on the uncommitted semver package tarball release request so `web-ml` ships a versioned packed `.tgz` containing its prebuilt runtime, declarations, catalogue and notices. Blocks `vendor-web-ml-tarball`, which awaits the shipped tarball's exact version, filename and SHA-256 pins before submission. → [plan blocker](plans/vendor-web-ml-tarball.md#risks-and-open-questions) · [tarball release request](../../web-ml/specification/requests/2026-11-21-semver-package-tarball-releases.md)
 - [ ] **Hand off the Phase 5–7 `web-ml` requests to the `web-ml` planner:** Every remaining ledger item is now filed as an uncommitted request in `web-ml`: WR-9 (Bayesian correlated t-test, Phase 5); WR-12 (model internals, contributions, permutation importance, Phase 6); WR-8, WR-11 and the multiclass trial-report fix with WR-13 optional (Phases 6–7). Run `/create-plan` there to plan or decline each. Phase 3 already verified WR-7 and WR-10. → [WR ledger](plans/web-ml-classification-integration.md#scope) · [WR-9 request](../../web-ml/specification/requests/2026-11-21-bayesian-correlated-t-test.md) · [WR-12 request](../../web-ml/specification/requests/2026-11-21-classifier-model-internals-and-explanations.md) · [nested-CV request](../../web-ml/specification/requests/2026-11-21-nested-tuning-trials-fitted-model-hook-and-robust-trial-reports.md)
 - [ ] **Hand off the public partition feasibility request to the `web-ml` planner.** Phase 3 retains the app’s fold limits and reopens Section 4 with the reason if web-ml rejects the partition. Adopt the public check when it ships. Non-blocking for Phase 3. → [Phase 2 decision](plans/archive/web-ml-phase-2-training-setup.md#technical-decisions) · [request](../../web-ml/specification/requests/2026-11-20-stratified-partition-feasibility.md)
