@@ -1,8 +1,8 @@
 # Worktree-scoped dev and test servers
 
-**Status:** ready-for-review | **Updated:** 2026-11-22T16:34:40Z
+**Status:** draft | **Updated:** 2026-11-22T21:21:02Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-22T16:21:47Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -325,8 +325,9 @@ None.
 
 ## Plan review history
 
-| Reviewed (UTC) | Agent (model) | Decision | Findings |
-| -------------- | ------------- | -------- | -------- |
+| Reviewed (UTC)       | Agent (model)                 | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| -------------------- | ----------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-22T21:21:02Z | Claude Code (claude-opus-5-5) | changes-requested | MAJOR: T2/D8 audit identity failure "print and exit 2 before writing a report" contradicts runMockupAudit contract (setup errors go in report.setupError, latest.json/html always written L384-388, printing in main()); return value undefined. MAJOR: T3 AC (no localhost:3000/3001/3333 outside guard scope except setup.ts and audit fixtures) is unsatisfiable: D9 launch.json url https://localhost:3000, guard self-test sample, ports.test.ts expectations, README/spec defaults. MINOR: parsePortOption invalid-flag precedence and parseInt-vs-strict parsing ambiguous vs current parseCliArgs L210-229; T3 e2e baseline run unspecified; facts: classification-training.e2e.ts L43 has no URL, Storybook port is package.json L13 not vitest.config.ts L20, tests/visual-parity/fixtures.ts also imported by bun test tests/sidebar-state.test.ts L6. SUGGESTION: realpathSync.native in both runtimes; HUMAN.md item for desktop-preview risk. |
 
 ## Change log
 
