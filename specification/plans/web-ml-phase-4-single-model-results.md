@@ -434,7 +434,7 @@ The closed element API is limited to the properties, events and methods named in
 
 ## Verification and definition of done
 
-- [ ] All task acceptance criteria met with test names starting with `WML-P4-*` or the journey IDs.
+- [x] All task acceptance criteria met with test names starting with `WML-P4-*` or the journey IDs.
 - [x] `bun run check`, `bun run build`, `bun run test:stories` and the listed Playwright suites pass in Chromium, Firefox and WebKit with no new failures.
 - [x] No metric, curve, baseline or partition is computed in `samata-ml` (code review of `src/` against D1).
 - [ ] WCAG 2.2 AA manual checks recorded: screen-reader reading of one chart figure and its table (VoiceOver/Safari), keyboard-only threshold exploration, forced colours, 200% zoom.
