@@ -67,13 +67,22 @@ function fitProgress(page: Page, percent: number, announce: boolean) {
 async function succeed(page: Page): Promise<string> {
 	const fixture = fixtureTrainingResult();
 	if (fixture.strategy !== 'one_shot') throw new Error('Expected holdout fixture');
+	// The Phase 4 evaluation carries Uint16, Uint32, Float32 and Float64 arrays; tag each one
+	// so the page restores the same typed array rather than a plain object.
 	const json = JSON.stringify(fixture, (_key, value: unknown) =>
-		value instanceof Uint32Array ? Array.from(value) : value
+		ArrayBuffer.isView(value)
+			? {
+					__typed: value.constructor.name,
+					data: Array.from(value as unknown as ArrayLike<number>)
+				}
+			: value
 	);
 	return page.evaluate((payload) => {
-		const arrays = new Set(['trainIndices', 'testIndices', 'confusionMatrix', 'support']);
-		const result = JSON.parse(payload, (key, value) =>
-			arrays.has(key) ? Uint32Array.from(value) : value
+		const constructors = { Uint16Array, Uint32Array, Float32Array, Float64Array };
+		const result = JSON.parse(payload, (_key, value) =>
+			value && typeof value === 'object' && '__typed' in value
+				? constructors[value.__typed as keyof typeof constructors].from(value.data)
+				: value
 		);
 		const fixture = window.__trainingFixture!;
 		const start = fixture.requests.find(({ kind }) => kind === 'start')!;
