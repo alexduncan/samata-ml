@@ -18,7 +18,7 @@ Items the specifications mark as _future_, _later_ or _deferred_. They are **not
 - **More Training Setup options.** Add custom holdout ratios, editable random seeds and missing-value controls for training once the relevant contracts are specified. [Training Setup](components/training-setup.md)
 - **Datetime feature engineering.** Datetime columns are inferred and stored as UTC epoch milliseconds, but are not model inputs. Future work may add datetime feature engineering and recognise further date formats: `.` separators, 12-hour clocks, weekday prefixes and non-English month names.
 - **Richer type-specific dataset preview formatting:** Deferred in `virtual-table-component.md`; current display formats numbers with grouping separators while preserving decimals, and escapes cell values as text. Richer boolean indicators, fixed-precision floats, currency, and percentages are deferred.
-- **Richer classification results** (deferred from [Phase 4](plans/web-ml-phase-4-single-model-results.md)):
+- **Richer classification results** (deferred from [Phase 4](plans/archive/web-ml-phase-4-single-model-results.md)):
     - **Normalised expected cost (NEC)** with a cost-ratio slider.
     - **Subgroup fairness gap** for a chosen protected attribute (TODO-43).
     - **Selectable positive class** for the threshold explorer and binary metrics; Phase 4 fixes the second class as positive.
