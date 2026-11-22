@@ -3,7 +3,12 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="stylesheet" href="../style.css" />
+		<meta name="name" content="Model Training" />
+		<meta
+			name="description"
+			content="Step 3 builder Section 5 training progress phases, cancellation, failure, reload recovery, and completion states." />
+		<meta name="status" content="draft" />
+		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>samatā.ml | Train Models</title>
 	</head>
@@ -116,6 +121,8 @@
 				<p>Choose a model to predict your target variable.</p>
 			</header>
 
+			<!-- Active Training Progress -->
+			<!-- This will display while the model is actively training in the local Web Worker. -->
 			<section class="page-body" data-testid="model-builder">
 				<ol class="train-model" aria-label="Model training steps">
 					<li class="train-step">
@@ -273,8 +280,11 @@
 					</li>
 				</ol>
 			</section>
+			<!-- / Active Training Progress -->
 
 			<!-- Alternative states, each replacing the active panel above. -->
+			<!-- Waiting for Worker -->
+			<!-- This will display before the training Web Worker reports its first progress event. -->
 			<template id="waiting-for-worker">
 				<progress aria-label="Training progress" max="100"></progress>
 				<details>
@@ -283,6 +293,10 @@
 				</details>
 				<p class="visually-hidden" role="status" aria-live="polite"></p>
 			</template>
+			<!-- / Waiting for Worker -->
+
+			<!-- Remote Training Active -->
+			<!-- This will display when another browser tab is currently running training for the project. -->
 			<template id="remote-training">
 				<progress aria-label="Training progress" max="100"></progress>
 				<details>
@@ -292,6 +306,10 @@
 				<p class="visually-hidden" role="status" aria-live="polite"></p>
 				<button type="button" class="btn" disabled>View Results</button>
 			</template>
+			<!-- / Remote Training Active -->
+
+			<!-- Training Publication Pending -->
+			<!-- This will display when training results are saved but final progress publication failed and can be retried. -->
 			<template id="training-publication-pending">
 				<button type="button" class="btn" disabled>Cancel Training</button>
 				<button type="button" class="btn" disabled>View Results</button>
@@ -311,6 +329,10 @@
 					<button type="button" class="btn">Retry saving</button>
 				</div>
 			</template>
+			<!-- / Training Publication Pending -->
+
+			<!-- Training Complete -->
+			<!-- This will display when model training finishes and results are ready to inspect. -->
 			<template id="training-complete">
 				<button type="button" class="btn">View Results</button>
 				<progress aria-label="Training progress" max="100" value="100"></progress>
@@ -326,6 +348,10 @@
 				<p>Elapsed time 2.1 sec</p>
 				<p class="visually-hidden" role="status" aria-live="polite"></p>
 			</template>
+			<!-- / Training Complete -->
+
+			<!-- Training Error -->
+			<!-- This will display when model training fails with an error and the user can retry. -->
 			<template id="training-error">
 				<div class="notification notification-alert">
 					<p class="notification-text" role="alert">
@@ -334,6 +360,10 @@
 				</div>
 				<button type="submit" class="btn btn-primary">Train Model</button>
 			</template>
+			<!-- / Training Error -->
+
+			<!-- Training Cancelled -->
+			<!-- This will display after the user cancels an in-progress training run. -->
 			<template id="training-cancelled">
 				<div class="notification notification-alert">
 					<p class="notification-text" role="alert">
@@ -342,6 +372,10 @@
 				</div>
 				<button type="submit" class="btn btn-primary">Train Model</button>
 			</template>
+			<!-- / Training Cancelled -->
+
+			<!-- Training Runtime Unavailable -->
+			<!-- This will display when the browser tab lacks cross-origin isolation or worker support required for training. -->
 			<template id="training-runtime-unavailable">
 				<div class="notification notification-alert">
 					<p class="notification-text" role="alert">
@@ -351,7 +385,10 @@
 				</div>
 				<button type="submit" class="btn btn-primary">Train Model</button>
 			</template>
+			<!-- / Training Runtime Unavailable -->
 
+			<!-- Restore Saved Work -->
+			<!-- This will display on reload when previously saved training state could not be restored. -->
 			<section>
 				<h2>Restore saved work</h2>
 				<p class="notification notification-alert" role="alert">
@@ -359,6 +396,10 @@
 				</p>
 				<button type="button" class="btn btn-primary">Retry saving</button>
 			</section>
+			<!-- / Restore Saved Work -->
+
+			<!-- Confirmed Change Awaiting Publication -->
+			<!-- This will display when a confirmed project change is saved locally but publication is still pending. -->
 			<section>
 				<h2>Confirmed change awaiting publication</h2>
 				<p class="notification notification-alert" role="alert">
@@ -367,12 +408,17 @@
 				<button type="button" class="btn" disabled>Cancel</button>
 				<button type="button" class="btn btn-primary">Retry saving</button>
 			</section>
+			<!-- / Confirmed Change Awaiting Publication -->
+
+			<!-- Cross-Tab Training Conflict -->
+			<!-- This will display when the user attempts a destructive change while another tab is actively training. -->
 			<section>
 				<h2>Training in another tab</h2>
 				<p class="notification notification-alert" role="alert">Training in another tab</p>
 				<button type="button" class="btn">Cancel</button>
 				<button type="button" class="btn btn-primary">Change Target</button>
 			</section>
+			<!-- / Cross-Tab Training Conflict -->
 		</main>
 	</body>
 </html>

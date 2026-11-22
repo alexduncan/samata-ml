@@ -25,7 +25,7 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 			// Open the unmodified mockup document on the review server.
 			const mockupPage = await context.newPage();
 			await mockupPage.goto(
-				`http://localhost:3333/files/ui-scaffold/${encodeURIComponent(entry.mockupPage)}?clean=1`
+				`http://localhost:3333/${encodeURIComponent(entry.mockupPage)}?clean=1`
 			);
 			if (entry.fixture) await prepareSidebarReference(mockupPage, entry.fixture);
 			const mockupEl = mockupPage.locator(entry.mockupSelector).first();

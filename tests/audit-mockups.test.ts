@@ -19,19 +19,20 @@ beforeAll(async () => {
 	root = await mkdtemp(path.join(os.tmpdir(), 'mockup-audit-fixture-'));
 	reportRoot = await mkdtemp(path.join(os.tmpdir(), 'mockup-audit-reports-'));
 	reportDir = reportRoot;
-	await mkdir(path.join(root, 'ui-scaffold', 'drafts'), { recursive: true });
+	await mkdir(path.join(root, 'nested'), { recursive: true });
 	await writeFile(
-		path.join(root, 'ui-scaffold', 'drafts', 'clean.html'),
+		path.join(root, 'clean.html'),
 		'<!doctype html><html lang="en"><head><title>Clean</title></head><body><main><h1>Clean fixture</h1><label for="name">Name</label><input id="name"></main></body></html>'
 	);
 	await writeFile(
-		path.join(root, 'ui-scaffold', 'drafts', 'failure.html'),
+		path.join(root, 'failing.html'),
 		'<!doctype html><html lang="en"><head><title>Failure</title></head><body><main><h1>Failure fixture</h1><img src="missing.png"></main></body></html>'
 	);
-	await writeFile(path.join(root, 'ui-scaffold', 'empty.html'), '');
+	await writeFile(path.join(root, 'empty.html'), '');
+	await writeFile(path.join(root, 'clean.css'), 'main { display: block; }');
 	await writeFile(
-		path.join(root, 'ui-scaffold', 'drafts', 'clean.css'),
-		'main { display: block; }'
+		path.join(root, 'nested', 'sub.html'),
+		'<!doctype html><html lang="en"><head><title>Nested</title></head><body><main><h1>Nested</h1></main></body></html>'
 	);
 	server = await startMockupsServer({
 		port: 0,
@@ -48,9 +49,9 @@ afterAll(async () => {
 });
 
 describe('mockup audit helpers', () => {
-	test('parses explicit paths and validates the local port', () => {
-		expect(parseAuditArgs(['ui-scaffold/drafts/clean.html', '--port', '4555'])).toEqual({
-			options: { paths: ['ui-scaffold/drafts/clean.html'], port: 4555 }
+	test('parses explicit filenames and validates the local port', () => {
+		expect(parseAuditArgs(['clean.html', '--port', '4555'])).toEqual({
+			options: { paths: ['clean.html'], port: 4555 }
 		});
 		expect(parseAuditArgs(['--port=0'])).toHaveProperty('error');
 		expect(parseAuditArgs(['--unknown'])).toHaveProperty('error');
@@ -124,6 +125,24 @@ describe('mockup audit helpers', () => {
 		}
 	});
 
+	test('reports bun run mockups when the local mockup server is unreachable', async () => {
+		const temporaryServer = Bun.serve({
+			port: 0,
+			hostname: '127.0.0.1',
+			fetch: () => new Response()
+		});
+		const unusedPort = temporaryServer.port!;
+		temporaryServer.stop(true);
+		const result = await runMockupAudit({
+			paths: ['clean.html'],
+			port: unusedPort,
+			rootDir: root,
+			reportDir
+		});
+		expect(result.exitCode).toBe(2);
+		expect(result.report.setupError).toContain('Start it with bun run mockups.');
+	});
+
 	test('audits a known failing and clean fixture in real Chromium and distinguishes empty files', async () => {
 		const result = await runMockupAudit({
 			port: server.port,
@@ -132,14 +151,14 @@ describe('mockup audit helpers', () => {
 		});
 		expect(result.exitCode).toBe(1);
 		expect(result.report.browser.version).not.toBe('unavailable');
-		expect(
-			result.report.results.find((entry) => entry.file.endsWith('clean.html'))?.status
-		).toBe('passed');
-		const failing = result.report.results.find((entry) => entry.file.endsWith('failure.html'));
+		const clean = result.report.results.find((entry) => entry.file === 'clean.html');
+		const failing = result.report.results.find((entry) => entry.file === 'failing.html');
+		expect(clean?.status).toBe('passed');
+		expect(clean?.url).toBe(`http://localhost:${server.port}/clean.html?clean=1`);
 		expect(failing?.status).toBe('violations');
+		expect(failing?.url).toBe(`http://localhost:${server.port}/failing.html?clean=1`);
 		expect(failing?.violations.map((violation) => violation.id)).toContain('image-alt');
-		expect(result.report.skipped).toContain('ui-scaffold/empty.html');
-		expect(failing?.url).toEndWith('?clean=1');
+		expect(result.report.skipped).toContain('empty.html');
 		expect(result.report.results.every((entry) => entry.incomplete)).toBe(true);
 		const json = await readFile(path.join(reportDir, 'latest.json'), 'utf8');
 		const html = await readFile(path.join(reportDir, 'latest.html'), 'utf8');
@@ -150,25 +169,44 @@ describe('mockup audit helpers', () => {
 		expect(html).not.toContain('__mockup-review-helper-host');
 	});
 
-	test('rejects explicit non-HTML and empty targets without reporting a pass', async () => {
+	test('rejects explicit non-HTML, nested, traversal, and empty targets with exit code 2', async () => {
 		const nonHtml = await runMockupAudit({
-			paths: ['ui-scaffold/drafts/clean.css'],
+			paths: ['clean.css'],
 			port: server.port,
 			rootDir: root,
 			reportDir
 		});
 		expect(nonHtml.exitCode).toBe(2);
 		expect(nonHtml.report.passes).toBe(0);
+
+		const nested = await runMockupAudit({
+			paths: ['nested/sub.html'],
+			port: server.port,
+			rootDir: root,
+			reportDir
+		});
+		expect(nested.exitCode).toBe(2);
+		expect(nested.report.passes).toBe(0);
+
+		const traversal = await runMockupAudit({
+			paths: ['../outside.html'],
+			port: server.port,
+			rootDir: root,
+			reportDir
+		});
+		expect(traversal.exitCode).toBe(2);
+
 		const clean = await runMockupAudit({
-			paths: ['ui-scaffold/drafts/clean.html'],
+			paths: ['clean.html'],
 			port: server.port,
 			rootDir: root,
 			reportDir
 		});
 		expect(clean.exitCode).toBe(0);
 		expect(clean.report.passes).toBe(1);
+
 		const empty = await runMockupAudit({
-			paths: ['ui-scaffold/empty.html'],
+			paths: ['empty.html'],
 			port: server.port,
 			rootDir: root,
 			reportDir

@@ -278,9 +278,7 @@ test('CDLG-AC-3: loaded content uses the existing draft structure', async ({
 	);
 	const reference = await context.newPage();
 	await reference.setViewportSize({ width: 1440, height: 900 });
-	await reference.goto(
-		'http://localhost:3333/files/ui-scaffold/drafts/00-2_content-modal.html?clean=1'
-	);
+	await reference.goto('http://localhost:3333/00-2_content-modal.html?clean=1');
 	await reference.screenshot({ path: testInfo.outputPath('content-draft.png') });
 	await page.screenshot({ path: testInfo.outputPath('content-app.png') });
 	await reference.close();

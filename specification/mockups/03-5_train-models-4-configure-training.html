@@ -3,7 +3,12 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="stylesheet" href="../style.css" />
+		<meta name="name" content="Training Setup" />
+		<meta
+			name="description"
+			content="Step 3 builder Section 4 train/test split and cross-validation strategy controls, fold matrix, and error/blocked states." />
+		<meta name="status" content="draft" />
+		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>samatā.ml | Train Models</title>
 	</head>
@@ -116,6 +121,8 @@
 				<p>Choose a model to predict your target variable.</p>
 			</header>
 
+			<!-- Training Setup Builder -->
+			<!-- This will display when the user configures train/test split or cross-validation strategy in Step 3 Section 4. -->
 			<section class="page-body" data-testid="model-builder">
 				<ol class="train-model" aria-label="Model training steps">
 					<li class="train-step">
@@ -552,7 +559,10 @@
 					</li>
 				</ol>
 			</section>
+			<!-- / Training Setup Builder -->
 
+			<!-- Completed Training Setup -->
+			<!-- This will display when Section 4 is collapsed after saving the training setup. -->
 			<section aria-labelledby="setup-completed-title">
 				<h2 id="setup-completed-title">Completed</h2>
 				<p>4. One-Shot (80% / 20%)</p>
@@ -560,6 +570,10 @@
 					Edit
 				</button>
 			</section>
+			<!-- / Completed Training Setup -->
+
+			<!-- Invalid Fold Count -->
+			<!-- This will display when the user enters an out-of-range or non-integer cross-validation fold count. -->
 			<section aria-labelledby="setup-invalid-title">
 				<h2 id="setup-invalid-title">Invalid folds</h2>
 				<label for="invalid-fold-count">Number of folds (exact value)</label>
@@ -577,6 +591,10 @@
 				</p>
 				<button type="button" class="btn btn-primary">Train Model</button>
 			</section>
+			<!-- / Invalid Fold Count -->
+
+			<!-- Blocked Training Setup -->
+			<!-- This will display when the dataset lacks enough labelled rows per class to start training. -->
 			<section aria-labelledby="setup-blocked-title">
 				<h2 id="setup-blocked-title">Blocked</h2>
 				<p id="draft-training-blocked" class="notification notification-alert" role="alert">
@@ -591,6 +609,7 @@
 					Train Model
 				</button>
 			</section>
+			<!-- / Blocked Training Setup -->
 		</main>
 	</body>
 </html>

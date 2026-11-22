@@ -91,7 +91,7 @@ export async function prepareSidebarReference(
 ): Promise<void> {
 	await page.emulateMedia({ reducedMotion: 'reduce' });
 	await page.goto(
-		`http://localhost:3333/files/ui-scaffold/${fixture === 'empty' ? '01-1_select-data.html' : '03-2_train-models-1-choose-model.html'}?clean=1`
+		`http://localhost:3333/${fixture === 'empty' ? '01-1_select-data.html' : '03-2_train-models-1-choose-model.html'}?clean=1`
 	);
 	await page.evaluate((populated) => {
 		const sidebar = document.querySelector('.sidebar')!;

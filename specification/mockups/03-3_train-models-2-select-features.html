@@ -2,6 +2,11 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
+		<meta name="name" content="Select Features" />
+		<meta
+			name="description"
+			content="Step 3 builder Section 2 where the user selects which input columns the model uses." />
+		<meta name="status" content="implemented" />
 		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>samatā.ml | Train Models</title>
@@ -121,272 +126,105 @@
 			<section>
 				<ol class="train-model" aria-label="Model training steps">
 					<!-- Step 1: Completed -->
-					<li class="train-step train-step-active" aria-current="step">
+					<li class="train-step">
 						<section class="train-step-panel" aria-labelledby="step-1-title">
 							<header class="train-step-header">
-								<h2 id="step-1-title">1. Choose Model</h2>
+								<h2 id="step-1-title">1. Logistic Regression</h2>
 
-								<span class="step-action step-status">
+								<span class="train-step-action train-step-status">
 									<span class="visually-hidden">Completed</span>
 									<svg aria-hidden="true" width="24" height="24">
 										<use href="#check"></use>
 									</svg>
 								</span>
 							</header>
-
-							<div class="train-step-content">
-								<p>Choose which machine learning model to train on your dataset.</p>
-								<section class="cards">
-									<article class="card">
-										<span class="card-type badge badge-purple">
-											Classification
-										</span>
-										<svg class="card-image" viewBox="0 0 360 216">
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#FCD34D"
-												fill-rule="evenodd"
-												transform="translate(95 60)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(192 159)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(222 115)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#FCD34D"
-												fill-rule="evenodd"
-												transform="translate(174 34)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(272 48)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(130 83)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#FCD34D"
-												fill-rule="evenodd"
-												transform="translate(39 115)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#FCD34D"
-												fill-rule="evenodd"
-												transform="translate(21 50)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#FCD34D"
-												fill-rule="evenodd"
-												transform="translate(83 28)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#FCD34D"
-												fill-rule="evenodd"
-												transform="translate(78 95)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#FCD34D"
-												fill-rule="evenodd"
-												transform="translate(220 36)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(168 140)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(82 192)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(116 134)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(142 165)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(245 138)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(297 122)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(251 83)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#FCD34D"
-												fill-rule="evenodd"
-												transform="translate(192 74)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#FCD34D"
-												fill-rule="evenodd"
-												transform="translate(95 115)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(154 80)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#FCD34D"
-												fill-rule="evenodd"
-												transform="translate(141 54)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#FCD34D"
-												fill-rule="evenodd"
-												transform="translate(196 48)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#FCD34D"
-												fill-rule="evenodd"
-												transform="translate(143 91)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(167 173)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(186 119)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#BFDBFE"
-												fill-rule="evenodd"
-												transform="translate(208 101)" />
-											<circle
-												cx="6"
-												cy="6"
-												r="6"
-												fill="#FCD34D"
-												fill-rule="evenodd"
-												transform="translate(142 126)" />
-											<line
-												x1="10"
-												x2="350"
-												y1="185"
-												y2="10"
-												stroke="#6D6056"
-												stroke-linecap="round"
-												stroke-linejoin="round"
-												stroke-width="6" />
-										</svg>
-										<h3 class="card-title">Logistic Regression</h3>
-										<p class="card-text">
-											A classification tool used to predict a binary outcome
-											by estimating the exact probability of an event
-											happening. Highly reliable for clear-cut, two-option
-											decisions.
-										</p>
-										<div class="card-actions">
-											<button class="btn">Model Description</button>
-											<button class="btn btn-primary">Select Model</button>
-										</div>
-									</article>
-								</section>
-							</div>
 						</section>
 					</li>
 
 					<!-- Step 2: Active -->
-					<li class="train-step">
+					<li class="train-step train-step-active" aria-current="step">
 						<section class="train-step-panel" aria-labelledby="step-2-title">
 							<header class="train-step-header">
 								<h2 id="step-2-title">2. Select Features</h2>
+
+								<button
+									type="submit"
+									form="features-form"
+									class="train-step-action btn btn-primary">
+									Continue
+								</button>
 							</header>
 
 							<div class="train-step-content">
-								<form id="features-form">
-									<fieldset>
-										<legend>Features to include</legend>
-										<!-- Feature selection controls -->
-									</fieldset>
-								</form>
+								<p>
+									Select the features you want the model to use to try and predict
+									<code>{Target Variable Column Name}</code>.
+								</p>
+								<table class="table">
+									<thead>
+										<tr>
+											<th>Include</th>
+											<th>Column Name</th>
+											<th>Type</th>
+											<th>Notes</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td>
+												<input
+													type="checkbox"
+													id="include-column-1"
+													name="include-column-1" />
+											</td>
+											<td>Column 1</td>
+											<td><code>String</code></td>
+											<td></td>
+										</tr>
+										<tr class="target-variable">
+											<td></td>
+											<td>
+												Column 2
+												<span class="badge badge-amber">target</span>
+											</td>
+											<td><code>Number</code></td>
+											<td></td>
+										</tr>
+										<tr aria-selected="true">
+											<td>
+												<input
+													type="checkbox"
+													id="include-column-3"
+													name="include-column-3"
+													checked />
+											</td>
+											<td>Column 3</td>
+											<td><code>Categorical</code></td>
+											<td></td>
+										</tr>
+										<tr>
+											<td>
+												<input
+													type="checkbox"
+													id="include-column-4"
+													name="include-column-4" />
+											</td>
+											<td>Column 4</td>
+											<td><code>Boolean</code></td>
+											<td></td>
+										</tr>
+										<tr class="feature-unsupported">
+											<td></td>
+											<td>Column 4</td>
+											<td><code>Text</code></td>
+											<td>
+												Text columns are currently not supported as
+												features.
+											</td>
+										</tr>
+									</tbody>
+								</table>
 							</div>
-
-							<button
-								type="submit"
-								form="features-form"
-								class="train-step-action btn btn-primary">
-								Continue
-							</button>
 						</section>
 					</li>
 

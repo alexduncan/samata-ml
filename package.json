@@ -5,8 +5,7 @@
 	"scripts": {
 		"build": "bun run scripts/build.ts",
 		"server": "bun run scripts/server.ts",
-		"serve:mockups": "bun run scripts/serve-mockups.ts",
-		"serve:scaffold": "bun run scripts/serve-mockups.ts",
+		"mockups": "bun run scripts/serve-mockups.ts",
 		"audit:mockups": "bun run scripts/audit-mockups.ts",
 		"test": "bun test",
 		"test:e2e": "playwright test",
@@ -65,7 +64,7 @@
 		"lit": "^3.3.3",
 		"nanostores": "^0.11.4",
 		"papaparse": "^5.7.0",
-		"web-ml": "file:../web-ml"
+		"web-ml": "./vendor/web-ml/web-ml-0.2.0.tgz"
 	},
 	"customElements": "custom-elements.json"
 }

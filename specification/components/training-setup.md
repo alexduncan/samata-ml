@@ -50,7 +50,7 @@ The builder keys the form by dataset ID, target name and model number. It checks
 
 ## 5. Visual specification
 
-The unstyled [03-5 draft](../mockups/ui-scaffold/drafts/03-5_train-models-4-configure-training.html) records the control order, matrix, legend and alternate states. The component uses shared button, notification, train-model and hyperparameter styles with existing tokens. Only the named matrix wrapper scrolls horizontally. Fold columns are 2rem wide with a 3.5rem run column and 0.25rem cell spacing. At ten folds the matrix spans at least 26.5rem. The summary, legend and form actions wrap within the available inline size.
+The unstyled [03-5 draft](../mockups/03-5_train-models-4-configure-training.html) records the control order, matrix, legend and alternate states. The component uses shared button, notification, train-model and hyperparameter styles with existing tokens. Only the named matrix wrapper scrolls horizontally. Fold columns are 2rem wide with a 3.5rem run column and 0.25rem cell spacing. At ten folds the matrix spans at least 26.5rem. The summary, legend and form actions wrap within the available inline size.
 
 Changes from mockup CSS follow [the deviation registers](../visual-design.md#5-deviation-registers), including widths and contained overflow (MODELS-UI-05), visible role markers (SEM-14), and matrix and Help focus outlines (A11Y-11). The draft awaits human styling and has no visual parity target.
 

@@ -1,7 +1,13 @@
 <!doctype html>
+<!-- DRAFT: structure only, not normative for appearance. Source: workflow-steps.md §3; plans/step-3-train-models-overview-and-setup.md. Open questions: none (scoped defaults accepted by the user). -->
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
+		<meta name="name" content="Models Overview" />
+		<meta
+			name="description"
+			content="Step 3 hub listing trained and draft models, plus blocked, empty, loading, and error states." />
+		<meta name="status" content="draft" />
 		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>Pen</title>
@@ -101,77 +107,79 @@
 
 		<main>
 			<header class="page-header">
-				<h1>Preview Dataset: {dataset_name: string}</h1>
-				<p>
-					{num_rows: int} rows &nbsp;&nbsp;|&nbsp;&nbsp; {num_columns: int} columns<br />
-					{dataset_description: string}
-				</p>
-				<button class="btn btn-red" disabled>Delete Dataset</button>
+				<h1>Train Models</h1>
+				<p>Train and compare models for the selected target.</p>
+				<button class="btn btn-primary">Train New Model</button
+				><button class="btn" disabled>Compare Results</button>
 			</header>
-			<section>{Virtual Table Component}</section>
-			<aside class="overlay">
-				<div class="overlay-title">
-					<h4>Column Name</h4>
-					<button>
-						<svg class="icon" aria-hidden="true" focusable="false">
-							<use href="#close"></use>
-						</svg>
-					</button>
-				</div>
-				<code>{column_type: string}</code>
-				<p>{column_description: string}</p>
-				<!-- if column_type is Categorical -->
-				<table class="table table-compact">
+			<!-- Blocked State -->
+			<!-- This will display when the user opens Step 3 without both a loaded dataset and a selected target. -->
+			<section>
+				<h2>Blocked</h2>
+				<p class="notification notification-alert">
+					Load a dataset and choose a target before training a model.
+					<a href="/data">Load Data</a> <a href="/target">Set Target</a>
+				</p>
+			</section>
+			<!-- / Blocked State -->
+
+			<!-- Empty State -->
+			<!-- This will display when a dataset and target are ready but no models have been created yet. -->
+			<section>
+				<h2>Empty</h2>
+				<p>No models yet. Train a new model to get started.</p>
+			</section>
+			<!-- / Empty State -->
+
+			<!-- Models List -->
+			<!-- This will display when at least one draft or trained model exists for the active dataset and target. -->
+			<section>
+				<h2>Models</h2>
+				<table class="table">
+					<caption>
+						Models for Palmer Penguins
+					</caption>
 					<thead>
 						<tr>
-							<th>Category</th>
-							<th><abbr title="Frequency: Number of occurrences">Freq.</abbr></th>
-							<th>
-								<abbr title="Percentage: Proportion of total occurrences">%</abbr>
-							</th>
+							<th scope="col">Model Name</th>
+							<th scope="col">Features</th>
+							<th scope="col">Configuration</th>
+							<th scope="col">Training Setup</th>
+							<th scope="col">Duration</th>
+							<th scope="col">Action</th>
 						</tr>
 					</thead>
 					<tbody>
 						<tr>
-							<td>{category: string}</td>
-							<td>{frequency: int}</td>
-							<td>{percentage: float}</td>
+							<th scope="row">Model 1 — Logistic Regression</th>
+							<td>bill_length_mm, bill_depth_mm</td>
+							<td>Not configured</td>
+							<td>Not configured</td>
+							<td>Not trained</td>
+							<td><a href="/models/1">Continue</a></td>
 						</tr>
 					</tbody>
 				</table>
-				<!-- end if column_type is Categorical -->
-				<!-- if column_type is Numerical -->
-				<table class="table table-compact">
-					<tbody>
-						<tr>
-							<td>Min</td>
-							<td>{min: int | float}</td>
-						</tr>
-						<tr>
-							<td>Max</td>
-							<td>{max: int | float}</td>
-						</tr>
-						<tr>
-							<td>Mean</td>
-							<td>{mean: float}</td>
-						</tr>
-						<tr>
-							<td>Median</td>
-							<td>{median: int | float}</td>
-						</tr>
-						<tr>
-							<td>Standard Deviation</td>
-							<td>{std_dev: float}</td>
-						</tr>
-					</tbody>
-				</table>
-				<!-- end if column_type is Numerical -->
-				<p>
-					Rows: {num_rows: int}<br />
-					Columns: {num_columns: int}<br />
-					Description: {dataset_description: string}
-				</p>
-			</aside>
+				<p>Train at least two models to compare results.</p>
+			</section>
+			<!-- / Models List -->
+
+			<!-- Loading State -->
+			<!-- This will display while saved model records are being loaded from local storage. -->
+			<section>
+				<h2>Loading</h2>
+				<p role="status">Loading model information…</p>
+			</section>
+			<!-- / Loading State -->
+
+			<!-- Error State -->
+			<!-- This will display when saved model information fails to load. -->
+			<section>
+				<h2>Error</h2>
+				<p role="alert">Model information could not be loaded.</p>
+				<button class="btn">Retry</button>
+			</section>
+			<!-- / Error State -->
 		</main>
 	</body>
 </html>

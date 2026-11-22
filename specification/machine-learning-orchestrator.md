@@ -4,7 +4,7 @@
 
 ## 1. Runtime boundary
 
-Samatā owns the model builder, input transport, training coordination and durable results. The `web-ml` package owns stratification, fitted preprocessing, model fitting, evaluation, cross-validation and diagnostics. The [Phase 3 plan](plans/archive/web-ml-phase-3-model-training.md#implementation-and-verification-log) records the verified prebuilt revision and its public and executable hashes. The build verifies the frozen local dependency and serves the unchanged module graph, relative workers, WASM files and notices from a versioned, content-addressed same-origin directory. See [Delivery and Caching](ARCHITECTURE.md#delivery-and-caching) for isolation and installation.
+Samatā owns the model builder, input transport, training coordination and durable results. The `web-ml` package owns stratification, fitted preprocessing, model fitting, evaluation, cross-validation and diagnostics. Bun installs the versioned release tarball from `vendor/web-ml/`. The build verifies the installed release and serves its module graph, relative workers, WASM files and notices from a versioned, content-addressed same-origin directory. New training results record the release tarball's SHA-256 in `webMlRevision`. See [Delivery and Caching](ARCHITECTURE.md#delivery-and-caching) for isolation and installation.
 
 The app starts one module worker at `/training.worker.js` per accepted attempt. The worker imports the verified runtime and uses the package's own worker and WASM graph. A non-isolated page stays in Training Setup with a recovery message. The browser owns the WebAssembly and shared-memory resources used by the library.
 
@@ -25,6 +25,8 @@ The eight classifier adapters pass the active validated option overrides. Sectio
 ## 3. Worker messages and progress
 
 `TrainingStartRequest` captures the dataset, target, model number, creation timestamp, configuration key and run ID together with the classifier, features and setup. Each worker processes a single start. Cancellation addresses that worker's run ID and aborts the library through its signal. Main-thread decoding checks the captured identity and payload before applying any message. Late progress, mismatched attempts and duplicate terminal replies cannot settle the run.
+
+The configuration key excludes the library-owned KNN `leafSize` and MLP `validationFraction` defaults added to the 0.2.0 catalogue. This preserves the keys used to restore earlier saved results.
 
 The worker returns progress with optional structured log entries, a result payload, a safe error code or cancellation. The session stores a compact progress snapshot and at most 250 ordered entries. Fit fractions and completed folds occupy the measurable 10–85% range. Indeterminate processing leaves the bar unset until measurable work starts. Evaluation and refit hold the last reliable fraction. Saving uses 95%. Acknowledged success uses 100%. The entry keys and bounded counts allow the builder to localise messages without exposing raw errors. See [Training Progress](components/training-progress.md).
 

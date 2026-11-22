@@ -2,7 +2,7 @@ import { css, type CSSResult } from 'lit';
 
 /**
  * Shared styles for model training step accordion panels.
- * Follows specification/mockups/ui-scaffold/css/train-model.css and specification/plans/step-3-train-models-overview-and-setup.md.
+ * Follows specification/mockups/css/train-model.css and specification/plans/step-3-train-models-overview-and-setup.md.
  */
 export const trainModelStyles: CSSResult = css`
 	.train-model {

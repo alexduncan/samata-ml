@@ -9,9 +9,9 @@
 			"url": "https://localhost:3000"
 		},
 		{
-			"name": "scaffold",
+			"name": "mockups",
 			"runtimeExecutable": "bun",
-			"runtimeArgs": ["run", "serve:scaffold"],
+			"runtimeArgs": ["run", "mockups"],
 			"port": 3333
 		}
 	]

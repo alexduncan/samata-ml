@@ -1,6 +1,6 @@
 # samata-ml — agent guide
 
-Browser app (Lit 3, strict TypeScript, Nanostores, IndexedDB, Web Workers) for training machine learning models locally, for education. All training and model computation is executed by the sister library `web-ml` (`../web-ml`); see Repository boundary.
+Browser app (Lit 3, strict TypeScript, Nanostores, IndexedDB, Web Workers) for training machine learning models locally, for education. All training and model computation is executed by the `web-ml` release installed from the versioned tarball in `vendor/web-ml/`; see Repository boundary.
 
 ## Repository boundary
 
@@ -11,9 +11,9 @@ Browser app (Lit 3, strict TypeScript, Nanostores, IndexedDB, Web Workers) for t
 
 ## Upstream Library Specs
 
-- **Model catalogue:** `../web-ml/specification/public-api/model-specifications/{schema.json,index.json,models/*.json}`; check the equivalent installed public path only if present.
-- **Contract authority:** use JSON for initial lookup, then public declarations (`../web-ml/index.ts`, `../web-ml/dist/index.d.ts` and required public declaration dependencies) and public prose under `../web-ml/specification/public-api/`. Public TypeScript declarations and Markdown govern compatibility. Report conflicts and insufficient evidence as unresolved.
-- **Package fallback:** check each asset under `./node_modules/web-ml/specification/public-api/` and `./node_modules/web-ml/dist/index.d.ts` individually; declarations do not imply JSON/prose is shipped. Report provenance and version differences, and do not combine incompatible versions silently.
+- **Model catalogue:** For the installed release, check `node_modules/web-ml/specification/public-api/model-specifications/{schema.json,index.json,models/*.json}`.
+- **Contract authority:** Use JSON for initial lookup, then the release's public declarations at `node_modules/web-ml/dist/index.d.ts` and their required public declaration dependencies, plus its public prose under `node_modules/web-ml/specification/public-api/`. Check each asset individually. Public TypeScript declarations and Markdown govern compatibility. Report conflicts and insufficient evidence as unresolved.
+- **Upstream changes:** For unreleased work, consult `../web-ml/index.ts`, `../web-ml/dist/index.d.ts` and `../web-ml/specification/public-api/`. Report provenance and version differences before comparing with the installed release.
 - **Cross-repo scout boundary:** only `codebase-scout` may inspect those upstream public assets. Deny rules override allow rules through symlinks: never inspect upstream Zig, `specification/internals/**`, private implementation, or installed private equivalents; never modify `../web-ml` (the one exception is creating a new request file; see Repository boundary). Report denied reads as unavailable.
 
 ## Workflow & Domain Skills
@@ -41,7 +41,7 @@ Bun only: never npm, yarn, pnpm, or `npx` (use `bunx`).
 - `bun run build` — Production build (bundles app + validates sample datasets + compiles `datasheet.md` to HTML for `<dialog>` presentation).
 - `bun run format <files>` — Prettier on changed files (`bun run format:check` to verify).
 - `bun run test:e2e [file]` — Playwright end-to-end tests (including `tests/visual-parity.e2e.ts` and `tests/a11y.e2e.ts`).
-- `bun run server` · `bun run serve:mockups` · `bun run audit:mockups [paths]`.
+- `bun run server` · `bun run mockups` · `bun run audit:mockups [paths]`.
 - `bun run storybook` · `bun run storybook:build` · `bun run storybook:manifest` · `bun run test:stories`.
 - `bun run --silent now` — Current UTC timestamp for plan metadata.
 - **Plan gates:** Use `bun run plans:check`, `bun run plans:review`, `bun run plans:task`, and `bun run plans:close`; branches: `bun run git:sync`, `bun run git:land`, `bun run git:status`, `bun run git:release`. Evaluate `specification/decision-checklist.md` when present.
@@ -60,15 +60,15 @@ Follow the shared rules in `agent-workflow/AGENTS.md` § Git workflow (summarise
 
 ## Map
 
-`src/` app code · `css/` styles · `content/` Markdown pages & datasets · `public/` static assets · `scripts/` build and dev servers · `tests/` tests · `specification/` specs ([`specification/README.md`](specification/README.md)) · `specification/plans/` plans · `specification/notes/` inbox · `specification/HUMAN.md` human queue · `specification/mockups/` normative wireframes (`ui-scaffold/drafts/` holds unstyled agent drafts).
+`src/` app code · `css/` styles · `content/` Markdown pages & datasets · `public/` static assets · `scripts/` build and dev servers · `tests/` tests · `vendor/web-ml/` vendored release and checksum · `specification/` specs ([`specification/README.md`](specification/README.md)) · `specification/plans/` plans · `specification/notes/` inbox · `specification/HUMAN.md` human queue · `specification/mockups/` flat mockup HTML (`<meta name="status" content="draft|ready|implemented" />`), `style.css`, human-owned `mockups.css`, and `css/*.css`.
 
 ## Rules
 
-- **Visual fidelity:** Mockups in `specification/mockups/ui-scaffold/` define appearance; follow [`specification/visual-design.md`](specification/visual-design.md), use only tokens from `css/root.css` with no fallbacks, record visual deviations, and run parity/token tests (`bun test tests/style-tokens.test.ts`) for UI changes.
-- **Missing mockups don't block:** Write an unstyled semantic-HTML draft in `specification/mockups/ui-scaffold/drafts/` (`visual-design` §1.1) and add it to `specification/HUMAN.md`.
+- **Visual fidelity:** Ready and implemented mockups in `specification/mockups/` define appearance; follow [`specification/visual-design.md`](specification/visual-design.md), use only tokens from `css/root.css` with no fallbacks, record visual deviations, and run parity/token tests (`bun test tests/style-tokens.test.ts`) for UI changes.
+- **Missing mockups don't block:** Write an unstyled semantic-HTML draft directly in `specification/mockups/` with `<meta name="name">`, `<meta name="description">`, and `<meta name="status" content="draft" />` (wrapping each multi-state fragment in `<!-- {State} -->` / `<!-- This will display when ... -->` / `<!-- / {State} -->` comments per `visual-design` §1.1) and add it to `specification/HUMAN.md`.
 - **Human queue:** Keep [`specification/HUMAN.md`](specification/HUMAN.md) current whenever work leaves the human a decision, approval, or draft to style.
 - **Specs stay current:** Keep `specification/` synced in the final task/audit and verify status alignment with `specification/README.md`.
-- **Don't edit:** `../web-ml` (except creating a new `specification/requests/` file), `node_modules/`, `specification/mockups/` (except `ui-scaffold/drafts/`), or `bun.lock` except via `bun add`/`bun remove` when planned.
+- **Don't edit:** `../web-ml` (except creating a new `specification/requests/` file), `node_modules/`, `specification/mockups/` files with `status="ready"` or `status="implemented"` (or `mockups.css`), or `bun.lock` except via `bun add`/`bun remove` when planned. Agents may create or edit `specification/mockups/*.html` only when `<meta name="status" content="draft" />` (or when explicitly authorised by a plan).
 - **Git:** Follow [Git workflow](#git-workflow): commit your own changes before ending a session; never push.
 - **Style:** British English in prose, docs, and UI strings. Prettier: tabs, single quotes, width 100. Exported TypeScript requires TSDoc ([`specification/standards-and-documentation.md`](specification/standards-and-documentation.md)). Run `bun run format <files>` as the final file-editing step.
 - **Web platform:** Baseline Widely Available; WCAG 2.2 AA (`COMPONENTS.md` §1, §7).

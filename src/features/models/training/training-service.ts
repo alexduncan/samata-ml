@@ -171,10 +171,18 @@ function configuration(model: ModelRecord, rowCount: number) {
 			classCount: 0
 		}
 	);
+	// Keep saved result keys compatible with releases before these library-only options appeared.
+	const identityOptions = Object.entries(effectiveOptions)
+		.filter(
+			([name]) =>
+				!(classifier.algorithm === 'k-neighbors-classifier' && name === 'leafSize') &&
+				!(classifier.algorithm === 'mlp-classifier' && name === 'validationFraction')
+		)
+		.sort(([left], [right]) => left.localeCompare(right, 'en'));
 	const configurationKey = JSON.stringify([
 		classifier.algorithm,
 		model.features,
-		Object.entries(effectiveOptions).sort(([left], [right]) => left.localeCompare(right, 'en')),
+		identityOptions,
 		model.multiclass ?? MULTICLASS_STRATEGY[classifier.algorithm],
 		model.trainingSetup.type === 'one_shot'
 			? [

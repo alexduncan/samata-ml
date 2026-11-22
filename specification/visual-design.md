@@ -6,29 +6,39 @@ This specification defines the visual standards, token architecture, mockup mapp
 
 ## 1. Source of truth
 
-The mockups in [`mockups/ui-scaffold/`](mockups/ui-scaffold/) (`*.html` and [`mockups/ui-scaffold/style.css`](mockups/ui-scaffold/style.css)) define how every user-visible surface looks. Computed values for colour, font family, size, weight, line-height, spacing, borders, radii, and shadows must match the mockup at a 1440×900 viewport, except where §4 (Translation rules) or §5 (Deviation registers) allows a deviation.
+The mockups in [`mockups/`](mockups/) with `<meta name="status" content="ready" />` or `<meta name="status" content="implemented" />` (`*.html` and [`mockups/style.css`](mockups/style.css)) define how every user-visible surface looks. Computed values for colour, font family, size, weight, line-height, spacing, borders, radii, and shadows must match the mockup at a 1440×900 viewport, except where §4 (Translation rules) or §5 (Deviation registers) allows a deviation.
 
 Markup, class names, file layout, and selectors may change to suit Lit, Shadow DOM, accessibility, and semantics. Behaviour and copy follow [workflow-steps.md](workflow-steps.md). When a mockup and a behaviour specification conflict, the behaviour specification wins, and the visual treatment is kept on the new structure.
 
 ### 1.1 Draft mockups
 
-A missing mockup does not block a feature. When a surface has no mockup in `mockups/ui-scaffold/`, or its file is empty, an agent writes an unstyled **draft** that records structure and copy only. The draft gives the human a starting point for the styling; it makes no design decisions.
+A missing mockup does not block a feature. When a surface has no `ready` or `implemented` mockup in `mockups/`, an agent writes an unstyled **draft** that records structure and copy only. The draft gives the human a starting point for the styling; it makes no design decisions.
 
 **Writing a draft:**
 
-- **Location:** `mockups/ui-scaffold/drafts/<name>.html`, named as the normative mockup will be (e.g. `03-4_train-models-3-configure-model.html`). Agents create and edit files in `drafts/` only. `bun run serve:mockups` lists them in the Needs styling group at `http://localhost:3333/`; canonical file URLs use `/files/ui-scaffold/drafts/<name>.html`.
-- **Shell:** copy the document shell (head, sidebar, page header) unchanged from the nearest existing mockup, and link `../style.css`. Only the new content area is drafted.
+- **Location and governance:** `mockups/<name>.html`, named as the promoted mockup will be (e.g. `03-4_train-models-3-configure-model.html`). Agents may create and edit files in `specification/mockups/` only when `<meta name="status" content="draft" />` (or when explicitly authorised by a plan); `ready` and `implemented` mockups and `mockups.css` are human-owned. `bun run mockups` serves files flat at `http://localhost:3333/<name>.html` and lists them via `/index.json` in the `/` catalogue.
+- **Required metadata:** every HTML file in `mockups/` declares three `<meta>` elements in `<head>`:
+    - `<meta name="name" content="{Plain English Name}" />`
+    - `<meta name="description" content="{When the user encounters this UI}" />`
+    - `<meta name="status" content="draft|ready|implemented" />` (new agent drafts always start at `draft`)
+- **Shell:** copy the document shell (head, sidebar, page header) unchanged from the nearest existing mockup, and link `./style.css`. Do not hardcode `<link rel="stylesheet" href="./mockups.css" />` or `#__mockup-review-helper-host` markup in product mockups. Only the new content area is drafted.
 - **Semantic HTML only:** landmarks, headings in order, lists, tables with a `<caption>` and `<th scope>`, forms with `<label>`, `<fieldset>` and `<legend>`, and native `<button>`, `<dialog>` and `<details>`. Use ARIA only where no native element fits. Follow the SEM register (§5.2).
 - **No design:** no `<style>` element, `style` attribute, new CSS file, token, icon or image. Reuse an existing class only where an existing pattern is reused unchanged (e.g. `.btn`, `.notification`, `.chiclet`); add no other classes.
-- **Content:** copy from the behaviour spec in British English, with realistic sample data (Palmer Penguins). Every state the spec describes (empty, blocked, loading, error, populated) gets its own file or its own headed `<section>`.
+- **Content and multi-state comments:** copy from the behaviour spec in British English, with realistic sample data (Palmer Penguins). Every state the spec describes (empty, blocked, loading, error, populated) gets its own file or its own fragment wrapped in opening and closing HTML comments:
+    ```html
+    <!-- {State Name} -->
+    <!-- This will display when {condition}. -->
+    <section>...</section>
+    <!-- / {State Name} -->
+    ```
 - **Header comment:** directly after `<!doctype html>`: `<!-- DRAFT: structure only, not normative for appearance. Source: <spec § or plan>. Open questions: <TODO IDs or none>. -->`
 - **Human queue:** add an item to [HUMAN.md](HUMAN.md) §6 to style the draft.
 
-The local review server inventories every regular file beneath `specification/mockups/`, including nested resources and empty placeholders. Its native HTML catalogue and preview helper are developer tooling, not product mockups: they load no application or mockup stylesheet and use no application tokens. TOOL-01 permits only `max-inline-size: 100%`, `box-sizing: border-box` and `overflow-wrap: anywhere` for narrow reflow. The helper is injected in normal document flow at the start of `<main>` when present, otherwise at the start of `<body>` (or the document element); it is absent from the byte-identical `?clean=1` preview. This scoped exception applies only to the review tool.
+The local review server (`bun run mockups`) serves top-level HTML files and stylesheets directly from `specification/mockups/` and exposes live metadata at `/index.json`. Its `/` catalogue (`<body class="mockup-index">` with `<table class="mockups">`) and preview helper bar are developer tooling styled by human-owned `specification/mockups/mockups.css`, not product mockups. On normal HTML previews, the server injects `<link rel="stylesheet" href="/mockups.css" />` into `<head>` and a light-DOM `#__mockup-review-helper-host` bar (with an auto-navigating `<select id="preview-page">` and `.index-link`) before `</body>`; `?clean=1` returns untouched raw file bytes from disk with zero injected CSS, helper DOM, or scripts. This developer-only exemption applies only to the review tool and never relaxes WCAG 2.2 AA requirements on product mockups or the application.
 
-The human owns mockup CSS, review acceptance and promotion. The review and markup-request templates, audit limits and Shadow DOM port procedure are in [mockup-review.md](mockup-review.md). `bun run audit:mockups` provides per-file automated evidence; passing axe does not establish conformance, and incomplete findings require manual review.
+The human owns mockup CSS, `mockups.css`, review acceptance, and promotion. The review and markup-request templates, audit limits, and Shadow DOM port procedure are in [mockup-review.md](mockup-review.md). `bun run audit:mockups` provides per-file automated evidence; passing axe does not establish conformance, and incomplete findings require manual review.
 
-**Promotion:** the human styles the draft and moves it into `mockups/ui-scaffold/`, replacing any empty placeholder. Only then is it normative, and only then do §1 and the parity checks (§6) apply to it.
+**Promotion:** the human styles the draft in place inside `mockups/`, updates `<meta name="status" content="ready" />` (and later `implemented` once ported), and removes the `DRAFT` header comment. Only then is it normative, and only then do §1 and the parity checks (§6) apply to it.
 
 **Charts against a draft (scoped exception, Phase 4).** Charts drawn by Observable Plot may use the chart tokens (§2) for marks and the minimum chart geometry (margins, mark sizes, dash patterns) while the draft HTML stays unstyled. Typography is inherited from the surrounding component. This allowance covers the Section 6 results charts only and ends when the human promotes a styled mockup.
 
@@ -37,12 +47,12 @@ The human owns mockup CSS, review acceptance and promotion. The review and marku
 - Follow its structure and copy. Behaviour still follows [workflow-steps.md](workflow-steps.md).
 - Style with existing shared style modules (§3) and `css/root.css` tokens only. Component CSS is limited to `:host` display, `:host([hidden])`, §4 focus and motion rules, and the minimum layout needed to keep content readable (`display`, and a `gap` or `margin` from existing spacing values). Choose no colours, type sizes, borders or shadows.
 - Add no parity entries for draft-only elements. The token guard and the accessibility scan still apply.
-- For the local tool's reference comparisons, parity requests the clean preview URL so injected review controls cannot affect screenshots or computed styles.
+- For the local tool's reference comparisons, parity requests the clean preview URL (`/<filename>?clean=1`) so injected review controls and `/mockups.css` cannot affect screenshots or computed styles.
 - The plan names the draft under **Visual reference** and lists "awaiting a styled mockup" as non-blocking under _Risks and open questions_. Once the mockup is promoted, a follow-up task ports its styles and adds parity entries.
 
 ## 2. Tokens
 
-The closed token vocabulary is defined in [`css/root.css`](../css/root.css). It consists of the mockup [`mockups/ui-scaffold/css/root.css`](mockups/ui-scaffold/css/root.css) unchanged, plus an `/* App additions */` block listing:
+The closed token vocabulary is defined in [`css/root.css`](../css/root.css). It consists of the mockup [`mockups/css/root.css`](mockups/css/root.css) unchanged, plus an `/* App additions */` block listing:
 
 - `--surface: #fff` (replaces mockup `#fff` and `white`)
 - `--focus-ring: var(--blue-700)`
@@ -63,22 +73,22 @@ Rules:
 
 Mockup CSS files map to application locations as follows:
 
-| Mockup file                                                                                                                                               | App location                                                                                                                                                                                                 |
-| :-------------------------------------------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [`mockups/ui-scaffold/css/root.css`](mockups/ui-scaffold/css/root.css)                                                                                    | [`css/root.css`](../css/root.css) (document)                                                                                                                                                                 |
-| [`mockups/ui-scaffold/css/base.css`](mockups/ui-scaffold/css/base.css)                                                                                    | [`css/base.css`](../css/base.css), for document/main; `.page-header` → `src/styles/page-header.styles.ts`                                                                                                    |
-| [`mockups/ui-scaffold/css/button.css`](mockups/ui-scaffold/css/button.css)                                                                                | [`src/styles/button.styles.ts`](../src/styles/button.styles.ts) only                                                                                                                                         |
-| [`mockups/ui-scaffold/css/badges.css`](mockups/ui-scaffold/css/badges.css)                                                                                | [`src/styles/chiclet.styles.ts`](../src/styles/chiclet.styles.ts) only; mockup `.badge-*` maps to `.chiclet-*` (SEM-11)                                                                                      |
-| [`mockups/ui-scaffold/css/card.css`](mockups/ui-scaffold/css/card.css)                                                                                    | [`src/styles/card.styles.ts`](../src/styles/card.styles.ts)                                                                                                                                                  |
-| [`mockups/ui-scaffold/css/modal.css`](mockups/ui-scaffold/css/modal.css)                                                                                  | [`src/styles/dialog.styles.ts`](../src/styles/dialog.styles.ts)                                                                                                                                              |
-| [`mockups/ui-scaffold/css/sidebar.css`](mockups/ui-scaffold/css/sidebar.css) and [`mockups/ui-scaffold/css/steps.css`](mockups/ui-scaffold/css/steps.css) | [`app-sidebar`](../src/features/shell/app-sidebar.ts) `static styles`                                                                                                                                        |
-| [`mockups/ui-scaffold/css/table.css`](mockups/ui-scaffold/css/table.css)                                                                                  | [`src/styles/table.styles.ts`](../src/styles/table.styles.ts) (adopted in `global.ts` and consuming shadow roots)                                                                                            |
-| [`mockups/ui-scaffold/css/notifications.css`](mockups/ui-scaffold/css/notifications.css)                                                                  | [`src/styles/notification.styles.ts`](../src/styles/notification.styles.ts) alert variant only (adopted in `global.ts`)                                                                                      |
-| [`mockups/ui-scaffold/css/train-model.css`](mockups/ui-scaffold/css/train-model.css)                                                                      | [`src/styles/train-model.styles.ts`](../src/styles/train-model.styles.ts) (adopted in `global.ts` and builder view); `.help-link` in the section `h2`                                                        |
-| [`mockups/ui-scaffold/css/hyperparameters.css`](mockups/ui-scaffold/css/hyperparameters.css) `.field` family and `base.css` `input`/`select`              | [`src/styles/hyperparameters.styles.ts`](../src/styles/hyperparameters.styles.ts) (scoped under `.field`; `A11Y-07`, `A11Y-08`, `SEM-10` applied; `base-select` and `::picker` dropped for native rendering) |
-| `.fold-matrix*`, `.fold-visual-summary` and `.fold-legend*` (03-5 draft)                                                                                  | [`src/styles/hyperparameters.styles.ts`](../src/styles/hyperparameters.styles.ts), adopted by [Training Setup](components/training-setup.md).                                                                |
-| 03-7 draft results (`figure`, `figcaption`, "Show data table" `details`, scrollable table regions)                                                        | [`src/styles/results.styles.ts`](../src/styles/results.styles.ts), composed by the Section 6 results elements with `table.styles.ts`                                                                         |
-| `dot.css`, `dropzone.css`                                                                                                                                 | Sidebar-local dot and feature-owned upload/dropzone rules; no document copies                                                                                                                                |
+| Mockup file                                                                                                          | App location                                                                                                                                                                                                 |
+| :------------------------------------------------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`mockups/css/root.css`](mockups/css/root.css)                                                                       | [`css/root.css`](../css/root.css) (document)                                                                                                                                                                 |
+| [`mockups/css/base.css`](mockups/css/base.css)                                                                       | [`css/base.css`](../css/base.css), for document/main; `.page-header` → `src/styles/page-header.styles.ts`                                                                                                    |
+| [`mockups/css/button.css`](mockups/css/button.css)                                                                   | [`src/styles/button.styles.ts`](../src/styles/button.styles.ts) only                                                                                                                                         |
+| [`mockups/css/badges.css`](mockups/css/badges.css)                                                                   | [`src/styles/chiclet.styles.ts`](../src/styles/chiclet.styles.ts) only; mockup `.badge-*` maps to `.chiclet-*` (SEM-11)                                                                                      |
+| [`mockups/css/card.css`](mockups/css/card.css)                                                                       | [`src/styles/card.styles.ts`](../src/styles/card.styles.ts)                                                                                                                                                  |
+| [`mockups/css/modal.css`](mockups/css/modal.css)                                                                     | [`src/styles/dialog.styles.ts`](../src/styles/dialog.styles.ts)                                                                                                                                              |
+| [`mockups/css/sidebar.css`](mockups/css/sidebar.css) and [`mockups/css/steps.css`](mockups/css/steps.css)            | [`app-sidebar`](../src/features/shell/app-sidebar.ts) `static styles`                                                                                                                                        |
+| [`mockups/css/table.css`](mockups/css/table.css)                                                                     | [`src/styles/table.styles.ts`](../src/styles/table.styles.ts) (adopted in `global.ts` and consuming shadow roots)                                                                                            |
+| [`mockups/css/notifications.css`](mockups/css/notifications.css)                                                     | [`src/styles/notification.styles.ts`](../src/styles/notification.styles.ts) alert variant only (adopted in `global.ts`)                                                                                      |
+| [`mockups/css/train-model.css`](mockups/css/train-model.css)                                                         | [`src/styles/train-model.styles.ts`](../src/styles/train-model.styles.ts) (adopted in `global.ts` and builder view); `.help-link` in the section `h2`                                                        |
+| [`mockups/css/hyperparameters.css`](mockups/css/hyperparameters.css) `.field` family and `base.css` `input`/`select` | [`src/styles/hyperparameters.styles.ts`](../src/styles/hyperparameters.styles.ts) (scoped under `.field`; `A11Y-07`, `A11Y-08`, `SEM-10` applied; `base-select` and `::picker` dropped for native rendering) |
+| `.fold-matrix*`, `.fold-visual-summary` and `.fold-legend*` (03-5 draft)                                             | [`src/styles/hyperparameters.styles.ts`](../src/styles/hyperparameters.styles.ts), adopted by [Training Setup](components/training-setup.md).                                                                |
+| 03-7 draft results (`figure`, `figcaption`, "Show data table" `details`, scrollable table regions)                   | [`src/styles/results.styles.ts`](../src/styles/results.styles.ts), composed by the Section 6 results elements with `table.styles.ts`                                                                         |
+| `dot.css`, `dropzone.css`                                                                                            | Sidebar-local dot and feature-owned upload/dropzone rules; no document copies                                                                                                                                |
 
 A rule used across roots lives in a shared module ([COMPONENTS.md §6.2](COMPONENTS.md#62-shared-style-modules)); a feature-private rule remains with its owner. `css/style.css` imports only root/base. Obsolete document copies of badges/button/card/dot/dropzone/loading/modal/notifications/sidebar/steps/table/train-model are absent. Table, notification and train-model sheets retain document adoption and feature consumers. Page Header owns the shared header grid and composes `headingFocusStyles`; existing feature-private headers retain their appearance and adopt only the heading outline. Sidebar rules live in `src/features/shell/app-sidebar.ts`; its local static dot has no general dot-primitive API. Upload/dropzone rules remain feature-owned.
 
@@ -179,7 +189,7 @@ Visual fidelity uses static guards, computed styles/geometry, reviewed screensho
     - TOK-5/6 reject physical inline-direction CSS, `!important` and `:host-context()` in actual CSS/template declarations, without treating JavaScript scroll coordinates as styles.
 
 2. **Visual parity test harness (`bun run test:e2e tests/visual-parity.e2e.ts`):**
-   A Playwright test running in Chromium at a 1440×900 viewport. It compares computed CSS styles between clean mockup pages served by `bun run serve:mockups` (`http://localhost:3333`) and the running application routes (`https://localhost:3000`).
+   A Playwright test running in Chromium at a 1440×900 viewport. It compares computed CSS styles between clean mockup pages served by `bun run mockups` (`http://localhost:3333/<filename>?clean=1`) and the running application routes (`https://localhost:3000`).
     - Mapped elements are defined in `tests/visual-parity/map.ts`.
     - Checks background, borders, typography, spacing, explicit grid areas/tracks and fixture-relative numeric geometry within at most 1 CSS px. Content-dependent tracks are compared numerically rather than as identical strings.
     - Deviations are validated against the approved deviation registers.
@@ -191,19 +201,19 @@ Visual fidelity uses static guards, computed styles/geometry, reviewed screensho
 3. **Accessibility scan (`bun run test:e2e tests/a11y.e2e.ts`):**
    Uses `@axe-core/playwright` with `wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa`. Shell-scoped scans have zero violations and no exclusions. Broad audits match only separately owned exact feature elements and measured evidence in `tests/a11y-feature-findings.ts`. Unlisted rules and elements fail. Phase 2 resolved the Section 4 notice contrast finding. The remaining 24 data and model contrast targets are tracked in [the human queue](HUMAN.md#1-workflow-and-plan-review).
 
-4. **Static mockup audit (`bun run audit:mockups [relative-path ...] [--port 3333]`):**
-   With `bun run serve:mockups` running, audits selected non-empty HTML files or all eligible files at a 1440×900 viewport using Chromium and `@axe-core/playwright`. It uses `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa` without rule exclusions. JSON and escaped HTML reports are written to `test-results/mockup-a11y/`. Violations, navigation/runtime errors, skipped empty files and incomplete checks remain distinct. A zero exit status means only that no automated violations were found; static markup cannot prove interactive states or replace manual keyboard, screen-reader, responsive, zoom, forced-colours and motion checks. The catalogue scan has separate browser coverage in `tests/mockup-review.e2e.ts`.
+4. **Static mockup audit (`bun run audit:mockups [filename ...] [--port 3333]`):**
+   With `bun run mockups` running, audits selected non-empty top-level HTML files or all eligible files at a 1440×900 viewport using Chromium and `@axe-core/playwright` via `/<filename>?clean=1`. It uses `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa` without rule exclusions. JSON and escaped HTML reports are written to `test-results/mockup-a11y/`. Violations, navigation/runtime errors, skipped empty files and incomplete checks remain distinct. A zero exit status means only that no automated violations were found; static markup cannot prove interactive states or replace manual keyboard, screen-reader, responsive, zoom, forced-colours and motion checks. The review server catalogue and helper behaviour are covered separately in `tests/mockup-review.e2e.ts`.
 
 5. **Adding a parity entry for a new view:**
    When introducing or refactoring a view:
-    - Identify the corresponding mockup page in `specification/mockups/ui-scaffold/`.
+    - Identify the corresponding mockup page in `specification/mockups/`.
     - Add a `ParityEntry` to `tests/visual-parity/map.ts` specifying the `mockupPage`, `mockupSelector`, `appRoute`, `appSelector`, and `properties` to compare.
     - If a known deviation exists, document it with the register ID (`A11Y-nn` or `SEM-nn`) in the entry's `deviations` map.
 
 6. **Manual side-by-side verification:**
    Start both servers:
     ```sh
-    bun run serve:mockups
+    bun run mockups
     bun run server
     ```
     Open Chromium at a 1440×900 viewport side by side with the mockup page and the application route. Inspect visual alignment, fonts, colours, and interactive states. Attach screenshots of both views to the task report.

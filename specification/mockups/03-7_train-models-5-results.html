@@ -3,7 +3,12 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="stylesheet" href="../style.css" />
+		<meta name="name" content="Single Model Results" />
+		<meta
+			name="description"
+			content="Step 3 builder Section 6 shared results for one trained model: held-out scores, fold strip, errors, threshold and calibration, with unavailable, loading, empty, legacy, lost and error states." />
+		<meta name="status" content="draft" />
+		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>samatā.ml | Train Models</title>
 	</head>
@@ -116,6 +121,8 @@
 				<p>Choose a model to predict your target variable.</p>
 			</header>
 
+			<!-- Binary Results -->
+			<!-- This will display when a trained model with a binary target and probability estimates has saved results (One-Shot shown). -->
 			<section aria-labelledby="results-binary">
 				<h2 id="results-binary">6. Model Results</h2>
 				<p>Binary target, One-Shot, probabilities available.</p>
@@ -434,7 +441,10 @@
 					</figure>
 				</section>
 			</section>
+			<!-- / Binary Results -->
 
+			<!-- Multiclass Results -->
+			<!-- This will display when a trained model with a multiclass target has saved results (five-fold Cross-Validation shown). -->
 			<section aria-labelledby="results-multiclass">
 				<h2 id="results-multiclass">6. Model Results</h2>
 				<p>Multiclass target, five-fold Cross-Validation. Binary-only blocks are absent.</p>
@@ -584,7 +594,10 @@
 					</p>
 				</section>
 			</section>
+			<!-- / Multiclass Results -->
 
+			<!-- Unavailable Sections -->
+			<!-- This will display when the trained classifier has no probability estimates, so log loss, the threshold explorer and the reliability diagram cannot be shown. -->
 			<section>
 				<h2>Unavailable sections</h2>
 				<p>
@@ -596,14 +609,26 @@
 					was trained without probability estimates.
 				</p>
 			</section>
+			<!-- / Unavailable Sections -->
+
+			<!-- Loading Results -->
+			<!-- This will display when saved results are being read from this browser. -->
 			<section>
 				<h2>Loading</h2>
 				<progress aria-label="Loading results…"></progress>
 			</section>
+			<!-- / Loading Results -->
+
+			<!-- Empty Results -->
+			<!-- This will display when the selected model has not completed training. -->
 			<section>
 				<h2>Empty</h2>
 				<p>Train this model to see its results.</p>
 			</section>
+			<!-- / Empty Results -->
+
+			<!-- Legacy Result -->
+			<!-- This will display when the model was trained before detailed results were saved. -->
 			<section>
 				<h2>Legacy result</h2>
 				<p>
@@ -612,6 +637,10 @@
 				</p>
 				<p><a href="/models">Open Models and choose Train New Model</a></p>
 			</section>
+			<!-- / Legacy Result -->
+
+			<!-- Lost Results -->
+			<!-- This will display when the saved results for the trained model are missing or no longer match its configuration. -->
 			<section>
 				<h2>Lost results</h2>
 				<p>
@@ -620,11 +649,16 @@
 				</p>
 				<p><a href="/models">Open Models and choose Train New Model</a></p>
 			</section>
+			<!-- / Lost Results -->
+
+			<!-- Result Error -->
+			<!-- This will display when the saved results cannot be read from browser storage. -->
 			<section>
 				<h2>Result error</h2>
 				<p role="alert">The saved results could not be read from this browser.</p>
 				<button class="btn" type="button">Retry</button>
 			</section>
+			<!-- / Result Error -->
 		</main>
 	</body>
 </html>

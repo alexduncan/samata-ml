@@ -6,6 +6,12 @@
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
+The maintainer supplied the 0.2.0 release and directed the migration using the
+tarball and checksum under `vendor/web-ml/`. This draft records the original
+proposal. The [contributor instructions](../../README.md#upgrade-web-ml) and
+[training asset specification](../ARCHITECTURE.md#delivery-and-caching) describe
+the shipped layout.
+
 ## Goal
 
 **Current behaviour:** `package.json` (L67) declares `"web-ml": "file:../web-ml"`, which binds installation to an unversioned sibling checkout and causes `bun.lock` (L14, L904, L970) to omit a tarball integrity hash and pull in upstream `devDependencies` (such as `web-ml/prettier`). `scripts/build-model-assets.ts` (L109–115) hard-requires a `../web-ml` sibling directory via `stat(path.resolve(appDir, '../web-ml'))` before reading and hashing `node_modules/web-ml`, and its `setupError` message (L79–86) instructs contributors to place `samata-ml` beside a matching `../web-ml` checkout. `tests/model-assets.test.ts` (L55–60, L67) asserts that missing sibling check and creates a dummy sibling directory for manifest tests. `AGENTS.md`, `README.md`, `specification/ARCHITECTURE.md` and `specification/machine-learning-orchestrator.md` describe or assume the sibling `../web-ml` layout.
@@ -178,7 +184,7 @@ Facts verified by `codebase-scout`, so downstream agents need not re-sweep the t
 
 ## Risks and open questions
 
-- **Blocking:** Awaits the shipped packed semver `web-ml` release tarball from the open upstream request [2026-11-21-semver-package-tarball-releases.md](../../../web-ml/specification/requests/2026-11-21-semver-package-tarball-releases.md). Before submitting this plan to `ready-for-review`, rescout the shipped tarball (via `codebase-scout` through the public contract boundary) to pin its exact filename (`vendor/web-ml-<version>.tgz`), semver `webMlVersion`, provenance `WEB_ML_REVISION`, `package.json` SHA-256 hash, `publicFiles` list and `publicDigest`, `runtimeHashes` map, and resulting `graphDigest` (plus whether `tests/training-runtime.e2e.ts` L50 needs a semver regex update).
+- **Blocking:** None.
 - **Non-blocking:** Binary `.tgz` commits grow git history on each `web-ml` release upgrade. Mitigation: `web-ml` is a small prebuilt JS + WASM package (~hundreds of KB), only one active tarball is kept in `vendor/`, and upgrades happen infrequently at deliberate semver releases. Owner: maintainer.
 - **Non-blocking:** `README.md` L1 still carries the legacy `# web-ml` title (`specification/README.md` Known gap 10) and `bun.lock` L6 has stale workspace name `"web-ml-app"`. Left untouched as out-of-scope churn unless separately planned. Owner: maintainer.
 

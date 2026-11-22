@@ -3,14 +3,17 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ROOT_DIR } from './config';
 
-const webMlVersion = '0.1.0';
-/** Source revision of the verified executable graph and public declarations. */
-export const WEB_ML_REVISION = 'e568a7c9f37eb04f39463325c3314f8ca816dcc0';
+const webMlVersion = '0.2.0';
+const webMlTarball = `vendor/web-ml/web-ml-${webMlVersion}.tgz`;
+/** SHA-256 release identifier recorded with newly trained models. */
+export const WEB_ML_REVISION =
+	'sha256:82fc9163764805dde88ea1ca13eb3bd1a8a8a3f62d0eeb4930689c47028e76b0';
 
 // Pins the prebuilt module, its relative workers and WASM, and their notices to the
-// matching public package verified for Phase 3.
+// verified release tarball.
 const runtimeHashes = {
 	'LICENSE.md': '0ba4fb5f08e788173f083c3c53ff7ba7ad8e6888a6931e8cfb63f85d04ca2d11',
+	'THIRD-PARTY-NOTICES.md': '9edbb60a3d1c5f5c3bd24948b6be6eb1537ca7765cd29aa8b4a94a788facb0f7',
 	'dist/index.js': '8b1356550549140a42f9f5e680779c9bc3bfb633e3ca0c34a01bb7fe27dde68c',
 	'dist/training-orchestrator-dedicated.js':
 		'8cd9b88d562d9451240b416ffeb4a105db795898f1cfd79a453643babd321357',
@@ -81,13 +84,12 @@ const publicFiles = [
 	`${catalogue}/models/multinomial-nb.json`,
 	`${catalogue}/models/support-vector-classifier.json`
 ];
-const publicDigest = 'd3868b9f81bad7404d15bd1c2eef7e37c8f91ac6db3045d6b41090f360ada829';
+const publicDigest = '8ed43084a155c19cde393d3568c94192d8c6f03776b56733b1879d71c93f8738';
 
 function setupError(location: string, reason: string, cause?: unknown): Error {
 	return new Error(
-		`web-ml setup error at ${location}: ${reason}. Place the samata-ml checkout beside a ` +
-			`web-ml directory resolving to the verified prebuilt web-ml ${webMlVersion} package ` +
-			`at ${WEB_ML_REVISION}, then run bun install --frozen-lockfile --ignore-scripts.`,
+		`web-ml setup error at ${location}: ${reason}. Verify ${webMlTarball} ` +
+			`(${WEB_ML_REVISION}), then run bun install --frozen-lockfile --ignore-scripts.`,
 		{ cause }
 	);
 }
@@ -113,17 +115,16 @@ function digestGraph(files: readonly { name: string; hash: string }[]): string {
  * Returns the versioned, root-relative module URL to compile into the app worker.
  */
 export async function buildModelAssets(outDir: string, appDir = ROOT_DIR): Promise<string> {
-	const siblingDirectory = path.resolve(appDir, '../web-ml');
-	const sibling = await stat(siblingDirectory).catch((cause: unknown) => {
-		throw setupError(siblingDirectory, 'required prebuilt sibling is unavailable', cause);
+	const packageDirectory = path.join(appDir, 'node_modules', 'web-ml');
+	const installed = await stat(packageDirectory).catch((cause: unknown) => {
+		throw setupError(packageDirectory, 'installed package is unavailable', cause);
 	});
-	if (!sibling.isDirectory()) {
-		throw setupError(siblingDirectory, 'expected a directory');
+	if (!installed.isDirectory()) {
+		throw setupError(packageDirectory, 'expected a directory');
 	}
 
-	const packageDirectory = path.join(appDir, 'node_modules', 'web-ml');
 	const manifest = await readInput(packageDirectory, 'package.json');
-	if (manifest.hash !== 'dce1e460e3fcbe201c052670295c964038d1aebd7c64b7f6333e218c14d8b8a3') {
+	if (manifest.hash !== '230b2c18d60dfbeb749d132eee974620f2d09994dcee18e394b1125a43dd97e1') {
 		throw setupError(
 			path.join(packageDirectory, manifest.name),
 			'package manifest does not match the verified build'

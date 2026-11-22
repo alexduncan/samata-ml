@@ -3,7 +3,12 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<link rel="stylesheet" href="../style.css" />
+		<meta name="name" content="Choose Model Text Entries" />
+		<meta
+			name="description"
+			content="Accessible text-entry model chooser fallback for classifiers without illustrated cards, plus loading/error/empty states." />
+		<meta name="status" content="draft" />
+		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>samatā.ml | Train Models</title>
 	</head>
@@ -115,6 +120,8 @@
 				<h1>Train Models</h1>
 				<p>Choose a model to predict your target variable.</p>
 			</header>
+			<!-- Classification Models List -->
+			<!-- This will display when choosing a classification model for a categorical or boolean target. -->
 			<section>
 				<h2>Classification models</h2>
 				<p>Target: species. Choose a model, then continue.</p>
@@ -240,6 +247,10 @@
 				</ul>
 				<button class="btn btn-primary" type="button" disabled>Continue</button>
 			</section>
+			<!-- / Classification Models List -->
+
+			<!-- Regression Models List -->
+			<!-- This will display when choosing a regression model for a numeric target. -->
 			<section>
 				<h2>Regression models</h2>
 				<p>Target: body_mass_g. Choose a model, then continue.</p>
@@ -345,24 +356,41 @@
 				</ul>
 				<button class="btn btn-primary" type="button" disabled>Continue</button>
 			</section>
+			<!-- / Regression Models List -->
+
+			<!-- Model Selected Confirmation -->
+			<!-- This will display once a model has been chosen and the user can continue to feature selection. -->
 			<section>
 				<h2>Model selected</h2>
 				<p>Selected model: Gaussian Naive Bayes</p>
 				<button type="button" class="btn btn-primary">Continue</button>
 			</section>
+			<!-- / Model Selected Confirmation -->
+
+			<!-- Loading Models -->
+			<!-- This will display while the available model catalogue is being loaded. -->
 			<section>
 				<h2>Loading</h2>
 				<p role="status">Loading model information…</p>
 			</section>
+			<!-- / Loading Models -->
+
+			<!-- Models Load Error -->
+			<!-- This will display when the available model catalogue fails to load. -->
 			<section>
 				<h2>Error</h2>
 				<p role="alert">Model information could not be loaded.</p>
 				<button type="button" class="btn">Retry</button>
 			</section>
+			<!-- / Models Load Error -->
+
+			<!-- No Available Models -->
+			<!-- This will display when no models match the selected target column's data type. -->
 			<section>
 				<h2>No available models</h2>
 				<p>No models are available for this target type.</p>
 			</section>
+			<!-- / No Available Models -->
 		</main>
 	</body>
 </html>

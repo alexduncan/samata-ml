@@ -8,7 +8,8 @@ import {
 import type { ClassifierId } from '../src/features/models/model-catalogue';
 import {
 	$publicationPending,
-	createTrainingService
+	createTrainingService,
+	getTrainingConfigurationKey
 } from '../src/features/models/training/training-service';
 import type {
 	TrainingWorkerReply,
@@ -313,6 +314,39 @@ test('WML-P3-TRAIN-3: lost results demote only the matching trained model during
 	});
 	expect($appState.get().models[1]).toEqual(second);
 });
+
+test.each([
+	[
+		'k-neighbors-classifier',
+		[
+			['algorithm', 'brute'],
+			['metric', 'minkowski'],
+			['nNeighbors', 5],
+			['p', 2],
+			['weights', 'uniform']
+		]
+	],
+	[
+		'mlp-classifier',
+		[
+			['activation', 'relu'],
+			['hiddenLayerSizes', [100]],
+			['learningRate', 0.001],
+			['maxIter', 200],
+			['randomState', null],
+			['solver', 'adam'],
+			['tol', 0.000001]
+		]
+	]
+] as const)(
+	'keeps the saved configuration key for %s after upgrading web-ml',
+	(algorithm, options) => {
+		const { models } = seed(1, algorithm);
+		expect(getTrainingConfigurationKey(models[0]!, metadata.rowCount)).toBe(
+			JSON.stringify([algorithm, ['measurement'], options, 'native', ['one_shot', 0.2, 42]])
+		);
+	}
+);
 
 test.each(['one_shot'] as const)(
 	'WML-P4-EVAL-5: publishes the %s headline metrics and restores them on reload',
