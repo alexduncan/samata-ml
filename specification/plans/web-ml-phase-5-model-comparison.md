@@ -314,6 +314,8 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 ## Escalations
 
+Both T1 entry blockers below are resolved: Phase 4 is integrated and archived, dependencies are installed, `bun run check` passed 540 tests, and `bun run test:e2e tests/training-runtime.e2e.ts` passed all 27 cases across Chromium, Firefox and WebKit after port 3000 was free.
+
 **Task:** T1 (2026-11-22)
 **Blocker:** The integrated Phase 4 runtime suite cannot verify the development server in this worktree.
 **Evidence:** After `bun install --frozen-lockfile`, `bun run check` passed typecheck and 540 tests. `bun run test:e2e tests/training-runtime.e2e.ts` passed 15 and failed 12: in all three browsers the development and non-isolation cases reported “Runtime probe worker failed to load”; production cases passed. Playwright reused an existing server on port 3000, so it did not start this worktree's server with `SAMATA_TRAINING_RUNTIME_PROBE=1`.
