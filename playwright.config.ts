@@ -29,16 +29,16 @@ export default defineConfig({
 	],
 	webServer: [
 		{
-			command: 'bun run server',
+			command: 'bun run server --port 3000',
 			url: 'https://localhost:3000',
 			env: { SAMATA_TRAINING_RUNTIME_PROBE: '1' },
 			ignoreHTTPSErrors: true,
 			reuseExistingServer: !process.env.CI
 		},
 		{
-			command: 'bun run build && bun run server --dist',
+			command: 'bun run build && bun run server --dist --port 3001',
 			url: 'https://localhost:3001',
-			env: { SAMATA_SERVER_PORT: '3001', SAMATA_TRAINING_RUNTIME_PROBE: '1' },
+			env: { SAMATA_TRAINING_RUNTIME_PROBE: '1' },
 			ignoreHTTPSErrors: true,
 			reuseExistingServer: false
 		},

@@ -1,6 +1,6 @@
 # Worktree-scoped dev and test servers
 
-**Status:** ready | **Updated:** 2026-11-22T21:56:30Z
+**Status:** ready | **Updated:** 2026-11-22T21:58:11Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-22T16:21:47Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-22T21:40:35Z | **Verification:** approved
 **Verified hash:** sha256:17506e648891af4a9c90a8fc681df75c6afeba63b218c4c0966c44da8ef320f7
@@ -245,16 +245,16 @@ export function formatCheckoutFailure(
     - `playwright.config.ts` (interim, so `test:e2e` still starts after this task): the dev command becomes `bun run server --port 3000`, the dist command `bun run build && bun run server --dist --port 3001`, and the `SAMATA_SERVER_PORT` entry is removed from the dist `env`. Nothing else in the file changes; T3 replaces these literals with the port module.
     - `audit-mockups.ts` gains an optional `expectedRoot` input on `runMockupAudit` (default `CHECKOUT_ROOT`) so tests can point the check at the test server; it is not a CLI flag.
 - **Acceptance criteria:**
-    - [ ] `GET /__checkout` on a mockup server started by `startMockupsServer({ port: 0, … })` returns 200 JSON with `service: 'samata-ml-mockups'`, `root` = `CHECKOUT_ROOT`, `mode: null`, and `Cache-Control: no-store`; `HEAD` returns headers only; `POST` returns 405.
-    - [ ] `/`, `/index.json`, `/__source/<file>`, `/<file>` and `/<file>?clean=1` behave as before (existing `tests/serve-mockups.test.ts` cases pass unchanged).
-    - [ ] `parseCliArgs([])` returns `CHECKOUT_PORTS.mockups` when `PORT` is unset; existing explicit-port cases (L21–27) still pass.
-    - [ ] `parseAuditArgs(['../outside.html'])` reports `port: CHECKOUT_PORTS.mockups` (update L59).
-    - [ ] `runMockupAudit` against a test mockup server whose identity root differs from `expectedRoot` returns `exitCode` 2 with `report.setupError` naming both roots and `report.results` empty, and `latest.json` in the test's `reportDir` contains that `setupError`. Against a plain `Bun.serve` that answers every path with HTML, `report.setupError` contains the "does not report a samata-ml checkout" problem.
-    - [ ] Existing audit cases pass with `expectedRoot` matching the test server, including the unreachable-port case's `toContain('Start it with bun run mockups.')` (L143).
-    - [ ] `playwright.config.ts` differs from `main` only in the two `--port` flags and the removed `SAMATA_SERVER_PORT` entry, so `bun run test:e2e` starts in the primary checkout exactly as before (not run in this task; T3 runs it).
-    - [ ] No file under `scripts/` or `tests/` mentions `SAMATA_SERVER_PORT`.
+    - [x] `GET /__checkout` on a mockup server started by `startMockupsServer({ port: 0, … })` returns 200 JSON with `service: 'samata-ml-mockups'`, `root` = `CHECKOUT_ROOT`, `mode: null`, and `Cache-Control: no-store`; `HEAD` returns headers only; `POST` returns 405.
+    - [x] `/`, `/index.json`, `/__source/<file>`, `/<file>` and `/<file>?clean=1` behave as before (existing `tests/serve-mockups.test.ts` cases pass unchanged).
+    - [x] `parseCliArgs([])` returns `CHECKOUT_PORTS.mockups` when `PORT` is unset; existing explicit-port cases (L21–27) still pass.
+    - [x] `parseAuditArgs(['../outside.html'])` reports `port: CHECKOUT_PORTS.mockups` (update L59).
+    - [x] `runMockupAudit` against a test mockup server whose identity root differs from `expectedRoot` returns `exitCode` 2 with `report.setupError` naming both roots and `report.results` empty, and `latest.json` in the test's `reportDir` contains that `setupError`. Against a plain `Bun.serve` that answers every path with HTML, `report.setupError` contains the "does not report a samata-ml checkout" problem.
+    - [x] Existing audit cases pass with `expectedRoot` matching the test server, including the unreachable-port case's `toContain('Start it with bun run mockups.')` (L143).
+    - [x] `playwright.config.ts` differs from `main` only in the two `--port` flags and the removed `SAMATA_SERVER_PORT` entry, so `bun run test:e2e` starts in the primary checkout exactly as before (not run in this task; T3 runs it).
+    - [x] No file under `scripts/` or `tests/` mentions `SAMATA_SERVER_PORT`.
 - **Verification:** `bun test tests/serve-mockups.test.ts`, `bun test tests/audit-mockups.test.ts`, `bun run check`, `bun run format <changed files>`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-22T21:58:11Z)
 
 ### T3 — Playwright config, identity gate and test URLs
 
@@ -331,6 +331,7 @@ None.
 | ---------- | ---- | ------------- | ----------------------------- |
 | —          | —    | —             | Not started                   |
 | 2026-11-22T21:56:30Z | T1 | Claude Code (claude-sonnet-5-5) | Baseline bun run test:e2e (old fixed ports, worktree; may include foreign-server effects): 38 failed, 863 passed, 167 skipped. Failing titles: chromium app-shell NAV-E2E-2d, SNC-14, SNC-15, SNC-16, FOCUS-AC-2, PH-AC-2; content WML-P2-ROUTE-2; data-preview DATA-PRE-2; model-configuration WML-P1-UI-1,2,3,4(x2),9,4(multiclass),5,6(x3); models-setup MOD-SETUP-1..4; training-panels WML-P3-UI-2; visual-parity PARITY-sidebar-steps/-step-first/-step-adjacent/-step-last/-step-label, step-links, main, models-features-table, SIDE-AC-11; firefox SNC-15, PH-AC-2, WML-P1-UI-5; webkit PH-AC-2, WML-P1-UI-5. bun test ports+checkout-identity: 14 pass; bun run check: tsc OK, 554 pass 0 fail. Paths: scripts/ports.ts, scripts/checkout-identity.ts, scripts/config.ts, tests/ports.test.ts, tests/checkout-identity.test.ts |
+| 2026-11-22T21:58:11Z | T2 | Claude Code (claude-sonnet-5-5) | bun test serve-mockups+audit-mockups: 19 pass 0 fail; bun run check: tsc OK, 557 pass 0 fail; format:check clean; no SAMATA_SERVER_PORT in scripts/tests. Note: audit test file prints a pre-existing-looking AggregateError from beforeAll with 0 failures. Paths: scripts/server.ts, scripts/serve-mockups.ts, scripts/audit-mockups.ts, tests/serve-mockups.test.ts, tests/audit-mockups.test.ts, playwright.config.ts (interim --port flags) |
 
 ## Plan review history
 

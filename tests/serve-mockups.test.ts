@@ -13,6 +13,7 @@ import {
 	startMockupsServer,
 	type MockupIndexEntry
 } from '../scripts/serve-mockups';
+import { CHECKOUT_PORTS, CHECKOUT_ROOT } from '../scripts/ports';
 
 describe('mockup server helpers', () => {
 	it('extracts HTML titles and parses CLI flags', () => {
@@ -25,6 +26,7 @@ describe('mockup server helpers', () => {
 		});
 		expect(parseCliArgs(['-p', '8080', '-o']).port).toBe(8080);
 		expect(parseCliArgs(['--port=9999']).port).toBe(9999);
+		if (!process.env.PORT) expect(parseCliArgs([]).port).toBe(CHECKOUT_PORTS.mockups);
 	});
 
 	it('extracts mockup metadata across attribute orders, quote styles, entities, and fallbacks', () => {
@@ -216,6 +218,21 @@ describe('mockup server HTTP behaviour', () => {
 	});
 
 	const url = (pathname: string) => new URL(pathname, server.url);
+
+	it('reports the checkout identity on GET and HEAD and refuses POST', async () => {
+		const get = await server.fetch(new Request(url('/__checkout')));
+		expect(get.status).toBe(200);
+		expect(get.headers.get('Cache-Control')).toBe('no-store');
+		const body = (await get.json()) as Record<string, unknown>;
+		expect(body.service).toBe('samata-ml-mockups');
+		expect(body.root).toBe(CHECKOUT_ROOT);
+		expect(body.mode).toBeNull();
+		const head = await server.fetch(new Request(url('/__checkout'), { method: 'HEAD' }));
+		expect(head.status).toBe(200);
+		expect(await head.text()).toBe('');
+		const post = await server.fetch(new Request(url('/__checkout'), { method: 'POST' }));
+		expect(post.status).toBe(405);
+	});
 
 	it('serves the catalogue page and live /index.json with no-store headers', async () => {
 		const indexResponse = await server.fetch(new Request(url('/')));
