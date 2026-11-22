@@ -25,6 +25,7 @@ import {
 	setHyperparameters,
 	setTrainingSetup,
 	setModelResultsUi,
+	setComparisonUi,
 	setTrainingLogOpen,
 	recoverInterrupted
 } from '../src/stores/app.store';
@@ -40,6 +41,8 @@ import {
 	stopPersister,
 	flushNow,
 	MemoryStorage,
+	readAppSnapshot,
+	publishNewerTrainingSnapshot,
 	type StorageAdapter
 } from '../src/stores/persister';
 import { reconcileStartupState, type IndexedDBAdapter } from '../src/stores/reconciler';
@@ -56,6 +59,7 @@ import {
 	type ScrollSnapshot,
 	type ValidationMethodology
 } from '../src/types/state';
+import { comparisonOwner } from '../src/stores/comparison-preferences';
 
 function trainingIdentity(modelNum: number) {
 	const state = $appState.get();
@@ -95,6 +99,114 @@ const fiveFolds = {
 	innerFolds: 5,
 	randomState: 42
 } satisfies ValidationMethodology;
+
+describe('comparison preference ownership', () => {
+	beforeEach(() => {
+		stopPersister();
+		$appState.set({ ...INITIAL_APP_STATE });
+		loadDatasetSucceeded(sampleDataset);
+		setTarget('species');
+		createModel();
+		createModel();
+	});
+
+	it('WML-P5-STATE-1: round trips owned choices and sanitises invalid values', async () => {
+		const storage = new MemoryStorage();
+		initPersister(storage);
+		const owner = comparisonOwner($appState.get())!;
+		setComparisonUi(owner, {
+			fingerprint: 'a'.repeat(64),
+			selected: [2, 1, 2, 99],
+			ropeWidth: 0.5
+		});
+		flushNow();
+		const read = await reconcileStartupState(storage);
+		expect(read.results.owner).toEqual(owner);
+		expect(read.results.ui.selected).toEqual([1, 2]);
+		expect(read.results.ui.ropeWidth).toBe(0.01);
+		stopPersister();
+	});
+
+	it('WML-P5-STATE-1: legacy preferences and invalid epochs recover without discarding the domain', () => {
+		const storage = new MemoryStorage();
+		const state = $appState.get();
+		storage.setItem(STATE_STORAGE_KEY, JSON.stringify({ ...state, results: { ui: {} } }));
+		let read = readAppSnapshot(storage);
+		expect(read.ok && read.state).toMatchObject({
+			dataset: { id: sampleDataset.id },
+			models: [{ num: 1 }, { num: 2 }],
+			results: { owner: null, ui: { fingerprint: null } }
+		});
+		storage.setItem(
+			STATE_STORAGE_KEY,
+			JSON.stringify({ ...state, comparisonContextEpoch: -1 })
+		);
+		read = readAppSnapshot(storage);
+		expect(read.ok && read.state).toMatchObject({
+			comparisonContextEpoch: 0,
+			dataset: { id: sampleDataset.id },
+			results: { owner: null }
+		});
+	});
+
+	it('WML-P5-STATE-2: rejects delayed choices after A to B to A', () => {
+		const original = comparisonOwner($appState.get())!;
+		setComparisonUi(original, {
+			fingerprint: 'a'.repeat(64),
+			selected: [1, 2],
+			ropeWidth: 0.02
+		});
+		expect(setTarget('sepal_length')).toBe(false);
+		confirmDiscardModels();
+		setTarget('sepal_length');
+		setTarget('species');
+		createModel();
+		createModel();
+		setComparisonUi(original, {
+			fingerprint: 'a'.repeat(64),
+			selected: [1, 2],
+			ropeWidth: 0.02
+		});
+		expect($appState.get().results.owner).toBeNull();
+		expect($appState.get().results.ui.fingerprint).toBeNull();
+	});
+
+	it('WML-P5-STATE-1: limits selections and keeps an intentional empty selection', () => {
+		for (let i = 0; i < 8; i++) createModel();
+		const owner = comparisonOwner($appState.get())!;
+		setComparisonUi(owner, {
+			fingerprint: 'b'.repeat(64),
+			selected: [10, 9, 8, 7, 6, 5, 4, 3, 2, 1]
+		});
+		expect($appState.get().results.ui.selected).toEqual([1, 2, 3, 4, 5, 6, 7, 8]);
+		expect([$appState.get().results.ui.pairA, $appState.get().results.ui.pairB]).toEqual([
+			1, 2
+		]);
+		setComparisonUi(owner, { selected: [] });
+		expect($appState.get().results.ui).toMatchObject({
+			fingerprint: 'b'.repeat(64),
+			selected: [],
+			pairA: null,
+			pairB: null
+		});
+	});
+
+	it('WML-P5-STATE-3: a newer same-context publication preserves a dirty empty selection in memory', () => {
+		const storage = new MemoryStorage();
+		const owner = comparisonOwner($appState.get())!;
+		setComparisonUi(owner, { fingerprint: 'a'.repeat(64), selected: [1, 2] });
+		initPersister(storage);
+		const saved = $appState.get();
+		setComparisonUi(owner, { selected: [] });
+		publishNewerTrainingSnapshot({
+			...saved,
+			trainingDomainGeneration: saved.trainingDomainGeneration + 1
+		});
+		expect($appState.get().results.ui.selected).toEqual([]);
+		expect($appState.get().results.ui.fingerprint).toBe('a'.repeat(64));
+		stopPersister();
+	});
+});
 
 describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 	beforeEach(() => {

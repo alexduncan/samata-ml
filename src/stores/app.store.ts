@@ -19,6 +19,14 @@ import {
 	type WorkflowPath
 } from '../types/state';
 import { $scrollState, clearScroll } from './scroll.store';
+import {
+	comparisonOwner,
+	emptyComparisonResults,
+	ownedComparisonResults,
+	sameComparisonOwner,
+	sanitiseComparisonUi
+} from './comparison-preferences';
+import type { ComparisonOwner, ComparisonUi } from '../types/state';
 
 /**
  * Nanostore holding persisted domain application state.
@@ -133,6 +141,28 @@ export function dismissWelcome(): boolean {
 	}));
 }
 
+/** Updates comparison choices only for the context captured by the caller. */
+export function setComparisonUi(
+	expectedOwner: ComparisonOwner,
+	patch: Partial<ComparisonUi>
+): void {
+	updateState((state) => {
+		const owner = comparisonOwner(state);
+		if (!sameComparisonOwner(expectedOwner, owner)) return state;
+		const previous = ownedComparisonResults(state, state);
+		return {
+			...state,
+			results: {
+				owner,
+				ui: sanitiseComparisonUi(
+					{ ...previous.ui, ...patch },
+					state.models.map((model) => model.num)
+				)
+			}
+		};
+	});
+}
+
 /**
  * Updates the active workflow resume path.
  */
@@ -164,7 +194,15 @@ export function reduceDatasetReplacement(
 		...state,
 		dataset,
 		data: { mode: dataset ? 'preview' : 'select', selectedColumn: null },
-		...(same ? {} : { target: null, models: [], nextModelNum: 1 })
+		...(same
+			? {}
+			: {
+					target: null,
+					models: [],
+					nextModelNum: 1,
+					comparisonContextEpoch: state.comparisonContextEpoch + 1,
+					results: emptyComparisonResults()
+				})
 	};
 }
 
@@ -225,7 +263,14 @@ export function reduceTargetChange(
 	if (!selected || !isModelEligibleColumnType(selected.type)) return false;
 	if (state.target === column) return state;
 	if (state.models.length > 0 && !confirmed) return false;
-	return { ...state, target: column, models: [], ...(confirmed && { nextModelNum: 1 }) };
+	return {
+		...state,
+		target: column,
+		models: [],
+		comparisonContextEpoch: state.comparisonContextEpoch + 1,
+		results: emptyComparisonResults(),
+		...(confirmed && { nextModelNum: 1 })
+	};
 }
 
 /** Sets a target without discarding existing models. */
@@ -235,7 +280,13 @@ export function setTarget(column: string): boolean {
 
 /** Confirms discarding all models and associated scroll states. */
 export function confirmDiscardModels(): boolean {
-	const success = updateState((state) => ({ ...state, models: [], nextModelNum: 1 }));
+	const success = updateState((state) => ({
+		...state,
+		models: [],
+		nextModelNum: 1,
+		comparisonContextEpoch: state.comparisonContextEpoch + 1,
+		results: emptyComparisonResults()
+	}));
 	if (success) clearModelAndResultScroll();
 	return success;
 }

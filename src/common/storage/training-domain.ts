@@ -22,7 +22,7 @@ export type TrainingSetupDecodeOutcome = 'valid' | 'explicit-null' | 'unusable';
 /** Dataset, models and selection needed to replay a committed domain update. */
 export type ProtectedDomainSnapshot = Pick<
 	PersistedAppState,
-	'dataset' | 'target' | 'models' | 'nextModelNum' | 'data'
+	'dataset' | 'target' | 'models' | 'nextModelNum' | 'data' | 'comparisonContextEpoch'
 >;
 
 const VALID_COLUMN_TYPES = new Set<string>([
@@ -158,6 +158,12 @@ export function decodeProtectedDomain(
 	trainingSetupDecodeOutcomes: readonly TrainingSetupDecodeOutcome[];
 } | null {
 	if (!isPlainObject(val) || !nonnegativeInteger(val.nextModelNum) || val.nextModelNum < 1)
+		return null;
+	if (
+		storedCheckpoint &&
+		val.comparisonContextEpoch !== undefined &&
+		!nonnegativeInteger(val.comparisonContextEpoch)
+	)
 		return null;
 
 	if (val.dataset !== null) {
@@ -334,6 +340,9 @@ export function decodeProtectedDomain(
 			target: val.target,
 			models,
 			nextModelNum: val.nextModelNum,
+			comparisonContextEpoch: nonnegativeInteger(val.comparisonContextEpoch)
+				? val.comparisonContextEpoch
+				: 0,
 			data: { mode: val.data.mode, selectedColumn: val.data.selectedColumn }
 		},
 		trainingSetupDecodeOutcomes

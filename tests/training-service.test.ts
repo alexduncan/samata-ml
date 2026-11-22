@@ -23,7 +23,8 @@ import {
 	setHyperparameters,
 	setResumePath,
 	setTrainingLogOpen,
-	setModelResultsUi
+	setModelResultsUi,
+	setComparisonUi
 } from '../src/stores/app.store';
 import {
 	$storageSaveNotice,
@@ -55,6 +56,9 @@ import { headlineMetrics } from '../src/common/evaluation/headline-metrics';
 import { fixtureLegacyTrainingResult, fixtureTrainingResult } from './fixtures/training/results';
 import { installFakeIndexedDB } from './helpers/fake-indexeddb';
 import { createTrainingTestLocks } from './helpers/training-locks';
+import { comparisonOwner } from '../src/stores/comparison-preferences';
+import { $comparison, loadComparisonResults } from '../src/stores/comparison.store';
+import { $modelResults } from '../src/stores/model-results.store';
 
 const metadata: DatasetMetadata = {
 	id: 'training-dataset',
@@ -228,6 +232,62 @@ async function workerAt(index: number): Promise<ScriptedWorker> {
 	throw new Error('Training worker did not start');
 }
 
+test('WML-P5-STATE-2: a stale ordinary write cannot overwrite a reused context', async () => {
+	const initial = seed(2);
+	initPersister(storage, { trainingPersistence: guardedPersistence() });
+	const owner = comparisonOwner(initial)!;
+	setComparisonUi(owner, {
+		fingerprint: 'a'.repeat(64),
+		selected: [1, 2],
+		sort: { column: 'accuracy', direction: 'descending' },
+		pairA: 2,
+		pairB: 1,
+		ropeWidth: 0.02,
+		classFilter: 4
+	});
+	const replacement = {
+		...initial,
+		trainingDomainGeneration: 1,
+		comparisonContextEpoch: initial.comparisonContextEpoch + 2,
+		results: {
+			owner: { ...owner, epoch: initial.comparisonContextEpoch + 2 },
+			ui: {
+				...initial.results.ui,
+				fingerprint: 'b'.repeat(64),
+				selected: [1],
+				ropeWidth: 0.03
+			}
+		}
+	};
+	const { dataset, target, data, models, nextModelNum, comparisonContextEpoch } = replacement;
+	const committed = await commitTrainingCheckpoint(
+		db,
+		0,
+		{
+			operationId: 'foreign',
+			kind: 'recover',
+			domain: { dataset, target, data, models, nextModelNum, comparisonContextEpoch }
+		},
+		{ type: 'none' }
+	);
+	expect(committed.ok).toBe(true);
+	expect((await clearPendingTrainingCheckpoint(db, 1, 'foreign')).ok).toBe(true);
+	storage.setItem(
+		STATE_STORAGE_KEY,
+		JSON.stringify({
+			...replacement,
+			models: models.map((model) => ({
+				...model,
+				trainingSetup: { ...DEFAULT_ONE_SHOT_SETUP, type: 'train_test_split' }
+			}))
+		})
+	);
+	flushNow();
+	await locks.request(TRAINING_STATE_LOCK, () => {});
+	expect(storedState().results).toEqual(replacement.results);
+	stopPersister();
+});
+
 function blockFinishCleanup(generation = 2) {
 	const put = IDBObjectStore.prototype.put;
 	let denied = true;
@@ -269,6 +329,26 @@ test('WML-P3-TRAIN-1: rejects non-isolation and duplicate starts while preservin
 	expect((await db.getAll('model_results')).filter((entry) => entry.modelNum > 0)).toHaveLength(
 		2
 	);
+});
+
+test('WML-P5-MODEL-1: comparison loads current runs and reports unavailable results', async () => {
+	seed(2);
+	const first = service.start(1);
+	const firstWorker = await workerAt(0);
+	firstWorker.succeed();
+	expect(await first).toMatchObject({ ok: true });
+	const second = service.start(2);
+	const secondWorker = await workerAt(1);
+	secondWorker.succeed();
+	expect(await second).toMatchObject({ ok: true });
+	await loadComparisonResults();
+	expect($comparison.get().groups[0]?.models.map((model) => model.num)).toEqual([1, 2]);
+	expect($comparison.get().selected).toEqual([1, 2]);
+	const resource = $modelResults.get()[2]!;
+	$modelResults.setKey(2, { ...resource, status: 'lost', evaluation: null });
+	expect($comparison.get().unavailableModels).toContainEqual({ num: 2, reason: 'lost' });
+	expect($comparison.get().groups[0]?.reason).toBe('single-model');
+	$modelResults.set({});
 });
 
 test('WML-P3-TRAIN-2: releases cancelled attempt locks before discarding its captured dataset', async () => {
@@ -387,6 +467,8 @@ test('WML-P4-EVAL-6: a valid version 1 result stays trained with no metrics thro
 	});
 	expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({ ok: true });
 	expect($appState.get().models[0]).toMatchObject({ status: 'trained', metrics: null });
+	await loadComparisonResults();
+	expect($comparison.get().unavailableModels).toContainEqual({ num: 1, reason: 'legacy' });
 });
 
 test('WML-P4-EVAL-6: a corrupt result envelope follows result-loss recovery with its configuration intact', async () => {
@@ -833,7 +915,17 @@ test.each(['untouched', 'unsaved', 'denied', 'remote', 'acknowledged'] as const)
 			if (localEdit) expect(setTrainingLogOpen(1, true)).toBe(true);
 			expect(setResumePath('/models/1')).toBe(true);
 			expect(dismissWelcome()).toBe(true);
-			$appState.set({ ...$appState.get(), results: { ui: { expanded: true } } });
+			$appState.set({
+				...$appState.get(),
+				results: {
+					owner: {
+						datasetId: metadata.id,
+						target: $appState.get().target!,
+						epoch: $appState.get().comparisonContextEpoch
+					},
+					ui: { ...$appState.get().results.ui, ropeWidth: 0.02 }
+				}
+			});
 			flushNow();
 			await locks.request(TRAINING_STATE_LOCK, () => {});
 			expect($storageSaveNotice.get()).toMatchObject({ ok: false, reason: 'security' });
@@ -972,7 +1064,14 @@ test.each(['add model', 'replace model', 'replace target', 'replace revision'] a
 						{
 							operationId,
 							kind: 'recover',
-							domain: { dataset, target, data, models, nextModelNum }
+							domain: {
+								dataset,
+								target,
+								data,
+								models,
+								nextModelNum,
+								comparisonContextEpoch: next.comparisonContextEpoch
+							}
 						},
 						{ type: 'none' }
 					)
@@ -1178,7 +1277,14 @@ test.each([
 					{
 						operationId,
 						kind: 'recover',
-						domain: { dataset, data, target, models, nextModelNum }
+						domain: {
+							dataset,
+							data,
+							target,
+							models,
+							nextModelNum,
+							comparisonContextEpoch: next.comparisonContextEpoch
+						}
 					},
 					{ type: 'none' }
 				);
@@ -1668,7 +1774,14 @@ test.each([
 						{
 							operationId: 'remote-change',
 							kind: 'recover',
-							domain: { dataset, data, target, models, nextModelNum }
+							domain: {
+								dataset,
+								data,
+								target,
+								models,
+								nextModelNum,
+								comparisonContextEpoch: next.comparisonContextEpoch
+							}
 						},
 						{ type: 'none' }
 					)

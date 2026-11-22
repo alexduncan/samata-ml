@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-22T13:37:03Z
+**Status:** ready | **Updated:** 2026-11-22T21:54:13Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (gpt-6.2-astra) | **Verified:** 2026-11-21T20:09:18Z | **Verification:** approved
 **Verified hash:** sha256:c679357b13cc388e5a5188ab78f87cc09f1c1553fa92435016fc01958aefcc33
@@ -204,14 +204,14 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 - **Must not touch:** `src/features/results/app-*.ts`, `src/app.ts`
 - **Implementation:** Implement Interfaces §A and D1–D3, D6–D7, D10 once the Phase 4 implementation entry dependency is met. Fixtures extend Phase 4's `tests/fixtures/results/evaluations.ts` and `tests/fixtures/training/results-v2.ts`: three iris five-fold models sharing a fingerprint, one iris One-Shot model, one model with a different seed, one lost model, and two binary models.
 - **Acceptance criteria:**
-    - [ ] `WML-P5-MODEL-1` — Grouping yields the expected groups and default group; single-model groups are disabled with a reason; lost models appear in `unavailableModels`.
-    - [ ] `WML-P5-MODEL-2` — `tableRows` copies pooled `web-ml` values unchanged, computes SD/IQR with Phase 4 `foldSummary`, gap as the mean of paired per-partition train − test balanced accuracies, and FP/FN from the pooled matrix with `positiveClassIndex`; multiclass rows omit FP/FN.
-    - [ ] `WML-P5-MODEL-3` — `agreementCounts` and `confusionDelta` match hand-computed fixtures; mismatched row, class or partition axes suppress the group's comparison with a diagnostic.
-    - [ ] `WML-P5-STATE-1` — Legacy `results.ui: {}` hydrates with defaults and keeps protected state. Comparison preferences round-trip; missing/deleted model numbers are pruned; more than eight selected values are capped; invalid width resets to 0.01; a replacement dataset/target with reused model numbers cannot inherit old choices. Legacy result envelopes still appear as trained with an explanation.
-    - [ ] `WML-P5-STATE-2` — For an A → B → A target sequence with reused dataset ID, model numbers and partition fingerprint, a delayed action carrying the original owner and a stale tab’s dirty ordinary write cannot reintroduce its fingerprint, selection, sort, pair, ROPE width or class filter. Test both direct fixture writes and guarded merges. The current context’s valid authoritative preferences survive unrelated stale ordinary writes. Same-context edits and intentional empty selections survive a concurrent protected model update.
-    - [ ] `WML-P5-STATE-3` — A guarded dataset/target replacement clears comparison prefs on first publication and on retry/replay after a failed localStorage write, without extra epoch advances or losing unrelated ordinary settings. Cover the ordinary merge, newer-snapshot publication and local-ordinary overlay paths. In the stopped-publication fixture, valid dirty same-context choices remain in memory while disk retains the valid saved preferences until an ordinary flush. Keep the fixture’s unrelated preference and write-count assertions. Legacy v1 checkpoint replay, recovered publication, submitted-draft writes and reconciliation with a missing dataset/invalid target produce the correct acknowledged and stored owner/defaults.
+    - [x] `WML-P5-MODEL-1` — Grouping yields the expected groups and default group; single-model groups are disabled with a reason; lost models appear in `unavailableModels`.
+    - [x] `WML-P5-MODEL-2` — `tableRows` copies pooled `web-ml` values unchanged, computes SD/IQR with Phase 4 `foldSummary`, gap as the mean of paired per-partition train − test balanced accuracies, and FP/FN from the pooled matrix with `positiveClassIndex`; multiclass rows omit FP/FN.
+    - [x] `WML-P5-MODEL-3` — `agreementCounts` and `confusionDelta` match hand-computed fixtures; mismatched row, class or partition axes suppress the group's comparison with a diagnostic.
+    - [x] `WML-P5-STATE-1` — Legacy `results.ui: {}` hydrates with defaults and keeps protected state. Comparison preferences round-trip; missing/deleted model numbers are pruned; more than eight selected values are capped; invalid width resets to 0.01; a replacement dataset/target with reused model numbers cannot inherit old choices. Legacy result envelopes still appear as trained with an explanation.
+    - [x] `WML-P5-STATE-2` — For an A → B → A target sequence with reused dataset ID, model numbers and partition fingerprint, a delayed action carrying the original owner and a stale tab’s dirty ordinary write cannot reintroduce its fingerprint, selection, sort, pair, ROPE width or class filter. Test both direct fixture writes and guarded merges. The current context’s valid authoritative preferences survive unrelated stale ordinary writes. Same-context edits and intentional empty selections survive a concurrent protected model update.
+    - [x] `WML-P5-STATE-3` — A guarded dataset/target replacement clears comparison prefs on first publication and on retry/replay after a failed localStorage write, without extra epoch advances or losing unrelated ordinary settings. Cover the ordinary merge, newer-snapshot publication and local-ordinary overlay paths. In the stopped-publication fixture, valid dirty same-context choices remain in memory while disk retains the valid saved preferences until an ordinary flush. Keep the fixture’s unrelated preference and write-count assertions. Legacy v1 checkpoint replay, recovered publication, submitted-draft writes and reconciliation with a missing dataset/invalid target produce the correct acknowledged and stored owner/defaults.
 - **Verification:** `bun test tests/comparison-model.test.ts`; `bun test tests/state-and-storage.test.ts`; `bun test tests/training-domain.test.ts`; `bun test tests/training-service.test.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-22T21:54:13Z)
 
 ### T2 — Analysis worker and ROPE store
 
@@ -337,10 +337,11 @@ None.
 
 ## Implementation and verification log
 
-| When (UTC)           | Task | Agent (model)                 | Outcome / commands / evidence                                                                                                                                      |
-| -------------------- | ---- | ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 2026-11-22T13:37:03Z | —    | Codex (GPT-6)                 | T1 blocked by missing Phase 4 integration; `bun run check` failed because `tsc` was not found. Approval and task gates passed.                                     |
-| 2026-11-19T08:47:35Z | —    | Claude Code (claude-opus-5-5) | Planning: `codebase-scout` verified `/results` placeholder, focus/parity tests, `$canCompare`, page-header adoption; no `web-ml` statistical tests exist in 0.1.0. |
+| When (UTC)           | Task | Agent (model)                 | Outcome / commands / evidence                                                                                                                                                                                                                                                                                                      |
+| -------------------- | ---- | ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-22T13:37:03Z | —    | Codex (GPT-6)                 | T1 blocked by missing Phase 4 integration; `bun run check` failed because `tsc` was not found. Approval and task gates passed.                                                                                                                                                                                                     |
+| 2026-11-19T08:47:35Z | —    | Claude Code (claude-opus-5-5) | Planning: `codebase-scout` verified `/results` placeholder, focus/parity tests, `$canCompare`, page-header adoption; no `web-ml` statistical tests exist in 0.1.0.                                                                                                                                                                 |
+| 2026-11-22T21:54:13Z | T1   | Codex (GPT-6)                 | bun test tests/comparison-model.test.ts: 5 passed; bun test tests/state-and-storage.test.ts: 41 passed; bun test tests/training-domain.test.ts: 10 passed; bun test tests/training-service.test.ts: 80 passed; bun run check: 554 passed, typecheck passed; comparison grouping, preferences, checkpoint and replay paths updated. |
 
 ## Plan review history
 

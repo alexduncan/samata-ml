@@ -280,8 +280,8 @@ function stoppedOutcome(
 }
 
 function domain(state: PersistedAppState) {
-	const { dataset, target, data, models, nextModelNum } = state;
-	return { dataset, target, data, models, nextModelNum };
+	const { dataset, target, data, models, nextModelNum, comparisonContextEpoch } = state;
+	return { dataset, target, data, models, nextModelNum, comparisonContextEpoch };
 }
 
 /** Creates the route-independent service that owns resource locks and worker settlement. */
