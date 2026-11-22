@@ -22,6 +22,24 @@ function copy(build: () => StoredEvaluation): Mutable {
 	return structuredClone(build()) as unknown as Mutable;
 }
 
+/**
+ * Moves one count from `fall` to `rise` on a plateau of `rise`, keeping every row sum and class
+ * total consistent while making `rise` increase with the threshold.
+ */
+function shiftSweep(e: Mutable, rise: 'tp' | 'fp', fall: 'fn' | 'tn'): void {
+	const sweep = e.curves.thresholdSweep;
+	let i = 1;
+	while (
+		i < sweep[rise].length &&
+		!(sweep[rise][i] === sweep[rise][i - 1] && sweep[fall][i] > 0)
+	) {
+		i += 1;
+	}
+	if (i === sweep[rise].length) throw new Error('fixture has no plateau to corrupt');
+	sweep[rise][i] += 1;
+	sweep[fall][i] -= 1;
+}
+
 const corruptions: [string, () => StoredEvaluation | Mutable, (e: Mutable) => void][] = [
 	['unknown schema version', () => copy(breastCancerOneShot), (e) => (e.schemaVersion = 2)],
 	['invalid protocol tag', () => copy(breastCancerOneShot), (e) => (e.protocol.kind = 'holdout')],
@@ -203,6 +221,16 @@ const corruptions: [string, () => StoredEvaluation | Mutable, (e: Mutable) => vo
 		(e) => (e.curves.thresholdSweep = copy(breastCancerOneShot).curves.thresholdSweep)
 	],
 	['sweep counts', () => copy(breastCancerOneShot), (e) => (e.curves.thresholdSweep.tp[10] += 1)],
+	[
+		'sweep tp that increases with the threshold',
+		() => copy(breastCancerOneShot),
+		(e) => shiftSweep(e, 'tp', 'fn')
+	],
+	[
+		'sweep fp that increases with the threshold',
+		() => copy(breastCancerOneShot),
+		(e) => shiftSweep(e, 'fp', 'tn')
+	],
 	[
 		'sweep thresholds',
 		() => copy(breastCancerOneShot),

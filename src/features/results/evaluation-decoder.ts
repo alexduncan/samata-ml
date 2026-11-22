@@ -361,6 +361,9 @@ function curves(
 			if (tp[i]! + fn[i]! !== tp[0]! + fn[0]! || fp[i]! + tn[i]! !== fp[0]! + tn[0]!) {
 				fail('thresholdSweep class totals must be constant');
 			}
+			if (i > 0 && (tp[i]! > tp[i - 1]! || fp[i]! > fp[i - 1]!)) {
+				fail('thresholdSweep cumulative counts must not increase with the threshold');
+			}
 		}
 		thresholdSweep = { thresholds, tp, fp, tn, fn, tpr, fpr };
 	}
