@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
+import { APP_URL, CHECKOUT_PORTS, DIST_URL, MOCKUPS_URL } from './scripts/ports';
 
 export default defineConfig({
+	globalSetup: './tests/global-setup.ts',
 	testDir: './tests',
 	testMatch: /.*\.e2e\.ts/,
 	fullyParallel: true,
@@ -9,7 +11,7 @@ export default defineConfig({
 	workers: process.env.CI ? 1 : undefined,
 	reporter: 'list',
 	use: {
-		baseURL: 'https://localhost:3000',
+		baseURL: APP_URL,
 		ignoreHTTPSErrors: true,
 		trace: 'on-first-retry'
 	},
@@ -29,22 +31,22 @@ export default defineConfig({
 	],
 	webServer: [
 		{
-			command: 'bun run server --port 3000',
-			url: 'https://localhost:3000',
+			command: `bun run server --port ${CHECKOUT_PORTS.app}`,
+			url: APP_URL,
 			env: { SAMATA_TRAINING_RUNTIME_PROBE: '1' },
 			ignoreHTTPSErrors: true,
 			reuseExistingServer: !process.env.CI
 		},
 		{
-			command: 'bun run build && bun run server --dist --port 3001',
-			url: 'https://localhost:3001',
+			command: `bun run build && bun run server --dist --port ${CHECKOUT_PORTS.dist}`,
+			url: DIST_URL,
 			env: { SAMATA_TRAINING_RUNTIME_PROBE: '1' },
 			ignoreHTTPSErrors: true,
 			reuseExistingServer: false
 		},
 		{
-			command: 'bun run mockups --port 3333',
-			url: 'http://localhost:3333',
+			command: `bun run mockups --port ${CHECKOUT_PORTS.mockups}`,
+			url: MOCKUPS_URL,
 			reuseExistingServer: !process.env.CI
 		}
 	]

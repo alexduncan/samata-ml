@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import compas from '../content/datasets/compas-recidivism/descriptor';
+import { APP_URL, DIST_URL } from '../scripts/ports';
 
 type ProbeReply =
 	| { kind: 'trained'; runtimeUrl: string }
@@ -35,8 +36,8 @@ async function runProbe(page: Page, command: 'train' | 'cancel' | 'one-shot'): P
 }
 
 const origins = [
-	{ name: 'development', url: 'https://localhost:3000' },
-	{ name: 'production', url: 'https://localhost:3001' }
+	{ name: 'development', url: APP_URL },
+	{ name: 'production', url: DIST_URL }
 ];
 
 for (const origin of origins) {
