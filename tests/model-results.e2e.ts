@@ -220,6 +220,35 @@ test.describe('Section 6 shared results', () => {
 		await expect(matrix.locator('tbody tr')).toHaveCount(1);
 	});
 
+	test('WML-P4-UI-11: scroll restoration lands on the same Section 6 block after reload', async ({
+		page
+	}) => {
+		await seedTrainedModel(page, 'breast-cancer');
+		await waitForResults(page);
+		const explorer = results(page).locator('app-threshold-explorer');
+		const savedTop = await explorer.evaluate((element) => {
+			const top = Math.round(element.getBoundingClientRect().top + window.scrollY);
+			window.scrollTo({ top, behavior: 'instant' });
+			return Math.round(window.scrollY);
+		});
+		expect(savedTop).toBeGreaterThan(0);
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const raw = localStorage.getItem('samata-ml:scroll');
+					const snapshot = raw
+						? (JSON.parse(raw) as { snapshots: Record<string, { top: number }> })
+								.snapshots['models/1']
+						: undefined;
+					return snapshot ? Math.round(snapshot.top) : null;
+				})
+			)
+			.toBe(savedTop);
+		await page.reload();
+		await waitForResults(page);
+		await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(savedTop);
+	});
+
 	test('WML-P4-UI-12: Section 6 has no horizontal overflow at 320 px', async ({ page }) => {
 		await seedTrainedModel(page, 'many-classes');
 		await waitForResults(page);
