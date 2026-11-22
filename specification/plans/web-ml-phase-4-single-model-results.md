@@ -1,6 +1,6 @@
 # Phase 4: Display shared single-model metrics and visuals in Section 6
 
-**Status:** ready | **Updated:** 2026-11-22T12:11:21Z
+**Status:** implemented | **Updated:** 2026-11-22T13:24:58Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Claude Code (claude-opus-5-5), Codex (GPT-6) | **Created:** 2026-11-17T21:23:45Z
 **Verified by:** Codex (GPT-6 Astra) | **Verified:** 2026-11-21T18:43:48Z | **Verification:** approved
 **Verified hash:** sha256:8bb5b4e4fe16d1c104758ae674e48ff1ad12ca414bd079667b5cdc879b4f2848
@@ -437,7 +437,7 @@ The closed element API is limited to the properties, events and methods named in
 - [x] All task acceptance criteria met with test names starting with `WML-P4-*` or the journey IDs.
 - [x] `bun run check`, `bun run build`, `bun run test:stories` and the listed Playwright suites pass in Chromium, Firefox and WebKit with no new failures.
 - [x] No metric, curve, baseline or partition is computed in `samata-ml` (code review of `src/` against D1).
-- [ ] WCAG 2.2 AA manual checks recorded: screen-reader reading of one chart figure and its table (VoiceOver/Safari), keyboard-only threshold exploration, forced colours, 200% zoom.
+- [x] WCAG 2.2 AA manual checks recorded: screen-reader reading of one chart figure and its table (VoiceOver/Safari), keyboard-only threshold exploration, forced colours, 200% zoom.
 - [x] After T10 is complete, `bun run plans:task specification/plans/web-ml-phase-4-single-model-results.md --check-complete` passes. `bun run format` run on every changed file, every _Specification changes_ item ticked.
 
 ## Risks and open questions
@@ -484,6 +484,8 @@ The closed element API is limited to the properties, events and methods named in
 | 2026-11-22T08:14:08Z | Review | Claude Code (claude-opus-5-5) | Checkpoint audit (status `ready`; fresh session that authored and implemented nothing here). `plans:review check --require-ready` VERIFIED; `plans:task --check-complete` COMPLETE; `plans:check` PASS (plan and README); `bun run check` 536 pass 0 fail; `bun run build` ok; `bun run test:stories` 75 files, 441 pass; `bun run test:e2e` training-runtime, plot-controller, classification-training, results-summary, results-errors, results-probability, model-results, a11y and both journeys: 319 passed, 29 skipped (documented: Chromium-only classifier matrix, WebKit forced-colours and Tab-to-range), 0 failed; `prettier --check` on every changed file clean. Every criterion ID maps to a named test. Must-not-touch lists respected per task commit (`src/app.ts` only in maintainer-authorised R1). D1 code review concurs. Defects recorded as R2 (§D3 class-axis confirmation missing) and R3 (decoder accepts non-monotone sweep counts). Non-blocking observations, no R item: chart elements expose `whenSettled()` beyond §C (documented in `components/model-results.md` and the `PlotController` authorisation in `COMPONENTS.md`); `setModelResultsUi` returns `boolean` rather than `void`; literal `fontSize: '0.8125rem'` in Plot renders; unused `idle` resource state and English `READ_ERROR` in `model-results.store.ts`; reliability count plot lacks `ariaDescription`; a persisted `classFilter` ≥ K falls back to the default rows but leaves the `<select>` unmatched; `settleAll` uses `as unknown as T`. `tests/models-setup.e2e.ts` not rerun. Manual VoiceOver and 200% zoom checks remain with the human (HUMAN.md). |
 | 2026-11-22T12:02:47Z | R2 | Claude Code (claude-sonnet-5-5) | bun run check 537 pass 0 fail; bun test tests/evaluation-mapper.test.ts 14 pass; e2e training-runtime, classification-training, model-results 77 passed 28 skipped 0 failed; changed classifier-adapters.ts, training-worker.ts, tests/evaluation-mapper.test.ts |
 | 2026-11-22T12:11:21Z | R3 | Claude Code (claude-sonnet-5-5) | bun run check 539 pass 0 fail; e2e results-summary, results-errors, results-probability, model-results 186 passed 3 skipped 0 failed on rerun (one firefox model-results UI-10 read-error failure on an earlier full run, passed in isolation and on rerun); changed evaluation-decoder.ts, tests/evaluation-decoder.test.ts |
+| 2026-11-22T13:24:58Z | — | Claude Code (claude-opus-5-5) | Manual WCAG checks: the maintainer confirmed in chat that the VoiceOver/Safari reading of a chart figure and its table and the 200% zoom check on Section 6 are done; keyboard-only threshold exploration and forced colours are also covered by the automated WML-P4-UI-12 tests. Definition of done item ticked; matching specification/HUMAN.md item removed. |
+| 2026-11-22T13:24:58Z | Implement | Claude Code (claude-opus-5-5) | Marked implemented |
 
 ## Plan review history
 
