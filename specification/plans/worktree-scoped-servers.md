@@ -1,8 +1,8 @@
 # Worktree-scoped dev and test servers
 
-**Status:** draft | **Updated:** 2026-11-22T21:29:44Z
+**Status:** ready-for-review | **Updated:** 2026-11-22T21:31:15Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-22T16:21:47Z
-**Verified by:** — | **Verified:** — | **Verification:** changes-requested
+**Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -211,6 +211,7 @@ export function formatCheckoutFailure(
 - **Likely files:** `scripts/ports.ts`, `scripts/checkout-identity.ts`, `scripts/config.ts`, `tests/ports.test.ts`, `tests/checkout-identity.test.ts`
 - **Must not touch:** `playwright.config.ts`, `scripts/server.ts`, `scripts/serve-mockups.ts` — wired up in T2 and T3.
 - **Implementation:**
+    - Baseline first: before editing any file in this plan, run `bun run test:e2e` once and record the failing test titles in the _Implementation and verification log_. The run uses the old fixed ports and may reuse another checkout's servers, so it is indicative only; T3 compares against it.
     - Create `scripts/ports.ts` and `scripts/checkout-identity.ts` exactly as in _Interfaces and behaviour_, D1–D4 and D6. Only `node:` imports. `CHECKOUT_ROOT` is `realpathSync.native(fileURLToPath(new URL('..', import.meta.url)))`.
     - `detectCheckoutKind`: `lstatSync(join(root, '.git'))`; `isFile()` → `linked-worktree`; directory or `ENOENT` → `primary`; any other error is rethrown.
     - Add `export const CONTENT_DIR = path.join(ROOT_DIR, 'content');` with TSDoc to `scripts/config.ts`.
@@ -228,19 +229,20 @@ export function formatCheckoutFailure(
     - [ ] `formatCheckoutFailure` output names each failing URL, both roots when they differ, `SAMATA_PORT_BASE`, and the instruction not to stop processes the session did not start.
     - [ ] `createCheckoutIdentityResponse` sets status 200, `Cache-Control: no-store` and JSON content type; `HEAD` has an empty body.
     - [ ] Neither new module contains `Bun.` or `import.meta.dir`, and neither imports `./config`.
-- **Verification:** `bun test tests/ports.test.ts`, `bun test tests/checkout-identity.test.ts`, `bun run check`, `bun run format <changed files>`
+- **Verification:** `bun run test:e2e` (baseline only, before any edit), `bun test tests/ports.test.ts`, `bun test tests/checkout-identity.test.ts`, `bun run check`, `bun run format <changed files>`
 - **Progress:** [ ] Not started
 
 ### T2 — Servers and mockup audit
 
 - **Depends on:** T1
 - **Risk:** needs care — `scripts/server.ts` has no unit tests; its route is proved by T3's end-to-end run.
-- **Likely files:** `scripts/server.ts`, `scripts/serve-mockups.ts`, `scripts/audit-mockups.ts`, `tests/serve-mockups.test.ts`, `tests/audit-mockups.test.ts`
+- **Likely files:** `scripts/server.ts`, `scripts/serve-mockups.ts`, `scripts/audit-mockups.ts`, `tests/serve-mockups.test.ts`, `tests/audit-mockups.test.ts`, `playwright.config.ts` — interim port flags only
 - **Must not touch:** `scripts/static-server.ts`, `scripts/build-assets.ts`, `scripts/certificates.ts` — behaviour unchanged.
 - **Implementation:**
-    - `server.ts`: delete the local `CONTENT_DIR` (L12) and the duplicate `join` import, import `CONTENT_DIR` from `./config`. `PORT = parsePortOption(process.argv.slice(2), process.env, CHECKOUT_PORTS.app)`. Capture `trainingRuntimeProbe = !SERVE_DIST ? process.env.SAMATA_TRAINING_RUNTIME_PROBE === '1' : null` once at start. In `fetch`, before `/__hmr`, answer `CHECKOUT_IDENTITY_PATH` with `createCheckoutIdentityResponse({ service: 'samata-ml-app', root: CHECKOUT_ROOT, servingDir: SERVE_DIR, mode: SERVE_DIST ? 'dist' : 'dev', trainingRuntimeProbe }, request.method)`; other methods on that path get 405. Remove every `SAMATA_SERVER_PORT` reference. The startup log prints the URL it bound.
+    - `server.ts`: delete the local `CONTENT_DIR` (L12) and the `import { join } from 'node:path'` at L10 (its only use is L12; the `path` default import at L4 stays), import `CONTENT_DIR` from `./config`. `PORT = parsePortOption(process.argv.slice(2), process.env, CHECKOUT_PORTS.app)`. Capture `trainingRuntimeProbe = !SERVE_DIST ? process.env.SAMATA_TRAINING_RUNTIME_PROBE === '1' : null` once at start. In `fetch`, before `/__hmr`, answer `CHECKOUT_IDENTITY_PATH` with `createCheckoutIdentityResponse({ service: 'samata-ml-app', root: CHECKOUT_ROOT, servingDir: SERVE_DIR, mode: SERVE_DIST ? 'dist' : 'dev', trainingRuntimeProbe }, request.method)`; other methods on that path get 405. Remove every `SAMATA_SERVER_PORT` reference. The startup log prints the URL it bound.
     - `serve-mockups.ts`: `parseCliArgs` uses `parsePortOption(argv, process.env, CHECKOUT_PORTS.mockups, ['--port', '-p'])` for the port and keeps host/open parsing. Remove `DEFAULT_PORT` or set it from `CHECKOUT_PORTS.mockups`. Add the identity route before `decodePath` (L656), with `service: 'samata-ml-mockups'`, `root: CHECKOUT_ROOT`, `servingDir` = the resolved `rootDir`, `mode: null`, `trainingRuntimeProbe: null`.
-    - `audit-mockups.ts`: default port `CHECKOUT_PORTS.mockups` (L8, L65, L308). When the reachability fetch leaves `report.setupError` unset, fetch `` `${server}/__checkout` `` (1500 ms timeout, as the reachability fetch). A network error or non-JSON body counts as a reply of `null`. If `compareCheckoutIdentity` returns problems, set `report.setupError = formatCheckoutFailure([{ expected, problems }])`. Control flow, report writing and exit code stay as they are for other setup errors. `main()` is unchanged apart from the usage text. The unreachable hint names the URL and says `bun run mockups` (or `--port` to target another port of this checkout). Usage text shows `[--port <port>]` and says the default is this checkout's mockup port.
+    - `audit-mockups.ts`: default port `CHECKOUT_PORTS.mockups` (L8, L65, L308). When the reachability fetch leaves `report.setupError` unset, fetch `` `${server}/__checkout` `` (1500 ms timeout, as the reachability fetch). A network error or non-JSON body counts as a reply of `null`. If `compareCheckoutIdentity` returns problems, set `report.setupError = formatCheckoutFailure([{ expected, problems }])`. Control flow, report writing and exit code stay as they are for other setup errors. `main()` is unchanged apart from the usage text. The unreachable hint keeps its existing text `Cannot reach ${server}. Start it with bun run mockups.` verbatim (asserted by `tests/audit-mockups.test.ts` L143) and appends ` Use --port <port> to audit a server on another port of this checkout.` Usage text shows `[--port <port>]` and says the default is this checkout's mockup port.
+    - `playwright.config.ts` (interim, so `test:e2e` still starts after this task): the dev command becomes `bun run server --port 3000`, the dist command `bun run build && bun run server --dist --port 3001`, and the `SAMATA_SERVER_PORT` entry is removed from the dist `env`. Nothing else in the file changes; T3 replaces these literals with the port module.
     - `audit-mockups.ts` gains an optional `expectedRoot` input on `runMockupAudit` (default `CHECKOUT_ROOT`) so tests can point the check at the test server; it is not a CLI flag.
 - **Acceptance criteria:**
     - [ ] `GET /__checkout` on a mockup server started by `startMockupsServer({ port: 0, … })` returns 200 JSON with `service: 'samata-ml-mockups'`, `root` = `CHECKOUT_ROOT`, `mode: null`, and `Cache-Control: no-store`; `HEAD` returns headers only; `POST` returns 405.
@@ -248,7 +250,8 @@ export function formatCheckoutFailure(
     - [ ] `parseCliArgs([])` returns `CHECKOUT_PORTS.mockups` when `PORT` is unset; existing explicit-port cases (L21–27) still pass.
     - [ ] `parseAuditArgs(['../outside.html'])` reports `port: CHECKOUT_PORTS.mockups` (update L59).
     - [ ] `runMockupAudit` against a test mockup server whose identity root differs from `expectedRoot` returns `exitCode` 2 with `report.setupError` naming both roots and `report.results` empty, and `latest.json` in the test's `reportDir` contains that `setupError`. Against a plain `Bun.serve` that answers every path with HTML, `report.setupError` contains the "does not report a samata-ml checkout" problem.
-    - [ ] Existing audit cases pass with `expectedRoot` matching the test server.
+    - [ ] Existing audit cases pass with `expectedRoot` matching the test server, including the unreachable-port case's `toContain('Start it with bun run mockups.')` (L143).
+    - [ ] `playwright.config.ts` differs from `main` only in the two `--port` flags and the removed `SAMATA_SERVER_PORT` entry, so `bun run test:e2e` starts in the primary checkout exactly as before (not run in this task; T3 runs it).
     - [ ] No file under `scripts/` or `tests/` mentions `SAMATA_SERVER_PORT`.
 - **Verification:** `bun test tests/serve-mockups.test.ts`, `bun test tests/audit-mockups.test.ts`, `bun run check`, `bun run format <changed files>`
 - **Progress:** [ ] Not started
@@ -267,7 +270,7 @@ export function formatCheckoutFailure(
     - `tests/test-server-urls.test.ts` (D11): reads `playwright.config.ts`, every `tests/**/*.e2e.ts` and `tests/visual-parity/**/*.ts`, and fails listing `file:line` for any `localhost:3000`, `localhost:3001` or `localhost:3333`.
     - `.claude/launch.json`: `app` → `"runtimeArgs": ["run", "server", "--port", "3000"]`, `"port": 3000`, `"autoPort": false`, `"url": "https://localhost:3000"`, `"env": { "SAMATA_TRAINING_RUNTIME_PROBE": "1" }`; `mockups` → `"runtimeArgs": ["run", "mockups", "--port", "3333"]`, `"port": 3333`, `"autoPort": true`. Keep `version` and names unchanged.
 - **Acceptance criteria:**
-    - [ ] Baseline: before editing any T3 file, run `bun run test:e2e` once and record the failing test titles in the log (the run uses the old fixed ports and may reuse another checkout's servers, so it is indicative only). After T3, `bun run test:e2e` in this worktree starts servers on this checkout's derived ports (not 3000/3001/3333). Every remaining failure must appear in that baseline list or in the known `main` failures in `specification/HUMAN.md` (the 9 `tests/visual-parity.e2e.ts` failures and `PH-AC-2`); each one is listed in the log with its reason. Any other failure blocks the task.
+    - [ ] After T3, `bun run test:e2e` in this worktree starts servers on this checkout's derived ports (not 3000/3001/3333). Every remaining failure must appear in the T1 baseline list or in the known `main` failures in `specification/HUMAN.md` (the 9 `tests/visual-parity.e2e.ts` failures and `PH-AC-2`); each one is listed in the log with its reason. Any other failure blocks the task.
     - [ ] Negative: with a mockup server from another directory listening on this checkout's mockup port (or a server without `/__checkout`), `bun run test:e2e tests/mockup-review.e2e.ts` fails in `globalSetup` before any test, and the message names the URL, both roots (or the missing endpoint) and `SAMATA_PORT_BASE`. Record the exact setup used; if the implementer cannot create such a server within Verification Commands, record the check as not run and cover it by the T1 unit cases.
     - [ ] Negative: a dev app server reused without `SAMATA_TRAINING_RUNTIME_PROBE=1` fails `globalSetup` with the probe problem, not 12 runtime-probe test failures (same recording rule).
     - [ ] Two linked worktrees can run `bun run test:e2e` at the same time without port conflicts (recorded as not run if only one worktree is available).
@@ -285,7 +288,7 @@ export function formatCheckoutFailure(
 - **Must not touch:** `specification/mockups/` — no mockup changes.
 - **Implementation:**
     - Apply every item under _Specification changes_ in present tense ("One rule, one place").
-    - `README.md`: the dev server, mockup and `--dist` sections say the ports are the checkout's (3000/3001/3333 in the primary checkout), how a linked worktree gets its block, `SAMATA_PORT_BASE`, `--port`/`PORT`, and `/__checkout`. Fix `server -- --dist` / `server --dist` consistency only if both work as documented.
+    - `README.md`: the dev server, mockup and `--dist` sections say the ports are the checkout's (3000/3001/3333 in the primary checkout), how a linked worktree gets its block, `SAMATA_PORT_BASE`, `--port`/`PORT`, and `/__checkout`. A manual `bun run server --dist` without `--port` binds the checkout's app port (3000 in the primary checkout), not 3001; only Playwright passes the dist port. The README's production section says so and shows `--port` for running both at once. Fix `server -- --dist` / `server --dist` consistency only if both work as documented.
     - `README.md` gains a short _Previews in worktrees_ note: the desktop previews use 3000 and 3333 in every checkout; the app preview fails if 3000 is taken, the mockup preview moves to a free port; a worktree preview holding 3000 or 3333 makes the primary checkout's `test:e2e` stop at `globalSetup` with the worktree's root; Playwright in a worktree uses that worktree's own ports regardless.
     - `AGENTS.md` §Verification Commands, `bun run test:e2e` bullet: append "servers use this checkout's ports from `scripts/ports.ts`; a result from another checkout's server is not evidence". No other `AGENTS.md` change.
     - Tick _Specification changes_ items; set the plan's status per the lifecycle.
@@ -342,3 +345,4 @@ None.
 | 2026-11-22T16:21:47Z | Initial draft                          | Maintainer request after parallel sessions tested other checkouts' servers; implements agent-workflow `worktree-session-readiness` D11 guidance for samata-ml                                                                                                                                                                                                                                          |
 | 2026-11-22T16:34:20Z | Resolved Q1–Q4                         | Maintainer chose explicit preview ports (D9), the probe flag in the app preview (D10), retiring `SAMATA_SERVER_PORT` (D5), the 20000–32764 range (D3) and the audit identity check (D8)                                                                                                                                                                                                                |
 | 2026-11-22T21:23:03Z | Revised after changes-requested review | D8/T2: audit identity failure follows the existing `report.setupError` contract (reports written, `exitCode` 2). T3: URL criterion limited to the guard's scope; e2e baseline defined. Strict `parsePortOption` rules; `realpathSync.native`; corrected facts (classification-training L43, Storybook `package.json` L13, `fixtures.ts` loaded by `bun test`); desktop-preview risk queued in HUMAN.md |
+| 2026-11-22T21:31:10Z | Revised after round-2 review           | e2e baseline moved to T1 before any edit; T2 adds interim `--port 3000`/`--port 3001` flags to `playwright.config.ts` and drops `SAMATA_SERVER_PORT`, so every task commit can start `test:e2e`; audit unreachable hint keeps the asserted sentence; README states a manual `--dist` server binds the app port; L10 import wording                                                                     |
