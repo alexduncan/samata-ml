@@ -1,6 +1,6 @@
 # Worktree-scoped dev and test servers
 
-**Status:** ready | **Updated:** 2026-11-22T21:40:35Z
+**Status:** ready | **Updated:** 2026-11-22T21:56:30Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-22T16:21:47Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-22T21:40:35Z | **Verification:** approved
 **Verified hash:** sha256:17506e648891af4a9c90a8fc681df75c6afeba63b218c4c0966c44da8ef320f7
@@ -217,20 +217,20 @@ export function formatCheckoutFailure(
     - Add `export const CONTENT_DIR = path.join(ROOT_DIR, 'content');` with TSDoc to `scripts/config.ts`.
     - Tests use temporary directories (`node:fs` `mkdtempSync`) with a `.git` directory, a `.git` file and no `.git`.
 - **Acceptance criteria:**
-    - [ ] A primary root (`.git` directory) and a root without `.git` resolve to 3000/3001/3333 with source `primary-default`.
-    - [ ] A linked-worktree root resolves to app `B`, dist `B + 1`, mockups `B + 2`, where `B` = `deriveWorktreePortBase(realpath(root))`, `B` ≥ 20000, `B` ≤ 32762, `(B − 20000) mod 3 = 0`; resolving twice gives the same ports.
-    - [ ] `fnv1a32('')` is 2166136261 and `fnv1a32('a')` is 3826002220 (published FNV-1a 32-bit test vectors).
-    - [ ] `SAMATA_PORT_BASE=1024` and `=65533` are accepted for both kinds (source `override`); `1023`, `65534`, `3000.5`, `abc` and `-1` throw an `Error` whose message contains `SAMATA_PORT_BASE`; `''` behaves as unset.
-    - [ ] `parsePortOption`: `--port 4000` and `--port=4000` beat `PORT=5000`; `PORT=5000` beats the fallback; `PORT=abc` and `--port 70000` fall back; `-p 4001` is honoured only when `-p` is in `flags`.
-    - [ ] `checkoutUrls` returns `https://localhost:<app>`, `https://localhost:<dist>` and `http://localhost:<mockups>`, no trailing slash.
-    - [ ] `CHECKOUT_ROOT` equals `realpathSync.native(ROOT_DIR)` from `scripts/config.ts`.
-    - [ ] `parsePortOption`: `['--port', '4000', '--port', 'x']` gives 4000; `['--port', 'x', '--port=4001']` gives 4001; `['--port', '4000abc']` with `PORT=5000` gives 5000; `PORT='4000abc'` gives the fallback.
-    - [ ] `compareCheckoutIdentity` returns `[]` for a matching reply, and one problem each for: `null`, an HTML string, an object without `root`, a different `root`, the wrong `service`, mode `dist` where `dev` is expected, and `trainingRuntimeProbe: false` where `true` is expected.
-    - [ ] `formatCheckoutFailure` output names each failing URL, both roots when they differ, `SAMATA_PORT_BASE`, and the instruction not to stop processes the session did not start.
-    - [ ] `createCheckoutIdentityResponse` sets status 200, `Cache-Control: no-store` and JSON content type; `HEAD` has an empty body.
-    - [ ] Neither new module contains `Bun.` or `import.meta.dir`, and neither imports `./config`.
+    - [x] A primary root (`.git` directory) and a root without `.git` resolve to 3000/3001/3333 with source `primary-default`.
+    - [x] A linked-worktree root resolves to app `B`, dist `B + 1`, mockups `B + 2`, where `B` = `deriveWorktreePortBase(realpath(root))`, `B` ≥ 20000, `B` ≤ 32762, `(B − 20000) mod 3 = 0`; resolving twice gives the same ports.
+    - [x] `fnv1a32('')` is 2166136261 and `fnv1a32('a')` is 3826002220 (published FNV-1a 32-bit test vectors).
+    - [x] `SAMATA_PORT_BASE=1024` and `=65533` are accepted for both kinds (source `override`); `1023`, `65534`, `3000.5`, `abc` and `-1` throw an `Error` whose message contains `SAMATA_PORT_BASE`; `''` behaves as unset.
+    - [x] `parsePortOption`: `--port 4000` and `--port=4000` beat `PORT=5000`; `PORT=5000` beats the fallback; `PORT=abc` and `--port 70000` fall back; `-p 4001` is honoured only when `-p` is in `flags`.
+    - [x] `checkoutUrls` returns `https://localhost:<app>`, `https://localhost:<dist>` and `http://localhost:<mockups>`, no trailing slash.
+    - [x] `CHECKOUT_ROOT` equals `realpathSync.native(ROOT_DIR)` from `scripts/config.ts`.
+    - [x] `parsePortOption`: `['--port', '4000', '--port', 'x']` gives 4000; `['--port', 'x', '--port=4001']` gives 4001; `['--port', '4000abc']` with `PORT=5000` gives 5000; `PORT='4000abc'` gives the fallback.
+    - [x] `compareCheckoutIdentity` returns `[]` for a matching reply, and one problem each for: `null`, an HTML string, an object without `root`, a different `root`, the wrong `service`, mode `dist` where `dev` is expected, and `trainingRuntimeProbe: false` where `true` is expected.
+    - [x] `formatCheckoutFailure` output names each failing URL, both roots when they differ, `SAMATA_PORT_BASE`, and the instruction not to stop processes the session did not start.
+    - [x] `createCheckoutIdentityResponse` sets status 200, `Cache-Control: no-store` and JSON content type; `HEAD` has an empty body.
+    - [x] Neither new module contains `Bun.` or `import.meta.dir`, and neither imports `./config`.
 - **Verification:** `bun run test:e2e` (baseline only, before any edit), `bun test tests/ports.test.ts`, `bun test tests/checkout-identity.test.ts`, `bun run check`, `bun run format <changed files>`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-22T21:56:30Z)
 
 ### T2 — Servers and mockup audit
 
@@ -330,6 +330,7 @@ None.
 | When (UTC) | Task | Agent (model) | Outcome / commands / evidence |
 | ---------- | ---- | ------------- | ----------------------------- |
 | —          | —    | —             | Not started                   |
+| 2026-11-22T21:56:30Z | T1 | Claude Code (claude-sonnet-5-5) | Baseline bun run test:e2e (old fixed ports, worktree; may include foreign-server effects): 38 failed, 863 passed, 167 skipped. Failing titles: chromium app-shell NAV-E2E-2d, SNC-14, SNC-15, SNC-16, FOCUS-AC-2, PH-AC-2; content WML-P2-ROUTE-2; data-preview DATA-PRE-2; model-configuration WML-P1-UI-1,2,3,4(x2),9,4(multiclass),5,6(x3); models-setup MOD-SETUP-1..4; training-panels WML-P3-UI-2; visual-parity PARITY-sidebar-steps/-step-first/-step-adjacent/-step-last/-step-label, step-links, main, models-features-table, SIDE-AC-11; firefox SNC-15, PH-AC-2, WML-P1-UI-5; webkit PH-AC-2, WML-P1-UI-5. bun test ports+checkout-identity: 14 pass; bun run check: tsc OK, 554 pass 0 fail. Paths: scripts/ports.ts, scripts/checkout-identity.ts, scripts/config.ts, tests/ports.test.ts, tests/checkout-identity.test.ts |
 
 ## Plan review history
 

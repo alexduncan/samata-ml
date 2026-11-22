@@ -12,3 +12,6 @@ export const DIST_DIR = path.join(ROOT_DIR, 'dist');
 
 /** Directory containing every normative mockup, draft and related resource. */
 export const MOCKUPS_DIR = path.join(ROOT_DIR, 'specification', 'mockups');
+
+/** Directory containing Markdown pages and datasets, rooted at this checkout. */
+export const CONTENT_DIR = path.join(ROOT_DIR, 'content');
