@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-23T08:27:01Z
+**Status:** ready | **Updated:** 2026-11-23T08:50:02Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T08:27:01Z | **Verification:** approved
 **Verified hash:** sha256:7411d13d2d1f09bc8ebc736beda5a26a24176ae0563c58b6f7c6bdb8355ee223
@@ -325,6 +325,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 ## Escalations
 
+- [ ] **E7 (T6):** Native 200% browser zoom reflow and the required screen-reader observations are not yet verified. The comparison tests passed at 320px and with simulated 200% CSS zoom in Chromium, Firefox and WebKit, but emulation is not native zoom or spoken feedback. The in-app browser rejected the development server's local HTTPS certificate; its security warning requires user handoff and was not bypassed. A populated comparison is available by training two Iris cross-validation models on the local server. Impact: `WML-P5-UI-12` and the manual definition-of-done item cannot be claimed complete, so T6 and T7 remain open. Decision/action needed: the user performs and reports the native zoom and screen-reader checks, or explicitly chooses a different independently reviewed verification contract. The visual-only exception does not cover accessibility or reflow.
 - [x] **E6 (T6):** The user authorised the narrow main-padding exception recorded under Risks and open questions and requested a human follow-up. The other failures in the 304-pass, 19-fail, 138-skip, one-not-run full browser run are not covered and must be investigated. The targeted comparison and Iris/Penguins journey rerun passed 30 cases in three browsers. This revision requires independent plan review.
 - [x] **E5 (T6):** T6 specified a nested draft path, but `specification/visual-design.md` §1.1 requires flat drafts served by the mockup catalogue. Resolved by specifying the existing flat draft placeholder as the T6 target and requiring its human styling queue item; independent review is required.
 - [x] **E1 (T1):** Phase 4 and dependencies were missing. Resolved by integration and provisioning; `bun run check` passed 540 tests.
@@ -348,6 +349,8 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-23T06:28:11Z | T3   | Codex (GPT-6)                 | bun run test:e2e tests/comparison-controls.e2e.ts: 9 passed across three browsers; bun run test:stories: 486 passed; bun test tests/style-tokens.test.ts: 8 passed; bun run check: typecheck passed, 558 tests passed. Scope warning is the browser fixture required by the task.                                                  |
 | 2026-11-23T06:34:22Z | T4   | Codex (GPT-6)                 | bun run test:e2e tests/comparison-charts.e2e.ts: 9 passed across three browsers; bun run test:stories: 513 passed; bun test tests/style-tokens.test.ts: 8 passed; bun run check: typecheck passed, 558 tests passed. Scope warning is the required chart browser fixture.                                                          |
 | 2026-11-23T06:40:39Z | T5   | Codex (GPT-6)                 | bun run test:e2e tests/comparison-rope.e2e.ts: 9 passed in three browsers; bun run test:stories: 552 passed; bun test tests/style-tokens.test.ts: 8 passed; bun run check: typecheck passed, 558 tests passed; scope warning is the required browser fixture.                                                                      |
+
+| 2026-11-23T08:50:02Z | — | Codex (GPT-6) | T6 remains open (E7): `bun run test:e2e tests/comparison.e2e.ts` 39 passed; full T6 browser command 348 passed, 12 authorised visual failures, 138 skipped; `bun run test:stories` 582 passed; `bun run check` 558 passed; `bun run build` passed; token guard 8 passed. Native zoom and spoken screen-reader evidence remain unverified. |
 
 ## Plan review history
 

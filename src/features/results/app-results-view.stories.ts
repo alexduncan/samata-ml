@@ -1,42 +1,66 @@
 import { html } from 'lit';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
 import { expect, waitFor } from 'storybook/test';
-import { irisCrossValidation } from '../../../tests/fixtures/results/evaluations';
+import {
+	breastCancerOneShot,
+	irisCrossValidation
+} from '../../../tests/fixtures/results/evaluations';
+import { withLongLabels } from '../../../tests/fixtures/results/variants';
 import { $appState } from '../../stores/app.store';
-import { $modelResults, currentResultIdentity } from '../../stores/model-results.store';
+import {
+	$modelResults,
+	currentResultIdentity,
+	type ModelResultsStatus
+} from '../../stores/model-results.store';
 import { DEFAULT_ONE_SHOT_SETUP, INITIAL_APP_STATE, type ModelRecord } from '../../types/state';
 import './app-results-view';
 
-function seed(populated: boolean): () => void {
+type StoryState =
+	| 'blocked'
+	| 'ready'
+	| 'one-shot'
+	| 'loading'
+	| 'legacy'
+	| 'lost'
+	| 'error'
+	| 'incompatible'
+	| 'long';
+
+function seed(state: StoryState): () => void {
 	const previous = { app: $appState.get(), results: $modelResults.get() };
-	const models: ModelRecord[] = populated
-		? [1, 2].map((num) => ({
-				num,
-				createdAt: num,
-				status: 'trained',
-				completedSteps: [
-					'choose-model',
-					'select-features',
-					'configure-model',
-					'configure-training',
-					'training',
-					'results'
-				],
-				modelId: 'logistic-regression',
-				features: ['petal length'],
-				modelOptions: {},
-				hyperparameters: { mode: 'manual', values: {} },
-				multiclass: null,
-				trainingSetup: DEFAULT_ONE_SHOT_SETUP,
-				progress: null,
-				resultRevision: `story-${num}`,
-				error: null,
-				timings: null,
-				durationMs: 2100,
-				metrics: null,
-				ui: {}
-			}))
-		: [];
+	const resourceStatus: ModelResultsStatus =
+		state === 'loading' || state === 'legacy' || state === 'lost' || state === 'error'
+			? state
+			: 'ready';
+	const models: ModelRecord[] =
+		state !== 'blocked'
+			? [1, 2].map((num) => ({
+					num,
+					createdAt: num,
+					status: 'trained',
+					completedSteps: [
+						'choose-model',
+						'select-features',
+						'configure-model',
+						'configure-training',
+						'training',
+						'results'
+					],
+					modelId: 'logistic-regression',
+					features: ['petal length'],
+					modelOptions: {},
+					hyperparameters: { mode: 'manual', values: {} },
+					multiclass: null,
+					trainingSetup: DEFAULT_ONE_SHOT_SETUP,
+					progress: null,
+					resultRevision: `story-${num}`,
+					error: null,
+					timings: null,
+					durationMs: 2100,
+					metrics: null,
+					ui: {}
+				}))
+			: [];
 	$appState.set({
 		...structuredClone(INITIAL_APP_STATE),
 		onboarding: { welcomeDismissed: true },
@@ -60,9 +84,20 @@ function seed(populated: boolean): () => void {
 				num,
 				{
 					identity: currentResultIdentity(num)!,
-					status: 'ready',
-					evaluation: irisCrossValidation(),
-					error: ''
+					status: resourceStatus,
+					evaluation: ['loading', 'legacy', 'lost', 'error'].includes(state)
+						? null
+						: state === 'one-shot'
+							? breastCancerOneShot()
+							: state === 'long'
+								? withLongLabels(irisCrossValidation())
+								: state === 'incompatible' && num === 2
+									? {
+											...irisCrossValidation(),
+											partitionFingerprint: 'b'.repeat(64)
+										}
+									: irisCrossValidation(),
+					error: state === 'error' ? 'Read failed' : ''
 				}
 			])
 		)
@@ -82,7 +117,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'Compare models evaluated on the same rows and inspect trade-offs without an automatic winner.'
+					'Do compare models evaluated on the same rows and inspect the measures together. Do not treat one metric as an automatic winner.'
 			}
 		}
 	},
@@ -93,7 +128,7 @@ type Story = StoryObj<typeof meta>;
 
 /** Two saved cross-validation evaluations. */
 export const Populated: Story = {
-	beforeEach: () => seed(true),
+	beforeEach: () => seed('ready'),
 	play: async ({ canvasElement }) => {
 		await waitFor(() =>
 			expect(
@@ -105,4 +140,23 @@ export const Populated: Story = {
 	}
 };
 /** Fewer than two models have been trained. */
-export const Blocked: Story = { beforeEach: () => seed(false) };
+export const Blocked: Story = { beforeEach: () => seed('blocked') };
+/** One-Shot results explain why paired-fold analysis is unavailable. */
+export const OneShot: Story = { beforeEach: () => seed('one-shot') };
+/** The saved evaluations are loading. */
+export const Loading: Story = { beforeEach: () => seed('loading') };
+/** The saved evaluations predate detailed results. */
+export const Legacy: Story = { beforeEach: () => seed('legacy') };
+/** The saved evaluations have been lost. */
+export const Lost: Story = { beforeEach: () => seed('lost') };
+/** An evaluation could not be read. */
+export const ReadError: Story = { beforeEach: () => seed('error') };
+/** Different evaluation rows cannot form a comparison. */
+export const Incompatible: Story = { beforeEach: () => seed('incompatible') };
+/** Long class labels remain available in tables. */
+export const LongLabels: Story = { beforeEach: () => seed('long') };
+/** The comparison in right-to-left layout. */
+export const RTL: Story = {
+	beforeEach: () => seed('ready'),
+	render: () => html`<div dir="rtl"><app-results-view></app-results-view></div>`
+};

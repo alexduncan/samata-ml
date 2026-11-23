@@ -230,8 +230,21 @@ export class AppResultsView extends LitElement {
 				model.status
 			])
 		);
+		let initialPair: string | null = null;
+		const pairKey = () => {
+			const { pairA, pairB } = this.comparison.value;
+			return pairA && pairB
+				? JSON.stringify([
+						pairA.num,
+						pairB.num,
+						pairA.evaluation.partitionFingerprint,
+						this.app.value.results.ui.ropeWidth
+					])
+				: null;
+		};
 		const superseded = () =>
 			!this.isConnected ||
+			(initialPair !== null && pairKey() !== initialPair) ||
 			this.app.value.dataset?.id !== context.dataset?.id ||
 			this.app.value.target !== context.target ||
 			this.app.value.comparisonContextEpoch !== context.comparisonContextEpoch ||
@@ -249,6 +262,7 @@ export class AppResultsView extends LitElement {
 				resolve();
 			};
 			const check = () => {
+				initialPair ??= pairKey();
 				if (
 					superseded() ||
 					(!this.comparison.value.unavailableModels.some(
@@ -268,7 +282,22 @@ export class AppResultsView extends LitElement {
 		const charts = this.renderRoot.querySelectorAll<
 			HTMLElement & { whenSettled(): Promise<void> }
 		>('app-fold-strip, app-class-error-bars, app-rope-bar, app-instance-agreement');
-		await Promise.all(Array.from(charts, (chart) => chart.whenSettled()));
+		let checkAbandoned: () => void = () => {};
+		const abandoned = new Promise<void>((resolve) => {
+			checkAbandoned = () => {
+				if (superseded()) resolve();
+			};
+			this.waiters.add(checkAbandoned);
+			checkAbandoned();
+		});
+		try {
+			await Promise.race([
+				Promise.all(Array.from(charts, (chart) => chart.whenSettled())),
+				abandoned
+			]);
+		} finally {
+			this.waiters.delete(checkAbandoned);
+		}
 	}
 
 	override disconnectedCallback(): void {
