@@ -140,6 +140,16 @@ function validateAppState(val: unknown):
 	if (!isPlainObject(val.onboarding) || typeof val.onboarding.welcomeDismissed !== 'boolean') {
 		return { valid: false, isNewer: false };
 	}
+	if (
+		val.onboarding.betaTelemetryAccepted !== undefined &&
+		typeof val.onboarding.betaTelemetryAccepted !== 'boolean'
+	) {
+		return { valid: false, isNewer: false };
+	}
+	const onboarding: PersistedAppState['onboarding'] = {
+		welcomeDismissed: val.onboarding.welcomeDismissed,
+		betaTelemetryAccepted: val.onboarding.betaTelemetryAccepted === true
+	};
 
 	if (typeof val.resumePath !== 'string' || parseRoute(val.resumePath).kind !== 'workflow') {
 		return { valid: false, isNewer: false };
@@ -162,6 +172,7 @@ function validateAppState(val: unknown):
 			val.comparisonContextEpoch >= 0);
 	const state = {
 		...val,
+		onboarding,
 		...decoded.domain,
 		trainingDomainGeneration: generation
 	} as PersistedAppState;
@@ -604,13 +615,58 @@ export async function readGuardedTrainingSnapshot(
 	return { ...snapshot, generation, replayed: false };
 }
 
+/**
+ * Merges onboarding state across tabs while keeping `welcomeDismissed` tab-local unless beta
+ * telemetry has been accepted in `other`.
+ *
+ * @param local - Current tab's onboarding state.
+ * @param other - Stored or concurrent tab's onboarding state.
+ * @returns Merged onboarding state preserving monotonic beta acceptance.
+ */
+export function mergeOnboarding(
+	local: PersistedAppState['onboarding'],
+	other: PersistedAppState['onboarding']
+): PersistedAppState['onboarding'] {
+	return {
+		welcomeDismissed: local.welcomeDismissed || other.betaTelemetryAccepted,
+		betaTelemetryAccepted: local.betaTelemetryAccepted || other.betaTelemetryAccepted
+	};
+}
+
+/**
+ * Adopts stored beta telemetry acceptance into the current tab without writing back to storage.
+ *
+ * @param storage - Storage adapter to read from (defaults to the active storage).
+ */
+export function adoptStoredBetaAcceptance(storage: StorageAdapter = activeStorage): void {
+	const current = $appState.get();
+	if (current.onboarding.betaTelemetryAccepted) return;
+	const snapshot = readAppSnapshot(storage);
+	if (!snapshot.ok || !snapshot.state?.onboarding.betaTelemetryAccepted) return;
+	const next: PersistedAppState = {
+		...current,
+		onboarding: {
+			...current.onboarding,
+			welcomeDismissed: true,
+			betaTelemetryAccepted: true
+		}
+	};
+	publishingSnapshot = true;
+	try {
+		$appState.set(next);
+	} finally {
+		publishingSnapshot = false;
+	}
+	previousAppState = next;
+}
+
 /** Applies a verified newer snapshot under the state lock, preserving current-tab preferences. */
 export function publishNewerTrainingSnapshot(state: PersistedAppState): void {
 	const current = $appState.get();
 	if (state.trainingDomainGeneration > current.trainingDomainGeneration) {
 		publishAcknowledgedAppSnapshot({
 			...state,
-			onboarding: current.onboarding,
+			onboarding: mergeOnboarding(current.onboarding, state.onboarding),
 			resumePath: current.resumePath,
 			results: ownedComparisonResults(state, state)
 		});
@@ -789,7 +845,7 @@ function mergeOrdinaryState(
 	return {
 		...latest,
 		updatedAt: Date.now(),
-		onboarding: captured.onboarding,
+		onboarding: mergeOnboarding(captured.onboarding, latest.onboarding),
 		resumePath: captured.resumePath,
 		results:
 			JSON.stringify(captured.results) !== JSON.stringify(base.results) &&
@@ -865,7 +921,7 @@ function keepLocalOrdinaryChanges(
 			: candidate.data;
 	return {
 		...candidate,
-		onboarding: local.onboarding,
+		onboarding: mergeOnboarding(local.onboarding, candidate.onboarding),
 		resumePath: local.resumePath,
 		results: ownedComparisonResults(candidate, candidate),
 		models,
@@ -1042,6 +1098,8 @@ function isSynchronousChange(
 	if (prev.dataset !== next.dataset) return true;
 	if (prev.target !== next.target) return true;
 	if (prev.onboarding.welcomeDismissed !== next.onboarding.welcomeDismissed) return true;
+	if (prev.onboarding.betaTelemetryAccepted !== next.onboarding.betaTelemetryAccepted)
+		return true;
 	if (prev.data.mode !== next.data.mode) return true;
 	if (prev.data.selectedColumn !== next.data.selectedColumn) return true;
 	if (prev.models.length !== next.models.length) return true;
@@ -1088,6 +1146,7 @@ function isProgressOnlyChange(
 	if (
 		prev.version !== next.version ||
 		prev.onboarding.welcomeDismissed !== next.onboarding.welcomeDismissed ||
+		prev.onboarding.betaTelemetryAccepted !== next.onboarding.betaTelemetryAccepted ||
 		prev.resumePath !== next.resumePath ||
 		prev.dataset !== next.dataset ||
 		prev.data.mode !== next.data.mode ||

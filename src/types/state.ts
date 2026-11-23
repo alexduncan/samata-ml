@@ -295,7 +295,7 @@ export interface PersistedAppState {
 	/** Monotonic identity for the current comparison context. */
 	comparisonContextEpoch: number;
 
-	onboarding: { welcomeDismissed: boolean };
+	onboarding: { welcomeDismissed: boolean; betaTelemetryAccepted: boolean };
 
 	/** Path resolved when navigating to /. Always a workflow path. */
 	resumePath: WorkflowPath;
@@ -344,7 +344,7 @@ export const INITIAL_APP_STATE: PersistedAppState = {
 	updatedAt: Date.now(),
 	trainingDomainGeneration: 0,
 	comparisonContextEpoch: 0,
-	onboarding: { welcomeDismissed: false },
+	onboarding: { welcomeDismissed: false, betaTelemetryAccepted: false },
 	resumePath: '/data',
 	dataset: null,
 	data: { mode: 'select', selectedColumn: null },

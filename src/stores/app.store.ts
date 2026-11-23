@@ -141,6 +141,20 @@ export function dismissWelcome(): boolean {
 	}));
 }
 
+/**
+ * Records acceptance of beta cookieless analytics and dismisses the welcome onboarding modal.
+ */
+export function acceptBetaTelemetry(): void {
+	updateState((state) => ({
+		...state,
+		onboarding: {
+			...state.onboarding,
+			welcomeDismissed: true,
+			betaTelemetryAccepted: true
+		}
+	}));
+}
+
 /** Updates comparison choices only for the context captured by the caller. */
 export function setComparisonUi(
 	expectedOwner: ComparisonOwner,

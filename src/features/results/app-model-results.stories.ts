@@ -60,7 +60,7 @@ function seed(
 	};
 	const state: PersistedAppState = {
 		...structuredClone(INITIAL_APP_STATE),
-		onboarding: { welcomeDismissed: true },
+		onboarding: { welcomeDismissed: true, betaTelemetryAccepted: false },
 		dataset: {
 			id: 'iris',
 			name: 'Iris',

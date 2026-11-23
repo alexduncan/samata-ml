@@ -18,6 +18,7 @@ import {
 	setDataMode,
 	setSelectedColumn,
 	dismissWelcome,
+	acceptBetaTelemetry,
 	setResumePath,
 	toggleFeature,
 	setModelOptions,
@@ -37,14 +38,19 @@ import {
 	blockedReason
 } from '../src/stores/predicates';
 import {
+	adoptStoredBetaAcceptance,
 	initPersister,
 	stopPersister,
 	flushNow,
 	MemoryStorage,
+	mergeOnboarding,
 	readAppSnapshot,
 	publishNewerTrainingSnapshot,
+	TRAINING_STATE_LOCK,
 	type StorageAdapter
 } from '../src/stores/persister';
+import { installFakeIndexedDB } from './helpers/fake-indexeddb';
+import { createTrainingTestLocks } from './helpers/training-locks';
 import { reconcileStartupState, type IndexedDBAdapter } from '../src/stores/reconciler';
 import { $scrollState } from '../src/stores/scroll.store';
 import {
@@ -1409,5 +1415,159 @@ describe('WML-P4-STATE-1: model results display preferences', () => {
 			trainingLogOpen: true,
 			results: { moreMetricsOpen: true }
 		});
+	});
+
+	it('REL-UI-2: normalises legacy v1 onboarding blobs, rejects invalid flags, merges monotonically and adopts stored acceptance', async () => {
+		const mockIdb: IndexedDBAdapter = {
+			async hasMetadata() {
+				return true;
+			},
+			async deleteOrphanDatasets() {},
+			async hasModelResults() {
+				return false;
+			}
+		};
+
+		// 1. Legacy v1 blob with welcomeDismissed: true and absent betaTelemetryAccepted normalises to false
+		const legacyStorage = new MemoryStorage();
+		const legacyState = {
+			...INITIAL_APP_STATE,
+			resumePath: '/target',
+			onboarding: { welcomeDismissed: true }
+		};
+		legacyStorage.setItem(STATE_STORAGE_KEY, JSON.stringify(legacyState));
+		const reconciled = await reconcileStartupState(legacyStorage, mockIdb);
+		expect(reconciled.resumePath).toBe('/target');
+		expect(reconciled.onboarding).toEqual({
+			welcomeDismissed: true,
+			betaTelemetryAccepted: false
+		});
+
+		// 2. Present non-boolean betaTelemetryAccepted is invalid
+		const invalidStorage = new MemoryStorage();
+		invalidStorage.setItem(
+			STATE_STORAGE_KEY,
+			JSON.stringify({
+				...INITIAL_APP_STATE,
+				onboarding: { welcomeDismissed: true, betaTelemetryAccepted: 'yes' }
+			})
+		);
+		expect(readAppSnapshot(invalidStorage)).toEqual({ ok: false, reason: 'unavailable' });
+
+		// 3. dismissWelcome never implies acceptance; acceptBetaTelemetry sets both and persists immediately
+		const counting = new CountingStorage();
+		initPersister(counting);
+		dismissWelcome();
+		expect($appState.get().onboarding).toEqual({
+			welcomeDismissed: true,
+			betaTelemetryAccepted: false
+		});
+		const writesAfterDismiss = counting.writes;
+		acceptBetaTelemetry();
+		expect($appState.get().onboarding).toEqual({
+			welcomeDismissed: true,
+			betaTelemetryAccepted: true
+		});
+		expect(counting.writes).toBe(writesAfterDismiss + 1);
+
+		// 4. mergeOnboarding keeps welcomeDismissed per-tab while propagating betaTelemetryAccepted
+		expect(
+			mergeOnboarding(
+				{ welcomeDismissed: false, betaTelemetryAccepted: false },
+				{ welcomeDismissed: true, betaTelemetryAccepted: false }
+			)
+		).toEqual({ welcomeDismissed: false, betaTelemetryAccepted: false });
+		expect(
+			mergeOnboarding(
+				{ welcomeDismissed: false, betaTelemetryAccepted: false },
+				{ welcomeDismissed: true, betaTelemetryAccepted: true }
+			)
+		).toEqual({ welcomeDismissed: true, betaTelemetryAccepted: true });
+		expect(
+			mergeOnboarding(
+				{ welcomeDismissed: true, betaTelemetryAccepted: true },
+				{ welcomeDismissed: false, betaTelemetryAccepted: false }
+			)
+		).toEqual({ welcomeDismissed: true, betaTelemetryAccepted: true });
+
+		// publishNewerTrainingSnapshot applies mergeOnboarding
+		$appState.set({
+			...INITIAL_APP_STATE,
+			trainingDomainGeneration: 0,
+			onboarding: { welcomeDismissed: false, betaTelemetryAccepted: false }
+		});
+		publishNewerTrainingSnapshot({
+			...INITIAL_APP_STATE,
+			trainingDomainGeneration: 1,
+			onboarding: { welcomeDismissed: true, betaTelemetryAccepted: true }
+		});
+		expect($appState.get().onboarding).toEqual({
+			welcomeDismissed: true,
+			betaTelemetryAccepted: true
+		});
+
+		// 5. Ordinary write from a second tab never clears stored acceptance (mergeOrdinaryState)
+		const restoreIndexedDB = installFakeIndexedDB();
+		try {
+			const locks = createTrainingTestLocks();
+			const tabTwoStorage = new CountingStorage();
+			$appState.set({
+				...INITIAL_APP_STATE,
+				onboarding: { welcomeDismissed: false, betaTelemetryAccepted: false }
+			});
+			initPersister(tabTwoStorage, {
+				trainingPersistence: {
+					withStateLock: (operation) => locks.request(TRAINING_STATE_LOCK, operation)
+				}
+			});
+			tabTwoStorage.setItem(
+				STATE_STORAGE_KEY,
+				JSON.stringify({
+					...INITIAL_APP_STATE,
+					onboarding: { welcomeDismissed: true, betaTelemetryAccepted: true }
+				})
+			);
+			setResumePath('/models');
+			flushNow();
+			await locks.request(TRAINING_STATE_LOCK, () => {});
+			const storedAfterTabTwoWrite = JSON.parse(
+				tabTwoStorage.getItem(STATE_STORAGE_KEY)!
+			) as {
+				onboarding: { welcomeDismissed: boolean; betaTelemetryAccepted: boolean };
+				resumePath: string;
+			};
+			expect(storedAfterTabTwoWrite.resumePath).toBe('/models');
+			expect(storedAfterTabTwoWrite.onboarding).toEqual({
+				welcomeDismissed: true,
+				betaTelemetryAccepted: true
+			});
+		} finally {
+			stopPersister();
+			restoreIndexedDB();
+		}
+
+		// 6. adoptStoredBetaAcceptance sets both local flags without writing back to storage
+		const adoptStorage = new CountingStorage();
+		$appState.set({
+			...INITIAL_APP_STATE,
+			onboarding: { welcomeDismissed: false, betaTelemetryAccepted: false }
+		});
+		initPersister(adoptStorage);
+		const writesBeforeAdopt = adoptStorage.writes;
+		adoptStorage.setItem(
+			STATE_STORAGE_KEY,
+			JSON.stringify({
+				...INITIAL_APP_STATE,
+				onboarding: { welcomeDismissed: true, betaTelemetryAccepted: true }
+			})
+		);
+		const writesAfterExternalSeed = adoptStorage.writes;
+		adoptStoredBetaAcceptance(adoptStorage);
+		expect($appState.get().onboarding).toEqual({
+			welcomeDismissed: true,
+			betaTelemetryAccepted: true
+		});
+		expect(adoptStorage.writes).toBe(writesAfterExternalSeed);
+		expect(writesBeforeAdopt).toBeGreaterThanOrEqual(0);
 	});
 });

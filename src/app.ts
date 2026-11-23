@@ -14,7 +14,12 @@ import { $route, initRouter, takeFocusRequest } from './router/router';
 import { getScrollKeyForRoute, initScrollRestorer, restoreScroll } from './router/scroll-restorer';
 import { $appState } from './stores/app.store';
 import { $datasetResources } from './stores/dataset.store';
-import { $storageSaveNotice, initPersister, refreshTrainingSnapshot } from './stores/persister';
+import {
+	$storageSaveNotice,
+	adoptStoredBetaAcceptance,
+	initPersister,
+	refreshTrainingSnapshot
+} from './stores/persister';
 import { reconcileProtectedStartup } from './stores/reconciler';
 import { initGlobalStyles } from './styles/global';
 import { $staleAssetDetected, installStaleReleaseDetection } from './common/release/stale-release';
@@ -260,7 +265,7 @@ export async function bootstrapApp(): Promise<void> {
 	initRouter();
 
 	// 4b. Initialize beta telemetry and global error hooks
-	initBetaTelemetry(() => false);
+	initBetaTelemetry(() => $appState.get().onboarding.betaTelemetryAccepted);
 	window.addEventListener('error', () => {
 		reportBetaException('window-error');
 	});
@@ -295,7 +300,10 @@ export async function bootstrapApp(): Promise<void> {
 				if (!ack.ok) {
 					startupRecovery = true;
 					renderAppShell(root);
+					return;
 				}
+				adoptStoredBetaAcceptance();
+				initBetaTelemetry(() => $appState.get().onboarding.betaTelemetryAccepted);
 			});
 		});
 		let prevMode = $appState.get().data.mode;

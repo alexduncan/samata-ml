@@ -91,6 +91,7 @@ The obsolete preview spec (TODO-48/Gap 16) is owned by Step 1 T7. The remaining 
 
 ## 6. Style or fix mockups
 
+- [ ] **Style the beta welcome notice (beta-release-and-ci-cd):** Review the beta analytics notice paragraph and privacy policy link added before **Get Started**, and style `00-1_beta-welcome.html` without changing the non-beta `00_first-load.html` baseline. Non-blocking. → [draft](mockups/00-1_beta-welcome.html)
 - [ ] **Style the sample download notice (sample-dataset-publication):** Review the bundled and direct states and style the draft without changing the implemented selection reference. Non-blocking. → [draft](mockups/01-1_remote-sample-notice.html)
 
 - [ ] **Style mockup review catalogue (`bun run mockups`, serve-mockups-review-workflow):** Review and optionally refine the developer catalogue (`body.mockup-index` / `.mockups`) and preview helper styles in `mockups/mockups.css`. Non-blocking; `bun run mockups` serves the live `/index.json` table and light-DOM helper bar. Recommended: validate the updated flat review workflow first, then refine `mockups/mockups.css` directly. → [draft](mockups/00-3_mockup-review.html)
