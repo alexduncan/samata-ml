@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-23T08:58:39Z
+**Status:** ready | **Updated:** 2026-11-23T08:59:57Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T08:58:39Z | **Verification:** approved
 **Verified hash:** sha256:76fb1730d0edcb19fba87edced64ddb0935544f9ed111ba6ba4246ccab5bc56e
@@ -286,12 +286,12 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 - **Must not touch:** `css/root.css`, `tests/visual-parity/map.ts`, `src/features/models/app-models-view.ts`
 - **Implementation:** Implement `app-results-view` per Interfaces §C, wire `/results` in `src/app.ts`, and add it to `WorkflowFocusView`. Update PH-AC-1 and PH-AC-2 selectors for the new Shadow DOM owner, assert the blocked notification and keep FOCUS-AC-5 passing. Test PH-AC-2's header semantics and non-padding geometry independently so they run even when the inherited padding assertion fails; retain the existing padding assertion and report its actual result. Update the existing flat 04 draft in place (preserve its shell; add the §1.1 draft header, structure only, Palmer Penguins sample data and every state, and replace the stale placeholder metadata description), and update the existing non-blocking styling item and stale placeholder note in `specification/HUMAN.md` §6 without creating a duplicate. If another Phase 5 view requiring human CSS lacks a suitable draft, create a flat semantic draft and queue it in `specification/HUMAN.md`. Seed Phase 4 v2 envelopes with the existing journey fixture shape in the comparison and axe suites. Iris trains two comparable CV models and exercises the real analysis worker. Penguins trains two comparable One-Shot models and checks the unavailable ROPE explanation. Check separate incompatible groups with seeded results.
 - **Acceptance criteria:**
-    - [ ] `WML-P5-UI-10` — With fewer than two trained models `/results` shows the existing notification and link; with two comparable models every section renders in order and swapping A/B reverses the matrix signs for nonzero cells, refreshes the CV ROPE result for the reversed order and preserves the selected models; with only incomparable models the "different evaluation rows" notice lists each group.
-    - [ ] `WML-P5-UI-11` — Group, selection, sort, pair, ROPE width and the class filter survive reload; heading focus and scroll restoration work on `/results` (FOCUS-AC-5, PH-AC-1, the independently exercised PH-AC-2 header and non-padding geometry, and `/results` parity entries pass except individually evidenced visual-only deviations recorded below). The route's settlement waits for each initially visible chart and the initial ROPE terminal state, and settles promptly after supersession or disconnection.
-    - [ ] `WML-P5-UI-12` — `tests/a11y.e2e.ts` scans a populated `/results` with no new findings; 320 px and simulated 200% zoom reflow; keyboard reaches every control in visual order. The user authorised native browser zoom observation to be deferred as recorded below.
-    - [ ] `WML-P5-UI-13` — `JOURNEY-IRIS-COMPARE` and `JOURNEY-PENGUINS-COMPARE` each train two models with matching setup. Iris receives a real ROPE posterior; Penguins shows the One-Shot explanation. Both pass in three browsers.
+    - [x] `WML-P5-UI-10` — With fewer than two trained models `/results` shows the existing notification and link; with two comparable models every section renders in order and swapping A/B reverses the matrix signs for nonzero cells, refreshes the CV ROPE result for the reversed order and preserves the selected models; with only incomparable models the "different evaluation rows" notice lists each group.
+    - [x] `WML-P5-UI-11` — Group, selection, sort, pair, ROPE width and the class filter survive reload; heading focus and scroll restoration work on `/results` (FOCUS-AC-5, PH-AC-1, the independently exercised PH-AC-2 header and non-padding geometry, and `/results` parity entries pass except individually evidenced visual-only deviations recorded below). The route's settlement waits for each initially visible chart and the initial ROPE terminal state, and settles promptly after supersession or disconnection.
+    - [x] `WML-P5-UI-12` — `tests/a11y.e2e.ts` scans a populated `/results` with no new findings; 320 px and simulated 200% zoom reflow; keyboard reaches every control in visual order. The user authorised native browser zoom observation to be deferred as recorded below.
+    - [x] `WML-P5-UI-13` — `JOURNEY-IRIS-COMPARE` and `JOURNEY-PENGUINS-COMPARE` each train two models with matching setup. Iris receives a real ROPE posterior; Penguins shows the One-Shot explanation. Both pass in three browsers.
 - **Verification:** `bun run test:e2e tests/comparison.e2e.ts tests/app-shell.e2e.ts tests/a11y.e2e.ts tests/visual-parity.e2e.ts tests/sidebar-acceptance.e2e.ts tests/journeys/iris-classification.e2e.ts tests/journeys/penguins-classification.e2e.ts`; `bun run test:stories`; `bun run check`; `bun run build`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-23T08:59:57Z)
 
 ### T7 — Sync specifications for Phase 5
 
@@ -351,6 +351,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-23T06:40:39Z | T5   | Codex (GPT-6)                 | bun run test:e2e tests/comparison-rope.e2e.ts: 9 passed in three browsers; bun run test:stories: 552 passed; bun test tests/style-tokens.test.ts: 8 passed; bun run check: typecheck passed, 558 tests passed; scope warning is the required browser fixture.                                                                      |
 
 | 2026-11-23T08:50:02Z | — | Codex (GPT-6) | T6 remains open (E7): `bun run test:e2e tests/comparison.e2e.ts` 39 passed; full T6 browser command 348 passed, 12 authorised visual failures, 138 skipped; `bun run test:stories` 582 passed; `bun run check` 558 passed; `bun run build` passed; token guard 8 passed. Native zoom and spoken screen-reader evidence remain unverified. |
+| 2026-11-23T08:59:57Z | T6 | Codex (GPT-6) | bun run test:e2e tests/comparison.e2e.ts: 39 passed across three browsers; full T6 Playwright command: 348 passed, 12 authorised visual-only failures documented in HUMAN.md, 138 skipped; bun run test:stories: 582 passed; bun run check: 558 passed; bun run build: passed; bun test tests/style-tokens.test.ts: 8 passed. Native zoom and screen-reader checks were deferred by the user until 2026-11-24 and remain unperformed in HUMAN.md. |
 
 ## Plan review history
 
