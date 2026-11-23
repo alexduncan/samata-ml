@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-22T21:54:13Z
+**Status:** ready | **Updated:** 2026-11-23T05:59:07Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (gpt-6.2-astra) | **Verified:** 2026-11-21T20:09:18Z | **Verification:** approved
 **Verified hash:** sha256:c679357b13cc388e5a5188ab78f87cc09f1c1553fa92435016fc01958aefcc33
@@ -221,10 +221,10 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 - **Must not touch:** `src/features/models/training/`, `node_modules/`
 - **Implementation:** Per D4–D5 and Interfaces §B. Add the analysis worker entry to `scripts/build-assets.ts` alongside the current training worker and use the same runtime define. Add the comparison-store action and worker cleanup to the connected owner in T6. Test the emitted worker in the app serving environment in all three browsers.
 - **Acceptance criteria:**
-    - [ ] `WML-P5-ROPE-1` — In Chromium, Firefox and WebKit the real worker's probabilities sum to 1 within `1e-9` and match the pinned library for the same inputs. Reversing A and B swaps lower/higher. Uneven fold sizes use `1/k`; malformed requests cannot publish a result.
-    - [ ] `WML-P5-ROPE-2` — Five width changes within 250 ms post one request. One-Shot posts none. Late replies after pair change, route departure, same-number retraining or dataset change are ignored. Worker failure settles the request and Retry creates a new worker.
+    - [x] `WML-P5-ROPE-1` — In Chromium, Firefox and WebKit the real worker's probabilities sum to 1 within `1e-9` and match the pinned library for the same inputs. Reversing A and B swaps lower/higher. Uneven fold sizes use `1/k`; malformed requests cannot publish a result.
+    - [x] `WML-P5-ROPE-2` — Five width changes within 250 ms post one request. One-Shot posts none. Late replies after pair change, route departure, same-number retraining or dataset change are ignored. Worker failure settles the request and Retry creates a new worker.
 - **Verification:** `bun test tests/analysis-protocol.test.ts`; `bun run test:e2e tests/analysis-worker.e2e.ts`; `bun run build`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-23T05:59:07Z)
 
 ### T3 — Controls, table lens and pair picker elements
 
@@ -315,6 +315,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 ## Escalations
 
 **Task:** T2
+**Resolution:** On 2026-11-23 the user authorised the Bun guidance search and retrieval commands as an exception; the JavaScript and performance guides were retrieved.
 **Blocker:** The required modern web guidance search is outside the implement skill's permitted shell commands.
 **Evidence:** `modern-web-guidance` requires running its search and retrieval CLI before client-side worker implementation; `implement` restricts terminal execution to the repository's Verification Commands and plan gates. The repository does not list the guidance CLI as a Verification Command and mandates Bun rather than npx.
 **Conflict:** Both workflows apply to T2, but the requested guidance search cannot run within the implement command restriction.
@@ -349,6 +350,7 @@ None.
 | 2026-11-22T13:37:03Z | —    | Codex (GPT-6)                 | T1 blocked by missing Phase 4 integration; `bun run check` failed because `tsc` was not found. Approval and task gates passed.                                                                                                                                                                                                     |
 | 2026-11-19T08:47:35Z | —    | Claude Code (claude-opus-5-5) | Planning: `codebase-scout` verified `/results` placeholder, focus/parity tests, `$canCompare`, page-header adoption; no `web-ml` statistical tests exist in 0.1.0.                                                                                                                                                                 |
 | 2026-11-22T21:54:13Z | T1   | Codex (GPT-6)                 | bun test tests/comparison-model.test.ts: 5 passed; bun test tests/state-and-storage.test.ts: 41 passed; bun test tests/training-domain.test.ts: 10 passed; bun test tests/training-service.test.ts: 80 passed; bun run check: 554 passed, typecheck passed; comparison grouping, preferences, checkpoint and replay paths updated. |
+| 2026-11-23T05:59:07Z | T2   | Codex (GPT-6)                 | bun test tests/analysis-protocol.test.ts: 3 passed; bun run test:e2e tests/analysis-worker.e2e.ts: 3 passed (Chromium, Firefox, WebKit); bun run build: passed; bun run check: 557 passed, typecheck passed; worker, client, protocol, analysis store and build entry updated.                                                     |
 
 ## Plan review history
 
