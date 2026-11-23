@@ -20,7 +20,7 @@ test.describe('Dataset Selection & Datasheets (DATA-SEL-1 .. DATA-SEL-3)', () =>
 		}
 	});
 
-	test('DATA-SEL-1: renders all catalogue entries with stable ids, compact counts, and remote notice', async ({
+	test('DSP-AC-6 DATA-SEL-1: renders all catalogue entries with stable ids, compact counts, and remote notice', async ({
 		page
 	}) => {
 		const view = page.locator('app-data-view');
@@ -49,7 +49,7 @@ test.describe('Dataset Selection & Datasheets (DATA-SEL-1 .. DATA-SEL-3)', () =>
 		const notice = compasItem.locator('.remote-notice');
 		await expect(notice).toBeVisible();
 		await expect(notice).toContainText(
-			'Downloaded from GitHub when loaded; internet connection required'
+			'Downloaded from the source when loaded. Internet connection required.'
 		);
 
 		// Verify local sample does not have remote notice
@@ -103,6 +103,37 @@ test.describe('Dataset Selection & Datasheets (DATA-SEL-1 .. DATA-SEL-3)', () =>
 			.click();
 		await expect(page.locator('app-dataset-preview')).toBeVisible({ timeout: 110_000 });
 		assertCreditDownload();
+	});
+
+	test('DSP-AC-6: notices wrap, remain readable and preserve keyboard actions', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 320, height: 800 });
+		for (const id of ['palmer-penguins', 'credit-card-default', 'compas-recidivism']) {
+			const item = page.locator(`li.card-item:has(app-dataset-card[dataset-id="${id}"])`);
+			await expect(item.locator('.remote-notice')).toHaveText(
+				'Downloaded from the source when loaded. Internet connection required.'
+			);
+			const dimensions = await item
+				.locator('.remote-notice')
+				.evaluate((el) => ({ width: el.clientWidth, scroll: el.scrollWidth }));
+			expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width + 1);
+			const load = item.locator('app-dataset-card button.btn-primary');
+			await expect(load).toHaveAccessibleName('Load Dataset');
+			await load.focus();
+			await expect(load).toBeFocused();
+		}
+		await page.evaluate(() => {
+			document.documentElement.dir = 'rtl';
+			document.documentElement.style.fontSize = '400%';
+		});
+		for (const notice of await page.locator('.remote-notice').all()) {
+			const d = await notice.evaluate((el) => ({
+				width: el.clientWidth,
+				scroll: el.scrollWidth
+			}));
+			expect(d.scroll).toBeLessThanOrEqual(d.width + 1);
+		}
 	});
 
 	test('DATA-SEL-2: opens safe datasheet, handles hostile HTML, closes and restores invoker focus', async ({

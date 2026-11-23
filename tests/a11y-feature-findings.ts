@@ -21,7 +21,31 @@ interface FeatureFinding {
 export const featureA11yFindings: readonly FeatureFinding[] = [
 	{
 		rule: 'color-contrast',
-		target: [['app-data-view', '.remote-notice']],
+		target: [['app-data-view', '.card-item:nth-child(3) > .remote-notice']],
+		owner: 'src/features/data/app-data-view.ts',
+		data: {
+			fgColor: '#887b71',
+			bgColor: '#fcfbfa',
+			contrastRatio: 3.96,
+			fontSize: '9.8pt (13px)',
+			fontWeight: 'normal'
+		}
+	},
+	{
+		rule: 'color-contrast',
+		target: [['app-data-view', '.card-item:nth-child(10) > .remote-notice']],
+		owner: 'src/features/data/app-data-view.ts',
+		data: {
+			fgColor: '#887b71',
+			bgColor: '#fcfbfa',
+			contrastRatio: 3.96,
+			fontSize: '9.8pt (13px)',
+			fontWeight: 'normal'
+		}
+	},
+	{
+		rule: 'color-contrast',
+		target: [['app-data-view', '.card-item:nth-child(11) > .remote-notice']],
 		owner: 'src/features/data/app-data-view.ts',
 		data: {
 			fgColor: '#887b71',

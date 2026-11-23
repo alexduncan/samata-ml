@@ -1,6 +1,5 @@
 import type { Page } from '@playwright/test';
 import { INITIAL_APP_STATE, type ModelRecord, type PersistedAppState } from '../../src/types/state';
-import { MOCKUPS_URL } from '../../scripts/ports';
 
 /** Deterministic in-memory sidebar states shared by stories and browser assertions. */
 export type SidebarFixture = 'empty' | 'dataset' | 'target' | 'models' | 'long';
@@ -90,6 +89,7 @@ export async function prepareSidebarReference(
 	page: Page,
 	fixture: 'empty' | 'models'
 ): Promise<void> {
+	const { MOCKUPS_URL } = await import('../../scripts/ports');
 	await page.emulateMedia({ reducedMotion: 'reduce' });
 	await page.goto(
 		`${MOCKUPS_URL}/${fixture === 'empty' ? '01-1_select-data.html' : '03-2_train-models-1-choose-model.html'}?clean=1`

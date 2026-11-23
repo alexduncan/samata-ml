@@ -16,7 +16,7 @@ This is the first page the user sees when the app loads. It supports two modes: 
 
 The page shows a card for each sample dataset in the generated catalogue at `/datasets/index.json` ([sample-datasets.md](sample-datasets.md)). Each card shows `name`, `tagline`, `stats.rowCount` and `stats.columnCount`, with buttons for "Datasheet" and "Load Dataset". This is shown in [01-1_select-data.html](mockups/01-1_select-data.html).
 
-For any dataset where `csvOrigin === 'remote'` (such as COMPAS Recidivism), the card's enclosing item prominently displays a remote source notice: _"Downloaded from GitHub when loaded; internet connection required"_.
+For each dataset where `csvOrigin === 'remote'`, the card’s enclosing item displays: _“Downloaded from the source when loaded. Internet connection required.”_ Bundled cards have no notice. Pima Diabetes and the former Seaborn Titanic ID are absent from new selection; Titanic Survival (1912 British Inquiry) is a separate sample. Existing saved projects retain their original guidance.
 
 Clicking the "Datasheet" button on a dataset card displays a modal containing sanitized markdown/HTML information about the sample dataset as shown in [01-2_dataset-card.html](mockups/01-2_dataset-card.html). Hostile markup (`<script>`, inline handlers, iframes) is stripped. Network failures display an alert with a "Retry" button, and closing the modal returns focus to the invoker button.
 
