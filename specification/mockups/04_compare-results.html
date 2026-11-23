@@ -1,4 +1,5 @@
 <!doctype html>
+<!-- DRAFT: structure only, not normative for appearance. Source: specification/plans/web-ml-phase-5-model-comparison.md. Open questions: none. -->
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
@@ -121,7 +122,324 @@
 		</div>
 
 		<main>
-			<article>{Compare Trained Model Results}</article>
+			<header>
+				<h1>Compare Results</h1>
+				<p>Compare performance metrics across trained models.</p>
+			</header>
+			<!-- {Blocked} -->
+			<!-- This will display when fewer than two models have been trained. -->
+			<section>
+				<p>
+					Train at least two models to compare their results.
+					<a href="/models">Go to Models</a>
+				</p>
+			</section>
+			<!-- / {Blocked} -->
+			<!-- {Loading} -->
+			<!-- This will display when saved model results are loading. -->
+			<section><p role="status">Loading model results…</p></section>
+			<!-- / {Loading} -->
+			<!-- {Unavailable result} -->
+			<!-- This will display when a saved result is missing, outdated or cannot be read. -->
+			<section>
+				<p>
+					Model 3: The saved results could not be read.
+					<button type="button">Retry</button>
+				</p>
+			</section>
+			<!-- / {Unavailable result} -->
+			<!-- {Incompatible groups} -->
+			<!-- This will display when no evaluation group contains two comparable models. -->
+			<section>
+				<p>
+					These models were evaluated on different rows and cannot be compared together.
+				</p>
+				<ul>
+					<li>Cross-validation: 1 model — another model is needed</li>
+					<li>One-Shot: 1 model — another model is needed</li>
+				</ul>
+			</section>
+			<!-- / {Incompatible groups} -->
+			<!-- {Selection} -->
+			<!-- This will display when a comparable group is available. -->
+			<section>
+				<label
+					>Evaluation group
+					<select>
+						<option>Cross-validation: 2 models</option>
+						<option>One-Shot: 1 model — another model is needed</option>
+					</select></label
+				>
+				<fieldset>
+					<legend>Models to compare</legend>
+					<p>Select up to eight models.</p>
+					<label><input type="checkbox" checked /> Model 1</label
+					><label><input type="checkbox" checked /> Model 2</label>
+				</fieldset>
+			</section>
+			<!-- / {Selection} -->
+			<!-- {Too few selected} -->
+			<!-- This will display when fewer than two models are selected. -->
+			<section><p>Select at least two models to compare.</p></section>
+			<!-- / {Too few selected} -->
+			<!-- {Comparison} -->
+			<!-- This will display when at least two comparable models are selected. -->
+			<section>
+				<h2>Comparison of held-out results</h2>
+				<table>
+					<caption>
+						Comparison of held-out results for Palmer Penguins species
+					</caption>
+					<thead>
+						<tr>
+							<th scope="col">Model</th>
+							<th scope="col"><button type="button">Balanced accuracy</button></th>
+							<th scope="col">Macro-F1</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<th scope="row">Model 1</th>
+							<td>96%</td>
+							<td>95%</td>
+						</tr>
+						<tr>
+							<th scope="row">Model 2</th>
+							<td>94%</td>
+							<td>93%</td>
+						</tr>
+						<tr>
+							<th scope="row">Most frequent class</th>
+							<td>33%</td>
+							<td>16%</td>
+						</tr>
+					</tbody>
+				</table>
+			</section>
+			<section>
+				<h2>Balanced accuracy across partitions</h2>
+				<p>Each dot is a held-out partition; lines connect matching partitions.</p>
+				<details>
+					<summary>Show data table</summary>
+					<table>
+						<caption>
+							Held-out balanced accuracy by partition
+						</caption>
+						<thead>
+							<tr>
+								<th scope="col">Model</th>
+								<th scope="col">Partition 1</th>
+								<th scope="col">Partition 2</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<th scope="row">Model 1</th>
+								<td>95%</td>
+								<td>97%</td>
+							</tr>
+							<tr>
+								<th scope="row">Model 2</th>
+								<td>93%</td>
+								<td>95%</td>
+							</tr>
+						</tbody>
+					</table>
+				</details>
+			</section>
+			<section>
+				<h2>Errors by class</h2>
+				<p>Compare the share of held-out rows misclassified in each class.</p>
+				<details>
+					<summary>Show data table</summary>
+					<table>
+						<caption>
+							Errors by class
+						</caption>
+						<thead>
+							<tr>
+								<th scope="col">Class</th>
+								<th scope="col">Model 1</th>
+								<th scope="col">Model 2</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<th scope="row">Adelie</th>
+								<td>3%</td>
+								<td>5%</td>
+							</tr>
+							<tr>
+								<th scope="row">Chinstrap</th>
+								<td>7%</td>
+								<td>8%</td>
+							</tr>
+							<tr>
+								<th scope="row">Gentoo</th>
+								<td>2%</td>
+								<td>4%</td>
+							</tr>
+						</tbody>
+					</table>
+				</details>
+			</section>
+			<section>
+				<h2>Confusion differences</h2>
+				<label
+					>Model A
+					<select>
+						<option>Model 1</option>
+						<option>Model 2</option>
+					</select></label
+				><label
+					>Model B
+					<select>
+						<option>Model 2</option>
+						<option>Model 1</option>
+					</select></label
+				><button type="button">Swap models A and B</button>
+				<p>Model A is Model 1; Model B is Model 2.</p>
+				<table>
+					<caption>
+						Confusion differences
+					</caption>
+					<thead>
+						<tr>
+							<th scope="col">True class</th>
+							<th scope="col">Adelie predicted</th>
+							<th scope="col">Chinstrap predicted</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<th scope="row">Adelie</th>
+							<td>+2 correct</td>
+							<td>−2</td>
+						</tr>
+						<tr>
+							<th scope="row">Chinstrap</th>
+							<td>0</td>
+							<td>0 correct</td>
+						</tr>
+					</tbody>
+				</table>
+			</section>
+			<section>
+				<h2>Practical equivalence</h2>
+				<label
+					>Equivalence width
+					<input type="number" min="0.001" max="0.1" step="0.001" value="0.01"
+				/></label>
+				<p>
+					Model 1 and Model 2 are compared over 5 folds with a practical-equivalence width
+					of 0.01.
+				</p>
+				<details>
+					<summary>Show data table</summary>
+					<table>
+						<caption>
+							Practical equivalence
+						</caption>
+						<thead>
+							<tr>
+								<th scope="col">Outcome</th>
+								<th scope="col">Probability</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<th scope="row">A higher</th>
+								<td>60%</td>
+							</tr>
+							<tr>
+								<th scope="row">Practically equivalent</th>
+								<td>25%</td>
+							</tr>
+							<tr>
+								<th scope="row">B higher</th>
+								<td>15%</td>
+							</tr>
+						</tbody>
+					</table>
+				</details>
+			</section>
+			<section>
+				<h2>Instance agreement</h2>
+				<p>3 rows were missed by every model.</p>
+				<details>
+					<summary>Show data table</summary>
+					<table>
+						<caption>
+							Instance agreement
+						</caption>
+						<thead>
+							<tr>
+								<th scope="col">Correct models</th>
+								<th scope="col">Rows</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<th scope="row">0 models correct</th>
+								<td>3</td>
+							</tr>
+							<tr>
+								<th scope="row">1 model correct</th>
+								<td>12</td>
+							</tr>
+							<tr>
+								<th scope="row">2 models correct</th>
+								<td>327</td>
+							</tr>
+						</tbody>
+					</table>
+				</details>
+			</section>
+			<p>There is no automatic winner. Compare the measures and their trade-offs.</p>
+			<!-- / {Comparison} -->
+			<!-- {Baseline mismatch} -->
+			<!-- This will display when the selected models have inconsistent saved baseline reports. -->
+			<section>
+				<p>
+					A baseline is unavailable because its saved reports differ across these models.
+				</p>
+			</section>
+			<!-- / {Baseline mismatch} -->
+			<!-- {Many classes} -->
+			<!-- This will display when the confusion comparison has more than twenty classes. -->
+			<section>
+				<label
+					>True class
+					<select>
+						<option>Default classes</option>
+						<option>Adelie</option>
+						<option>Chinstrap</option>
+						<option>Gentoo</option>
+					</select></label
+				>
+			</section>
+			<!-- / {Many classes} -->
+			<!-- {Analysis loading} -->
+			<!-- This will display while the paired-fold analysis is running. -->
+			<section>
+				<h2>Practical equivalence</h2>
+				<p role="status">Analysing paired folds…</p>
+			</section>
+			<!-- / {Analysis loading} -->
+			<!-- {Analysis unavailable} -->
+			<!-- This will display when the selected evaluations have fewer than two cross-validation folds. -->
+			<section>
+				<h2>Practical equivalence</h2>
+				<p>At least two cross-validation folds are required.</p>
+			</section>
+			<!-- / {Analysis unavailable} -->
+			<!-- {Analysis error} -->
+			<!-- This will display when analysis fails. -->
+			<section>
+				<h2>Practical equivalence</h2>
+				<p>The comparison could not be analysed. <button type="button">Retry</button></p>
+			</section>
+			<!-- / {Analysis error} -->
 		</main>
 	</body>
 </html>

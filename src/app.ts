@@ -8,6 +8,7 @@ import './features/shell/app-content-modal';
 import './features/shell/app-sidebar';
 import './features/shell/app-welcome-modal';
 import './features/target/app-target-view';
+import './features/results/app-results-view';
 import { parseRoute } from './router/route-parser';
 import { $route, initRouter, takeFocusRequest } from './router/router';
 import { getScrollKeyForRoute, initScrollRestorer, restoreScroll } from './router/scroll-restorer';
@@ -52,7 +53,8 @@ type WorkflowFocusView = HTMLElementTagNameMap[
 	| 'app-data-view'
 	| 'app-target-view'
 	| 'app-models-view'
-	| 'app-model-builder-view'];
+	| 'app-model-builder-view'
+	| 'app-results-view'];
 
 declare global {
 	interface Window {
@@ -82,15 +84,7 @@ function renderWorkflowView(route: ParsedRoute) {
 		case '/models':
 			return html` <app-models-view></app-models-view> `;
 		case '/results':
-			return html`
-				<header class="page-header">
-					<h1 tabindex="-1">Compare Results</h1>
-					<p>Compare performance metrics across trained models.</p>
-				</header>
-				<section class="page-body" data-testid="results-view">
-					<p>Model comparison view placeholder.</p>
-				</section>
-			`;
+			return html`<app-results-view></app-results-view>`;
 		default:
 			if (route.modelNum !== undefined) {
 				return html`
@@ -191,7 +185,7 @@ export function renderAppShell(container: HTMLElement): void {
 		const controller = new AbortController();
 		pendingHeadingFocus = controller;
 		const view = container.querySelector<WorkflowFocusView>(
-			'#content > app-data-view, #content > app-target-view, #content > app-models-view, #content > app-model-builder-view'
+			'#content > app-data-view, #content > app-target-view, #content > app-models-view, #content > app-model-builder-view, #content > app-results-view'
 		);
 		if (view) {
 			void view.focusHeading(controller.signal).finally(() => {
@@ -212,8 +206,13 @@ export function renderAppShell(container: HTMLElement): void {
 		if (scrollKey && scrollKey !== lastRestoredScrollKey) {
 			lastRestoredScrollKey = scrollKey;
 			const viewEl = container.querySelector<
-				HTMLElementTagNameMap['app-data-view' | 'app-model-builder-view']
-			>('#content > app-data-view, #content > app-model-builder-view');
+				HTMLElementTagNameMap[
+					| 'app-data-view'
+					| 'app-model-builder-view'
+					| 'app-results-view']
+			>(
+				'#content > app-data-view, #content > app-model-builder-view, #content > app-results-view'
+			);
 			const settled = viewEl?.whenSettled();
 			restoreScroll(scrollKey, settled);
 		}

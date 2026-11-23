@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-23T06:52:20Z
+**Status:** ready | **Updated:** 2026-11-23T07:08:10Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T06:52:20Z | **Verification:** approved
 **Verified hash:** sha256:625791e6ca00784f2c4c7fb640e63c37011e3c86f460e47663e4acb8627e55a4
@@ -324,6 +324,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 ## Escalations
 
+- [ ] **E6 (T6):** The required full browser command reported 304 passed, 19 failed, 138 skipped and one did not run. PH-AC-2 fails in all three browsers because shared `main` padding is 32px versus the reference's 0px; the same inherited mismatch and nine visual-parity failures are recorded in `specification/HUMAN.md` §1. T6 requires PH-AC-2 and the listed parity suite to pass, but its scope does not include the shared shell/sidebar geometry. The run also had navigation/scroll failures and WebKit training and seeded-comparison failures. A targeted rerun of `bun run test:e2e tests/comparison.e2e.ts tests/journeys/iris-classification.e2e.ts tests/journeys/penguins-classification.e2e.ts` passed all 30 cases in three browsers; the navigation/scroll failures remain to be investigated. Impact: T6 cannot be completed, T7 cannot start, and the plan cannot be marked implemented. Decision needed: resolve the inherited shared-layout parity in an approved scope, or revise and independently review the acceptance contract with a specific authorised disposition. Partial T6 route, draft, stories and tests are retained; `bun run check` passed 558 tests and `bun run test:stories` passed 558 tests.
 - [x] **E5 (T6):** T6 specified a nested draft path, but `specification/visual-design.md` §1.1 requires flat drafts served by the mockup catalogue. Resolved by specifying the existing flat draft placeholder as the T6 target and requiring its human styling queue item; independent review is required.
 - [x] **E1 (T1):** Phase 4 and dependencies were missing. Resolved by integration and provisioning; `bun run check` passed 540 tests.
 - [x] **E2 (T1):** The runtime probe could not load on a reused development server; 12 of 27 cases failed. Resolved by freeing port 3000 and rerunning `bun run test:e2e tests/training-runtime.e2e.ts`: 27 passed in three browsers.

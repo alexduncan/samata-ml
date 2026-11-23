@@ -7,7 +7,7 @@ import {
 	manyClasses,
 	svcBinaryNoProbabilities
 } from '../fixtures/results/evaluations';
-import { controlTraining, openSetup } from '../fixtures/training/browser';
+import { configureDraft, controlTraining, openSetup } from '../fixtures/training/browser';
 
 /** Hand-written evaluations that can be saved as the result of a trained model. */
 export type SeedName = 'iris' | 'breast-cancer' | 'svc-no-probabilities' | 'many-classes';
@@ -191,6 +191,46 @@ export function readEnvelope(page: Page): Promise<Record<string, unknown> | null
 			db.close();
 		}
 	});
+}
+
+/** Publishes two matching evaluations through the ordinary durable training workflow. */
+export async function seedComparablePair(page: Page, name: SeedName = 'iris'): Promise<void> {
+	await seedTrainedModel(page, name);
+	await page.locator('app-sidebar a[href="/models"]').click();
+	const setup = await configureDraft(page, 2);
+	const evaluation = evaluations[name]();
+	if (evaluation.protocol.kind === 'cross_validation') {
+		await setup.getByRole('combobox', { name: 'Training Strategy' }).selectOption('nested_cv');
+	}
+	await setup.getByRole('button', { name: 'Train Model' }).click();
+	await expect
+		.poll(() =>
+			page.evaluate(
+				() =>
+					window.__trainingFixture!.requests.filter(({ kind }) => kind === 'start').length
+			)
+		)
+		.toBe(2);
+	await page.evaluate(
+		(json) => {
+			const result = JSON.parse(json, (_key, value) => {
+				if (value && typeof value === 'object' && '__typed' in value) {
+					const constructors = { Uint16Array, Uint32Array, Float32Array, Float64Array };
+					return constructors[value.__typed as keyof typeof constructors].from(
+						value.data
+					);
+				}
+				return value;
+			});
+			window.__trainingFixture!.reply({ kind: 'success', result }, 2);
+		},
+		encode(payloadFor(evaluation))
+	);
+	const viewResults = page
+		.getByTestId('training-step')
+		.getByRole('button', { name: 'View Results' });
+	await expect(viewResults).toBeEnabled({ timeout: 15_000 });
+	await viewResults.click();
 }
 
 /** Removes the stored result envelope of Model 1. */

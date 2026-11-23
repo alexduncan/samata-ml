@@ -1,5 +1,32 @@
 import { expect, test } from '@playwright/test';
 import { acknowledgeDurableTraining, expectPopulatedResults, loadSampleDataset } from './helpers';
+import { configureDraft } from '../fixtures/training/browser';
+
+test('JOURNEY-PENGUINS-COMPARE: train two One-Shot models and explain unavailable analysis', async ({
+	page
+}) => {
+	test.setTimeout(120_000);
+	await page.goto('/data');
+	await loadSampleDataset(page, 'palmer-penguins');
+	await page.locator('app-sidebar a[href="/target"]').click();
+	await page.locator('app-target-view tbody tr:has(th:has-text("species")) button').click();
+	await page.locator('app-sidebar a[href="/models"]').click();
+	for (const num of [1, 2]) {
+		const setup = await configureDraft(page, num);
+		await setup.getByRole('button', { name: 'Train Model' }).click();
+		const results = page
+			.getByTestId('training-step')
+			.getByRole('button', { name: 'View Results' });
+		await expect(results).toBeEnabled({ timeout: 45_000 });
+		await results.click();
+		await page.locator('app-sidebar a[href="/models"]').click();
+	}
+	await page.locator('app-sidebar a[href="/results"]').click();
+	await expect(page.locator('app-results-view app-comparison-table')).toBeVisible();
+	await expect(page.locator('app-rope-bar')).toContainText(
+		'At least two cross-validation folds are required.'
+	);
+});
 
 test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUINS-DATA)', () => {
 	test.describe.configure({ mode: 'serial' });

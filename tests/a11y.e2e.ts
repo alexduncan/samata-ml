@@ -3,9 +3,18 @@ import { expect, test, type Page } from '@playwright/test';
 import { featureA11yFindings } from './a11y-feature-findings';
 import { loadSampleDataset } from './journeys/helpers';
 import { controlTraining, openSetup } from './fixtures/training/browser';
-import { seedTrainedModel, type SeedName } from './helpers/seed-results';
+import { seedComparablePair, seedTrainedModel, type SeedName } from './helpers/seed-results';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
+
+test('WML-P5-UI-12: populated comparison has no unexpected accessibility findings', async ({
+	page
+}) => {
+	await seedComparablePair(page);
+	await page.goto('/results');
+	await expect(page.locator('app-results-view app-comparison-table')).toBeVisible();
+	await assertNoUnexpectedViolations(page);
+});
 
 async function createDraftForAxe(page: Page) {
 	await page.goto('/data');
