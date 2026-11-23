@@ -192,8 +192,8 @@ In `src/features/data/ingestion/fetch-source.ts`, extend the existing `fetchWith
 
 ## Verification and definition of done
 
-- [ ] All `DSP-AC-1` through `DSP-AC-9` pass. Verify through `bun run check`, `bun run build`, the named browser suites and stories, `bun run format:check` and `bun run plans:check`.
-- [ ] Type-check, formatting, cross-origin security, existing local-user-data privacy, and accessibility checks complete. Record known baseline failures separately.
+- [x] All `DSP-AC-1` through `DSP-AC-9` pass. Verify through `bun run check`, `bun run build`, the named browser suites and stories, `bun run format:check` and `bun run plans:check`.
+- [x] Type-check, formatting, cross-origin security, existing local-user-data privacy, and accessibility checks complete. Record known baseline failures separately.
 - [x] Every item under _Specification changes_ is applied and status matches the index.
 - [x] Reviewed first-push instructions and a synthetic dry run are available. The application plan is complete before the maintainer creates the filtered publication copy.
 
