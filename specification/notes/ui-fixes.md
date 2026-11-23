@@ -115,7 +115,8 @@ Whenever an agent combines multiple HTML fragments representing different possib
 ```
 
 ## Improve Virtualized Table
-1. Move scroll to body. Unwrap `ui-virtual-table` so it sits directly inside `<main>`.
+1. Remove the loading element and table navigation elements.
+2. Move scroll to body. Unwrap `ui-virtual-table` so it sits directly inside `<main>`.
 2. Set the height on `div.table-body` by multiplying row height by the number of rows.
 3. Each row `div.table-row` is positioned using `transform: translateY({scroll-distance});will-change: transform;`.
 4. Maintain an **overscan buffer** of `visibleRows * 2` to avoid the user seeing empty space.
@@ -131,7 +132,6 @@ Whenever an agent combines multiple HTML fragments representing different possib
 - [ ] Format Dates & times better.
 - [ ] Style unsupported columns.
 - [ ] Load dataset progress bar. Progress knowable?!?
-- [ ] 
 
 
 ## Dot Rules
@@ -150,4 +150,4 @@ It is currently used in the following siutations:
 ### Large Screens
 
 - Don't allow `.page-body` to expand beyond `max-width: 60rem`.
-- 
+- Prefer logical CSS properties instead of physical properties to better support i18n.
