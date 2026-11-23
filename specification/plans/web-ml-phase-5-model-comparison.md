@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-23T09:04:25Z
+**Status:** implemented | **Updated:** 2026-11-23T09:05:29Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T08:58:39Z | **Verification:** approved
 **Verified hash:** sha256:76fb1730d0edcb19fba87edced64ddb0935544f9ed111ba6ba4246ccab5bc56e
@@ -353,6 +353,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-23T08:50:02Z | — | Codex (GPT-6) | T6 remains open (E7): `bun run test:e2e tests/comparison.e2e.ts` 39 passed; full T6 browser command 348 passed, 12 authorised visual failures, 138 skipped; `bun run test:stories` 582 passed; `bun run check` 558 passed; `bun run build` passed; token guard 8 passed. Native zoom and spoken screen-reader evidence remain unverified. |
 | 2026-11-23T08:59:57Z | T6 | Codex (GPT-6) | bun run test:e2e tests/comparison.e2e.ts: 39 passed across three browsers; full T6 Playwright command: 348 passed, 12 authorised visual-only failures documented in HUMAN.md, 138 skipped; bun run test:stories: 582 passed; bun run check: 558 passed; bun run build: passed; bun test tests/style-tokens.test.ts: 8 passed. Native zoom and screen-reader checks were deferred by the user until 2026-11-24 and remain unperformed in HUMAN.md. |
 | 2026-11-23T09:04:25Z | T7 | Codex (GPT-6) | bun run plans:check specification/plans/web-ml-phase-5-model-comparison.md: passed; bun run check: typecheck and 558 tests passed. Scope warnings for COMPONENTS.md and page-header.md are required focus-owner synchronisation from the approved review history. |
+| 2026-11-23T09:05:29Z | Implement | Codex (GPT-6) | Marked implemented |
 
 ## Plan review history
 
