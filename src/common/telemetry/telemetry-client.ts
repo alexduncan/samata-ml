@@ -80,7 +80,7 @@ const $betaDeploymentWritable = atom<boolean>(isBetaTelemetryDeployment());
 export const $betaDeployment: ReadableAtom<boolean> = $betaDeploymentWritable;
 
 /**
- * Overrides {@link $betaDeployment} for unit tests and Storybook stories only.
+ * Overrides `$betaDeployment` for unit tests and Storybook stories only.
  *
  * @param value - Whether the welcome modal should render in beta disclosure mode.
  */

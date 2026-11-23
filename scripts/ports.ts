@@ -57,7 +57,7 @@ type Env = Readonly<Record<string, string | undefined>>;
 /**
  * Computes the unsigned 32-bit FNV-1a hash of the UTF-8 bytes of `text`.
  *
- * @param text Text to hash.
+ * @param text - Text to hash.
  * @returns Unsigned 32-bit hash.
  */
 export function fnv1a32(text: string): number {
@@ -72,7 +72,7 @@ export function fnv1a32(text: string): number {
 /**
  * Derives the stable port base of a linked worktree from its real root path.
  *
- * @param root Real path of the worktree root.
+ * @param root - Real path of the worktree root.
  * @returns Base port (the app port) in 20000 to 32762, a multiple of 3 above 20000.
  */
 export function deriveWorktreePortBase(root: string): number {
@@ -85,7 +85,7 @@ export function deriveWorktreePortBase(root: string): number {
  * A `.git` file marks a linked worktree; a `.git` directory or no `.git` entry
  * (tarball export) marks a primary checkout.
  *
- * @param root Checkout root directory.
+ * @param root - Checkout root directory.
  * @returns The checkout kind.
  */
 export function detectCheckoutKind(root: string): CheckoutKind {
@@ -113,7 +113,7 @@ function parseBaseOverride(env: Env): number | null {
  * Resolves the ports of a checkout. The override is read first and throws on
  * an invalid value.
  *
- * @param options Optional root directory and environment.
+ * @param options - Optional root directory and environment.
  * @returns The checkout's ports.
  */
 export function resolveCheckoutPorts(options: { rootDir?: string; env?: Env } = {}): CheckoutPorts {
@@ -150,7 +150,7 @@ export function resolveCheckoutPorts(options: { rootDir?: string; env?: Env } = 
 /**
  * Builds the base URLs for a checkout's ports.
  *
- * @param ports Resolved checkout ports.
+ * @param ports - Resolved checkout ports.
  * @returns URLs without trailing slashes.
  */
 export function checkoutUrls(ports: CheckoutPorts): CheckoutUrls {
@@ -171,10 +171,10 @@ function validPort(raw: string | undefined): number | null {
  * Chooses a server port: the last valid listed flag, then a valid `PORT`, then `fallback`.
  * Invalid values are ignored.
  *
- * @param argv Command-line arguments.
- * @param env Environment (reads `PORT`).
- * @param fallback Port used when nothing valid is supplied.
- * @param flags Accepted flags (default `['--port']`).
+ * @param argv - Command-line arguments.
+ * @param env - Environment (reads `PORT`).
+ * @param fallback - Port used when nothing valid is supplied.
+ * @param flags - Accepted flags (default `['--port']`).
  * @returns The chosen port, 0 to 65535.
  */
 export function parsePortOption(

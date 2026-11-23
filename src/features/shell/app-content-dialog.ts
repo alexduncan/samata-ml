@@ -15,7 +15,7 @@ export type ContentDialogCloseDetail = Record<string, never>;
 /**
  * Presentational native dialog for a safe, already-sanitised content fragment.
  *
- * @fires {CustomEvent<ContentDialogCloseDetail>} app-content-dialog-close - The user dismissed the dialog.
+ * @fires app-content-dialog-close - The user dismissed the dialog.
  */
 @customElement('app-content-dialog')
 export class AppContentDialog extends LitElement {

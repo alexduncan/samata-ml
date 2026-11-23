@@ -38,6 +38,7 @@ Bun only: never npm, yarn, pnpm, or `npx` (use `bunx`).
 - `bun run check` — Typecheck + unit tests (`tsc --noEmit && bun test`). Run before reporting a task complete.
 - `bun test <path>` — Run one test file.
 - `bun run typecheck` — TypeScript check (`tsc --noEmit`; or `bunx tsgo --noEmit` where configured).
+- `bun run lint` — TSDoc check across `src/` and `scripts/` (`scripts/lint-tsdoc.ts`).
 - `bun run build` — Production build (bundles app + validates sample datasets + compiles `datasheet.md` to HTML for `<dialog>` presentation).
 - `bun run version:release prerelease --dry-run` — Preview the next SemVer version and changelog section without modifying files.
 - `bun run deploy:dry-run` — Run the production build and validate the Cloudflare Workers bundle without deploying.

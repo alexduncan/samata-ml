@@ -16,7 +16,7 @@ let inflightCheck: Promise<void> | null = null;
 export type ReleaseFetch = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 
 /**
- * Probes `/release.json` (`cache: 'no-store'`) and sets {@link $staleAssetDetected} if a newer `build` is deployed.
+ * Probes `/release.json` (`cache: 'no-store'`) and sets `$staleAssetDetected` if a newer `build` is deployed.
  *
  * At most one probe runs concurrently. Any network, HTTP status or JSON parse error is ignored silently.
  *

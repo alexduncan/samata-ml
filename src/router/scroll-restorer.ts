@@ -79,7 +79,7 @@ export function recordCurrentScroll(
  * Follows specification/app-state-and-navigation.md §8.4:
  * 1. Checks snapshot; if viewportWidth differs, aborts and scrolls to top.
  * 2. Awaits viewSettled promise if provided.
- * 3. Scrolls instantly via window.scrollTo({ top, behavior: 'instant' }).
+ * 3. Scrolls instantly via `window.scrollTo({ top, behavior: 'instant' })`.
  * 4. Aborts immediately upon user scroll input.
  *
  * @param routeKey - Snapshot key to restore.

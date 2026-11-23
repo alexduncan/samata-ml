@@ -28,7 +28,7 @@ export function takeFocusRequest(): boolean {
 }
 
 /**
- * Maps a parsed route to its canonical document title: samatā.ml | {Page}
+ * Maps a parsed route to its canonical document title: `samatā.ml | {Page}`
  */
 export function getDocumentTitle(route: ParsedRoute): string {
 	const BASE_TITLE = 'samatā.ml';
@@ -82,7 +82,7 @@ function updateTitle(route: ParsedRoute): void {
  * Navigates to a workflow or application route.
  *
  * @param path - The target pathname.
- * @param options - Navigation options (e.g. { replace: true }).
+ * @param options - Navigation options (e.g. `{ replace: true }`).
  */
 export function navigate(path: string, options?: { replace?: boolean }): void {
 	internalNavigate(path, options, true);
