@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { acknowledgeDurableTraining, loadSampleDataset } from './helpers';
+import { acknowledgeDurableTraining, expectPopulatedResults, loadSampleDataset } from './helpers';
 
 test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUINS-DATA)', () => {
 	test.describe.configure({ mode: 'serial' });
@@ -122,7 +122,7 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		await expect(continueLink).toBeVisible();
 	});
 
-	test('WML-P3-UI-4 / JOURNEY-PENGUINS-SETUP: train and acknowledge a stratified One-Shot result', async ({
+	test('WML-P4-UI-13 / JOURNEY-PENGUINS-RESULTS and WML-P3-UI-4 / JOURNEY-PENGUINS-SETUP: train, acknowledge and show populated results for a stratified One-Shot result', async ({
 		page
 	}) => {
 		await page.goto('/data');
@@ -222,6 +222,7 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 			trainCount: 275,
 			testCount: 69
 		});
+		await expectPopulatedResults(page, { protocol: 'one_shot', heldOutRows: 69 });
 
 		// 8. Navigate back to /models via sidebar.
 		await page.locator('app-sidebar a[href="/models"]').click();

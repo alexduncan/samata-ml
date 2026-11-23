@@ -1,6 +1,6 @@
 # Future development
 
-**Updated:** 2026-11-20
+**Updated:** 2026-11-21
 
 Items the specifications mark as _future_, _later_ or _deferred_. They are **not** to be planned or built until a human moves them into a spec. Open questions about current scope are in [TODO.md](TODO.md). Deliberate exclusions are listed under **Non-goals** in each component spec (§11) and are not future work.
 
@@ -18,6 +18,12 @@ Items the specifications mark as _future_, _later_ or _deferred_. They are **not
 - **More Training Setup options.** Add custom holdout ratios, editable random seeds and missing-value controls for training once the relevant contracts are specified. [Training Setup](components/training-setup.md)
 - **Datetime feature engineering.** Datetime columns are inferred and stored as UTC epoch milliseconds, but are not model inputs. Future work may add datetime feature engineering and recognise further date formats: `.` separators, 12-hour clocks, weekday prefixes and non-English month names.
 - **Richer type-specific dataset preview formatting:** Deferred in `virtual-table-component.md`; current display formats numbers with grouping separators while preserving decimals, and escapes cell values as text. Richer boolean indicators, fixed-precision floats, currency, and percentages are deferred.
+- **Richer classification results** (deferred from [Phase 4](plans/archive/web-ml-phase-4-single-model-results.md)):
+    - **Normalised expected cost (NEC)** with a cost-ratio slider.
+    - **Subgroup fairness gap** for a chosen protected attribute (TODO-43).
+    - **Selectable positive class** for the threshold explorer and binary metrics; Phase 4 fixes the second class as positive.
+    - **Prediction latency** alongside fit time.
+    - **Hand-built SVG charts** that replace Observable Plot where a bespoke chart is clearer, such as a Sankey-style confusion flow.
 - **Authored model illustrations and replacement of text-entry fallback:** Dedicated SVG illustrations for the 13 supervised models beyond Logistic Regression (Decision Trees, Naive Bayes variants, SVM, k-NN, Multi-Layer Perceptrons, Linear/Polynomial Regression). Each new illustrated card requires a human-approved, model-appropriate SVG adhering to the 360×216 viewBox and semantic color tokens. Until authored, these models render via the accessible native text-entry fallback (`03-9_choose-model-text-entries.html`).
 
 ## Engineering

@@ -1,4 +1,10 @@
-import type { ResultEnvelope, TrainingRunIdentity } from '../../../src/types/model-result';
+import type {
+	ResultEnvelopeV1,
+	ResultEnvelopeV2,
+	TrainingRunIdentity
+} from '../../../src/types/model-result';
+import type { StoredEvaluation, StoredPartition } from '../../../src/types/model-evaluation';
+import { reportFromConfusion } from '../results/evaluations';
 
 /** Captured identity for durable-result fixtures. */
 export const resultIdentity: TrainingRunIdentity = {
@@ -30,10 +36,10 @@ const base = {
 	logEntries: [{ id: 1, timestamp: 42, level: 'status', message: { key: 'completed' } }]
 } as const;
 
-/** Builds a valid small result with independent fitter and evaluation axes. */
-export function fixtureTrainingResult(
-	strategy: ResultEnvelope['strategy'] = 'one_shot'
-): ResultEnvelope {
+/** Builds a valid small Phase 3 (version 1) result with independent fitter and evaluation axes. */
+export function fixtureLegacyTrainingResult(
+	strategy: ResultEnvelopeV1['strategy'] = 'one_shot'
+): ResultEnvelopeV1 {
 	if (strategy === 'one_shot') {
 		return {
 			...base,
@@ -107,3 +113,5 @@ export function fixtureTrainingResult(
 		}
 	};
 }
+
+export { fixtureTrainingResult } from './results-v2';

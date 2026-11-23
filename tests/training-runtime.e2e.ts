@@ -1,12 +1,22 @@
 import { expect, test, type Page } from '@playwright/test';
 import compas from '../content/datasets/compas-recidivism/descriptor';
+import { APP_URL, DIST_URL } from '../scripts/ports';
 
 type ProbeReply =
 	| { kind: 'trained'; runtimeUrl: string }
 	| { kind: 'not-isolated' | 'cancelled' }
+	| {
+			kind: 'one-shot';
+			hasFit: boolean;
+			partitions: number;
+			trainingReports: number;
+			baselines: string[];
+			rows: number;
+			positiveLabel: string | null;
+	  }
 	| { kind: 'failed'; detail: string };
 
-async function runProbe(page: Page, command: 'train' | 'cancel'): Promise<ProbeReply> {
+async function runProbe(page: Page, command: 'train' | 'cancel' | 'one-shot'): Promise<ProbeReply> {
 	return page.evaluate(
 		(command) =>
 			new Promise<ProbeReply>((resolve, reject) => {
@@ -26,8 +36,8 @@ async function runProbe(page: Page, command: 'train' | 'cancel'): Promise<ProbeR
 }
 
 const origins = [
-	{ name: 'development', url: 'https://localhost:3000' },
-	{ name: 'production', url: 'https://localhost:3001' }
+	{ name: 'development', url: APP_URL },
+	{ name: 'production', url: DIST_URL }
 ];
 
 for (const origin of origins) {
@@ -65,6 +75,21 @@ for (const origin of origins) {
 			const wasm = await request.get(new URL('wasm/libsvm.wasm', entry).href);
 			expect(wasm.ok()).toBe(true);
 			expect(wasm.headers()['content-type']).toBe('application/wasm');
+		});
+
+		test('WML-P4-ASSET-2: completes a One-Shot fit requesting evaluation and fitted artefacts', async ({
+			page
+		}) => {
+			await page.goto(`${origin.url}/models`);
+			expect(await runProbe(page, 'one-shot')).toEqual({
+				kind: 'one-shot',
+				hasFit: true,
+				partitions: 1,
+				trainingReports: 1,
+				baselines: ['most-frequent', 'stratified'],
+				rows: 8,
+				positiveLabel: 'right'
+			});
 		});
 
 		test('WML-P3-ASSET-2: cancels a real run through the public API', async ({ page }) => {

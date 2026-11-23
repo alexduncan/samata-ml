@@ -1,4 +1,5 @@
 import { atom } from 'nanostores';
+import { headlineMetrics } from '../../../common/evaluation/headline-metrics';
 import { INGESTION_LOCK, deleteDataset, getMetadata } from '../../../common/storage/db';
 import {
 	readTrainingCheckpoint,
@@ -41,7 +42,11 @@ import {
 	getTrainingSession,
 	setTrainingSessionStatus
 } from '../../../stores/training.store';
-import type { ResultEnvelope, TrainingRunIdentity } from '../../../types/model-result';
+import type {
+	ResultEnvelope,
+	ResultEnvelopeV2,
+	TrainingRunIdentity
+} from '../../../types/model-result';
 import type { DatasetMetadata } from '../../../types/dataset';
 import {
 	INITIAL_APP_STATE,
@@ -559,10 +564,10 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 			{ key: 'completed' },
 			now()
 		);
-		const envelope: ResultEnvelope = {
+		const envelope: ResultEnvelopeV2 = {
 			...reply.result,
 			...identity,
-			schemaVersion: 1,
+			schemaVersion: 2,
 			algorithm: attempt.request.classifier.algorithm,
 			durationMs,
 			logEntries: entries
@@ -580,7 +585,8 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 					return conflict;
 				const next = reduceTrainingOutcome(state, identity, {
 					kind: 'success',
-					durationMs
+					durationMs,
+					metrics: headlineMetrics(envelope.evaluation)
 				});
 				return next
 					? { state: next, mutation: { type: 'insert-result', result: envelope } }

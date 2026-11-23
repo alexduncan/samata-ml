@@ -211,8 +211,10 @@ export function renderAppShell(container: HTMLElement): void {
 		const scrollKey = getScrollKeyForRoute(currentRoute, dataMode);
 		if (scrollKey && scrollKey !== lastRestoredScrollKey) {
 			lastRestoredScrollKey = scrollKey;
-			const viewEl = container.querySelector('app-data-view');
-			const settled = viewEl && 'whenSettled' in viewEl ? viewEl.whenSettled() : undefined;
+			const viewEl = container.querySelector<
+				HTMLElementTagNameMap['app-data-view' | 'app-model-builder-view']
+			>('#content > app-data-view, #content > app-model-builder-view');
+			const settled = viewEl?.whenSettled();
 			restoreScroll(scrollKey, settled);
 		}
 	}

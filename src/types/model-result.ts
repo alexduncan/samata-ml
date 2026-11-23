@@ -8,6 +8,7 @@ import type {
 	TrainingEvent,
 	TrainingPhase
 } from 'web-ml';
+import type { StoredEvaluation } from './model-evaluation';
 
 /** Immutable identity for a single attempt at a captured configuration. */
 export interface TrainingRunIdentity {
@@ -50,8 +51,7 @@ export interface TrainingLogEntry {
 /** Both library reports that single-target classification may return. */
 export type HoldoutReport = BinaryClassificationMetrics | MulticlassClassificationMetrics;
 
-/** Version-independent payload copied from the training worker before model disposal. */
-export type TrainingResultPayload = {
+type PayloadBase = {
 	readonly webMlRevision: string;
 	readonly excludedTargetRows: number;
 	readonly sourceRowIndices: readonly number[];
@@ -59,31 +59,64 @@ export type TrainingResultPayload = {
 	readonly classLabels: readonly ClassificationLabel[];
 	readonly modelJson: Record<string, unknown>;
 	readonly preprocessorJson: FittedTabularPreprocessorState;
-} & (
-	| {
-			readonly strategy: 'one_shot';
-			readonly holdout: {
-				readonly trainIndices: Uint32Array;
-				readonly testIndices: Uint32Array;
-				readonly report: HoldoutReport;
-			};
-	  }
-	| {
-			readonly strategy: 'cross_validation';
-			readonly crossValidation: {
-				readonly folds: readonly CrossValidationFoldResult[];
-				readonly diagnostics: ClassificationDiagnostics;
-				readonly meanScore: number;
-				readonly standardDeviation: number;
-			};
-	  }
-);
+};
 
-/** The durable v1 result stored under the dataset and model number. */
-export type ResultEnvelope = TrainingResultPayload &
-	TrainingRunIdentity & {
-		readonly schemaVersion: 1;
-		readonly algorithm: import('../features/models/model-catalogue').ClassifierId;
-		readonly durationMs: number;
-		readonly logEntries: readonly TrainingLogEntry[];
-	};
+type CrossValidationPayload = {
+	readonly folds: readonly CrossValidationFoldResult[];
+	readonly diagnostics: ClassificationDiagnostics;
+	readonly meanScore: number;
+	readonly standardDeviation: number;
+};
+
+/** Phase 3 payload kept readable: no stored evaluation, One-Shot report from the library. */
+export type LegacyTrainingResultPayload = PayloadBase &
+	(
+		| {
+				readonly strategy: 'one_shot';
+				readonly holdout: {
+					readonly trainIndices: Uint32Array;
+					readonly testIndices: Uint32Array;
+					readonly report: HoldoutReport;
+				};
+		  }
+		| {
+				readonly strategy: 'cross_validation';
+				readonly crossValidation: CrossValidationPayload;
+		  }
+	);
+
+/**
+ * Payload copied from the training worker before model disposal. The One-Shot report lives in
+ * `evaluation.partitions[0].test`; both index arrays are relative to the retained rows.
+ */
+export type TrainingResultPayload = PayloadBase & {
+	readonly evaluation: StoredEvaluation;
+} & (
+		| {
+				readonly strategy: 'one_shot';
+				readonly holdout: {
+					readonly trainIndices: Uint32Array;
+					readonly testIndices: Uint32Array;
+				};
+		  }
+		| {
+				readonly strategy: 'cross_validation';
+				readonly crossValidation: CrossValidationPayload;
+		  }
+	);
+
+type EnvelopeBase = TrainingRunIdentity & {
+	readonly algorithm: import('../features/models/model-catalogue').ClassifierId;
+	readonly durationMs: number;
+	readonly logEntries: readonly TrainingLogEntry[];
+};
+
+/** A Phase 3 durable result: still readable, with no evaluation detail. */
+export type ResultEnvelopeV1 = LegacyTrainingResultPayload &
+	EnvelopeBase & { readonly schemaVersion: 1 };
+
+/** The durable result stored under the dataset and model number, with its evaluation. */
+export type ResultEnvelopeV2 = TrainingResultPayload & EnvelopeBase & { readonly schemaVersion: 2 };
+
+/** Either durable result version. */
+export type ResultEnvelope = ResultEnvelopeV1 | ResultEnvelopeV2;

@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
+import { MOCKUPS_URL } from '../scripts/ports';
 
-const MOCKUP_SERVER = 'http://localhost:3333';
+const MOCKUP_SERVER = MOCKUPS_URL;
 const DRAFT_FILE = '03-4_train-models-3-configure-model.html';
 const OVERVIEW_FILE = '03-0_models-overview.html';
 

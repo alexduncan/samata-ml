@@ -1,5 +1,4 @@
 import { expect, test } from 'bun:test';
-import { stratifiedTrainTestSplit } from 'web-ml';
 import type { ClassifierId } from '../src/features/models/model-catalogue';
 import {
 	buildClassificationRequest,
@@ -10,7 +9,6 @@ import type { PreparedClassification } from '../src/features/models/training/typ
 import { createCrossValidationSetup } from '../src/features/models/training-setup';
 import { DEFAULT_ONE_SHOT_SETUP, type HyperparameterValue } from '../src/types/state';
 
-const runtime = { stratifiedTrainTestSplit };
 const targetCodes = Float64Array.from({ length: 12 }, (_, index) => index % 2);
 const prepared: PreparedClassification = {
 	features: Float64Array.from({ length: 12 }, (_, index) => index * 2),
@@ -32,20 +30,10 @@ const cases: [ClassifierId, Record<string, HyperparameterValue>][] = [
 	['support-vector-classifier', { kernel: 'linear' }]
 ];
 
-test.each(cases)('WML-P3-DATA-3: adapts %s in both strategies', async (algorithm, overrides) => {
+test.each(cases)('WML-P4-EVAL-4: adapts %s in both strategies', async (algorithm, overrides) => {
 	const { classifier } = configureClassifier(algorithm, overrides, context);
-	const oneShot = buildClassificationRequest(
-		runtime,
-		classifier,
-		prepared,
-		DEFAULT_ONE_SHOT_SETUP
-	);
-	const cv = buildClassificationRequest(
-		runtime,
-		classifier,
-		prepared,
-		createCrossValidationSetup(3)
-	);
+	const oneShot = buildClassificationRequest(classifier, prepared, DEFAULT_ONE_SHOT_SETUP);
+	const cv = buildClassificationRequest(classifier, prepared, createCrossValidationSetup(3));
 	if (oneShot.strategy !== 'one_shot' || cv.strategy !== 'cross_validation') {
 		throw new Error('Training request did not preserve its strategy');
 	}
@@ -55,34 +43,44 @@ test.each(cases)('WML-P3-DATA-3: adapts %s in both strategies', async (algorithm
 			algorithm,
 			options: overrides,
 			classLabels: [false, true],
-			preprocessing: { columns: prepared.columns, standardize: false }
+			preprocessing: { columns: prepared.columns, standardize: false },
+			randomState: 42,
+			// One public call over every retained row; the library stratifies and preprocesses.
+			data: { sampleCount: 12 },
+			evaluation: {
+				outputs: true,
+				reports: true,
+				trainingReports: true,
+				baselines: ['most-frequent', 'stratified'],
+				positiveLabel: true
+			}
 		});
 		expect(request.options).toEqual(overrides);
 		expect(request.data).toBeInstanceOf(PartitionDatasetProvider);
+		expect(request).not.toHaveProperty('validation');
 	}
-
-	const { data: trainProvider, validation } = oneShot.request;
-	expect(validation?.data).toBeInstanceOf(PartitionDatasetProvider);
-	expect(oneShot.trainIndices.length + oneShot.testIndices.length).toBe(targetCodes.length);
-	expect(trainProvider).toMatchObject({ sampleCount: oneShot.trainIndices.length });
-	const heldOut = validation?.data;
-	if (!(heldOut instanceof PartitionDatasetProvider)) throw new Error('Missing holdout provider');
-	const testFeatures = new Float64Array(oneShot.testIndices.length);
-	const testTargets = new Float64Array(oneShot.testIndices.length);
-	await heldOut.load(testFeatures, testTargets);
-	expect([...testFeatures]).toEqual(
-		[...oneShot.testIndices].map((index) => prepared.features[index]!)
-	);
-	expect([...testTargets]).toEqual([...oneShot.testIndices].map((index) => targetCodes[index]!));
-
-	expect(cv.request).toMatchObject({
-		folds: 3,
-		randomState: 42,
-		scoring: 'accuracy',
-		refit: true,
-		data: { sampleCount: 12 }
-	});
+	expect(oneShot.request).toMatchObject({ testRatio: 0.2, returnFit: true });
+	expect(cv.request).toMatchObject({ folds: 3, scoring: 'accuracy', refit: true });
 	expect(cv.request).not.toHaveProperty('includeMetrics');
+
+	const features = new Float64Array(12);
+	const targets = new Float64Array(12);
+	await (oneShot.request.data as PartitionDatasetProvider).load(features, targets);
+	expect([...features]).toEqual([...prepared.features]);
+	expect([...targets]).toEqual([...targetCodes]);
+});
+
+test('WML-P4-EVAL-4: omits the positive label for multiclass targets', () => {
+	const { classifier } = configureClassifier('gaussian-nb', {}, { rowCount: 12, classCount: 3 });
+	const multiclass: PreparedClassification = {
+		...prepared,
+		targetCodes: Float64Array.from({ length: 12 }, (_, index) => index % 3),
+		classLabels: ['a', 'b', 'c']
+	};
+	for (const setup of [DEFAULT_ONE_SHOT_SETUP, createCrossValidationSetup(3)]) {
+		const { request } = buildClassificationRequest(classifier, multiclass, setup);
+		expect(request.evaluation).not.toHaveProperty('positiveLabel');
+	}
 });
 
 test('WML-P3-DATA-3: respects hidden, fixed and inactive option policy', () => {

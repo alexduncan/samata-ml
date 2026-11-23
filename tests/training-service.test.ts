@@ -22,7 +22,8 @@ import {
 	reduceTrainingStart,
 	setHyperparameters,
 	setResumePath,
-	setTrainingLogOpen
+	setTrainingLogOpen,
+	setModelResultsUi
 } from '../src/stores/app.store';
 import {
 	$storageSaveNotice,
@@ -50,7 +51,8 @@ import {
 	STATE_STORAGE_KEY,
 	type PersistedAppState
 } from '../src/types/state';
-import { fixtureTrainingResult } from './fixtures/training/results';
+import { headlineMetrics } from '../src/common/evaluation/headline-metrics';
+import { fixtureLegacyTrainingResult, fixtureTrainingResult } from './fixtures/training/results';
 import { installFakeIndexedDB } from './helpers/fake-indexeddb';
 import { createTrainingTestLocks } from './helpers/training-locks';
 
@@ -345,6 +347,67 @@ test.each([
 		);
 	}
 );
+
+test.each(['one_shot'] as const)(
+	'WML-P4-EVAL-5: publishes the %s headline metrics and restores them on reload',
+	async (strategy) => {
+		seed(1);
+		const run = service.start(1);
+		const worker = await workerAt(0);
+		const result = fixtureTrainingResult(strategy);
+		worker.succeed(result);
+		expect(await run).toMatchObject({ ok: true });
+		const published = $appState.get().models[0]!.metrics;
+		expect(published).toEqual(headlineMetrics(result.evaluation));
+		expect(published).toMatchObject({ balancedAccuracy: expect.any(Number) });
+		expect(Object.hasOwn(published ?? {}, 'balancedAccuracySd')).toBe(false);
+		const stored = await db.get('model_results', [metadata.id, 1]);
+		expect(stored).toMatchObject({ schemaVersion: 2, strategy });
+
+		$appState.set(INITIAL_APP_STATE);
+		expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({ ok: true });
+		expect($appState.get().models[0]).toMatchObject({ status: 'trained', metrics: published });
+	}
+);
+
+test('WML-P4-EVAL-6: a valid version 1 result stays trained with no metrics through startup', async () => {
+	seed(1);
+	const run = service.start(1);
+	const worker = await workerAt(0);
+	worker.succeed();
+	expect(await run).toMatchObject({ ok: true });
+	const identity = worker.identity;
+	const legacy = fixtureLegacyTrainingResult();
+	await db.put('model_results', {
+		...legacy,
+		...identity,
+		algorithm: 'gaussian-nb',
+		durationMs: 10,
+		logEntries: []
+	});
+	expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({ ok: true });
+	expect($appState.get().models[0]).toMatchObject({ status: 'trained', metrics: null });
+});
+
+test('WML-P4-EVAL-6: a corrupt result envelope follows result-loss recovery with its configuration intact', async () => {
+	seed(1);
+	const run = service.start(1);
+	const worker = await workerAt(0);
+	worker.succeed();
+	expect(await run).toMatchObject({ ok: true });
+	const before = $appState.get().models[0]!;
+	const stored = await db.get('model_results', [metadata.id, 1]);
+	await db.put('model_results', { ...stored, evaluation: { schemaVersion: 1 } } as never);
+	expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({ ok: true });
+	expect($appState.get().models[0]).toMatchObject({
+		status: 'draft',
+		metrics: null,
+		resultRevision: null,
+		modelId: before.modelId,
+		features: before.features,
+		trainingSetup: before.trainingSetup
+	});
+});
 
 test.each(['target', 'dataset'] as const)(
 	'WML-P3-TRAIN-3: restored sessions hold only identity and display data before discarding the %s',
@@ -1778,4 +1841,51 @@ test('WML-P3-TRAIN-4: a missing staged hand-off fails before commit and preserve
 	expect($appState.get()).toEqual(prior);
 	expect(await db.get('metadata', metadata.id)).toEqual(metadata);
 	expect(await readTrainingCheckpoint(db)).toEqual({ ok: true, checkpoint: null });
+});
+
+test('WML-P4-STATE-1: a stale preference write merges field by field with another tab and skips a newer run', async () => {
+	seed();
+	initPersister(storage, {
+		trainingPersistence: {
+			withStateLock: (operation) => locks.request(TRAINING_STATE_LOCK, operation)
+		}
+	});
+	const savedModel = () =>
+		(JSON.parse(storage.getItem(STATE_STORAGE_KEY)!) as PersistedAppState).models[0]!;
+	const editStored = (change: (model: Record<string, unknown>) => void) => {
+		const state = JSON.parse(storage.getItem(STATE_STORAGE_KEY)!);
+		change(state.models[0]);
+		MemoryStorage.prototype.setItem.call(storage, STATE_STORAGE_KEY, JSON.stringify(state));
+	};
+	try {
+		const run = service.start(1);
+		const worker = await workerAt(0);
+		worker.succeed();
+		expect(await run).toMatchObject({ ok: true });
+		const { resultRevision } = savedModel();
+
+		// Another tab saved a different preference of the same run; this tab edits another field.
+		editStored((model) => {
+			(model.ui as Record<string, unknown>).results = { moreMetricsOpen: true };
+		});
+		expect(setModelResultsUi(1, { thresholdIndex: 70 })).toBe(true);
+		flushNow();
+		await locks.request(TRAINING_STATE_LOCK, () => {});
+		expect(savedModel().resultRevision).toBe(resultRevision);
+		expect(savedModel().ui.results).toEqual({ moreMetricsOpen: true, thresholdIndex: 70 });
+
+		// Another tab already owns a newer run; this tab's stale preference must not land on it.
+		editStored((model) => {
+			model.resultRevision = 'newer-run';
+			(model.ui as Record<string, unknown>).results = { thresholdIndex: 10 };
+		});
+		expect(setModelResultsUi(1, { thresholdIndex: 90 })).toBe(true);
+		flushNow();
+		await locks.request(TRAINING_STATE_LOCK, () => {});
+		expect(savedModel().resultRevision).toBe('newer-run');
+		expect(savedModel().ui.results).toEqual({ thresholdIndex: 10 });
+	} finally {
+		stopPersister();
+		await locks.request(TRAINING_STATE_LOCK, () => {});
+	}
 });

@@ -134,16 +134,31 @@ export interface ModelRecord {
 	timings: TrainingTimings | null;
 	durationMs: number | null;
 
-	/** Headline metrics for the /models table and /results; full results live in IndexedDB. */
+	/**
+	 * Headline metrics for the /models table and /results; full results live in IndexedDB.
+	 * `{ balancedAccuracy, accuracy, macroF1 }` from the pooled held-out report, plus
+	 * `balancedAccuracySd` when there are at least two partitions. Null for a model that is
+	 * not trained or whose saved result is a Phase 3 (version 1) result.
+	 */
 	metrics: Record<string, number> | null;
 
 	/**
-	 * Per-model UI selections (e.g. `featureSelectionInitialised: boolean`, chart tabs).
+	 * Per-model UI selections (e.g. `featureSelectionInitialised: boolean`, `trainingLogOpen`).
 	 * `featureSelectionInitialised` tracks whether initial eligible features were populated once
 	 * on Choose Model completion, ensuring intentional user toggles (including empty selections)
-	 * survive reload and reopening. Results shapes defined with the results spec.
+	 * survive reload and reopening. `results` holds the Section 6 preferences below.
 	 */
-	ui: Record<string, unknown>;
+	ui: Record<string, unknown> & { results?: Partial<ModelResultsUi> };
+}
+
+/** Section 6 display preferences. Absent fields use the defaults shown. */
+export interface ModelResultsUi {
+	/** Index into the 101 stored threshold cutoffs; default 50 (0.50). */
+	thresholdIndex: number;
+	/** Selected true-class index for more than 20 classes; default null (the twenty largest). */
+	classFilter: number | null;
+	/** Whether the "More metrics" disclosure is open; default false. */
+	moreMetricsOpen: boolean;
 }
 
 export interface PersistedAppState {
@@ -237,20 +252,20 @@ After the IndexedDB commit, failures retain the pending candidate in the durable
 
 This is what makes "exact same UI" enforceable as the app grows. Each new feature spec MUST add its UI state to the registry below or state why it is transient.
 
-| UI state                                                                     | Persisted as                                 | Notes                                          |
-| :--------------------------------------------------------------------------- | :------------------------------------------- | :--------------------------------------------- |
-| Welcome modal dismissed                                                      | `onboarding.welcomeDismissed`                |                                                |
-| `/data` picker vs preview                                                    | `data.mode`                                  |                                                |
-| Open column-details aside                                                    | `data.selectedColumn`                        |                                                |
-| Virtual table scroll offsets                                                 | `ScrollSnapshot.regions['data-table']`       |                                                |
-| Page scroll, per step                                                        | `PersistedScroll.snapshots[key]`             | Ignored if viewport width differs              |
-| Per-model section completion                                                 | `ModelRecord.completedSteps`                 | Drives section selection and completion checks |
-| Feature initialisation state                                                 | `ModelRecord.ui.featureSelectionInitialised` | Tracks one-time population on model continue   |
-| Chosen model, features, options, hyperparameters, multiclass, training setup | `ModelRecord.*`                              | Committed values                               |
-| Training log disclosure                                                      | `ModelRecord.ui.trainingLogOpen`             | Boolean, defaults to closed when absent        |
-| Per-model results view                                                       | `ModelRecord.ui`                             | Defined by the section 6 spec                  |
-| Compare Results view                                                         | `results.ui`                                 | Defined by the section 4 spec                  |
-| Location                                                                     | URL, plus `resumePath` for `/`               |                                                |
+| UI state                                                                     | Persisted as                                 | Notes                                                                                                                              |
+| :--------------------------------------------------------------------------- | :------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
+| Welcome modal dismissed                                                      | `onboarding.welcomeDismissed`                |                                                                                                                                    |
+| `/data` picker vs preview                                                    | `data.mode`                                  |                                                                                                                                    |
+| Open column-details aside                                                    | `data.selectedColumn`                        |                                                                                                                                    |
+| Virtual table scroll offsets                                                 | `ScrollSnapshot.regions['data-table']`       |                                                                                                                                    |
+| Page scroll, per step                                                        | `PersistedScroll.snapshots[key]`             | Ignored if viewport width differs                                                                                                  |
+| Per-model section completion                                                 | `ModelRecord.completedSteps`                 | Drives section selection and completion checks                                                                                     |
+| Feature initialisation state                                                 | `ModelRecord.ui.featureSelectionInitialised` | Tracks one-time population on model continue                                                                                       |
+| Chosen model, features, options, hyperparameters, multiclass, training setup | `ModelRecord.*`                              | Committed values                                                                                                                   |
+| Training log disclosure                                                      | `ModelRecord.ui.trainingLogOpen`             | Boolean, defaults to closed when absent                                                                                            |
+| Section 6 threshold, class filter and More metrics                           | `ModelRecord.ui.results`                     | `setModelResultsUi`; invalid fields drop to defaults without discarding the model. The "Show data table" disclosures are transient |
+| Compare Results view                                                         | `results.ui`                                 | Defined by the section 4 spec                                                                                                      |
+| Location                                                                     | URL, plus `resumePath` for `/`               |                                                                                                                                    |
 
 **Transient (never persisted):** reserved-route modals (including `/help/training-setup`; these are restored only because the URL says so), Datasheet, Upload and Model Description dialogs, focus, hover, uncommitted field text (including empty, out-of-range and native invalid fold drafts), fold errors and their live announcements, in-flight ingestion state, upload validation errors, live training progress between throttled writes.
 
@@ -261,7 +276,10 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 Startup reads v1 storage and the IndexedDB checkpoint under the state lock. It replays any pending committed operation before exposing workflow views. A storage access failure enters recovery. Available but missing or invalid dataset metadata or results are handled separately.
 
 1. Validate the active dataset and eligible target. Confirmed resource loss clears the dependent state and scroll keys. Valid resources remain available when an unrelated record needs repair.
-2. Validate model identifiers, features and counters. A trained model requires a valid v1 envelope with the same dataset, target, model creation identity, effective configuration and result revision. A missing or invalid envelope reopens the draft with a result-loss notice.
+2. Validate model identifiers, features and counters. A trained model requires a valid envelope with the same dataset, target, model creation identity, effective configuration and result revision. Version 2 envelopes carry a `StoredEvaluation` that must agree with the retained rows, class axis and strategy; the headline `metrics` are projected from it, the same way as when the result is first published. A valid version 1 envelope from Phase 3 stays trained with `metrics: null` and opens Section 6 with the legacy message. A missing or invalid envelope reopens the draft with a result-loss notice.
+
+    Section 6 reads the envelope on demand through `$modelResults` (session-only, never persisted), keyed by model number and the full run identity. A result that goes missing after View Results shows the lost state rather than reopening the draft until the next startup.
+
 3. For a training model, probe the exclusive per-model lock. Preserve a live run owned in another tab. When no owner remains, acknowledge an interrupted draft with its setup retained and Section 4 open.
 4. Apply model-local Training Setup decoding outcomes after result and lock checks. A malformed draft setup, or an unset setup with stale Section 4–6 markers, reopens Section 4. Keep the diagnostic created by result-loss or interruption recovery.
 5. Publish any protected repair before orphan cleanup. Under the exclusive ingestion lock, reread the acknowledged pointer and journal, and clean unpublished or superseded data while retaining the active dataset, its result rows and the checkpoint. When the lock is busy or publication is unresolved, defer cleanup.

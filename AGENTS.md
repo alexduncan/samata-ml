@@ -40,7 +40,7 @@ Bun only: never npm, yarn, pnpm, or `npx` (use `bunx`).
 - `bun run typecheck` — TypeScript check (`tsc --noEmit`; or `bunx tsgo --noEmit` where configured).
 - `bun run build` — Production build (bundles app + validates sample datasets + compiles `datasheet.md` to HTML for `<dialog>` presentation).
 - `bun run format <files>` — Prettier on changed files (`bun run format:check` to verify).
-- `bun run test:e2e [file]` — Playwright end-to-end tests (including `tests/visual-parity.e2e.ts` and `tests/a11y.e2e.ts`).
+- `bun run test:e2e [file]` — Playwright end-to-end tests (including `tests/visual-parity.e2e.ts` and `tests/a11y.e2e.ts`); servers use this checkout's ports from `scripts/ports.ts`; a result from another checkout's server is not evidence.
 - `bun run server` · `bun run mockups` · `bun run audit:mockups [paths]`.
 - `bun run storybook` · `bun run storybook:build` · `bun run storybook:manifest` · `bun run test:stories`.
 - `bun run --silent now` — Current UTC timestamp for plan metadata.

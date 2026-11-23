@@ -1,5 +1,8 @@
-import type { TrainingPhase } from 'web-ml';
+import type { CrossValidationFoldResult, TrainingPhase } from 'web-ml';
+import { decodeStoredEvaluation } from '../../results/evaluation-decoder';
+import type { StoredEvaluation } from '../../../types/model-evaluation';
 import type {
+	LegacyTrainingResultPayload,
 	ResultEnvelope,
 	TrainingLogEntry,
 	TrainingLogMessage,
@@ -265,14 +268,15 @@ function addPartition(value: unknown, seen: Uint8Array): value is Uint32Array {
 	return true;
 }
 
-function hasHoldout(value: unknown, sampleCount: number): boolean {
+function hasHoldout(value: unknown, sampleCount: number, withReport: boolean): boolean {
 	if (!record(value)) return false;
+	if (!withReport && Object.hasOwn(value, 'report')) return false;
 	const seen = new Uint8Array(sampleCount);
 	return (
 		addPartition(value.trainIndices, seen) &&
 		addPartition(value.testIndices, seen) &&
 		value.trainIndices.length + value.testIndices.length === sampleCount &&
-		hasHoldoutReport(value.report, value.testIndices.length)
+		(!withReport || hasHoldoutReport(value.report, value.testIndices.length))
 	);
 }
 
@@ -308,8 +312,8 @@ function hasCrossValidation(value: unknown, sampleCount: number): boolean {
 	return validated === sampleCount;
 }
 
-/** Checks the public library payload before applying a worker success or reading a result. */
-export function isTrainingResultPayload(value: unknown): value is TrainingResultPayload {
+/** Validates the fields both payload versions share; returns the retained row count or null. */
+function payloadSampleCount(value: unknown): number | null {
 	if (
 		!record(value) ||
 		!nonempty(value.webMlRevision) ||
@@ -324,17 +328,83 @@ export function isTrainingResultPayload(value: unknown): value is TrainingResult
 		!Array.isArray(value.sourceRowIndices) ||
 		value.sourceRowIndices.length < 2
 	)
-		return false;
+		return null;
 	let previous = -1;
 	for (const sourceIndex of value.sourceRowIndices as unknown[]) {
-		if (!count(sourceIndex) || sourceIndex <= previous) return false;
+		if (!count(sourceIndex) || sourceIndex <= previous) return null;
 		previous = sourceIndex;
 	}
-	const sampleCount = value.sourceRowIndices.length;
+	return value.sourceRowIndices.length;
+}
+
+/** Checks a Phase 3 payload so stored version 1 results stay readable. */
+export function isLegacyTrainingResultPayload(
+	value: unknown
+): value is LegacyTrainingResultPayload {
+	const sampleCount = payloadSampleCount(value);
+	if (sampleCount === null || !record(value)) return false;
 	return value.strategy === 'one_shot'
-		? hasHoldout(value.holdout, sampleCount)
+		? hasHoldout(value.holdout, sampleCount, true)
 		: value.strategy === 'cross_validation' &&
 				hasCrossValidation(value.crossValidation, sampleCount);
+}
+
+function sameLabels(left: readonly unknown[], right: readonly unknown[]): boolean {
+	return left.length === right.length && left.every((entry, index) => entry === right[index]);
+}
+
+/** The stored evaluation must describe exactly the rows and axis of the enclosing payload. */
+function evaluationMatchesPayload(
+	evaluation: StoredEvaluation,
+	value: Record<string, unknown>,
+	sourceRowIndices: readonly number[]
+): boolean {
+	const { outputs, partitions, protocol } = evaluation;
+	if (!sameLabels(evaluation.classLabels, value.classLabels as unknown[])) return false;
+	if (value.strategy === 'one_shot') {
+		const holdout = value.holdout as { trainIndices: Uint32Array; testIndices: Uint32Array };
+		if (protocol.kind !== 'one_shot' || partitions.length !== 1) return false;
+		if (
+			partitions[0]!.trainSampleCount !== holdout.trainIndices.length ||
+			partitions[0]!.testSampleCount !== holdout.testIndices.length
+		)
+			return false;
+		const expected = Array.from(holdout.testIndices, (index) => sourceRowIndices[index]!).sort(
+			(a, b) => a - b
+		);
+		return sameLabels(Array.from(outputs.sourceRowIndex), expected);
+	}
+	const cv = value.crossValidation as { folds: readonly CrossValidationFoldResult[] };
+	if (protocol.kind !== 'cross_validation' || partitions.length !== cv.folds.length) return false;
+	if (!sameLabels(Array.from(outputs.sourceRowIndex), sourceRowIndices)) return false;
+	return cv.folds.every(
+		(fold, position) =>
+			fold.foldIndex === position &&
+			partitions[position]!.testSampleCount === fold.validationSampleCount &&
+			Array.from(fold.validationIndices).every(
+				(retained) => outputs.partitionIndex[retained] === position
+			)
+	);
+}
+
+/**
+ * Checks a worker success or version 2 payload: the shared fields, the stored evaluation and
+ * the agreement between that evaluation and the retained rows, class axis and strategy.
+ */
+export function isTrainingResultPayload(value: unknown): value is TrainingResultPayload {
+	const sampleCount = payloadSampleCount(value);
+	if (sampleCount === null || !record(value)) return false;
+	const evaluation = decodeStoredEvaluation(value.evaluation);
+	if (!evaluation) return false;
+	const strategyValid =
+		value.strategy === 'one_shot'
+			? hasHoldout(value.holdout, sampleCount, false)
+			: value.strategy === 'cross_validation' &&
+				hasCrossValidation(value.crossValidation, sampleCount);
+	return (
+		strategyValid &&
+		evaluationMatchesPayload(evaluation, value, value.sourceRowIndices as number[])
+	);
 }
 
 /** Rejects obsolete, malformed or mismatched durable result rows. */
@@ -345,15 +415,19 @@ export function decodeResultEnvelope(
 	if (!record(value)) return null;
 	const { schemaVersion, algorithm, durationMs, logEntries } = value;
 	if (
-		schemaVersion !== 1 ||
 		typeof algorithm !== 'string' ||
 		!isClassifierId(algorithm) ||
 		!nonnegative(durationMs) ||
 		!hasLog(logEntries) ||
 		!isTrainingRunIdentity(value) ||
-		(identity && !sameTrainingRun(value, identity)) ||
-		!isTrainingResultPayload(value)
+		(identity && !sameTrainingRun(value, identity))
 	)
 		return null;
-	return { ...value, schemaVersion, algorithm, durationMs, logEntries };
+	if (schemaVersion === 1 && isLegacyTrainingResultPayload(value)) {
+		return { ...value, schemaVersion, algorithm, durationMs, logEntries };
+	}
+	if (schemaVersion === 2 && isTrainingResultPayload(value)) {
+		return { ...value, schemaVersion, algorithm, durationMs, logEntries };
+	}
+	return null;
 }

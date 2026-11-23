@@ -188,11 +188,21 @@ Detailed timing tables for nested evaluation and tuning belong to the later resu
 
 ### 6. Single Model Results
 
-The Section 6 placeholder opens after the learner acknowledges a trained result. A later phase will display common metrics for each task, model-specific charts and details.
+Section 6 opens after the learner acknowledges a trained result and shows the shared results that apply to every classifier. All numbers come from held-out rows (the test split, or the pooled folds of Cross-Validation) and are stored by the training library; the app only displays them. Training-set scores are never presented as results. See [Model Results](components/model-results.md) for the elements and their stories.
 
-A configuration file in `./src/config/models/{model-name}-results.ts` will be used to determine which specific charts are rendered for the trained model.
+The blocks appear in this order, each with its own heading:
 
-**TODO: More work is required to design the specification for this step.**
+1. **Scores on held-out rows.** A run line (model, dataset, target, protocol, held-out rows scored) and the headline. **Balanced accuracy** is first because it treats every class equally; for Cross-Validation it is the mean of the fold scores with their standard deviation and interquartile range, and for One-Shot it is one value with the sentence that no spread is available. **Accuracy** follows with the most-frequent-class baseline and the signed difference in percentage points. Macro-F1 is in the headline for multiclass targets and in **More metrics** for binary targets. More metrics also lists MCC, ROC-AUC, average precision, log loss, Brier score and expected calibration error, each with its reason when unavailable. Fit time, or the total fit and scoring time across folds, closes the block. When the mean paired training minus held-out balanced accuracy reaches ten percentage points, a diagnostic card names both scores and the gap; the "compare with a default or tuned range" action waits for tuning.
+2. **Score on the test split / Scores across folds.** A dot-and-interval strip on a fixed 0–100% scale: one dot per partition, a mean mark, a standard-deviation rule for Cross-Validation and two labelled dashed baselines (always the most frequent class; random guesses by class share).
+3. **Where the model makes mistakes.** Binary targets show a flowchart of two proportional rows with a full sentence per outcome. Multiclass targets show Classee strips: correct predictions to the right of zero and errors to the left, stacked by the class they were mistaken for. A confusion matrix and a per-class precision, recall and F1 table follow. With more than twenty classes the matrix and strips default to the twenty largest classes and a labelled filter chooses one true class.
+4. **Probability threshold** (binary only). A histogram of positive-class probabilities by true class, a labelled slider and the stored counts and rates at the chosen cutoff. A sentence beside the slider states that exploring does not change the stored scores. The threshold survives reload.
+5. **Calibration.** Observed against predicted probability per bin with a dashed diagonal and an aligned count histogram; multiclass targets use top-label confidence against accuracy. The expected calibration error is in the caption and lines break at empty bins.
+
+Every chart has a figure caption with a one-sentence takeaway and a "Show data table" disclosure with the same values in a native table. Colour is never the only carrier of meaning. A block that is unavailable renders one sentence with the reason, for example that log loss and the threshold explorer need probability estimates the model was trained without.
+
+Other states: a loading indicator while the saved result is read; an empty message for a model that is not trained; a **legacy** message with a link to Models and its Train New Model action for results saved before detailed results existed; a **lost** message when a result that was acknowledged has gone missing; and an alert with Retry when the read fails. A result that is missing at startup returns the model to Training Setup with its configuration and a notice.
+
+The threshold, class filter and More metrics preferences are saved per model. Model-specific sections (Phase 6) will use a per-model registry in `src/config/models/{model-name}-results.ts`; the shared blocks above are fixed in code. The [03-7 draft](mockups/03-7_train-models-5-results.html) shows the semantic structure and awaits human styling.
 
 ## 4. Compare Results
 

@@ -60,12 +60,19 @@ const publicFiles = [
 	'dist/src/training/tabular-preprocessing.d.ts',
 	'dist/src/training/training-client.d.ts',
 	'dist/src/training/types.d.ts',
+	'dist/src/training/holdout-validate.d.ts',
+	'dist/src/training/classifier-evaluation.d.ts',
+	'dist/src/training/fitted-model-hook.d.ts',
+	'dist/src/training/cross-validation.d.ts',
+	'dist/src/metrics/classification-curves.d.ts',
+	'dist/src/metrics/types.d.ts',
 	'dist/src/models/support-vector-machines/index.d.ts',
 	'dist/src/models/support-vector-machines/support-vector-classifier.d.ts',
 	'dist/src/models/support-vector-machines/types.d.ts',
 	'specification/public-api/current-limitations.md',
 	'specification/public-api/metrics.md',
 	'specification/public-api/tabular-preprocessing.md',
+	'specification/public-api/timing.md',
 	`${catalogue}/schema.json`,
 	`${catalogue}/index.json`,
 	`${catalogue}/models/bernoulli-nb.json`,
@@ -77,7 +84,7 @@ const publicFiles = [
 	`${catalogue}/models/multinomial-nb.json`,
 	`${catalogue}/models/support-vector-classifier.json`
 ];
-const publicDigest = '13d544d94c3cbf3ed3b632b0c7f5a46d0e4bc5b76ce8a8b851162d9d8b3ef5aa';
+const publicDigest = '8ed43084a155c19cde393d3568c94192d8c6f03776b56733b1879d71c93f8738';
 
 function setupError(location: string, reason: string, cause?: unknown): Error {
 	return new Error(

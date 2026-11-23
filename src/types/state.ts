@@ -188,7 +188,51 @@ export interface ModelRecord {
 	metrics: Record<string, number> | null;
 
 	/** Section 6: UI selections (chart tab, etc.). */
-	ui: Record<string, unknown> & { trainingLogOpen?: boolean };
+	ui: Record<string, unknown> & { trainingLogOpen?: boolean; results?: Partial<ModelResultsUi> };
+}
+
+/** Per-model display preferences for Section 6. Absent fields use `DEFAULT_MODEL_RESULTS_UI`. */
+export interface ModelResultsUi {
+	/** Index into `thresholdSweep.thresholds`; default 50 (0.50). */
+	thresholdIndex: number;
+	/** Selected true-class index for more than 20 classes, or null. */
+	classFilter: number | null;
+	/** Whether the "More metrics" disclosure is open. */
+	moreMetricsOpen: boolean;
+}
+
+/** Display preferences used when a model has stored none. */
+export const DEFAULT_MODEL_RESULTS_UI: Readonly<ModelResultsUi> = {
+	thresholdIndex: 50,
+	classFilter: null,
+	moreMetricsOpen: false
+};
+
+/**
+ * Keeps only the valid fields of a stored or requested preference object. Invalid fields
+ * are dropped so they fall back to defaults; the model itself is never discarded.
+ */
+export function sanitiseModelResultsUi(value: unknown): Partial<ModelResultsUi> {
+	if (typeof value !== 'object' || value === null || Array.isArray(value)) return {};
+	const source = value as Record<string, unknown>;
+	const result: Partial<ModelResultsUi> = {};
+	const { thresholdIndex, classFilter, moreMetricsOpen } = source;
+	if (
+		typeof thresholdIndex === 'number' &&
+		Number.isInteger(thresholdIndex) &&
+		thresholdIndex >= 0 &&
+		thresholdIndex <= 100
+	) {
+		result.thresholdIndex = thresholdIndex;
+	}
+	if (
+		classFilter === null ||
+		(typeof classFilter === 'number' && Number.isInteger(classFilter) && classFilter >= 0)
+	) {
+		result.classFilter = classFilter;
+	}
+	if (typeof moreMetricsOpen === 'boolean') result.moreMetricsOpen = moreMetricsOpen;
+	return result;
 }
 
 /** Result-store dataset ID reserved for the training domain checkpoint. */

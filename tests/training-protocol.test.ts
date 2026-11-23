@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { DEFAULT_ONE_SHOT_SETUP } from '../src/types/state';
+import { fixtureLegacyTrainingResult, fixtureTrainingResult } from './fixtures/training/results';
 import {
 	createTrainingReplyGuard,
 	decodeTrainingWorkerReply,
@@ -72,6 +73,40 @@ test('WML-P3-EVENT-1: replies with invalid or stale identities cannot settle and
 	).toBeNull();
 	expect(safeTrainingFailureCode('raw failure')).toBe('training-failed');
 });
+
+test.each(['one_shot', 'cross_validation'] as const)(
+	'WML-P4-EVAL-4: a new %s success needs a matching stored evaluation',
+	(strategy) => {
+		const {
+			datasetId: _d,
+			target: _t,
+			modelNum: _m,
+			modelCreatedAt: _c,
+			configurationKey: _k,
+			runId: _r,
+			schemaVersion: _s,
+			algorithm: _a,
+			durationMs: _du,
+			logEntries: _l,
+			...result
+		} = fixtureTrainingResult(strategy);
+		const reply = { kind: 'success', identity: start.identity, result };
+		expect(decodeTrainingWorkerReply(reply)).toMatchObject({ kind: 'success' });
+		const { evaluation: _evaluation, ...withoutEvaluation } = result;
+		expect(decodeTrainingWorkerReply({ ...reply, result: withoutEvaluation })).toBeNull();
+		const legacy = fixtureLegacyTrainingResult(strategy);
+		expect(decodeTrainingWorkerReply({ ...reply, result: legacy })).toBeNull();
+		expect(
+			decodeTrainingWorkerReply({
+				...reply,
+				result: {
+					...result,
+					evaluation: { ...result.evaluation, protocol: { kind: 'one_shot' } }
+				}
+			})
+		).toBeNull();
+	}
+);
 
 test('WML-P3-EVENT-1: a non-isolated worker settles once before any runtime load', () => {
 	const replies: TrainingWorkerReply[] = [];

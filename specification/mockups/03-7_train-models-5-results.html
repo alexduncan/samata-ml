@@ -1,12 +1,12 @@
 <!doctype html>
-<!-- DRAFT: structure only, not normative for appearance. Source: plans/web-ml-classification-integration.md, interfaces and behaviour B–G. Open questions: plan approval. -->
+<!-- DRAFT: structure only, not normative for appearance. Source: plans/web-ml-phase-4-single-model-results.md, Interfaces §C. Charts are drawn by Observable Plot in the app; here they are placeholders. Comparison, model-specific and tuning sections belong to later phases. Sample numbers illustrate structure and are not measured outcomes. -->
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
 		<meta name="name" content="Single Model Results" />
 		<meta
 			name="description"
-			content="Step 3 builder Section 6 evaluation metrics, model diagnostics, tuning history, and empty/loading/error states." />
+			content="Step 3 builder Section 6 shared results for one trained model: held-out scores, fold strip, errors, threshold and calibration, with unavailable, loading, empty, legacy, lost and error states." />
 		<meta name="status" content="draft" />
 		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -121,298 +121,544 @@
 				<p>Choose a model to predict your target variable.</p>
 			</header>
 
-			<!-- Evaluation Metrics Summary -->
-			<!-- This will display when a trained model finishes and shows common test metrics and confusion counts. -->
+			<!-- Binary Results -->
+			<!-- This will display when a trained model with a binary target and probability estimates has saved results (One-Shot shown). -->
+			<section aria-labelledby="results-binary">
+				<h2 id="results-binary">6. Model Results</h2>
+				<p>Binary target, One-Shot, probabilities available.</p>
+
+				<section aria-labelledby="binary-summary">
+					<h3 id="binary-summary">Scores on held-out rows</h3>
+					<p>
+						Logistic Regression on Breast Cancer Wisconsin, predicting diagnosis. One
+						test split. Held-out rows scored: 114.
+					</p>
+					<dl>
+						<dt>Balanced accuracy on held-out rows</dt>
+						<dd>94.6%</dd>
+						<dd>
+							One test split: no spread is available. Cross-Validation shows how
+							scores vary across folds.
+						</dd>
+						<dt>Accuracy</dt>
+						<dd>93.9%</dd>
+						<dd>
+							Always predicting the most frequent class scores 62.3%; the difference
+							is +31.6 percentage points.
+						</dd>
+					</dl>
+					<p>Fit time: 0.1 s</p>
+					<div class="notification notification-alert">
+						<p class="notification-text">
+							<strong>Large gap between training and held-out scores.</strong>
+							The model scored 99.1% on the rows it learned from but 86.0% on held-out
+							rows, 13.1 percentage points lower. This can mean it has memorised its
+							training data.
+						</p>
+					</div>
+					<details>
+						<summary>More metrics</summary>
+						<dl>
+							<dt>Macro-F1</dt>
+							<dd>93.8%</dd>
+							<dt>Matthews correlation coefficient (MCC)</dt>
+							<dd>0.874</dd>
+							<dt>ROC-AUC</dt>
+							<dd>0.989</dd>
+							<dt>Average precision</dt>
+							<dd>0.981</dd>
+							<dt>Log loss</dt>
+							<dd>0.153</dd>
+							<dt>Brier score</dt>
+							<dd>0.047</dd>
+							<dt>Expected calibration error (ECE)</dt>
+							<dd>0.041</dd>
+						</dl>
+					</details>
+				</section>
+
+				<section aria-labelledby="binary-folds">
+					<h3 id="binary-folds">Score on the test split</h3>
+					<figure>
+						<figcaption>
+							Balanced accuracy on the test split. The model scored 94.6% on the
+							held-out test rows.
+						</figcaption>
+						<p>[Dot on a 0 to 100% scale with dashed baseline rules]</p>
+						<details>
+							<summary>Show data table</summary>
+							<div role="region" aria-labelledby="binary-folds-caption" tabindex="0">
+								<table>
+									<caption id="binary-folds-caption">
+										Held-out balanced accuracy by partition
+									</caption>
+									<thead>
+										<tr>
+											<th scope="col">Series</th>
+											<th scope="col">Balanced accuracy</th>
+											<th scope="col">Fit time</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<th scope="row">Logistic Regression: Test split</th>
+											<td>94.6%</td>
+											<td>0.1 s</td>
+										</tr>
+										<tr>
+											<th scope="row">Logistic Regression: Mean</th>
+											<td>94.6%</td>
+											<td></td>
+										</tr>
+										<tr>
+											<th scope="row">Always the most frequent class</th>
+											<td>50.0%</td>
+											<td></td>
+										</tr>
+										<tr>
+											<th scope="row">Random guesses by class share</th>
+											<td>49.1%</td>
+											<td></td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</details>
+					</figure>
+				</section>
+
+				<section aria-labelledby="binary-errors">
+					<h3 id="binary-errors">Where the model makes mistakes</h3>
+					<ul>
+						<li>
+							<p>Rows with diagnosis Benign: 71</p>
+							<p>[Proportional bar: correct solid, errors dashed]</p>
+							<ul>
+								<li>
+									68 rows with diagnosis Benign were predicted Benign (correct)
+								</li>
+								<li>
+									3 rows with diagnosis Benign were predicted Malignant
+									(incorrect)
+								</li>
+							</ul>
+						</li>
+						<li>
+							<p>Rows with diagnosis Malignant: 43</p>
+							<p>[Proportional bar: correct solid, errors dashed]</p>
+							<ul>
+								<li>
+									4 rows with diagnosis Malignant were predicted Benign
+									(incorrect)
+								</li>
+								<li>
+									39 rows with diagnosis Malignant were predicted Malignant
+									(correct)
+								</li>
+							</ul>
+						</li>
+					</ul>
+					<div role="region" aria-labelledby="binary-matrix-caption" tabindex="0">
+						<table>
+							<caption id="binary-matrix-caption">
+								Confusion matrix: 2 of 2 true classes, test rows only
+							</caption>
+							<thead>
+								<tr>
+									<td colspan="2"></td>
+									<th scope="colgroup" colspan="2">Predicted class</th>
+								</tr>
+								<tr>
+									<th scope="col">True class</th>
+									<th scope="col">Rows</th>
+									<th scope="col">Benign</th>
+									<th scope="col">Malignant</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<th scope="row">Benign</th>
+									<td>71</td>
+									<td><strong>68</strong></td>
+									<td>3</td>
+								</tr>
+								<tr>
+									<th scope="row">Malignant</th>
+									<td>43</td>
+									<td>4</td>
+									<td><strong>39</strong></td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+					<div role="region" aria-labelledby="binary-classes-caption" tabindex="0">
+						<table>
+							<caption id="binary-classes-caption">
+								Precision, recall and F1 for each class on held-out rows
+							</caption>
+							<thead>
+								<tr>
+									<th scope="col">Class</th>
+									<th scope="col">Held-out rows</th>
+									<th scope="col">Precision</th>
+									<th scope="col">Recall</th>
+									<th scope="col">F1</th>
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<th scope="row">Benign</th>
+									<td>71</td>
+									<td>94.4%</td>
+									<td>95.8%</td>
+									<td>95.1%</td>
+								</tr>
+								<tr>
+									<th scope="row">Malignant</th>
+									<td>43</td>
+									<td>92.9%</td>
+									<td>90.7%</td>
+									<td>91.8%</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
+				</section>
+
+				<section aria-labelledby="binary-threshold">
+					<h3 id="binary-threshold">Probability threshold</h3>
+					<figure>
+						<figcaption>
+							Predicted probabilities by true class. Each bar counts held-out rows
+							whose predicted probability of Malignant falls in a five-point range;
+							the line marks the chosen threshold.
+						</figcaption>
+						<p>
+							[Histogram of probabilities, one panel per true class, with a threshold
+							line]
+						</p>
+					</figure>
+					<label for="threshold">Probability threshold</label>
+					<input id="threshold" type="range" min="0" max="100" step="1" value="50" />
+					<p>
+						Exploring thresholds is for understanding only: it does not change the
+						stored scores.
+					</p>
+					<dl>
+						<dt>Threshold</dt>
+						<dd>50%</dd>
+						<dt>Malignant rows predicted Malignant</dt>
+						<dd>39</dd>
+						<dt>Benign rows predicted Malignant</dt>
+						<dd>3</dd>
+						<dt>Benign rows predicted Benign</dt>
+						<dd>68</dd>
+						<dt>Malignant rows predicted Benign</dt>
+						<dd>4</dd>
+						<dt>Share of Malignant rows found</dt>
+						<dd>90.7%</dd>
+						<dt>Share of Benign rows wrongly flagged</dt>
+						<dd>4.2%</dd>
+					</dl>
+					<details>
+						<summary>Show data table</summary>
+						<div role="region" aria-labelledby="binary-threshold-caption" tabindex="0">
+							<table>
+								<caption id="binary-threshold-caption">
+									Held-out rows by predicted probability and true class
+								</caption>
+								<thead>
+									<tr>
+										<th scope="col">Probability range</th>
+										<th scope="col">True class Benign</th>
+										<th scope="col">True class Malignant</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr>
+										<th scope="row">0% to 5%</th>
+										<td>52</td>
+										<td>1</td>
+									</tr>
+									<tr>
+										<th scope="row">95% to 100%</th>
+										<td>0</td>
+										<td>31</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</details>
+				</section>
+
+				<section aria-labelledby="binary-reliability">
+					<h3 id="binary-reliability">Calibration</h3>
+					<figure>
+						<figcaption>
+							Reliability of predicted probabilities. Expected calibration error is
+							0.041. Lower is better; zero means predicted probabilities match
+							observed rates.
+						</figcaption>
+						<p>
+							[Observed against mean predicted probability, dashed diagonal, aligned
+							count histogram]
+						</p>
+						<details>
+							<summary>Show data table</summary>
+							<div
+								role="region"
+								aria-labelledby="binary-reliability-caption"
+								tabindex="0">
+								<table>
+									<caption id="binary-reliability-caption">
+										Calibration by probability bin
+									</caption>
+									<thead>
+										<tr>
+											<th scope="col">Probability bin</th>
+											<th scope="col">Rows</th>
+											<th scope="col">Mean predicted</th>
+											<th scope="col">Observed</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<th scope="row">0% to 10%</th>
+											<td>53</td>
+											<td>2.1%</td>
+											<td>1.9%</td>
+										</tr>
+										<tr>
+											<th scope="row">40% to 50%</th>
+											<td>0</td>
+											<td>No rows</td>
+											<td>No rows</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</details>
+					</figure>
+				</section>
+			</section>
+			<!-- / Binary Results -->
+
+			<!-- Multiclass Results -->
+			<!-- This will display when a trained model with a multiclass target has saved results (five-fold Cross-Validation shown). -->
+			<section aria-labelledby="results-multiclass">
+				<h2 id="results-multiclass">6. Model Results</h2>
+				<p>Multiclass target, five-fold Cross-Validation. Binary-only blocks are absent.</p>
+
+				<section aria-labelledby="multi-summary">
+					<h3 id="multi-summary">Scores on held-out rows</h3>
+					<p>
+						Logistic Regression on Iris, predicting class. 5-fold cross-validation.
+						Held-out rows scored: 150.
+					</p>
+					<dl>
+						<dt>Balanced accuracy on held-out rows</dt>
+						<dd>96.0% ± 2.5 points</dd>
+						<dd>
+							Standard deviation 2.5 points; interquartile range 3.3 points across 5
+							folds.
+						</dd>
+						<dt>Accuracy</dt>
+						<dd>96.0%</dd>
+						<dd>
+							Always predicting the most frequent class scores 33.3%; the difference
+							is +62.7 percentage points.
+						</dd>
+						<dt>Macro-F1</dt>
+						<dd>96.0%</dd>
+					</dl>
+					<p>Total fit and scoring time across folds: 0.7 s</p>
+					<details>
+						<summary>More metrics</summary>
+						<dl>
+							<dt>Matthews correlation coefficient (MCC)</dt>
+							<dd>0.94</dd>
+							<dt>Log loss</dt>
+							<dd>
+								Unavailable because this model was trained without probability
+								estimates.
+							</dd>
+						</dl>
+					</details>
+				</section>
+
+				<section aria-labelledby="multi-folds">
+					<h3 id="multi-folds">Scores across folds</h3>
+					<figure>
+						<figcaption>
+							Balanced accuracy across folds. Fold scores ranged from 93.3% to 100%
+							across 5 folds, with a mean of 96.0%.
+						</figcaption>
+						<p>
+							[Five dots, a mean mark, a standard-deviation rule and dashed baselines]
+						</p>
+						<details>
+							<summary>Show data table</summary>
+							<div role="region" aria-labelledby="multi-folds-caption" tabindex="0">
+								<table>
+									<caption id="multi-folds-caption">
+										Held-out balanced accuracy by partition
+									</caption>
+									<thead>
+										<tr>
+											<th scope="col">Series</th>
+											<th scope="col">Balanced accuracy</th>
+											<th scope="col">Fit and scoring time</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<th scope="row">Logistic Regression: Fold 1</th>
+											<td>96.7%</td>
+											<td>0.1 s</td>
+										</tr>
+										<tr>
+											<th scope="row">Logistic Regression: Mean</th>
+											<td>96.0%</td>
+											<td></td>
+										</tr>
+										<tr>
+											<th scope="row">
+												Logistic Regression: Standard deviation
+											</th>
+											<td>2.5%</td>
+											<td></td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</details>
+					</figure>
+				</section>
+
+				<section aria-labelledby="multi-errors">
+					<h3 id="multi-errors">Where the model makes mistakes</h3>
+					<figure>
+						<figcaption>
+							Held-out errors by true class. 6 of 150 held-out rows were predicted
+							wrongly. The most common mistake was versicolor predicted as virginica,
+							4 times.
+						</figcaption>
+						<p>
+							[One row per true class: errors to the left, correct predictions to the
+							right]
+						</p>
+						<details>
+							<summary>Show data table</summary>
+							<div role="region" aria-labelledby="multi-classee-caption" tabindex="0">
+								<table>
+									<caption id="multi-classee-caption">
+										Held-out rows by true class and predicted class
+									</caption>
+									<thead>
+										<tr>
+											<th scope="col">True class</th>
+											<th scope="col">Predicted class</th>
+											<th scope="col">Rows</th>
+											<th scope="col">Outcome</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<th scope="row">versicolor</th>
+											<td>virginica</td>
+											<td>4</td>
+											<td>Error</td>
+										</tr>
+									</tbody>
+								</table>
+							</div>
+						</details>
+					</figure>
+					<p>
+						<label for="true-class">Show true class</label>
+						<select id="true-class" name="true-class">
+							<option>The twenty largest classes</option>
+							<option>setosa</option>
+							<option>versicolor</option>
+							<option>virginica</option>
+						</select>
+					</p>
+					<p>The filter appears only with more than twenty classes.</p>
+				</section>
+
+				<section aria-labelledby="multi-reliability">
+					<h3 id="multi-reliability">Calibration</h3>
+					<p>
+						Reliability of the top predicted class: confidence against observed
+						accuracy, with the same table pattern as the binary diagram.
+					</p>
+				</section>
+			</section>
+			<!-- / Multiclass Results -->
+
+			<!-- Unavailable Sections -->
+			<!-- This will display when the trained classifier has no probability estimates, so log loss, the threshold explorer and the reliability diagram cannot be shown. -->
 			<section>
-				<h2>6. Results — Logistic Regression</h2>
-				<p>Palmer Penguins · Target: species · Test data only</p>
-				<p>These sample numbers illustrate structure; they are not measured outcomes.</p>
-				<dl>
-					<dt>Accuracy</dt>
-					<dd>94%</dd>
-					<dt>Macro F1</dt>
-					<dd>0.93</dd>
-					<dt>Log loss</dt>
-					<dd>0.18</dd>
-				</dl>
+				<h2>Unavailable sections</h2>
 				<p>
-					The chosen model uses One-vs-Rest classification and four numeric features. No
-					numeric scaling was applied.
+					Log loss and the threshold explorer are unavailable because this Support Vector
+					Classifier was trained without probability estimates.
 				</p>
-				<table>
-					<caption>
-						Confusion counts on 10 illustrative test rows
-					</caption>
-					<thead>
-						<tr>
-							<th scope="col">True class / Predicted class</th>
-							<th scope="col">Adelie</th>
-							<th scope="col">Chinstrap</th>
-							<th scope="col">Gentoo</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<th scope="row">Adelie</th>
-							<td>4</td>
-							<td>0</td>
-							<td>0</td>
-						</tr>
-						<tr>
-							<th scope="row">Chinstrap</th>
-							<td>1</td>
-							<td>1</td>
-							<td>0</td>
-						</tr>
-						<tr>
-							<th scope="row">Gentoo</th>
-							<td>0</td>
-							<td>0</td>
-							<td>4</td>
-						</tr>
-					</tbody>
-				</table>
 				<p>
-					Repeated model choices based on this test set can make later comparisons
-					optimistic. Nested cross-validation is planned for a later release.
+					The reliability diagram is unavailable because this Support Vector Classifier
+					was trained without probability estimates.
 				</p>
 			</section>
-			<!-- / Evaluation Metrics Summary -->
-
-			<!-- Model-Specific Diagnostics -->
-			<!-- This will display when the fitted classifier declares model-specific diagnostics such as tree depth, loss history, or support vectors. -->
-			<section>
-				<h2>Model diagnostics — examples from other classifiers</h2>
-				<p>A model with no declared diagnostics still shows the common test scores.</p>
-				<dl>
-					<dt>Tree node count</dt>
-					<dd>11</dd>
-					<dt>Tree depth</dt>
-					<dd>4</dd>
-					<dt>MLP iterations</dt>
-					<dd>200</dd>
-				</dl>
-				<table>
-					<caption>
-						MLP training loss history
-					</caption>
-					<thead>
-						<tr>
-							<th scope="col">Iteration</th>
-							<th scope="col">Loss</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<th scope="row">1</th>
-							<td>0.72</td>
-						</tr>
-						<tr>
-							<th scope="row">2</th>
-							<td>0.65</td>
-						</tr>
-					</tbody>
-				</table>
-				<p>Page 1 of 4. Up to 50 observations per page.</p>
-				<button class="btn" type="button" disabled>First</button
-				><button class="btn" type="button" disabled>Previous</button
-				><button class="btn" type="button">Next</button
-				><button class="btn" type="button">Last</button>
-				<table>
-					<caption>
-						SVC support counts in fitted class order
-					</caption>
-					<thead>
-						<tr>
-							<th scope="col">Class</th>
-							<th scope="col">Support vectors</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<th scope="row">Adelie</th>
-							<td>8</td>
-						</tr>
-						<tr>
-							<th scope="row">Chinstrap</th>
-							<td>11</td>
-						</tr>
-						<tr>
-							<th scope="row">Gentoo</th>
-							<td>7</td>
-						</tr>
-					</tbody>
-				</table>
-			</section>
-			<!-- / Model-Specific Diagnostics -->
-
-			<!-- Random Search History -->
-			<!-- This will display when the model was trained using Random Search hyperparameter tuning. -->
-			<section>
-				<h2>Random Search history</h2>
-				<table>
-					<caption>
-						Candidate validation results
-					</caption>
-					<thead>
-						<tr>
-							<th scope="col">Trial</th>
-							<th scope="col">Parameters</th>
-							<th scope="col">Status</th>
-							<th scope="col">Validation accuracy</th>
-							<th scope="col">Fit and score duration</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<th scope="row">1</th>
-							<td>Maximum iterations: 200</td>
-							<td>Completed</td>
-							<td>94%</td>
-							<td>0.25 seconds</td>
-						</tr>
-						<tr>
-							<th scope="row">2</th>
-							<td>Maximum iterations: 500</td>
-							<td>Failed</td>
-							<td>Unavailable</td>
-							<td>0.10 seconds</td>
-						</tr>
-					</tbody>
-				</table>
-				<p>
-					Search duration, final refit duration and total application time are separate
-					measurements. Validation accuracy selected the parameters; test accuracy
-					evaluates the final refitted model.
-				</p>
-			</section>
-			<!-- / Random Search History -->
-
-			<!-- Many-Class Confusion Filter -->
-			<!-- This will display when the target variable has many classes and the user filters the confusion matrix by true class. -->
-			<section>
-				<h2>Many-class results</h2>
-				<label for="true-class">True class</label
-				><select id="true-class" name="true-class">
-					<option>All classes</option>
-					<option>Adelie</option>
-					<option>Chinstrap</option>
-					<option>Gentoo</option>
-				</select>
-				<p>All predicted-class columns remain available.</p>
-			</section>
-			<!-- / Many-Class Confusion Filter -->
-
-			<!-- Unavailable Metric Notice -->
-			<!-- This will display when a metric such as log loss cannot be computed for the trained model configuration. -->
-			<section>
-				<h2>Unavailable metric</h2>
-				<p>Log loss is unavailable because SVC probability calibration was disabled.</p>
-			</section>
-			<!-- / Unavailable Metric Notice -->
+			<!-- / Unavailable Sections -->
 
 			<!-- Loading Results -->
-			<!-- This will display while saved model results and the result layout specification are loading. -->
+			<!-- This will display when saved results are being read from this browser. -->
 			<section>
 				<h2>Loading</h2>
-				<progress aria-label="Loading saved results"></progress>
-				<p>Loading the result layout and saved results…</p>
+				<progress aria-label="Loading results…"></progress>
 			</section>
 			<!-- / Loading Results -->
 
 			<!-- Empty Results -->
-			<!-- This will display when inspecting Section 6 for a model that has not completed training yet. -->
+			<!-- This will display when the selected model has not completed training. -->
 			<section>
 				<h2>Empty</h2>
-				<p>This model has not completed training.</p>
+				<p>Train this model to see its results.</p>
 			</section>
 			<!-- / Empty Results -->
 
-			<!-- Result Layout Error -->
-			<!-- This will display when the result layout specification cannot be loaded or uses an unsupported version. -->
+			<!-- Legacy Result -->
+			<!-- This will display when the model was trained before detailed results were saved. -->
 			<section>
-				<h2>Result error</h2>
-				<p role="alert">
-					The result layout could not be loaded or uses an unsupported version.
+				<h2>Legacy result</h2>
+				<p>
+					This model was trained before detailed results were saved. Train it again to see
+					them.
 				</p>
-				<button class="btn" type="button">Retry</button>
+				<p><a href="/models">Open Models and choose Train New Model</a></p>
 			</section>
-			<!-- / Result Layout Error -->
+			<!-- / Legacy Result -->
 
 			<!-- Lost Results -->
-			<!-- This will display when saved results are missing or incompatible while the model configuration remains intact. -->
+			<!-- This will display when the saved results for the trained model are missing or no longer match its configuration. -->
 			<section>
 				<h2>Lost results</h2>
 				<p>
-					Saved model results are missing or incompatible. Your configuration is retained;
-					train again to produce new results.
+					The saved results for this model are no longer available in this browser. Train
+					the model again to see them.
 				</p>
+				<p><a href="/models">Open Models and choose Train New Model</a></p>
 			</section>
 			<!-- / Lost Results -->
 
-			<!-- Compare Results Table -->
-			<!-- This will display on Step 4 when two or more models evaluated on the same test split can be compared side by side. -->
+			<!-- Result Error -->
+			<!-- This will display when the saved results cannot be read from browser storage. -->
 			<section>
-				<h2>Compare Results</h2>
-				<table>
-					<caption>
-						Models evaluated on the same test rows
-					</caption>
-					<thead>
-						<tr>
-							<th scope="col">Model</th>
-							<th scope="col">Features</th>
-							<th scope="col">Configuration mode</th>
-							<th scope="col">Test accuracy</th>
-							<th scope="col">Macro F1</th>
-							<th scope="col">Log loss</th>
-							<th scope="col">Library duration</th>
-						</tr>
-					</thead>
-					<tbody>
-						<tr>
-							<th scope="row">Model 1 — Logistic Regression</th>
-							<td>Four numeric features</td>
-							<td>Manual</td>
-							<td>94%</td>
-							<td>0.93</td>
-							<td>0.18</td>
-							<td>0.42 seconds</td>
-						</tr>
-						<tr>
-							<th scope="row">Model 2 — Support Vector Classifier</th>
-							<td>Four numeric features</td>
-							<td>Random Search</td>
-							<td>95%</td>
-							<td>0.94</td>
-							<td>Unavailable: calibration disabled</td>
-							<td>1.8 seconds</td>
-						</tr>
-					</tbody>
-				</table>
-				<p>No automatic winner is selected.</p>
+				<h2>Result error</h2>
+				<p role="alert">The saved results could not be read from this browser.</p>
+				<button class="btn" type="button">Retry</button>
 			</section>
-			<!-- / Compare Results Table -->
-
-			<!-- Comparison Blocked -->
-			<!-- This will display when fewer than two trained models exist to compare. -->
-			<section>
-				<h2>Comparison blocked</h2>
-				<p>Train at least two models to compare results.</p>
-				<a href="/models">Train models</a>
-			</section>
-			<!-- / Comparison Blocked -->
-
-			<!-- Incompatible Comparison -->
-			<!-- This will display when a trained model was evaluated on a different test split and cannot be grouped with the primary comparison table. -->
-			<section>
-				<h2>Incompatible comparison</h2>
-				<p>
-					Model 3 used different test rows. Its results are shown separately and cannot be
-					directly compared with this group.
-				</p>
-			</section>
-			<!-- / Incompatible Comparison -->
+			<!-- / Result Error -->
 		</main>
 	</body>
 </html>

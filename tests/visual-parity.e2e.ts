@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { parityMap, type ParityEntry } from './visual-parity/map';
 import { prepareSidebarFixture, prepareSidebarReference } from './visual-parity/fixtures';
+import { MOCKUPS_URL } from '../scripts/ports';
 
 test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 	test.use({ viewport: { width: 1440, height: 900 } });
@@ -24,14 +25,12 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 
 			// Open the unmodified mockup document on the review server.
 			const mockupPage = await context.newPage();
-			await mockupPage.goto(
-				`http://localhost:3333/${encodeURIComponent(entry.mockupPage)}?clean=1`
-			);
+			await mockupPage.goto(`${MOCKUPS_URL}/${encodeURIComponent(entry.mockupPage)}?clean=1`);
 			if (entry.fixture) await prepareSidebarReference(mockupPage, entry.fixture);
 			const mockupEl = mockupPage.locator(entry.mockupSelector).first();
 			await mockupEl.waitFor({ state: 'attached', timeout: 5000 });
 
-			// Open app route on app server (https://localhost:3000) with fresh state
+			// Open app route on app server (this checkout's app URL) with fresh state
 			await page.goto(entry.appRoute);
 			if (entry.fixture) await prepareSidebarFixture(page, entry.fixture);
 			if (entry.id.startsWith('preview-')) {

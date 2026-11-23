@@ -8,6 +8,7 @@ import {
 	runMockupAudit,
 	type MockupAuditReport
 } from '../scripts/audit-mockups';
+import { CHECKOUT_PORTS, CHECKOUT_ROOT } from '../scripts/ports';
 import { startMockupsServer } from '../scripts/serve-mockups';
 
 let root: string;
@@ -56,7 +57,7 @@ describe('mockup audit helpers', () => {
 		expect(parseAuditArgs(['--port=0'])).toHaveProperty('error');
 		expect(parseAuditArgs(['--unknown'])).toHaveProperty('error');
 		expect(parseAuditArgs(['../outside.html'])).toEqual({
-			options: { paths: ['../outside.html'], port: 3333 }
+			options: { paths: ['../outside.html'], port: CHECKOUT_PORTS.mockups }
 		});
 	});
 
@@ -141,6 +142,43 @@ describe('mockup audit helpers', () => {
 		});
 		expect(result.exitCode).toBe(2);
 		expect(result.report.setupError).toContain('Start it with bun run mockups.');
+	});
+
+	test('refuses a mockup server that belongs to another checkout', async () => {
+		const result = await runMockupAudit({
+			paths: ['clean.html'],
+			port: server.port,
+			rootDir: root,
+			reportDir,
+			expectedRoot: '/another/checkout'
+		});
+		expect(result.exitCode).toBe(2);
+		expect(result.report.results).toEqual([]);
+		expect(result.report.setupError).toContain('/another/checkout');
+		expect(result.report.setupError).toContain(CHECKOUT_ROOT);
+		const json = await readFile(path.join(reportDir, 'latest.json'), 'utf8');
+		expect(json).toContain('/another/checkout');
+	});
+
+	test('refuses a server without the checkout identity endpoint', async () => {
+		const plain = Bun.serve({
+			port: 0,
+			hostname: '127.0.0.1',
+			fetch: () =>
+				new Response('<!doctype html>', { headers: { 'Content-Type': 'text/html' } })
+		});
+		try {
+			const result = await runMockupAudit({
+				paths: ['clean.html'],
+				port: plain.port,
+				rootDir: root,
+				reportDir
+			});
+			expect(result.exitCode).toBe(2);
+			expect(result.report.setupError).toContain('does not report a samata-ml checkout');
+		} finally {
+			plain.stop(true);
+		}
 	});
 
 	test('audits a known failing and clean fixture in real Chromium and distinguishes empty files', async () => {

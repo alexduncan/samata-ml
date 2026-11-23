@@ -3,9 +3,15 @@ import { chromium, type Page } from '@playwright/test';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+	CHECKOUT_IDENTITY_PATH,
+	compareCheckoutIdentity,
+	formatCheckoutFailure,
+	type CheckoutExpectation
+} from './checkout-identity';
+import { CHECKOUT_PORTS, CHECKOUT_ROOT } from './ports';
 import { getMockupFiles, type MockupIndexEntry } from './serve-mockups';
 
-const DEFAULT_PORT = 3333;
 const REPORT_DIR = path.resolve('test-results/mockup-a11y');
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'];
 const VIEWPORT = { width: 1440, height: 900 };
@@ -62,7 +68,7 @@ export interface MockupAuditReport {
 /** Parses audit targets and an optional port, returning a useful error on invalid input. */
 export function parseAuditArgs(argv: string[]): { options: AuditCliOptions } | { error: string } {
 	const paths: string[] = [];
-	let port = DEFAULT_PORT;
+	let port: number = CHECKOUT_PORTS.mockups;
 	for (let index = 0; index < argv.length; index++) {
 		const argument = argv[index]!;
 		if (argument === '--port') {
@@ -303,9 +309,11 @@ export async function runMockupAudit(
 		port?: number;
 		rootDir?: string;
 		reportDir?: string;
+		/** Checkout root the mockup server must report; defaults to this checkout. */
+		expectedRoot?: string;
 	} = {}
 ): Promise<{ report: MockupAuditReport; exitCode: 0 | 1 | 2 }> {
-	const port = options.port ?? DEFAULT_PORT;
+	const port = options.port ?? CHECKOUT_PORTS.mockups;
 	const server = `http://localhost:${port}`;
 	const reportDir = options.reportDir ?? REPORT_DIR;
 	let axeVersion = 'unknown';
@@ -346,8 +354,27 @@ export async function runMockupAudit(
 			if (!response.ok) report.setupError = `Mockup server returned HTTP ${response.status}.`;
 			await response.arrayBuffer();
 		} catch {
-			report.setupError = `Cannot reach ${server}. Start it with bun run mockups.`;
+			report.setupError = `Cannot reach ${server}. Start it with bun run mockups. Use --port <port> to audit a server on another port of this checkout.`;
 		}
+	}
+	if (!report.setupError) {
+		let reply: unknown = null;
+		try {
+			const response = await fetch(`${server}${CHECKOUT_IDENTITY_PATH}`, {
+				signal: AbortSignal.timeout(1500)
+			});
+			reply = JSON.parse(await response.text());
+		} catch {
+			reply = null;
+		}
+		const expected: CheckoutExpectation = {
+			label: 'mockups',
+			url: server,
+			service: 'samata-ml-mockups',
+			root: options.expectedRoot ?? CHECKOUT_ROOT
+		};
+		const problems = compareCheckoutIdentity(expected, reply);
+		if (problems.length) report.setupError = formatCheckoutFailure([{ expected, problems }]);
 	}
 	if (!report.setupError) {
 		let browser;
@@ -394,7 +421,8 @@ async function main(): Promise<void> {
 	const parsed = parseAuditArgs(process.argv.slice(2));
 	if ('error' in parsed) {
 		console.error(parsed.error);
-		console.error('Usage: bun run audit:mockups [relative-path ...] [--port 3333]');
+		console.error('Usage: bun run audit:mockups [relative-path ...] [--port <port>]');
+		console.error("The default port is this checkout's mockup port.");
 		process.exitCode = 2;
 		return;
 	}

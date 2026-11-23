@@ -4,17 +4,19 @@ import { readdir, readFile, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { buildDevBundle } from './build-assets';
 import { CERT_DIR, CERT_PATH, ensureHttpsCert, KEY_PATH } from './certificates';
-import { CSS_DIR, DEV_DIR, DIST_DIR, PUBLIC_DIR, SRC_DIR } from './config';
+import { CHECKOUT_IDENTITY_PATH, createCheckoutIdentityResponse } from './checkout-identity';
+import { CONTENT_DIR, CSS_DIR, DEV_DIR, DIST_DIR, PUBLIC_DIR, SRC_DIR } from './config';
 import { isPathInside } from './filesystem';
+import { CHECKOUT_PORTS, CHECKOUT_ROOT, parsePortOption } from './ports';
 import { serveStaticFile } from './static-server';
-import { join } from 'node:path';
 
-const CONTENT_DIR = join(process.cwd(), 'content');
-
-const PORT = Number(process.env.SAMATA_SERVER_PORT ?? 3000);
+const PORT = parsePortOption(process.argv.slice(2), process.env, CHECKOUT_PORTS.app);
 const HOSTNAME = 'localhost';
 const SERVE_DIST = process.argv.includes('--dist');
 const SERVE_DIR = SERVE_DIST ? DIST_DIR : DEV_DIR;
+const TRAINING_RUNTIME_PROBE = SERVE_DIST
+	? null
+	: process.env.SAMATA_TRAINING_RUNTIME_PROBE === '1';
 const WATCH_DEBOUNCE_MS = 250;
 
 type ReloadClient = ReadableStreamDefaultController<Uint8Array>;
@@ -351,6 +353,25 @@ const server = Bun.serve({
 	 */
 	async fetch(request, server) {
 		const url = new URL(request.url);
+
+		if (url.pathname === CHECKOUT_IDENTITY_PATH) {
+			if (request.method !== 'GET' && request.method !== 'HEAD') {
+				return new Response('Method Not Allowed', {
+					status: 405,
+					headers: { Allow: 'GET, HEAD' }
+				});
+			}
+			return createCheckoutIdentityResponse(
+				{
+					service: 'samata-ml-app',
+					root: CHECKOUT_ROOT,
+					servingDir: SERVE_DIR,
+					mode: SERVE_DIST ? 'dist' : 'dev',
+					trainingRuntimeProbe: TRAINING_RUNTIME_PROBE
+				},
+				request.method
+			);
+		}
 
 		if (!SERVE_DIST && url.pathname === '/__hmr') {
 			server.timeout(request, 0);

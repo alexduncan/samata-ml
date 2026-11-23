@@ -16,7 +16,7 @@ A missing mockup does not block a feature. When a surface has no `ready` or `imp
 
 **Writing a draft:**
 
-- **Location and governance:** `mockups/<name>.html`, named as the promoted mockup will be (e.g. `03-4_train-models-3-configure-model.html`). Agents may create and edit files in `specification/mockups/` only when `<meta name="status" content="draft" />` (or when explicitly authorised by a plan); `ready` and `implemented` mockups and `mockups.css` are human-owned. `bun run mockups` serves files flat at `http://localhost:3333/<name>.html` and lists them via `/index.json` in the `/` catalogue.
+- **Location and governance:** `mockups/<name>.html`, named as the promoted mockup will be (e.g. `03-4_train-models-3-configure-model.html`). Agents may create and edit files in `specification/mockups/` only when `<meta name="status" content="draft" />` (or when explicitly authorised by a plan); `ready` and `implemented` mockups and `mockups.css` are human-owned. `bun run mockups` serves files flat at `<checkout mockup URL>/<name>.html` (`http://localhost:3333/` in the primary checkout) and lists them via `/index.json` in the `/` catalogue.
 - **Required metadata:** every HTML file in `mockups/` declares three `<meta>` elements in `<head>`:
     - `<meta name="name" content="{Plain English Name}" />`
     - `<meta name="description" content="{When the user encounters this UI}" />`
@@ -40,6 +40,8 @@ The human owns mockup CSS, `mockups.css`, review acceptance, and promotion. The 
 
 **Promotion:** the human styles the draft in place inside `mockups/`, updates `<meta name="status" content="ready" />` (and later `implemented` once ported), and removes the `DRAFT` header comment. Only then is it normative, and only then do §1 and the parity checks (§6) apply to it.
 
+**Charts against a draft (scoped exception, Phase 4).** Charts drawn by Observable Plot may use the chart tokens (§2) for marks and the minimum chart geometry (margins, mark sizes, dash patterns) while the draft HTML stays unstyled. Typography is inherited from the surrounding component. This allowance covers the Section 6 results charts only and ends when the human promotes a styled mockup.
+
 **Building against a draft:**
 
 - Follow its structure and copy. Behaviour still follows [workflow-steps.md](workflow-steps.md).
@@ -57,6 +59,7 @@ The closed token vocabulary is defined in [`css/root.css`](../css/root.css). It 
 - `--shadow-panel: -2px 0 5px rgba(0, 0, 0, 0.1)` (overlay panel shadow, added in Step 1 T4)
 - `--backdrop: rgb(30 25 22 / 55%)` (native dialog backdrop)
 - `--shadow-sidebar: -0.2rem 0 0.25rem 0.2rem rgb(73 57 47 / 0.15), -0.5rem 0 0.75rem 0.5rem rgb(73 57 47 / 0.2)` (reference sidebar shadow)
+- Chart tokens, aliases of existing palette tokens (Phase 4): `--chart-1: var(--blue-700)`, `--chart-2: var(--amber-700)`, `--chart-3: var(--teal-700)`, `--chart-4: var(--purple-700)`, `--chart-5: var(--red-700)`, `--chart-6: var(--green-800)` (categories beyond six cycle), `--chart-neutral: var(--stone-600)`, `--chart-axis: var(--stone-700)` and `--chart-grid: var(--stone-200)`. Every chart token except the decorative `--chart-grid` reaches 3:1 against `--surface` (WCAG 1.4.11); `tests/chart-tokens.test.ts` checks it. Normal text keeps its existing text colour. Class identity is carried by labels and the data table, never by colour alone. The human may restyle these tokens ([HUMAN.md](HUMAN.md)).
 
 Adding any token requires an explicit plan decision and an entry in this section.
 
@@ -84,6 +87,7 @@ Mockup CSS files map to application locations as follows:
 | [`mockups/css/train-model.css`](mockups/css/train-model.css)                                                         | [`src/styles/train-model.styles.ts`](../src/styles/train-model.styles.ts) (adopted in `global.ts` and builder view); `.help-link` in the section `h2`                                                        |
 | [`mockups/css/hyperparameters.css`](mockups/css/hyperparameters.css) `.field` family and `base.css` `input`/`select` | [`src/styles/hyperparameters.styles.ts`](../src/styles/hyperparameters.styles.ts) (scoped under `.field`; `A11Y-07`, `A11Y-08`, `SEM-10` applied; `base-select` and `::picker` dropped for native rendering) |
 | `.fold-matrix*`, `.fold-visual-summary` and `.fold-legend*` (03-5 draft)                                             | [`src/styles/hyperparameters.styles.ts`](../src/styles/hyperparameters.styles.ts), adopted by [Training Setup](components/training-setup.md).                                                                |
+| 03-7 draft results (`figure`, `figcaption`, "Show data table" `details`, scrollable table regions)                   | [`src/styles/results.styles.ts`](../src/styles/results.styles.ts), composed by the Section 6 results elements with `table.styles.ts`                                                                         |
 | `dot.css`, `dropzone.css`                                                                                            | Sidebar-local dot and feature-owned upload/dropzone rules; no document copies                                                                                                                                |
 
 A rule used across roots lives in a shared module ([COMPONENTS.md §6.2](COMPONENTS.md#62-shared-style-modules)); a feature-private rule remains with its owner. `css/style.css` imports only root/base. Obsolete document copies of badges/button/card/dot/dropzone/loading/modal/notifications/sidebar/steps/table/train-model are absent. Table, notification and train-model sheets retain document adoption and feature consumers. Page Header owns the shared header grid and composes `headingFocusStyles`; existing feature-private headers retain their appearance and adopt only the heading outline. Sidebar rules live in `src/features/shell/app-sidebar.ts`; its local static dot has no general dot-primitive API. Upload/dropzone rules remain feature-owned.
@@ -185,7 +189,7 @@ Visual fidelity uses static guards, computed styles/geometry, reviewed screensho
     - TOK-5/6 reject physical inline-direction CSS, `!important` and `:host-context()` in actual CSS/template declarations, without treating JavaScript scroll coordinates as styles.
 
 2. **Visual parity test harness (`bun run test:e2e tests/visual-parity.e2e.ts`):**
-   A Playwright test running in Chromium at a 1440×900 viewport. It compares computed CSS styles between clean mockup pages served by `bun run mockups` (`http://localhost:3333/<filename>?clean=1`) and the running application routes (`https://localhost:3000`).
+   A Playwright test running in Chromium at a 1440×900 viewport. It compares computed CSS styles between clean mockup pages served by `bun run mockups` (`<checkout mockup URL>/<filename>?clean=1`) and the running application routes (the checkout's app URL); the primary checkout uses 3333 and 3000.
     - Mapped elements are defined in `tests/visual-parity/map.ts`.
     - Checks background, borders, typography, spacing, explicit grid areas/tracks and fixture-relative numeric geometry within at most 1 CSS px. Content-dependent tracks are compared numerically rather than as identical strings.
     - Deviations are validated against the approved deviation registers.
@@ -197,7 +201,7 @@ Visual fidelity uses static guards, computed styles/geometry, reviewed screensho
 3. **Accessibility scan (`bun run test:e2e tests/a11y.e2e.ts`):**
    Uses `@axe-core/playwright` with `wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa`. Shell-scoped scans have zero violations and no exclusions. Broad audits match only separately owned exact feature elements and measured evidence in `tests/a11y-feature-findings.ts`. Unlisted rules and elements fail. Phase 2 resolved the Section 4 notice contrast finding. The remaining 24 data and model contrast targets are tracked in [the human queue](HUMAN.md#1-workflow-and-plan-review).
 
-4. **Static mockup audit (`bun run audit:mockups [filename ...] [--port 3333]`):**
+4. **Static mockup audit (`bun run audit:mockups [filename ...] [--port <port>]` (default: the checkout's mockup port, 3333 in the primary checkout)):**
    With `bun run mockups` running, audits selected non-empty top-level HTML files or all eligible files at a 1440×900 viewport using Chromium and `@axe-core/playwright` via `/<filename>?clean=1`. It uses `wcag2a`, `wcag2aa`, `wcag21a`, `wcag21aa` and `wcag22aa` without rule exclusions. JSON and escaped HTML reports are written to `test-results/mockup-a11y/`. Violations, navigation/runtime errors, skipped empty files and incomplete checks remain distinct. A zero exit status means only that no automated violations were found; static markup cannot prove interactive states or replace manual keyboard, screen-reader, responsive, zoom, forced-colours and motion checks. The review server catalogue and helper behaviour are covered separately in `tests/mockup-review.e2e.ts`.
 
 5. **Adding a parity entry for a new view:**

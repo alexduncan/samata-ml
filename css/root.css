@@ -118,6 +118,15 @@
 :root {
 	--surface: #fff;
 	--focus-ring: var(--blue-700);
+	--chart-1: var(--blue-700);
+	--chart-2: var(--amber-700);
+	--chart-3: var(--teal-700);
+	--chart-4: var(--purple-700);
+	--chart-5: var(--red-700);
+	--chart-6: var(--green-800);
+	--chart-neutral: var(--stone-600);
+	--chart-axis: var(--stone-700);
+	--chart-grid: var(--stone-200);
 	--shadow-panel: -2px 0 5px rgba(0, 0, 0, 0.1);
 	--backdrop: rgb(30 25 22 / 55%);
 	--shadow-sidebar:

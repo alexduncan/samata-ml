@@ -8,6 +8,7 @@ import { buttonStyles } from '../src/styles/button.styles';
 import { chicletStyles } from '../src/styles/chiclet.styles';
 import { dialogStyles } from '../src/styles/dialog.styles';
 import { loadSampleDataset } from './journeys/helpers';
+import { MOCKUPS_URL } from '../scripts/ports';
 
 type FocusableView = HTMLElement & { focusHeading(signal: AbortSignal): Promise<void> };
 interface FocusTestWindow extends Window {
@@ -726,7 +727,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 			});
 			const reference = await context.newPage();
 			await reference.setViewportSize({ width: 1440, height: 900 });
-			await reference.goto(`http://localhost:3333/${mockup}?clean=1`);
+			await reference.goto(`${MOCKUPS_URL}/${mockup}?clean=1`);
 			for (const [label, surface] of [
 				['reference', reference],
 				['app', page]
@@ -830,7 +831,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await page.setViewportSize({ width: 1440, height: 900 });
 		const reference = await context.newPage();
 		await reference.setViewportSize({ width: 1440, height: 900 });
-		await reference.goto('http://localhost:3333/01-1_select-data.html?clean=1');
+		await reference.goto(`${MOCKUPS_URL}/01-1_select-data.html?clean=1`);
 		await reference.screenshot({
 			path: testInfo.outputPath('main-reference.png'),
 			fullPage: true
@@ -1018,7 +1019,7 @@ test.describe('Shared primitive acceptance', () => {
 		await expect(page.locator('#icon svg')).toHaveAttribute('focusable', 'false');
 		await expect(page.getByRole('img')).toHaveCount(0);
 		const reference = await context.newPage();
-		await reference.goto('http://localhost:3333/01-3_upload-dataset.html?clean=1');
+		await reference.goto(`${MOCKUPS_URL}/01-3_upload-dataset.html?clean=1`);
 		const appearance = (element: Element) => {
 			const style = getComputedStyle(element);
 			return {

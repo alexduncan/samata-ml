@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { featureA11yFindings } from './a11y-feature-findings';
 import { loadSampleDataset } from './journeys/helpers';
 import { controlTraining, openSetup } from './fixtures/training/browser';
+import { seedTrainedModel, type SeedName } from './helpers/seed-results';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
@@ -465,4 +466,49 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		await expect(setup.getByRole('button', { name: 'Retry' })).toBeVisible();
 		await assertTrainingPanelAccessibility(page, [4]);
 	});
+
+	for (const [id, seed, label] of [
+		['A11Y-E2E-18', 'breast-cancer', 'binary'],
+		['A11Y-E2E-19', 'iris', 'multiclass']
+	] as const satisfies readonly (readonly [string, SeedName, string])[]) {
+		test(`WML-P4-UI-12 / ${id}: populated ${label} Section 6 with every data table open`, async ({
+			page
+		}) => {
+			await seedTrainedModel(page, seed);
+			const results = page.locator('app-model-results');
+			await expect(results.locator('app-results-summary')).toBeVisible({ timeout: 15_000 });
+			await page
+				.locator('app-model-builder-view')
+				.evaluate((builder) =>
+					(builder as unknown as { whenSettled(): Promise<void> }).whenSettled()
+				);
+			// Open every native disclosure, in any nested shadow root, so tables are scanned too.
+			await page.evaluate(() => {
+				const open = (root: ParentNode) => {
+					for (const node of root.querySelectorAll('*')) {
+						if (node instanceof HTMLDetailsElement) node.open = true;
+						if (node.shadowRoot) open(node.shadowRoot);
+					}
+				};
+				open(document);
+			});
+			const audit = await new AxeBuilder({ page })
+				.include({
+					fromShadowDom: [
+						'app-model-builder-view',
+						'section[aria-labelledby="step-6-title"]'
+					]
+				})
+				.options({
+					runOnly: { type: 'tag', values: [...AXE_TAGS, 'wcag21a'] },
+					rules: { 'color-contrast': { enabled: true } }
+				})
+				.analyze();
+			expect(audit.violations).toEqual([]);
+			const checked = [...audit.passes, ...audit.incomplete, ...audit.inapplicable].map(
+				(result) => result.id
+			);
+			expect(checked).toContain('color-contrast');
+		});
+	}
 });

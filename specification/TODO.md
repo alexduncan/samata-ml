@@ -1,6 +1,6 @@
 # Specification TODO
 
-**Updated:** 2026-11-20
+**Updated:** 2026-11-21
 
 Open questions and missing specification found by reviewing every Markdown and HTML file in `specification/`. Each item names its source. These are **decisions for a human**: agents must not resolve them silently. When one is answered, update the source spec and delete the item here. Plans can cite items by ID (e.g. "decides TODO-05").
 
@@ -8,7 +8,7 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 ## 1. Workflow steps that need specifying
 
-- **TODO-02 — Single Model Results** ([workflow-steps §3.6](workflow-steps.md), marked TODO): the common metrics for classification and regression; which charts each model shows; and the format of `src/config/models/{model-name}.ts`. Phase 3 defines the result storage contract (TODO-21). Mockup `03-7` is empty.
+- **TODO-02 — Single Model Results** ([workflow-steps §3.6](workflow-steps.md)): _Resolved for the shared classification results_ ([Model Results](components/model-results.md)). Still open: the common metrics for regression, which model-specific charts each classifier shows and the format of `src/config/models/{model-name}-results.ts` (Phase 6). The normative mockup `03-7` is empty; the draft awaits styling.
 - **TODO-03 — Compare Results** ([workflow-steps §4](workflow-steps.md), marked TODO): which metrics are compared, which models can be compared (same task type only?), and the layout. Mockup `04` is a placeholder.
 - **TODO-04 — Training.** Phase 3 delivers local One-Shot and fixed CV, progress, safe errors, elapsed time and recovery. Detailed timing tables for nested evaluation and tuning remain later work. The [03-6 draft](mockups/03-6_train-models-5-train.html) awaits styling and promotion.
 - **TODO-05 — Configure Model** ([workflow-steps §3.3](workflow-steps.md)):
@@ -46,7 +46,7 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 ### [state-and-storage.md §11](state-and-storage.md)
 
-- **TODO-21** — _Resolved:_ validated versioned training results are stored in `samata-db` → `model_results`. Later result views consume these records.
+- **TODO-21** — _Resolved:_ validated versioned training results are stored in `samata-db` → `model_results`. Version 2 envelopes also hold the `StoredEvaluation` that Section 6 reads; version 1 envelopes stay readable. Later result views consume these records.
 - **TODO-22** — Identify uploads by content hash, so that re-uploading the same file keeps downstream state?
 
 ### [components/button.md §12](components/button.md)
@@ -95,9 +95,9 @@ Open questions and missing specification found by reviewing every Markdown and H
 ## 5. Vision requirements with no spec yet ([VISION.md](VISION.md))
 
 - **TODO-40** — §4 Progressive disclosure: how plain-English definitions, a glossary and optional formulas are authored and shown.
-- **TODO-41** — §5 Model-specific interactive visualisations (decision boundaries, confusion matrices) and the choice of chart library. There is no dependency for one yet.
+- **TODO-41** — §5 Model-specific interactive visualisations (decision boundaries and similar). The chart-library choice is _resolved_: Observable Plot 0.6.17 through the shared `PlotController`. Model-specific charts remain open (Phase 6).
 - **TODO-42** — §6 Ethical sample datasets (including Folktables and German Credit), and future additions to the catalogue. Follow [sample-datasets.md](sample-datasets.md) for dataset authoring and licensing. COMPAS is a remote sample because ProPublica declares no licence; it is fetched from its pinned source when loaded.
-- **TODO-43** — §8 Probability threshold slider, false-positive and false-negative rates, fairness auditing (group metrics), and the fairness prompts the workflow asks.
+- **TODO-43** — §8 Fairness auditing (group metrics) and the fairness prompts the workflow asks. The probability threshold slider and false-positive and false-negative rates are implemented in Section 6 (Phase 4).
 - **TODO-44** — §9 Which neural network model to offer, and how its opacity is contrasted with the inspectable models.
 - **TODO-45** — §12 Performance budget for a "commodity laptop" (bundle size, dataset size limits, memory). Also the service-worker caching and update strategy, which ARCHITECTURE requires but does not specify.
 - **TODO-46** — _Narrowed:_ Base-locale `en` instance `$locale` and `$format` implemented in `src/i18n.ts`. Additional locales, switcher, and translation workflow remain target.
