@@ -1,6 +1,6 @@
 # Sample dataset sourcing and publication history
 
-**Status:** ready | **Updated:** 2026-11-23T11:47:23Z
+**Status:** ready | **Updated:** 2026-11-23T11:57:41Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-23T09:13:22Z
 **Verified by:** Codex (GPT-6 Astra) | **Verified:** 2026-11-23T10:02:32Z | **Verification:** approved
 **Verified hash:** sha256:dfe4aaa5248b435f179e78d0028a7c0e057e441cc69119996c8c1d2e20e1e26a
@@ -205,7 +205,7 @@ In `src/features/data/ingestion/fetch-source.ts`, extend the existing `fetchWith
 
 ## Escalations
 
-Resolved: Browser tests had navigated or reloaded before debounced local state was saved. The affected tests now wait for the intended persisted state before navigation, and the model configuration and setup suites pass in all three browsers. The earlier escalation is retained in Git history.
+- [ ] **E1 (T3):** The approved plan requires preserving the notice's tracked contrast and reporting it separately, but the Lit skill requires `bun run test:stories` to pass with zero axe violations. The existing `--stone-600` notice measures 3.96:1 in the app and 4.1:1 in Storybook against the required 4.5:1. The Storybook addon asserts raw axe results and has no exact-finding post-filter. The story run has 585 passed and 9 failed, all the three direct notice stories across three browsers; the updated exact-finding Playwright audit passes 63 tests. Excluding the notice would weaken checks, and changing its colour alters the approved visual treatment. Decision needed: authorise and specify an accessible notice colour with the associated visual and contrast record update, or revise the approved plan and Lit verification contract through review. T1 and T2 landed at ebd0646; partial T3 changes remain in the worktree. The earlier T2 browser persistence escalation was resolved and remains in Git history.
 
 ## Review fixes
 
