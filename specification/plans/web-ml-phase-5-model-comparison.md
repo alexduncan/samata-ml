@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-23T08:59:57Z
+**Status:** ready | **Updated:** 2026-11-23T09:04:25Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T08:58:39Z | **Verification:** approved
 **Verified hash:** sha256:76fb1730d0edcb19fba87edced64ddb0935544f9ed111ba6ba4246ccab5bc56e
@@ -196,13 +196,13 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 ## Specification changes
 
-- [ ] `specification/workflow-steps.md` §4 — Compare Results: grouping by identical evaluation rows, selection limits, sections and order, ROPE semantics, no-winner rule; remove the TODO line; status remains partial.
-- [ ] `specification/app-state-and-navigation.md` §6.4–§6.5 — `results.ui` shape (`ComparisonUi`), context ownership and pruning rule; `/results` view contract (`focusHeading`, `whenSettled`).
-- [ ] `specification/state-and-storage.md` §§3–8 — `ComparisonUi` in `PersistedAppState.results`, context epoch and guarded checkpoint and preference merges.
-- [ ] `specification/machine-learning-orchestrator.md` — analysis worker protocol and WR-9 call.
-- [ ] `specification/components/results-comparison.md` (new), `specification/components/model-results.md` (`app-fold-strip.paired`) & `specification/README.md` — closed APIs; status implemented.
-- [ ] `specification/FUTURE.md` — superimposed ROC/PR curves; multi-model reliability; Pareto scatter; decision-boundary gallery; NEC cost slider in comparison.
-- [ ] `specification/TODO.md`, `specification/HUMAN.md` — TODO-03 resolved for classification; retain the T6 HUMAN item to style `specification/mockups/04_compare-results.html`.
+- [x] `specification/workflow-steps.md` §4 — Compare Results: grouping by identical evaluation rows, selection limits, sections and order, ROPE semantics, no-winner rule; remove the TODO line; status remains partial.
+- [x] `specification/app-state-and-navigation.md` §6.4–§6.5 — `results.ui` shape (`ComparisonUi`), context ownership and pruning rule; `/results` view contract (`focusHeading`, `whenSettled`).
+- [x] `specification/state-and-storage.md` §§3–8 — `ComparisonUi` in `PersistedAppState.results`, context epoch and guarded checkpoint and preference merges.
+- [x] `specification/machine-learning-orchestrator.md` — analysis worker protocol and WR-9 call.
+- [x] `specification/components/results-comparison.md` (new), `specification/components/model-results.md` (`app-fold-strip.paired`) & `specification/README.md` — closed APIs; status implemented.
+- [x] `specification/FUTURE.md` — superimposed ROC/PR curves; multi-model reliability; Pareto scatter; decision-boundary gallery; NEC cost slider in comparison.
+- [x] `specification/TODO.md`, `specification/HUMAN.md` — TODO-03 resolved for classification; retain the T6 HUMAN item to style `specification/mockups/04_compare-results.html`.
 
 ## Implementation tasks
 
@@ -301,18 +301,18 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 - **Must not touch:** `src/`, `tests/`, `specification/mockups/`, `specification/notes/`
 - **Implementation:** Apply every item under _Specification changes_.
 - **Acceptance criteria:**
-    - [ ] Every item under _Specification changes_ is applied and ticked.
-    - [ ] `bun run plans:check` passes. The specification index and each listed spec have the documented status.
+    - [x] Every item under _Specification changes_ is applied and ticked.
+    - [x] `bun run plans:check` passes. The specification index and each listed spec have the documented status.
 - **Verification:** `bun run plans:check specification/plans/web-ml-phase-5-model-comparison.md`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-23T09:04:25Z)
 
 ## Verification and definition of done
 
-- [ ] All acceptance criteria met with test names starting with `WML-P5-*` or the journey IDs.
-- [ ] `bun run check`, `bun run build`, `bun run test:stories` and the listed Playwright suites pass in three browsers except individually evidenced visual-only styling failures tracked under the user-authorised exception below. Continue running unmodified parity assertions and record actual failures. Functional, accessibility, content, focus, scroll and reflow failures remain blocking.
-- [ ] No score, baseline or posterior computed in `samata-ml`; no winner styling anywhere.
-- [ ] Manual checks deferred with explicit user authorisation until 2026-11-24: screen-reader reading of the table lens and ROPE bar; keyboard-only sorting, selection and pair swapping with screen-reader confirmation of the new order; forced colours; native 200% browser zoom. These observations are unperformed and remain open in `specification/HUMAN.md`; they do not block Phase 5 implementation, audit or landing under the user's 2026-11-23 instruction.
-- [ ] After T7 completes, `bun run plans:task specification/plans/web-ml-phase-5-model-comparison.md --check-complete` passes. Run `bun run format` on every changed file and tick every _Specification changes_ item.
+- [x] All acceptance criteria met with test names starting with `WML-P5-*` or the journey IDs.
+- [x] `bun run check`, `bun run build`, `bun run test:stories` and the listed Playwright suites pass in three browsers except individually evidenced visual-only styling failures tracked under the user-authorised exception below. Continue running unmodified parity assertions and record actual failures. Functional, accessibility, content, focus, scroll and reflow failures remain blocking.
+- [x] No score, baseline or posterior computed in `samata-ml`; no winner styling anywhere.
+- [x] Manual checks deferred with explicit user authorisation until 2026-11-24: screen-reader reading of the table lens and ROPE bar; keyboard-only sorting, selection and pair swapping with screen-reader confirmation of the new order; forced colours; native 200% browser zoom. These observations are unperformed and remain open in `specification/HUMAN.md`; they do not block Phase 5 implementation, audit or landing under the user's 2026-11-23 instruction.
+- [x] After T7 completes, `bun run plans:task specification/plans/web-ml-phase-5-model-comparison.md --check-complete` passes. Run `bun run format` on every changed file and tick every _Specification changes_ item.
 
 ## Risks and open questions
 
@@ -352,6 +352,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 | 2026-11-23T08:50:02Z | — | Codex (GPT-6) | T6 remains open (E7): `bun run test:e2e tests/comparison.e2e.ts` 39 passed; full T6 browser command 348 passed, 12 authorised visual failures, 138 skipped; `bun run test:stories` 582 passed; `bun run check` 558 passed; `bun run build` passed; token guard 8 passed. Native zoom and spoken screen-reader evidence remain unverified. |
 | 2026-11-23T08:59:57Z | T6 | Codex (GPT-6) | bun run test:e2e tests/comparison.e2e.ts: 39 passed across three browsers; full T6 Playwright command: 348 passed, 12 authorised visual-only failures documented in HUMAN.md, 138 skipped; bun run test:stories: 582 passed; bun run check: 558 passed; bun run build: passed; bun test tests/style-tokens.test.ts: 8 passed. Native zoom and screen-reader checks were deferred by the user until 2026-11-24 and remain unperformed in HUMAN.md. |
+| 2026-11-23T09:04:25Z | T7 | Codex (GPT-6) | bun run plans:check specification/plans/web-ml-phase-5-model-comparison.md: passed; bun run check: typecheck and 558 tests passed. Scope warnings for COMPONENTS.md and page-header.md are required focus-owner synchronisation from the approved review history. |
 
 ## Plan review history
 

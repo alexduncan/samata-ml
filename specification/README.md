@@ -62,6 +62,7 @@ Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only wh
 | [training-progress.md](components/training-progress.md)     | implemented | Native progress, ordered log, disclosure preference and live milestones                      |
 | [training-setup.md](components/training-setup.md)           | implemented | Training strategy form, paired fold inputs and accessible fold matrix                        |
 | [model-results.md](components/model-results.md)             | implemented | Connected `app-model-results` and eight presentational Section 6 results elements            |
+| [results-comparison.md](components/results-comparison.md)   | implemented | Connected comparison route and presentational comparison elements                            |
 | [card.md](components/card.md)                               | implemented | Presentational `app-dataset-card`, `app-model-card`                                          |
 | [virtual-table.md](components/virtual-table.md)             | implemented | Presentational `ui-virtual-table` (styled appearance pending)                                |
 | [sidepanel.md](components/sidepanel.md)                     | implemented | Presentational `app-column-details`                                                          |
