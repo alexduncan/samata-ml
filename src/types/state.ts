@@ -238,12 +238,62 @@ export function sanitiseModelResultsUi(value: unknown): Partial<ModelResultsUi> 
 /** Result-store dataset ID reserved for the training domain checkpoint. */
 export const TRAINING_DOMAIN_DATASET_ID = 'samata-ml:training-domain';
 
+/** Measures available for sorting the comparison table. */
+export type ComparisonColumn =
+	| 'balancedAccuracy'
+	| 'macroF1'
+	| 'mcc'
+	| 'accuracy'
+	| 'rocAuc'
+	| 'averagePrecision'
+	| 'logLoss'
+	| 'brier'
+	| 'ece'
+	| 'gap'
+	| 'sd'
+	| 'iqr'
+	| 'falsePositives'
+	| 'falseNegatives'
+	| 'errors'
+	| 'fitDuration';
+
+/** Identifies the protected context owning comparison choices. */
+export interface ComparisonOwner {
+	datasetId: string;
+	target: string;
+	epoch: number;
+}
+
+/** Persisted comparison display choices. */
+export interface ComparisonUi {
+	fingerprint: string | null;
+	selected: number[];
+	sort: { column: ComparisonColumn; direction: 'ascending' | 'descending' } | null;
+	pairA: number | null;
+	pairB: number | null;
+	ropeWidth: number;
+	classFilter: number | null;
+}
+
+/** Default comparison choices before a group is selected. */
+export const DEFAULT_COMPARISON_UI: Readonly<ComparisonUi> = {
+	fingerprint: null,
+	selected: [],
+	sort: null,
+	pairA: null,
+	pairB: null,
+	ropeWidth: 0.01,
+	classFilter: null
+};
+
 /** Persisted application state structure saved to localStorage. */
 export interface PersistedAppState {
 	version: typeof STORAGE_VERSION;
 	updatedAt: number;
 	/** Last acknowledged protected generation. Historic v1 snapshots decode to zero. */
 	trainingDomainGeneration: number;
+	/** Monotonic identity for the current comparison context. */
+	comparisonContextEpoch: number;
 
 	onboarding: { welcomeDismissed: boolean };
 
@@ -266,7 +316,7 @@ export interface PersistedAppState {
 	nextModelNum: number;
 
 	/** UI selections for /results page. */
-	results: { ui: Record<string, unknown> };
+	results: { owner: ComparisonOwner | null; ui: ComparisonUi };
 }
 
 /** Scroll offset and viewport snapshot for a view. */
@@ -293,6 +343,7 @@ export const INITIAL_APP_STATE: PersistedAppState = {
 	version: STORAGE_VERSION,
 	updatedAt: Date.now(),
 	trainingDomainGeneration: 0,
+	comparisonContextEpoch: 0,
 	onboarding: { welcomeDismissed: false },
 	resumePath: '/data',
 	dataset: null,
@@ -300,7 +351,7 @@ export const INITIAL_APP_STATE: PersistedAppState = {
 	target: null,
 	models: [],
 	nextModelNum: 1,
-	results: { ui: {} }
+	results: { owner: null, ui: { ...DEFAULT_COMPARISON_UI, selected: [] } }
 };
 
 /** Initial default scroll state with empty snapshot map. */

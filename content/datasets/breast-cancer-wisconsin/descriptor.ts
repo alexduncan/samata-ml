@@ -2,6 +2,14 @@ import type { AuthoredDatasetDescriptor } from '../../../src/types/sample-datase
 
 export default {
 	id: 'breast-cancer-wisconsin',
+	buildSource: {
+		url: 'https://archive.ics.uci.edu/static/public/17/data.csv',
+		sha256: '3487b754ff02c93cdc8a18afafe223961d9cfbfdb932e57483e52581042767d7',
+		byteLength: 125031,
+		transform: 'identity',
+		outputSha256: '3487b754ff02c93cdc8a18afafe223961d9cfbfdb932e57483e52581042767d7',
+		outputByteLength: 125031
+	},
 	name: 'Breast Cancer Wisconsin (Diagnostic)',
 	tagline: 'Classify breast biopsy nuclei as malignant or benign across 30 correlated features.',
 	description:

@@ -33,14 +33,15 @@ import {
 } from './persister';
 import { createTrainingSession, setTrainingSessionStatus } from './training.store';
 import { $scrollState } from './scroll.store';
+import { emptyComparisonResults, ownedComparisonResults } from './comparison-preferences';
 
 function isTrainingSetupOrLater(step: ModelSectionId): boolean {
 	return step === 'configure-training' || step === 'training' || step === 'results';
 }
 
 function protectedDomain(state: PersistedAppState) {
-	const { dataset, data, target, models, nextModelNum } = state;
-	return { dataset, data, target, models, nextModelNum };
+	const { dataset, data, target, models, nextModelNum, comparisonContextEpoch } = state;
+	return { dataset, data, target, models, nextModelNum, comparisonContextEpoch };
 }
 
 function restoreModelDomain(
@@ -193,7 +194,13 @@ export async function reconcileProtectedStartup(
 							...state,
 							nextModelNum,
 							data: { ...state.data, selectedColumn },
-							...(!validTarget && { target: null, models: [] })
+							...(!validTarget && {
+								target: null,
+								models: [],
+								comparisonContextEpoch:
+									state.comparisonContextEpoch + (state.target !== null ? 1 : 0),
+								results: emptyComparisonResults()
+							})
 						});
 					}
 					return null;
@@ -393,6 +400,8 @@ export async function reconcileStartupState(
 				dataset: null,
 				target: null,
 				models: [],
+				comparisonContextEpoch: state.comparisonContextEpoch + 1,
+				results: emptyComparisonResults(),
 				data: {
 					mode: 'select',
 					selectedColumn: null
@@ -429,7 +438,9 @@ export async function reconcileStartupState(
 			state = {
 				...state,
 				target: null,
-				models: []
+				models: [],
+				comparisonContextEpoch: state.comparisonContextEpoch + 1,
+				results: emptyComparisonResults()
 			};
 		} else {
 			const targetCol = state.dataset.columns.find((c) => c.name === state.target);
@@ -437,7 +448,9 @@ export async function reconcileStartupState(
 				state = {
 					...state,
 					target: null,
-					models: []
+					models: [],
+					comparisonContextEpoch: state.comparisonContextEpoch + 1,
+					results: emptyComparisonResults()
 				};
 			}
 		}
@@ -640,6 +653,7 @@ export async function reconcileStartupState(
 	};
 
 	// 8. Persist the repaired state immediately
+	state = { ...state, results: ownedComparisonResults(state, state) };
 	$appState.set(state);
 	persistNow(storage);
 

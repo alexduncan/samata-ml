@@ -161,6 +161,39 @@ export interface ModelResultsUi {
 	moreMetricsOpen: boolean;
 }
 
+/** Cross-model comparison preferences, owned by dataset, target and context epoch. */
+export type ComparisonColumn =
+	| 'balancedAccuracy'
+	| 'macroF1'
+	| 'mcc'
+	| 'accuracy'
+	| 'rocAuc'
+	| 'averagePrecision'
+	| 'logLoss'
+	| 'brier'
+	| 'ece'
+	| 'gap'
+	| 'sd'
+	| 'iqr'
+	| 'falsePositives'
+	| 'falseNegatives'
+	| 'errors'
+	| 'fitDuration';
+export interface ComparisonOwner {
+	datasetId: string;
+	target: string;
+	epoch: number;
+}
+export interface ComparisonUi {
+	fingerprint: string | null;
+	selected: number[];
+	sort: { column: ComparisonColumn; direction: 'ascending' | 'descending' } | null;
+	pairA: number | null;
+	pairB: number | null;
+	ropeWidth: number;
+	classFilter: number | null;
+}
+
 export interface PersistedAppState {
 	version: typeof STORAGE_VERSION;
 	updatedAt: number;
@@ -185,9 +218,10 @@ export interface PersistedAppState {
 	/** Next `num` to allocate. Monotonic; numbers are never reused. */
 	nextModelNum: number;
 	trainingDomainGeneration: number; // Zero for legacy v1 state.
+	comparisonContextEpoch: number; // Zero for legacy v1 state.
 
-	/** UI selections for /results. Shape defined with the results spec. */
-	results: { ui: Record<string, unknown> };
+	/** UI selections owned by the active dataset and target context. */
+	results: { owner: ComparisonOwner | null; ui: ComparisonUi };
 }
 
 export interface ScrollSnapshot {
@@ -205,7 +239,7 @@ export interface PersistedScroll {
 }
 ```
 
-Defaults on first load: `welcomeDismissed: false`, `resumePath: '/data'`, `dataset: null`, `data: { mode: 'select', selectedColumn: null }`, `target: null`, `models: []`, `nextModelNum: 1`, `trainingDomainGeneration: 0` and no scroll snapshots.
+Defaults on first load: `welcomeDismissed: false`, `resumePath: '/data'`, `dataset: null`, `data: { mode: 'select', selectedColumn: null }`, `target: null`, `models: []`, `nextModelNum: 1`, `trainingDomainGeneration: 0`, `comparisonContextEpoch: 0`, unowned comparison defaults and no scroll snapshots. Comparison defaults are null fingerprint, empty selection, null sort and pair, width 0.01 and null class filter.
 
 ### Training Setup on the v1 wire
 
@@ -252,20 +286,20 @@ After the IndexedDB commit, failures retain the pending candidate in the durable
 
 This is what makes "exact same UI" enforceable as the app grows. Each new feature spec MUST add its UI state to the registry below or state why it is transient.
 
-| UI state                                                                     | Persisted as                                 | Notes                                                                                                                              |
-| :--------------------------------------------------------------------------- | :------------------------------------------- | :--------------------------------------------------------------------------------------------------------------------------------- |
-| Welcome modal dismissed                                                      | `onboarding.welcomeDismissed`                |                                                                                                                                    |
-| `/data` picker vs preview                                                    | `data.mode`                                  |                                                                                                                                    |
-| Open column-details aside                                                    | `data.selectedColumn`                        |                                                                                                                                    |
-| Virtual table scroll offsets                                                 | `ScrollSnapshot.regions['data-table']`       |                                                                                                                                    |
-| Page scroll, per step                                                        | `PersistedScroll.snapshots[key]`             | Ignored if viewport width differs                                                                                                  |
-| Per-model section completion                                                 | `ModelRecord.completedSteps`                 | Drives section selection and completion checks                                                                                     |
-| Feature initialisation state                                                 | `ModelRecord.ui.featureSelectionInitialised` | Tracks one-time population on model continue                                                                                       |
-| Chosen model, features, options, hyperparameters, multiclass, training setup | `ModelRecord.*`                              | Committed values                                                                                                                   |
-| Training log disclosure                                                      | `ModelRecord.ui.trainingLogOpen`             | Boolean, defaults to closed when absent                                                                                            |
-| Section 6 threshold, class filter and More metrics                           | `ModelRecord.ui.results`                     | `setModelResultsUi`; invalid fields drop to defaults without discarding the model. The "Show data table" disclosures are transient |
-| Compare Results view                                                         | `results.ui`                                 | Defined by the section 4 spec                                                                                                      |
-| Location                                                                     | URL, plus `resumePath` for `/`               |                                                                                                                                    |
+| UI state                                                                     | Persisted as                                 | Notes                                                                                                                               |
+| :--------------------------------------------------------------------------- | :------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| Welcome modal dismissed                                                      | `onboarding.welcomeDismissed`                |                                                                                                                                     |
+| `/data` picker vs preview                                                    | `data.mode`                                  |                                                                                                                                     |
+| Open column-details aside                                                    | `data.selectedColumn`                        |                                                                                                                                     |
+| Virtual table scroll offsets                                                 | `ScrollSnapshot.regions['data-table']`       |                                                                                                                                     |
+| Page scroll, per step                                                        | `PersistedScroll.snapshots[key]`             | Ignored if viewport width differs                                                                                                   |
+| Per-model section completion                                                 | `ModelRecord.completedSteps`                 | Drives section selection and completion checks                                                                                      |
+| Feature initialisation state                                                 | `ModelRecord.ui.featureSelectionInitialised` | Tracks one-time population on model continue                                                                                        |
+| Chosen model, features, options, hyperparameters, multiclass, training setup | `ModelRecord.*`                              | Committed values                                                                                                                    |
+| Training log disclosure                                                      | `ModelRecord.ui.trainingLogOpen`             | Boolean, defaults to closed when absent                                                                                             |
+| Section 6 threshold, class filter and More metrics                           | `ModelRecord.ui.results`                     | `setModelResultsUi`; invalid fields drop to defaults without discarding the model. The "Show data table" disclosures are transient  |
+| Compare Results view                                                         | `results.ui`                                 | Group fingerprint, up to eight selected models, sort, ordered pair, ROPE width and class filter; owned by dataset, target and epoch |
+| Location                                                                     | URL, plus `resumePath` for `/`               |                                                                                                                                     |
 
 **Transient (never persisted):** reserved-route modals (including `/help/training-setup`; these are restored only because the URL says so), Datasheet, Upload and Model Description dialogs, focus, hover, uncommitted field text (including empty, out-of-range and native invalid fold drafts), fold errors and their live announcements, in-flight ingestion state, upload validation errors, live training progress between throttled writes.
 
@@ -292,6 +326,8 @@ IndexedDB and the v1 state key are shared. Tabs keep their own URL, active view,
 
 An unsaved training log disclosure edit stays visible during refresh and can still be saved after a generation advance when the dataset, target, model number and model creation time match. A saved edit stops participating in later merges. A replaced identity drops its pending edit. Checkpoint replay keeps an existing saved disclosure unless a matching local edit is pending.
 
+Comparison preferences are guarded separately from the protected domain. Their owner must match both the source and final destination dataset, target and epoch before a saved or dirty candidate can be merged. Authoritative preferences survive unrelated protected updates; a valid dirty same-context edit can remain in memory for the next ordinary flush while the saved snapshot remains the acknowledgement baseline. A stale or malformed owner falls back to unowned defaults. Dataset or target replacement, confirmed full model discard and loss recovery advance the epoch and clear preferences atomically; replay retains the captured epoch and does not increment twice. Individual model removal prunes its number rather than resetting unrelated same-context choices.
+
 Training takes the shared `samata-ml:ingestion` lock and the exclusive `samata-ml:training:{num}` lock through settlement. A confirmation cancels local attempts and waits for settlement before trying the exclusive ingestion lock. When another tab owns a shared training lock, keep the confirmation open with a remote-training notice. A different tab can replay a pending publication under the state lock. After that tab clears a finish checkpoint, the owning tab's **Retry saving** can adopt the guarded snapshot without waiting for a storage event. The owner verifies the original result and tries to save a matching unsaved disclosure before completing the session. The same recovery applies when a later storage event prompts the owner to load the result first. A denied preference write leaves the disclosure visible in memory with the save-failure notice.
 
 For a committed worker failure or cancellation, **Retry saving** restores the guarded draft and settles the original stopped session. The owner checks the committed generation, captured dataset, target, model creation, configuration and safe error under the resource and state locks. A matching draft can be restored after another tab acknowledges the checkpoint, even when no further storage event arrives. If a guarded write or storage refresh publishes the draft first, the owner can settle the stop automatically. Each committed stop remains recoverable by its original run when another model advances the shared checkpoint. The restored draft retains the original safe reason and can be edited or trained again through Section 4. If the model has since been replaced or restarted, the owner applies the current protected state and retires the older publication notice.
@@ -304,6 +340,7 @@ For a committed worker failure or cancellation, **Retry saving** restores the gu
 - Reads use a hand-written runtime shape check. JSON that fails to parse, fails envelope validation, or has a version below current without a migration falls back to fresh defaults. Training Setup decoding is a model-local exception to envelope rejection (§3, §6). The v1 wire remains compatible with the previous reader.
 - A version **higher** than the running code understands (a stale tab after a deploy) yields fresh defaults in memory and puts the persister into **read-only mode** for that key for the lifetime of the document: the tab runs from memory and never overwrites newer data.
 - Phase 3 keeps localStorage at v1 and IndexedDB at v2. Missing generation, revision and disclosure fields use their historical defaults. A versioned result envelope is validated before reuse. An old key-only result is treated as unavailable for that model. The checkpoint is validated separately. Advanced version migrations remain target.
+- Phase 5 retains the v1 wire version. Missing comparison epochs default to zero; an invalid epoch resets comparison preferences. Fingerprints are null or 64 lowercase hexadecimal characters, selected numbers are unique positive existing models sorted and capped at eight, and invalid sort, pair, width or class-filter values are normalised. Invalid explicit pending checkpoint epochs use invalid-checkpoint handling.
 
 ## 9. Design Rationale
 

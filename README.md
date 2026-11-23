@@ -1,5 +1,11 @@
 # web-ml
 
+## Review the project
+
+This browser app trains models locally from CSV data. Start with the [architecture](specification/ARCHITECTURE.md), [sample dataset sources and licences](specification/sample-datasets.md), and the [verification commands](AGENTS.md#verification-commands). Samples are pinned and acquired at build time or, for direct sources, when loaded; user-uploaded data stays in the browser.
+
+For a dissertation review, share a commit-specific permalink to each verified repository snapshot so its files and milestone evidence remain stable. Optional milestone tags should point only to verified published snapshots. The maintainer's [first-publication guide](specification/publication-history.md) explains the required dataset history audit and separate publication decision.
+
 ## Prerequisites
 
 - [Bun](https://bun.com)

@@ -57,6 +57,8 @@ export class AppFoldStrip extends LitElement {
 	@property({ attribute: false }) accessor formatPercent: (value: number) => string = String;
 	/** Localised text. */
 	@property({ attribute: false }) accessor labels: FoldStripLabels = DEFAULT_FOLD_STRIP_LABELS;
+	/** Connect aligned partition scores across model rows. */
+	@property({ attribute: false }) accessor paired = false;
 
 	private readonly plot = new PlotController(
 		this,
@@ -79,7 +81,7 @@ export class AppFoldStrip extends LitElement {
 			colour: tokens[SERIES_TOKENS[index % SERIES_TOKENS.length]!]
 		}));
 		const dots = indexed.flatMap(({ row, index, colour }) =>
-			row.values.map((value) => ({ score: value.score, index, colour }))
+			row.values.map((value, partition) => ({ score: value.score, index, colour, partition }))
 		);
 		const spread = indexed.filter(({ row }) => row.sd !== null);
 		const sorted = [...this.baselines].sort((a, b) => a.value - b.value);
@@ -107,6 +109,13 @@ export class AppFoldStrip extends LitElement {
 			},
 			marks: [
 				chart.ruleX([0, 0.25, 0.5, 0.75, 1], { stroke: tokens['--chart-grid'] }),
+				chart.lineY(this.paired ? dots : [], {
+					x: 'score',
+					y: 'index',
+					z: 'partition',
+					stroke: tokens['--chart-neutral'],
+					strokeOpacity: 0.6
+				}),
 				chart.ruleX(sorted, {
 					x: 'value',
 					stroke: tokens['--chart-neutral'],

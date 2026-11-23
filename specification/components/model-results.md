@@ -15,19 +15,21 @@ Section 6 of the model builder shows the shared results of one trained classifie
 
 ## 3. Public API (closed)
 
-| Element                   | Properties (`attribute: false` unless stated)                                                             | Events (all `bubbles` and `composed`)                     |
-| ------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `app-model-results`       | `modelNum` (attribute `model-num`, reflected); method `whenSettled()`                                     | none                                                      |
-| `app-results-summary`     | `summary`, `moreOpen`, `labels`                                                                           | `app-results-more-toggle` `{ open }`                      |
-| `app-fold-strip`          | `series`, `baselines`, `caption`, `formatPercent`, `labels`; method `whenSettled()`                       | none                                                      |
-| `app-class-metrics-table` | `rows`, `labels`                                                                                          | none                                                      |
-| `app-confusion-matrix`    | `matrix`, `classFilter`, `labels`                                                                         | `app-confusion-filter-change` `{ classFilter }`           |
-| `app-confusion-flowchart` | `flow`, `labels`                                                                                          | none                                                      |
-| `app-classee-strips`      | `strips`, `caption`, `formatCount`, `labels`; method `whenSettled()`                                      | none                                                      |
-| `app-threshold-explorer`  | `explorer`, `thresholdIndex`, `caption`, `formatPercent`, `formatCount`, `labels`; method `whenSettled()` | `app-threshold-change` `{ index }`, at most one per frame |
-| `app-reliability-diagram` | `calibration`, `caption`, `formatPercent`, `formatCount`, `labels`; method `whenSettled()`                | none                                                      |
+| Element                   | Properties (`attribute: false` unless stated)                                                                   | Events (all `bubbles` and `composed`)                     |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `app-model-results`       | `modelNum` (attribute `model-num`, reflected); method `whenSettled()`                                           | none                                                      |
+| `app-results-summary`     | `summary`, `moreOpen`, `labels`                                                                                 | `app-results-more-toggle` `{ open }`                      |
+| `app-fold-strip`          | `series`, `baselines`, `caption`, `formatPercent`, `labels`, `paired` (default `false`); method `whenSettled()` | none                                                      |
+| `app-class-metrics-table` | `rows`, `labels`                                                                                                | none                                                      |
+| `app-confusion-matrix`    | `matrix`, `classFilter`, `labels`                                                                               | `app-confusion-filter-change` `{ classFilter }`           |
+| `app-confusion-flowchart` | `flow`, `labels`                                                                                                | none                                                      |
+| `app-classee-strips`      | `strips`, `caption`, `formatCount`, `labels`; method `whenSettled()`                                            | none                                                      |
+| `app-threshold-explorer`  | `explorer`, `thresholdIndex`, `caption`, `formatPercent`, `formatCount`, `labels`; method `whenSettled()`       | `app-threshold-change` `{ index }`, at most one per frame |
+| `app-reliability-diagram` | `calibration`, `caption`, `formatPercent`, `formatCount`, `labels`; method `whenSettled()`                      | none                                                      |
 
 There are no slots, CSS parts or CSS properties. View-model types and their pure builders are in `src/features/results/results-view-model.ts`. `ChartCaption` is `{ title, takeaway }`. `whenSettled()` on the chart elements resolves when the chart has been drawn or abandoned (hidden or disconnected). It lets `app-model-results.whenSettled()` wait for the first visible render; see Open questions.
+
+For comparison, `paired = true` connects the corresponding partition indices across model series. The data table retains one value per model and partition; no separate line data is introduced. The single-model default remains unpaired.
 
 `app-model-results.whenSettled()` resolves after the saved result reaches a terminal state for the current run and the visible charts have drawn. It resolves immediately without an active trained run and also when the run is superseded or the element is removed while waiting. The builder's own `whenSettled()` awaits it.
 

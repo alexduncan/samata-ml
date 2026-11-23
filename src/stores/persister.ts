@@ -1,6 +1,7 @@
 import { atom } from 'nanostores';
 import { $appState } from './app.store';
 import { $scrollState } from './scroll.store';
+import { emptyComparisonResults, ownedComparisonResults } from './comparison-preferences';
 import { parseRoute } from '../router/route-parser';
 import { openSamataDb } from '../common/storage/db';
 import {
@@ -154,13 +155,20 @@ function validateAppState(val: unknown):
 	}
 	const decoded = decodeProtectedDomain(val);
 	if (!decoded) return { valid: false, isNewer: false };
+	const epochValid =
+		val.comparisonContextEpoch === undefined ||
+		(typeof val.comparisonContextEpoch === 'number' &&
+			Number.isSafeInteger(val.comparisonContextEpoch) &&
+			val.comparisonContextEpoch >= 0);
+	const state = {
+		...val,
+		...decoded.domain,
+		trainingDomainGeneration: generation
+	} as PersistedAppState;
+	state.results = epochValid ? ownedComparisonResults(state, state) : emptyComparisonResults();
 	return {
 		valid: true,
-		state: {
-			...val,
-			...decoded.domain,
-			trainingDomainGeneration: generation
-		} as PersistedAppState,
+		state,
 		trainingSetupDecodeOutcomes: decoded.trainingSetupDecodeOutcomes
 	};
 }
@@ -464,11 +472,21 @@ export async function withTrainingStateLock<T>(
 
 /** Applies a validated snapshot under the state lock, retaining unsaved edits to matching logs. */
 export function publishAcknowledgedAppSnapshot(state: PersistedAppState): void {
+	state = { ...state, results: ownedComparisonResults(state, state) };
+	const local = $appState.get();
+	const base = ordinaryBase ?? acknowledgedState;
+	const localResults = ownedComparisonResults(local, state);
+	const dirtyResults =
+		base &&
+		JSON.stringify(local.results) !== JSON.stringify(base.results) &&
+		localResults.owner !== null;
 	acknowledgedState = state;
 	pruneTrainingLogEdits(state);
 	publishingSnapshot = true;
 	try {
-		$appState.set(mergeTrainingLogEdits(state));
+		$appState.set(
+			mergeTrainingLogEdits(dirtyResults ? { ...state, results: localResults } : state)
+		);
 	} finally {
 		publishingSnapshot = false;
 	}
@@ -478,7 +496,11 @@ function writeAcknowledgedSnapshot(
 	storage: StorageAdapter,
 	state: PersistedAppState
 ): PersistenceAck {
-	const written = safeSetItem(storage, STATE_STORAGE_KEY, serialiseAppState(state));
+	const written = safeSetItem(
+		storage,
+		STATE_STORAGE_KEY,
+		serialiseAppState({ ...state, results: ownedComparisonResults(state, state) })
+	);
 	if (!written.ok) return written;
 	pruneTrainingLogEdits(state, true);
 	return { ok: true, generation: state.trainingDomainGeneration };
@@ -522,11 +544,14 @@ async function publishPending(
 		!acknowledged && current
 			? keepLocalOrdinaryChanges(candidate, current, firstPublication)
 			: candidate;
+	state = {
+		...state,
+		results: current ? ownedComparisonResults(current, state) : emptyComparisonResults()
+	};
 	if (!acknowledged) {
 		state = mergeTrainingLogEdits(state);
 		const ack = writeAcknowledgedSnapshot(context.storage, state);
 		if (!ack.ok) return ack;
-		acknowledgedState = state;
 	}
 	const cleared = await clearPendingTrainingCheckpoint(
 		context.db,
@@ -587,7 +612,7 @@ export function publishNewerTrainingSnapshot(state: PersistedAppState): void {
 			...state,
 			onboarding: current.onboarding,
 			resumePath: current.resumePath,
-			results: current.results
+			results: ownedComparisonResults(state, state)
 		});
 	}
 }
@@ -766,7 +791,11 @@ function mergeOrdinaryState(
 		updatedAt: Date.now(),
 		onboarding: captured.onboarding,
 		resumePath: captured.resumePath,
-		results: captured.results,
+		results:
+			JSON.stringify(captured.results) !== JSON.stringify(base.results) &&
+			ownedComparisonResults(captured, latest).owner
+				? ownedComparisonResults(captured, latest)
+				: ownedComparisonResults(latest, latest),
 		data: sameContext ? captured.data : latest.data,
 		models: sameContext
 			? latest.models.map((stored) => {
@@ -838,7 +867,7 @@ function keepLocalOrdinaryChanges(
 		...candidate,
 		onboarding: local.onboarding,
 		resumePath: local.resumePath,
-		results: local.results,
+		results: ownedComparisonResults(candidate, candidate),
 		models,
 		data
 	};
@@ -937,7 +966,13 @@ function writeAppStateNow(storage: StorageAdapter, state: PersistedAppState): vo
 		pendingProgressTimer = undefined;
 	}
 	if (!protectedPersistence) {
-		noteOrdinaryFailure(safeSetItem(storage, STATE_STORAGE_KEY, serialiseAppState(state)));
+		noteOrdinaryFailure(
+			safeSetItem(
+				storage,
+				STATE_STORAGE_KEY,
+				serialiseAppState({ ...state, results: ownedComparisonResults(state, state) })
+			)
+		);
 		return;
 	}
 	const base = ordinaryBase ?? state;
@@ -1133,6 +1168,7 @@ export function initPersister(storage?: StorageAdapter, options: PersisterOption
 	protectedPersistence = options.trainingPersistence;
 
 	previousAppState = $appState.get();
+	acknowledgedState = previousAppState;
 
 	unbindAppState = $appState.subscribe((nextState) => {
 		if (publishingSnapshot) {

@@ -243,7 +243,8 @@ What `specification/` must say once this plan is implemented. The final task app
 
 ### T2 — Shared Playwright helpers and smoke suite
 
-- **Depends on:** None (parallel-safe with T1)
+- **Depends on:** None
+- T2 is parallel-safe with T1.
 - **Risk:** routine
 - **Likely files:** `tests/e2e/app.ts`, `tests/e2e/storage.ts`, `tests/e2e-helpers.e2e.ts`
 - **Must not touch:** existing suites (`tests/app-shell.test.ts`, `tests/content.e2e.ts`, `tests/a11y.e2e.ts`, `tests/visual-parity.e2e.ts`); `playwright.config.ts`; `src/**`.
@@ -258,11 +259,10 @@ What `specification/` must say once this plan is implemented. The final task app
 ### T3 — Upload-path ingestion goldens (`REF-2`)
 
 - **Depends on:** T1
-- **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T6 shows `- **Progress:** [x]`. If not, stop before changing any file and report it.
 - **Risk:** needs care — the first goldens set the baseline; a product bug blessed here is hard to spot later.
 - **Likely files:** `tests/reference-ingestion.test.ts`, `tests/golden/ingestion/iris.upload.json`, `tests/golden/ingestion/palmer-penguins.upload.json`
 - **Must not touch:** `src/**` (escalate product bugs, do not fix them); `tests/ingestion-pipeline.test.ts` (data-ingestion's).
-- **Implementation:** For each reference dataset: `installFakeIndexedDB()`; `runIngestion({ kind: 'file', file: referenceFile(id) }, { db, now: () => 0, uuid: () => 'golden' })`; read every RawRecord back with `getRows`, sort by rowIndex and map to record.values; build `{ metadata, rows }`; assert D5 invariants (rowCount; column names in order; `target` column `categorical` with `categoryCounts` equal to `classCounts`; each column's `missingCount` equals `missingCounts[name] ?? 0`; `source` `'upload'`, `sampleId` null, `name` equal to `id`); then compare `canonicalise(..., { redact: ['id', 'createdAt'] })` with `goldenFor('ingestion/<id>.upload.json', …)`. Generate the goldens with `UPDATE_GOLDEN=1`, then **read both files** and check, against the CSV and data-ingestion's _Interfaces_, that the types, missing counts, histograms (counts sum to `count`) and row values are right. Record anything surprising in the log and escalate rather than committing it.
+- **Implementation:** Cross-plan prerequisite: [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T6 has its progress checked. If not, stop before changing any file and report it. For each reference dataset: `installFakeIndexedDB()`; `runIngestion({ kind: 'file', file: referenceFile(id) }, { db, now: () => 0, uuid: () => 'golden' })`; read every RawRecord back with `getRows`, sort by rowIndex and map to record.values; build `{ metadata, rows }`; assert D5 invariants (rowCount; column names in order; `target` column `categorical` with `categoryCounts` equal to `classCounts`; each column's `missingCount` equals `missingCounts[name] ?? 0`; `source` `'upload'`, `sampleId` null, `name` equal to `id`); then compare `canonicalise(..., { redact: ['id', 'createdAt'] })` with `goldenFor('ingestion/<id>.upload.json', …)`. Generate the goldens with `UPDATE_GOLDEN=1`, then **read both files** and check, against the CSV and data-ingestion's _Interfaces_, that the types, missing counts, histograms (counts sum to `count`) and row values are right. Record anything surprising in the log and escalate rather than committing it.
 - **Acceptance criteria:**
     - [ ] `REF-2 iris` and `REF-2 palmer-penguins` pass without `UPDATE_GOLDEN`.
     - [ ] Iris: four `numeric` columns, `class` `categorical`, every `missingCount` 0, 150 rows of 5 values with numbers as numbers.
@@ -274,7 +274,7 @@ What `specification/` must say once this plan is implemented. The final task app
 ### T4 — Sample-path ingestion goldens through the generator (`REF-3`)
 
 - **Depends on:** T3
-- **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T9 shows `- **Progress:** [x]`. If not, stop and report it.
+- **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T9 has its progress checked. If not, stop and report it.
 - **Risk:** needs care — temporary directories, a fake `fetch` that must strip `?v=` query strings, and restoring globals.
 - **Likely files:** `tests/reference-ingestion.test.ts`, `tests/golden/ingestion/iris.sample.json`, `tests/golden/ingestion/palmer-penguins.sample.json`
 - **Must not touch:** `src/**`, `scripts/**`, `content/**`; `tests/sample-datasets-content.test.ts`.
@@ -289,7 +289,7 @@ What `specification/` must say once this plan is implemented. The final task app
 ### T5 — Dataset-provider goldens (`REF-4`)
 
 - **Depends on:** T4
-- **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T11 shows `- **Progress:** [x]`. If not, stop and report it.
+- **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T11 has its progress checked. If not, stop and report it.
 - **Risk:** needs care — buffer sizing and splitting the row-major buffer correctly.
 - **Likely files:** `tests/reference-provider.test.ts`, `tests/helpers/reference-ingest.ts` (if sharing ingestion setup with reference-ingestion.test.ts), `tests/reference-ingestion.test.ts` (only moving that setup), `tests/golden/provider/iris.json`, `tests/golden/provider/palmer-penguins.json`
 - **Must not touch:** `src/**`; `tests/dataset-provider.test.ts`; `../web-ml/**`.
@@ -303,7 +303,7 @@ What `specification/` must say once this plan is implemented. The final task app
 ### T6 — Cross-browser conformance with the goldens (`REF-5`)
 
 - **Depends on:** T2, T4
-- **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T15 shows `- **Progress:** [x]` (worker, built catalogue and browser IndexedDB proven). If not, stop and report it.
+- **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T15 has its progress checked (worker, built catalogue and browser IndexedDB proven). If not, stop and report it.
 - **Risk:** needs care — structured-clone results across the page boundary, worker lifetime, and genuine engine differences that must be reported, not hidden.
 - **Likely files:** `tests/e2e/storage.ts` (add `ingestInWorker`), `tests/reference-conformance.e2e.ts`
 - **Must not touch:** `tests/storage-worker.e2e.ts` (data-ingestion's); `tests/helpers/golden.ts` rounding rules (raise a change instead); `playwright.config.ts`; `src/**`.

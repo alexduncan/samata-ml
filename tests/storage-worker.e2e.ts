@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { interceptSampleDownload } from './fixtures/sample-dataset-downloads';
 
+let assertDownload: () => void;
 test.beforeEach(async ({ page }) => {
+	assertDownload = await interceptSampleDownload(page.context(), 'palmer-penguins');
 	await page.goto('/datasets/index.json');
 	await page.evaluate(
 		() =>
@@ -138,9 +141,10 @@ test('storage worker builds the catalogue and ingests sample and in-page files',
 		};
 	});
 
-	expect(result.datasetIds).toHaveLength(12);
+	expect(result.datasetIds).toHaveLength(11);
 	expect(result.compasOrigin).toBe('remote');
 	expect(result.datasetIds).toContain('compas-recidivism');
+	assertDownload();
 	expect(result.sample).toMatchObject({ sampleId: 'palmer-penguins', rowCount: 344 });
 	expect(result.sample.columns).toHaveLength(8);
 	for (const name of ['species', 'island', 'sex', 'year']) {

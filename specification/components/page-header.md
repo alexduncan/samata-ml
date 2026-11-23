@@ -52,7 +52,7 @@ Owns no strings. Headings/descriptions/actions are consumer content; long LTR/RT
 
 | ID      | Criterion and evidence                                              |
 | ------- | ------------------------------------------------------------------- |
-| PH-AC-1 | Document heading focus, native action and long LTR/RTL reflow.      |
+| PH-AC-1 | Route-owned heading focus, native action and long LTR/RTL reflow.   |
 | PH-AC-2 | Main/header reference geometry and semantic markup.                 |
 | PH-AC-3 | Data/target controls remain usable at 375px without sidebar offset. |
 

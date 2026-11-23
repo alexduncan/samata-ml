@@ -62,6 +62,21 @@ describe('ingestion source helpers', () => {
 		expect(attempts).toBe(2);
 	});
 
+	it('preserves privacy options on each retry', async () => {
+		const requests: RequestInit[] = [];
+		await fetchWithRetry('https://example.org/data.csv', {
+			request: { credentials: 'omit', referrerPolicy: 'no-referrer' },
+			sleep: async () => {},
+			fetchImpl: async (_url, init) => {
+				requests.push(init!);
+				return new Response('', { status: requests.length < 3 ? 503 : 200 });
+			}
+		});
+		expect(requests).toHaveLength(3);
+		for (const request of requests)
+			expect(request).toMatchObject({ credentials: 'omit', referrerPolicy: 'no-referrer' });
+	});
+
 	it('maps cancellation, rejects oversized sources and checks available quota', async () => {
 		const controller = new AbortController();
 		controller.abort();

@@ -1,6 +1,6 @@
 # Steps
 
-**Status:** partial — Steps 1–2 and the Step 3 overview and builder through training are implemented. Detailed model results, comparison and tuning remain target.
+**Status:** partial — Steps 1–2, classification training, shared single-model results and comparison are implemented. Tuning and model-specific results remain target.
 
 This web application has four sections.
 
@@ -16,7 +16,7 @@ This is the first page the user sees when the app loads. It supports two modes: 
 
 The page shows a card for each sample dataset in the generated catalogue at `/datasets/index.json` ([sample-datasets.md](sample-datasets.md)). Each card shows `name`, `tagline`, `stats.rowCount` and `stats.columnCount`, with buttons for "Datasheet" and "Load Dataset". This is shown in [01-1_select-data.html](mockups/01-1_select-data.html).
 
-For any dataset where `csvOrigin === 'remote'` (such as COMPAS Recidivism), the card's enclosing item prominently displays a remote source notice: _"Downloaded from GitHub when loaded; internet connection required"_.
+For each dataset where `csvOrigin === 'remote'`, the card’s enclosing item displays: _“Downloaded from the source when loaded. Internet connection required.”_ Bundled cards have no notice. Pima Diabetes and the former Seaborn Titanic ID are absent from new selection; Titanic Survival (1912 British Inquiry) is a separate sample. Existing saved projects retain their original guidance.
 
 Clicking the "Datasheet" button on a dataset card displays a modal containing sanitized markdown/HTML information about the sample dataset as shown in [01-2_dataset-card.html](mockups/01-2_dataset-card.html). Hostile markup (`<script>`, inline handlers, iframes) is stripped. Network failures display an alert with a "Retry" button, and closing the modal returns focus to the invoker button.
 
@@ -208,8 +208,8 @@ The threshold, class filter and More metrics preferences are saved per model. Mo
 
 **url:** `/results`
 
-Displays a comparison of metrics across different training rounds.
+The classification comparison groups trained models by the fingerprint of their held-out rows and partitions. Models in different groups cannot be mixed; singleton or inconsistent groups explain why they are unavailable. Once results have loaded, the largest eligible group is selected (ties use the earliest model), with at most eight models selected. Fewer than two trained models shows a notification and link to Models; loading, missing, legacy and read-error results are explained individually. A learner may choose a group and any two to eight models. A deliberate selection of fewer than two shows guidance instead of comparison charts.
 
-The top section will display common metrics for the type of task (Classification | Regression).
+The sections appear in order: a sortable table of held-out metrics and fixed baseline rows; balanced-accuracy dots for matching partitions with paired connecting lines; per-class error rates; an ordered A/B pair and signed confusion differences; practical-equivalence probabilities; and instance agreement. The table includes balanced accuracy, macro-F1, MCC, accuracy, available ROC-AUC, average precision, log loss, Brier and calibration error, train–test gap, spread, error counts and protocol-appropriate time. Binary groups also show false positives and negatives. Missing measures have an explanation; inconsistent baseline reports suppress the affected baseline. Higher and lower being better are labelled where applicable. Sorting does not imply a winner.
 
-**TODO: More work is required to design the specification for this step.**
+For two cross-validation models, the analysis worker asks `web-ml` for a Bayesian correlated t-test on matching held-out balanced-accuracy folds. The width defaults to 0.01 and accepts 0.001–0.1 in 0.001 steps. The three labelled probabilities show A higher, practically equivalent and B higher; the caption names both models, width and fold count. One-Shot or fewer than two folds explains why the analysis is unavailable. Swapping the pair reverses the confusion difference and requests the new ordered posterior. More than twenty classes offers a true-class filter. Charts provide captions and data tables; no automatic winner is selected. Group, selection, sort, pair, width and filter survive reload. The [04 draft](mockups/04_compare-results.html) awaits human styling.

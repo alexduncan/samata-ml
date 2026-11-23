@@ -10,13 +10,26 @@ export type DatasetDomain =
 	| 'marketing';
 export type SpdxLicense = 'CC0-1.0' | 'CC-BY-4.0' | 'PDDL-1.0' | 'ODbL-1.0';
 /** SPDX no-assertion marker, allowed only for remote datasets that are not redistributed. */
-export type DatasetLicense = SpdxLicense | 'NOASSERTION';
+export type DatasetLicense = SpdxLicense | 'NOASSERTION' | 'LicenseRef-Public-Domain';
 
 /** Commit-pinned upstream CSV fetched on demand instead of being bundled. */
 export interface RemoteCsvSource {
 	url: string;
 	sha256: string;
 	byteLength: number;
+}
+
+/** Build-time source and independently pinned prepared output. */
+export interface BuildCsvSource extends RemoteCsvSource {
+	transform:
+		| 'identity'
+		| 'adult-training'
+		| 'bank-full-zip'
+		| 'german-credit-quotes'
+		| 'strip-utf8-bom'
+		| 'titanic-inquiry-counts';
+	outputSha256: string;
+	outputByteLength: number;
 }
 
 export interface AuthoredColumn {
@@ -58,6 +71,7 @@ export interface AuthoredDatasetDescriptor {
 	tags: string[];
 	missingValueTokens?: string[];
 	remoteSource?: RemoteCsvSource;
+	buildSource?: BuildCsvSource;
 	modeling: { defaultTarget: string; targetCandidates: TargetCandidate[] };
 	columns: AuthoredColumn[];
 	provenance: {
@@ -75,6 +89,9 @@ export interface AuthoredDatasetDescriptor {
 	ethicsWarnings?: string[];
 }
 
+/** Column and target advice usable without an active catalogue entry. */
+export type SampleDatasetGuidance = Pick<AuthoredDatasetDescriptor, 'columns' | 'modeling'>;
+
 export interface ComputedDatasetStats {
 	rowCount: number;
 	columnCount: number;
@@ -84,7 +101,10 @@ export interface ComputedDatasetStats {
 	defaultTargetDistribution?: Record<string, number>;
 }
 
-export interface SampleDatasetDescriptor extends Omit<AuthoredDatasetDescriptor, 'columns'> {
+export interface SampleDatasetDescriptor extends Omit<
+	AuthoredDatasetDescriptor,
+	'columns' | 'buildSource'
+> {
 	columns: (AuthoredColumn & { missingCount: number })[];
 	stats: ComputedDatasetStats;
 	files: { csv: string; datasheet: string; csvOrigin: 'bundled' | 'remote' };

@@ -24,6 +24,7 @@ Items the specifications mark as _future_, _later_ or _deferred_. They are **not
     - **Selectable positive class** for the threshold explorer and binary metrics; Phase 4 fixes the second class as positive.
     - **Prediction latency** alongside fit time.
     - **Hand-built SVG charts** that replace Observable Plot where a bespoke chart is clearer, such as a Sankey-style confusion flow.
+- **Richer model comparison:** Superimposed ROC and precision–recall curves, multi-model reliability plots, a Pareto scatter, a decision-boundary gallery and normalised expected cost with a cost-ratio slider remain future work.
 - **Authored model illustrations and replacement of text-entry fallback:** Dedicated SVG illustrations for the 13 supervised models beyond Logistic Regression (Decision Trees, Naive Bayes variants, SVM, k-NN, Multi-Layer Perceptrons, Linear/Polynomial Regression). Each new illustrated card requires a human-approved, model-appropriate SVG adhering to the 360×216 viewBox and semantic color tokens. Until authored, these models render via the accessible native text-entry fallback (`03-9_choose-model-text-entries.html`).
 
 ## Engineering

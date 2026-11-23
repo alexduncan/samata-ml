@@ -2,6 +2,14 @@ import type { AuthoredDatasetDescriptor } from '../../../src/types/sample-datase
 
 export default {
 	id: 'german-credit',
+	buildSource: {
+		url: 'https://www.openml.org/data/get_csv/31/credit-g.csv',
+		sha256: 'b8b0c9415638f90ace61378df13b70057487b419bba7e1a7311a34a291f26cab',
+		byteLength: 152006,
+		transform: 'german-credit-quotes',
+		outputSha256: '9888fb06e7bf42963f4db2c8fd57666d5426c0a3692d10b51571de49518a105a',
+		outputByteLength: 140017
+	},
 	name: 'German Credit Risk',
 	tagline: 'Assess consumer loan creditworthiness while auditing age bias and coding debt.',
 	description:
@@ -230,7 +238,7 @@ export default {
 	],
 	provenance: {
 		homepageUrl: 'https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data',
-		sourceRepositoryUrl: 'https://www.openml.org/d/31',
+		sourceRepositoryUrl: 'https://www.openml.org/data/get_csv/31/credit-g.csv',
 		license: 'CC-BY-4.0',
 		licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
 		yearPublished: 1994,

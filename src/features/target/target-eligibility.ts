@@ -1,5 +1,5 @@
 import type { ColumnStats, DatasetMetadata } from '../../types/dataset';
-import type { SampleDatasetDescriptor } from '../../types/sample-dataset';
+import type { SampleDatasetGuidance } from '../../types/sample-dataset';
 import type { ColumnType, DatasetSummary } from '../../types/state';
 
 /**
@@ -75,7 +75,7 @@ export function buildTargetRows(
 	dataset: DatasetSummary,
 	currentTarget: string | null,
 	metadata: DatasetMetadata | null,
-	descriptor: SampleDatasetDescriptor | null
+	descriptor: SampleDatasetGuidance | null
 ): TargetColumnRow[] {
 	if (!dataset || !Array.isArray(dataset.columns)) {
 		return [];

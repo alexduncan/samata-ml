@@ -1,10 +1,13 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
+import { interceptSampleDownload } from './fixtures/sample-dataset-downloads';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
 test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
+	let assertDownload: () => void;
 	test.beforeEach(async ({ page }) => {
+		assertDownload = await interceptSampleDownload(page.context(), 'palmer-penguins');
 		await page.goto('/data');
 		// Dismiss welcome modal if open
 		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
@@ -44,6 +47,15 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
 		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').dataset?.id ??
+						null
+				)
+			)
+			.not.toBeNull();
 
 		await page.goto('/target');
 		const targetView = page.locator('app-target-view');
@@ -51,6 +63,13 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 			timeout: 10000
 		});
 		await targetView.locator('tbody tr:has(th:has-text("class")) button').click();
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').target
+				)
+			)
+			.toBe('class');
 
 		// 2. Go to /models and create Model 1
 		await page.goto('/models');
@@ -114,6 +133,15 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 			'Select at least one feature'
 		);
 
+		// Wait for the debounced persistence before testing the saved selection after reload.
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const raw = localStorage.getItem('samata-ml:state');
+					return raw ? JSON.parse(raw).models[0]?.features : null;
+				})
+			)
+			.toEqual([]);
 		// 6. Reload the page -> deliberate empty selection survives reload!
 		await page.reload();
 		await expect(builder.locator('[data-testid="model-builder"]')).toBeVisible();
@@ -137,7 +165,27 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const penguinsCard = page.locator('app-dataset-card[dataset-id="palmer-penguins"]');
 		await penguinsCard.waitFor({ state: 'visible', timeout: 5000 });
 		await penguinsCard.locator('button.btn-primary').click();
+		await expect(page.locator('app-dataset-preview')).toBeVisible();
+		assertDownload();
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').dataset?.id ??
+						null
+				)
+			)
+			.not.toBeNull();
 		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').dataset?.id ??
+						null
+				)
+			)
+			.not.toBeNull();
 
 		await page.goto('/target');
 		const targetView = page.locator('app-target-view');
@@ -145,6 +193,13 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 			timeout: 10000
 		});
 		await targetView.locator('tbody tr:has(th:has-text("species")) button').click();
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').target
+				)
+			)
+			.toBe('species');
 
 		// Go to /models and create model
 		await page.goto('/models');
@@ -198,9 +253,25 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
 		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').dataset?.id ??
+						null
+				)
+			)
+			.not.toBeNull();
 
 		await page.goto('/target');
 		await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').target
+				)
+			)
+			.toBe('class');
 
 		await page.goto('/models');
 		await page.locator('app-models-view button:has-text("Train New Model")').click();
@@ -272,9 +343,25 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
 		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').dataset?.id ??
+						null
+				)
+			)
+			.not.toBeNull();
 
 		await page.goto('/target');
 		await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').target
+				)
+			)
+			.toBe('class');
 
 		await page.goto('/models');
 		await page.locator('app-models-view button:has-text("Train New Model")').click();
@@ -328,6 +415,13 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		// Confirm target change modal
 		const changeConfirm = page.locator('app-target-view dialog.confirm-dialog[open]');
 		await changeConfirm.locator('button:has-text("Change Target")').click();
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').target
+				)
+			)
+			.toBe('sepal length');
 
 		// Go to /models and create model for regression
 		await page.goto('/models');

@@ -36,6 +36,11 @@ import { INGESTION_ERROR_MESSAGES } from './ingestion/errors';
 import { $scrollState } from '../../stores/scroll.store';
 import { recordCurrentScroll, getIsRestoringScroll } from '../../router/scroll-restorer';
 
+const noticeMessages = i18n('app-data-sample-notice', {
+	remote: 'Downloaded from the source when loaded. Internet connection required.',
+	samples: 'Sample datasets'
+});
+
 const changeMessages = i18n('app-data-change-dataset', {
 	remote: 'Training in another tab',
 	busy: 'The dataset is busy. Try again.',
@@ -136,11 +141,21 @@ export class AppDataView extends LitElement {
 				gap: 0.5rem;
 			}
 
+			.visually-hidden {
+				position: absolute;
+				clip-path: inset(50%);
+				inline-size: 1px;
+				block-size: 1px;
+				overflow: hidden;
+				white-space: nowrap;
+			}
+
 			.remote-notice {
 				margin: 0;
-				color: var(--stone-600);
+				color: var(--stone-700);
 				font-size: 0.8125rem;
 				line-height: 1.25rem;
+				overflow-wrap: anywhere;
 			}
 
 			.status-notice {
@@ -213,6 +228,7 @@ export class AppDataView extends LitElement {
 	@state() private accessor changeDatasetPending = false;
 	private changeIdentity: { datasetId: string; target: string | null } | null = null;
 	private readonly changeMessagesController = new StoreController(this, changeMessages);
+	private readonly noticeMessagesController = new StoreController(this, noticeMessages);
 
 	private cataloguePromise: Promise<SampleDatasetIndex> | null = null;
 	private activeDatasheetId: string | null = null;
@@ -560,6 +576,9 @@ export class AppDataView extends LitElement {
 				: nothing}
 			${this.catalogueStatus === 'ready' && this.catalogue
 				? html`
+						<h2 class="visually-hidden">
+							${this.noticeMessagesController.value.samples}
+						</h2>
 						<ul class="cards">
 							${this.catalogue.entries.map(
 								(entry) => html`
@@ -575,8 +594,7 @@ export class AppDataView extends LitElement {
 												.handleCardDatasheet}></app-dataset-card>
 										${entry.csvOrigin === 'remote'
 											? html`<p class="remote-notice">
-													Downloaded from GitHub when loaded; internet
-													connection required
+													${this.noticeMessagesController.value.remote}
 												</p>`
 											: nothing}
 									</li>

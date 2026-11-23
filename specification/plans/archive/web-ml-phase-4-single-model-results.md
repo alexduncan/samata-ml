@@ -27,7 +27,7 @@
 
 **Out of scope**
 
-- `/results` comparison (Phase 5: [web-ml-phase-5-model-comparison.md](../web-ml-phase-5-model-comparison.md)); model-specific internals (Phase 6: [web-ml-phase-6-model-specific-results.md](../web-ml-phase-6-model-specific-results.md)); tuning results (Phase 7: [web-ml-phase-7-hyperparameter-tuning.md](../web-ml-phase-7-hyperparameter-tuning.md)).
+- `/results` comparison (Phase 5: [web-ml-phase-5-model-comparison.md](web-ml-phase-5-model-comparison.md)); model-specific internals (Phase 6: [web-ml-phase-6-model-specific-results.md](../web-ml-phase-6-model-specific-results.md)); tuning results (Phase 7: [web-ml-phase-7-hyperparameter-tuning.md](../web-ml-phase-7-hyperparameter-tuning.md)).
 - Normalised expected cost (NEC), subgroup fairness gaps (TODO-43), choosing the positive class for the threshold explorer, prediction latency, and hand-built SVG charts — added to `specification/FUTURE.md` in T10.
 - Any metric, curve, baseline or fold computation in `samata-ml` (user decision 2026-11-19; see the umbrella ledger).
 

@@ -7,7 +7,8 @@ import {
 	manyClasses,
 	svcBinaryNoProbabilities
 } from '../fixtures/results/evaluations';
-import { controlTraining, openSetup } from '../fixtures/training/browser';
+import { withPooledConfusion } from '../fixtures/results/variants';
+import { configureDraft, controlTraining, openSetup } from '../fixtures/training/browser';
 
 /** Hand-written evaluations that can be saved as the result of a trained model. */
 export type SeedName = 'iris' | 'breast-cancer' | 'svc-no-probabilities' | 'many-classes';
@@ -191,6 +192,74 @@ export function readEnvelope(page: Page): Promise<Record<string, unknown> | null
 			db.close();
 		}
 	});
+}
+
+/** Publishes two matching evaluations through the ordinary durable training workflow. */
+export async function seedComparablePair(
+	page: Page,
+	name: SeedName = 'iris',
+	variant: 'same' | 'different-confusion' | 'different-group' = 'same'
+): Promise<void> {
+	await seedTrainedModel(page, name);
+	let evaluation = evaluations[name]();
+	if (variant === 'different-confusion') {
+		evaluation = withPooledConfusion(evaluation, [49, 1, 0, 0, 45, 5, 0, 2, 48]);
+	} else if (variant === 'different-group') {
+		evaluation = { ...evaluation, partitionFingerprint: 'b'.repeat(64) };
+	}
+	await seedAdditionalModel(page, 2, evaluation);
+}
+
+async function seedAdditionalModel(
+	page: Page,
+	num: number,
+	evaluation: StoredEvaluation
+): Promise<void> {
+	await page.locator('app-sidebar a[href="/models"]').click();
+	const setup = await configureDraft(page, num);
+	if (evaluation.protocol.kind === 'cross_validation') {
+		await setup.getByRole('combobox', { name: 'Training Strategy' }).selectOption('nested_cv');
+	}
+	await setup.getByRole('button', { name: 'Train Model' }).click();
+	await expect
+		.poll(
+			() =>
+				page.evaluate(
+					() =>
+						window.__trainingFixture!.requests.filter(({ kind }) => kind === 'start')
+							.length
+				),
+			{ timeout: 20_000 }
+		)
+		.toBe(num);
+	await page.evaluate(
+		({ json, modelNum }) => {
+			const result = JSON.parse(json, (_key, value) => {
+				if (value && typeof value === 'object' && '__typed' in value) {
+					const constructors = { Uint16Array, Uint32Array, Float32Array, Float64Array };
+					return constructors[value.__typed as keyof typeof constructors].from(
+						value.data
+					);
+				}
+				return value;
+			});
+			window.__trainingFixture!.reply({ kind: 'success', result }, modelNum);
+		},
+		{ json: encode(payloadFor(evaluation)), modelNum: num }
+	);
+	const viewResults = page
+		.getByTestId('training-step')
+		.getByRole('button', { name: 'View Results' });
+	await expect(viewResults).toBeEnabled({ timeout: 15_000 });
+	await viewResults.click();
+}
+
+/** Publishes two separately comparable groups with two models each. */
+export async function seedComparableGroups(page: Page): Promise<void> {
+	await seedComparablePair(page);
+	const evaluation = { ...irisCrossValidation(), partitionFingerprint: 'b'.repeat(64) };
+	await seedAdditionalModel(page, 3, evaluation);
+	await seedAdditionalModel(page, 4, evaluation);
 }
 
 /** Removes the stored result envelope of Model 1. */

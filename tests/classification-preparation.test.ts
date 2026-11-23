@@ -4,6 +4,10 @@ import { openSamataDb } from '../src/common/storage/db';
 import { runIngestion } from '../src/features/data/ingestion/pipeline';
 import { prepareClassification } from '../src/features/models/training/prepare-classification';
 import { installFakeIndexedDB } from './helpers/fake-indexeddb';
+import { generateSampleDatasets } from '../scripts/generate-datasets';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
 
 const id = 'training-data';
 const runtime = { encodeTabularFeatures };
@@ -90,9 +94,10 @@ describe('classification transport', () => {
 	});
 
 	test('WML-P3-DATA-1: preserves the first-seen categorical axis on a real sample', async () => {
-		const csv = await Bun.file(
-			new URL('../content/datasets/iris/data.csv', import.meta.url)
-		).text();
+		const root = await mkdtemp(path.join(tmpdir(), 'samata-iris-'));
+		await generateSampleDatasets(root, { ids: ['iris'], cacheDir: path.join(root, 'cache') });
+		const csv = await Bun.file(path.join(root, 'datasets/iris/data.csv')).text();
+		await rm(root, { recursive: true, force: true });
 		const metadata = await ingest(csv);
 		const target = metadata.columns.at(-1)!;
 		const prepared = await prepareClassification(db, runtime, {

@@ -9,7 +9,7 @@ Open questions and missing specification found by reviewing every Markdown and H
 ## 1. Workflow steps that need specifying
 
 - **TODO-02 — Single Model Results** ([workflow-steps §3.6](workflow-steps.md)): _Resolved for the shared classification results_ ([Model Results](components/model-results.md)). Still open: the common metrics for regression, which model-specific charts each classifier shows and the format of `src/config/models/{model-name}-results.ts` (Phase 6). The normative mockup `03-7` is empty; the draft awaits styling.
-- **TODO-03 — Compare Results** ([workflow-steps §4](workflow-steps.md), marked TODO): which metrics are compared, which models can be compared (same task type only?), and the layout. Mockup `04` is a placeholder.
+- **TODO-03 — Compare Results** ([workflow-steps §4](workflow-steps.md)): _Resolved for classification_ with compatible-row grouping, metrics and comparison views. Regression comparison remains future work; the [04 draft](mockups/04_compare-results.html) awaits human styling.
 - **TODO-04 — Training.** Phase 3 delivers local One-Shot and fixed CV, progress, safe errors, elapsed time and recovery. Detailed timing tables for nested evaluation and tuning remain later work. The [03-6 draft](mockups/03-6_train-models-5-train.html) awaits styling and promotion.
 - **TODO-05 — Configure Model** ([workflow-steps §3.3](workflow-steps.md)):
     - Where each model's hyperparameter definitions come from (ranges, types, defaults; `web-ml` or app config).
@@ -87,7 +87,7 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 ## 4. Mockups missing or out of date ([mockups/](mockups/))
 
-- **TODO-36** — _Narrowed:_ empty `03-4`..`03-7` placeholder duplicates are removed; `03-4` to `03-7` now exist as flat `status="draft"` HTML mockups awaiting human styling and promotion, and `04_compare-results.html` (`status="draft"`) remains a placeholder.
+- **TODO-36** — _Narrowed:_ empty `03-4`..`03-7` placeholder duplicates are removed; `03-4` to `03-7` and `04_compare-results.html` now exist as flat `status="draft"` HTML mockups awaiting human styling and promotion.
 - **TODO-37** — `01-3` still has a "Paste url to dataset" input; excluded from implemented `app-upload-dataset-dialog`. Human styling queue owns mockup cleanup.
 - **TODO-38** — The step lists render the current step as a non-link `<div>`, which [app-state-and-navigation §4.4](app-state-and-navigation.md) supersedes.
 - **TODO-39** — `01-4` has page title "Pen" and lacks column details panel; resolved for application code with DATA-UI-01/02/03.

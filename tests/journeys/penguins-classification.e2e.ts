@@ -1,5 +1,35 @@
 import { expect, test } from '@playwright/test';
 import { acknowledgeDurableTraining, expectPopulatedResults, loadSampleDataset } from './helpers';
+import { interceptSampleDownload } from '../fixtures/sample-dataset-downloads';
+import { configureDraft } from '../fixtures/training/browser';
+
+test('JOURNEY-PENGUINS-COMPARE: train two One-Shot models and explain unavailable analysis', async ({
+	page
+}) => {
+	test.setTimeout(120_000);
+	const assertDownload = await interceptSampleDownload(page.context(), 'palmer-penguins');
+	await page.goto('/data');
+	await loadSampleDataset(page, 'palmer-penguins');
+	assertDownload();
+	await page.locator('app-sidebar a[href="/target"]').click();
+	await page.locator('app-target-view tbody tr:has(th:has-text("species")) button').click();
+	await page.locator('app-sidebar a[href="/models"]').click();
+	for (const num of [1, 2]) {
+		const setup = await configureDraft(page, num);
+		await setup.getByRole('button', { name: 'Train Model' }).click();
+		const results = page
+			.getByTestId('training-step')
+			.getByRole('button', { name: 'View Results' });
+		await expect(results).toBeEnabled({ timeout: 45_000 });
+		await results.click();
+		await page.locator('app-sidebar a[href="/models"]').click();
+	}
+	await page.locator('app-sidebar a[href="/results"]').click();
+	await expect(page.locator('app-results-view app-comparison-table')).toBeVisible();
+	await expect(page.locator('app-rope-bar')).toContainText(
+		'At least two cross-validation folds are required.'
+	);
+});
 
 test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUINS-DATA)', () => {
 	test.describe.configure({ mode: 'serial' });
@@ -7,10 +37,12 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 	test('JOURNEY-PENGUINS-DATA: load sample dataset, preview contents, inspect columns, and resume on reload', async ({
 		page
 	}) => {
+		const assertDownload = await interceptSampleDownload(page.context(), 'palmer-penguins');
 		await page.goto('/data');
 
 		// 1. Load Palmer Penguins sample dataset
 		await loadSampleDataset(page, 'palmer-penguins');
+		assertDownload();
 
 		const preview = page.locator('app-dataset-preview');
 		await expect(preview).toBeVisible();
@@ -89,8 +121,10 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 	test('JOURNEY-PENGUINS-TARGET: navigate to /target, select species target, and resume on reload', async ({
 		page
 	}) => {
+		const assertDownload = await interceptSampleDownload(page.context(), 'palmer-penguins');
 		await page.goto('/data');
 		await loadSampleDataset(page, 'palmer-penguins');
+		assertDownload();
 
 		// 1. Navigate to /target via sidebar
 		await page.locator('app-sidebar a[href="/target"]').click();
@@ -125,8 +159,10 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 	test('WML-P4-UI-13 / JOURNEY-PENGUINS-RESULTS and WML-P3-UI-4 / JOURNEY-PENGUINS-SETUP: train, acknowledge and show populated results for a stratified One-Shot result', async ({
 		page
 	}) => {
+		const assertDownload = await interceptSampleDownload(page.context(), 'palmer-penguins');
 		await page.goto('/data');
 		await loadSampleDataset(page, 'palmer-penguins');
+		assertDownload();
 
 		// 1. Navigate to /target and select species
 		await page.locator('app-sidebar a[href="/target"]').click();

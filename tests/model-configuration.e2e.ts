@@ -61,6 +61,14 @@ async function openConfigure(page: Page, target = 'class', dataset = 'iris'): Pr
 		timeout: 10000
 	});
 	await page.locator(`app-target-view tbody tr:has(th:has-text("${target}")) button`).click();
+	await expect
+		.poll(() =>
+			page.evaluate(() => {
+				const raw = localStorage.getItem('samata-ml:state');
+				return raw ? JSON.parse(raw).target : null;
+			})
+		)
+		.toBe(target);
 	await page.goto('/models');
 	await page.locator('app-models-view button:has-text("Train New Model")').click();
 	const builder = page.locator('app-model-builder-view');
@@ -439,7 +447,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 	});
 
 	test('WML-P1-UI-4: a binary target saves multiclass as null', async ({ page }) => {
-		const form = await openConfigure(page, 'class', 'pima-diabetes');
+		const form = await openConfigure(page, 'Diagnosis', 'breast-cancer-wisconsin');
 		await form.locator('select#penalty').selectOption('none');
 		await form.getByRole('button', { name: 'Save & Continue' }).click();
 		await expect(
@@ -496,6 +504,14 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		const form = page.locator('app-model-configuration');
 		await form.locator('select#penalty').selectOption('l2');
 		await form.locator('#C-number').fill('2');
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const raw = localStorage.getItem('samata-ml:state');
+					return raw ? JSON.parse(raw).models[0]?.hyperparameters.values.C : undefined;
+				})
+			)
+			.toBe(2);
 		await page.reload();
 		await expect(page.locator('app-model-configuration #C-number')).toHaveValue('2');
 	});

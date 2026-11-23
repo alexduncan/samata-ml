@@ -26,12 +26,33 @@ import { fixtureTrainingResult, resultIdentity } from './fixtures/training/resul
 import { installFakeIndexedDB } from './helpers/fake-indexeddb';
 
 const emptyDomain: ProtectedDomainSnapshot = {
+	comparisonContextEpoch: 0,
 	dataset: null,
 	target: null,
 	models: [],
 	nextModelNum: 1,
 	data: { mode: 'select', selectedColumn: null }
 };
+
+test('WML-P5-STATE-3: legacy pending snapshots default the context epoch and reject invalid epochs', () => {
+	const { comparisonContextEpoch: _epoch, ...legacy } = emptyDomain;
+	const wire = {
+		kind: 'training-domain-checkpoint',
+		schemaVersion: 1,
+		datasetId: 'samata-ml:training-domain',
+		modelNum: 0,
+		generation: 1,
+		pending: { operationId: 'legacy', kind: 'recover', domain: legacy }
+	};
+	const decoded = decodeTrainingCheckpoint(wire);
+	expect(decoded.ok && decoded.checkpoint?.pending?.domain.comparisonContextEpoch).toBe(0);
+	expect(
+		decodeTrainingCheckpoint({
+			...wire,
+			pending: { ...wire.pending, domain: { ...legacy, comparisonContextEpoch: -1 } }
+		})
+	).toMatchObject({ ok: false });
+});
 const dataset = {
 	id: resultIdentity.datasetId,
 	name: 'Fixture',
@@ -42,6 +63,7 @@ const dataset = {
 
 function trained(): ProtectedDomainSnapshot {
 	return {
+		comparisonContextEpoch: 0,
 		dataset: { ...dataset, columns: [...dataset.columns] },
 		target: resultIdentity.target,
 		nextModelNum: 2,
@@ -368,6 +390,60 @@ test('WML-P3-EVENT-4: preserves pending when localStorage fails and retries publ
 	});
 	expect(await retryTrainingPublication(options(storage))).toEqual({ ok: true, generation: 1 });
 	expect(storage.stateWriteCount).toBe(2);
+});
+
+test('WML-P5-STATE-3: replacement replay clears stale choices without advancing the captured epoch twice', async () => {
+	const storage = new FailingStorage();
+	const domain = trained();
+	const owner = { datasetId: domain.dataset!.id, target: domain.target!, epoch: 0 };
+	const original = {
+		...INITIAL_APP_STATE,
+		...domain,
+		onboarding: { welcomeDismissed: true },
+		results: {
+			owner,
+			ui: {
+				...INITIAL_APP_STATE.results.ui,
+				fingerprint: 'a'.repeat(64),
+				selected: [1],
+				ropeWidth: 0.02
+			}
+		}
+	};
+	storage.setItem(
+		STATE_STORAGE_KEY,
+		JSON.stringify({
+			...original,
+			models: original.models.map((model) => ({
+				...model,
+				trainingSetup: model.trainingSetup && {
+					...model.trainingSetup,
+					type: 'train_test_split'
+				}
+			}))
+		})
+	);
+	storage.writeError = new DOMException('Test security', 'SecurityError');
+	storage.rejectWrites = 1;
+	const next = { ...domain, comparisonContextEpoch: 1 };
+	expect(
+		await commitProtectedTrainingChange(
+			() => ({
+				pending: { operationId: 'replace-context', kind: 'replace', domain: next },
+				mutation: { type: 'none' }
+			}),
+			options(storage)
+		)
+	).toMatchObject({ ok: false, reason: 'security' });
+	expect(await retryTrainingPublication(options(storage))).toEqual({ ok: true, generation: 1 });
+	const saved = readAppSnapshot(storage);
+	expect(saved.ok && saved.state).toMatchObject({
+		comparisonContextEpoch: 1,
+		onboarding: { welcomeDismissed: true },
+		results: { owner: null, ui: { fingerprint: null, selected: [], ropeWidth: 0.01 } }
+	});
+	expect(await retryTrainingPublication(options(storage))).toEqual({ ok: true, generation: 1 });
+	expect($appState.get().comparisonContextEpoch).toBe(1);
 });
 
 test('WML-P3-EVENT-4: retries quota once after purging only scroll data', async () => {

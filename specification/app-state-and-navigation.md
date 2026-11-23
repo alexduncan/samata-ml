@@ -259,7 +259,7 @@ Notes:
 
 - On every route change the router sets `document.title` to `samatā.ml | {Page}` (e.g. `samatā.ml | Train Models`, `samatā.ml | Model 3`, `samatā.ml | About`), so history entries are distinguishable in the browser's history list and by screen readers.
 - After a workflow route change initiated by the user, focus moves to the `<h1>` in `.page-header` (`tabindex="-1"`, `focus({ preventScroll: true })`). It does **not** move on hydration/reload or while restoring scroll, and never when `popstate` was caused by closing a modal (the dialog returns focus to its invoker itself).
-- The router decides whether to request focus. The shell consumes that request once and delegates it to the rendered route element's `focusHeading(signal)`; it aborts the previous pending request at every shell render, including route/data-mode replacement and reserved-route opening. Data, target, models overview and model builder each await their own Lit render, recheck cancellation/connection and query only their own heading. In preview mode data delegates to the nested preview's method, which performs the same checks. Native results-placeholder h1 uses the document-owned fallback. No shell query crosses Shadow DOM.
+- The router decides whether to request focus. The shell consumes that request once and delegates it to the rendered route element's `focusHeading(signal)`; it aborts the previous pending request at every shell render, including route/data-mode replacement and reserved-route opening. Data, target, models overview, model builder and results each await their own Lit render, recheck cancellation/connection and query only their own heading. In preview mode data delegates to the nested preview's method, which performs the same checks. No shell query crosses Shadow DOM.
 - Focus readiness is independent of whenSettled, metadata/network/rows and the scroll-restoration algorithm. Ordinary resource renders, duplicate current links, hydration/reload and reserved open/close create no extra request. Already-aborted/disconnected calls resolve without action; removed targets cannot steal focus, and a new call after reattachment works. Loading/ready/error body updates do not refocus. The shared 2px token outline changes no normal heading geometry; preventScroll preserves document/table offsets while scroll restoration retains its independent decisions.
 
 ### 5.7 Hosting and asset URLs
@@ -347,10 +347,9 @@ Model-level rules:
 
 ### 6.5 Section 4 — Compare Results (`/results`)
 
-Corresponds to workflow-steps §4, which is still marked TODO. This document defines only what the state layer must guarantee:
+Inputs are trained models and their saved evaluations. `$comparison` groups compatible evaluations and derives the active group, selected models, ordered pair and visible views. Loading, legacy, lost and read-error resources remain distinct. Group and display choices live in `results.ui` and are owned by `{ datasetId, target, epoch }`; stale owners cannot write. A selected fingerprint identifies the group; model numbers are pruned against the current models and capped at eight. Changing dataset or target advances the context epoch and clears the choices. See [state-and-storage §5](state-and-storage.md#5-ui-state-persistence-rule) for validation and guarded merges.
 
-- Inputs are `models.filter(status === 'trained')` and their stored results.
-- Any user-controlled UI state on the page (selected metric, compared models, tab) follows the general rule in [state-and-storage.md §5](state-and-storage.md#5-ui-state-persistence-rule) and is persisted under `results.ui`; its shape is defined when the section 4 and section 6 specs are completed.
+`app-results-view.focusHeading(signal)` focuses its own heading independently of result loading and honours cancellation. `whenSettled()` waits for current evaluations, the first terminal paired analysis and initially visible charts, and settles promptly on supersession or disconnection. The shell uses it for scroll restoration; later updates do not refocus.
 
 ---
 

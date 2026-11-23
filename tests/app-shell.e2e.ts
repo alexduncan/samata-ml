@@ -127,17 +127,22 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 	test.beforeEach(async ({ page }) => {
 		// Start with clean state
 		await page.goto('/data');
-		// Dismiss welcome modal if open
+		// Each test starts in a fresh context, so wait for onboarding to be ready.
 		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
-		try {
-			await getStartedBtn.waitFor({ state: 'visible', timeout: 5000 });
-			await getStartedBtn.click();
-			await page
-				.locator('app-welcome-modal dialog')
-				.waitFor({ state: 'hidden', timeout: 5000 });
-		} catch {
-			// Welcome modal already dismissed or not present
-		}
+		await getStartedBtn.waitFor({ state: 'visible', timeout: 10_000 });
+		await getStartedBtn.click();
+		await page
+			.locator('app-welcome-modal dialog')
+			.waitFor({ state: 'hidden', timeout: 10_000 });
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').onboarding
+							?.welcomeDismissed
+				)
+			)
+			.toBe(true);
 	});
 
 	test('NAV-E2E-1: Data -> Target -> Models workflow navigation and back/forward history', async ({
@@ -298,11 +303,23 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 
 	test('SNC-15: Scroll restoration across navigation and modal open/close', async ({ page }) => {
 		await page.goto('/target');
+		await expect(page.locator('app-target-view h1')).toHaveText('Set Target');
 		await page.addStyleTag({ content: '#content { min-height: 300vh !important; }' });
+		await expect
+			.poll(() => page.evaluate(() => document.documentElement.scrollHeight - innerHeight))
+			.toBeGreaterThan(600);
 
 		// Scroll down /target
 		await page.evaluate(() => window.scrollTo(0, 600));
-		await page.waitForTimeout(200); // Allow scroll event and debounce
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:scroll') ?? '{}').snapshots
+							?.target?.top
+				)
+			)
+			.toBe(600);
 
 		// Click to /models
 		await page.locator('app-sidebar a[href="/models"]').click();
@@ -311,10 +328,10 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		// Back to /target
 		await page.goBack();
 		await expect(page.locator('#content h1')).toHaveText('Set Target');
-		await page.waitForTimeout(100);
-
+		await expect
+			.poll(() => page.evaluate(() => Math.abs(window.scrollY - 600)))
+			.toBeLessThanOrEqual(2);
 		const scrollYOnReturn = await page.evaluate(() => window.scrollY);
-		expect(Math.abs(scrollYOnReturn - 600)).toBeLessThanOrEqual(2);
 
 		// Open /about
 		await page.locator('app-sidebar footer a[href="/about"]').click();
@@ -596,9 +613,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await expect(page.locator('app-data-view button:has-text("Upload Dataset")')).toBeFocused();
 	});
 
-	test('FOCUS-AC-5: heading outlines work in all owning roots and the native results placeholder', async ({
-		page
-	}) => {
+	test('FOCUS-AC-5: heading outlines work in all owning roots', async ({ page }) => {
 		await keyboardNavigate(page, '/target');
 		await keyboardNavigate(page, '/data');
 		await expect(page.locator('app-data-view h1')).toBeFocused();
@@ -769,20 +784,20 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		}
 	});
 
-	test('PH-AC-1: document page header focuses by keyboard and reflows long LTR/RTL text with a native action', async ({
+	test('PH-AC-1: results page header focuses by keyboard and reflows long LTR/RTL text with a native action', async ({
 		page,
 		browserName
 	}, testInfo) => {
 		await page.setViewportSize({ width: 375, height: 900 });
 		await keyboardNavigate(page, '/results');
-		const heading = page.locator('#content > header > h1');
+		const heading = page.locator('app-results-view header > h1');
 		await expect(heading).toBeFocused();
 		expect(await outline(heading)).toMatchObject({
 			width: '2px',
 			style: 'solid',
 			offset: '2px'
 		});
-		await page.locator('#content > header').evaluate((header) => {
+		await page.locator('app-results-view header').evaluate((header) => {
 			header.querySelector('h1')!.textContent =
 				'A very long classification comparison title with many words and UnbrokenDatasetNameThatMustWrapAcrossLines';
 			header.querySelector('p')!.textContent =
@@ -797,7 +812,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 			await page.evaluate((direction) => {
 				document.documentElement.dir = direction;
 			}, direction);
-			const boxes = await page.locator('#content > header').evaluate((header) => {
+			const boxes = await page.locator('app-results-view header').evaluate((header) => {
 				const bounds = header.getBoundingClientRect();
 				return [...header.children].map((child) => {
 					const box = child.getBoundingClientRect();
@@ -816,7 +831,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 			expect(boxes[0]!.height).toBeGreaterThan(48);
 			await heading.focus();
 			await heading.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
-			await expect(page.locator('#content > header > button')).toBeFocused();
+			await expect(page.locator('app-results-view header > button')).toBeFocused();
 			await page.screenshot({
 				path: testInfo.outputPath(`page-header-long-${direction}.png`),
 				fullPage: true
@@ -824,7 +839,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		}
 	});
 
-	test('PH-AC-2: main uses reference geometry and the document header retains semantic markup', async ({
+	test('PH-AC-2: main uses reference geometry and the results header retains semantic markup', async ({
 		page,
 		context
 	}, testInfo) => {
@@ -851,8 +866,49 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		);
 		await reference.close();
 		await keyboardNavigate(page, '/results');
-		await expect(page.locator('#content > header.page-header > p')).toHaveText(
+		await expect(page.locator('app-results-view header.page-header > p')).toHaveText(
 			'Compare performance metrics across trained models.'
+		);
+		await expect(page.locator('app-results-view .notification')).toContainText(
+			'Train at least two models'
+		);
+		await expect(page.locator('app-results-view .notification a')).toHaveAttribute(
+			'href',
+			'/models'
+		);
+		await expect(page.locator('#app > style, #app-container, main[role]')).toHaveCount(0);
+	});
+
+	test('PH-AC-2: results header and main non-padding geometry match independently', async ({
+		page,
+		context
+	}) => {
+		await page.setViewportSize({ width: 1440, height: 900 });
+		const reference = await context.newPage();
+		await reference.setViewportSize({ width: 1440, height: 900 });
+		await reference.goto(`${MOCKUPS_URL}/01-1_select-data.html?clean=1`);
+		const geometry = (element: Element) => {
+			const style = getComputedStyle(element);
+			return {
+				margin: style.marginInlineStart,
+				minHeight: style.minBlockSize,
+				sizing: style.boxSizing
+			};
+		};
+		expect(await page.locator('main').evaluate(geometry)).toEqual(
+			await reference.locator('main').evaluate(geometry)
+		);
+		await reference.close();
+		await keyboardNavigate(page, '/results');
+		await expect(page.locator('app-results-view header.page-header > p')).toHaveText(
+			'Compare performance metrics across trained models.'
+		);
+		await expect(page.locator('app-results-view .notification')).toContainText(
+			'Train at least two models'
+		);
+		await expect(page.locator('app-results-view .notification a')).toHaveAttribute(
+			'href',
+			'/models'
 		);
 		await expect(page.locator('#app > style, #app-container, main[role]')).toHaveCount(0);
 	});

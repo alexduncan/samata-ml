@@ -16,6 +16,7 @@ import {
 import { $scrollState, recordScroll } from '../src/stores/scroll.store';
 import type { DatasetMetadata, RawRecord } from '../src/types/dataset';
 import { IngestionError } from '../src/features/data/ingestion/errors';
+import { buildFeatureRows } from '../src/features/models/feature-eligibility';
 import type { StorageClient } from '../src/features/data/ingestion/storage-client';
 import { INITIAL_APP_STATE, type ModelRecord, type ModelStatus } from '../src/types/state';
 import { resetSampleDatasetCache } from '../src/features/data/sample-datasets';
@@ -202,8 +203,72 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 		const res = $datasetResources.get();
 		expect(res.status).toBe('ready');
 		expect(res.metadata).toEqual(meta);
-		expect(res.descriptor?.id).toBe('iris');
+		expect(res.descriptor).toMatchObject({ columns: [] });
 		expect(res.error).toBeNull();
+	});
+
+	it('retains retired guidance from authoritative metadata without a request', async () => {
+		for (const sampleId of ['pima-diabetes', 'titanic']) {
+			const meta = createMockMetadata('ds-retired', sampleId);
+			const client: StorageClient = {
+				ingest: async () => meta,
+				getMetadata: async () => meta,
+				fetchRows: async () => createMockRows('ds-retired', 0, 1),
+				deleteDatasetsExcept: async () => {},
+				dispose: () => {}
+			};
+			setStorageClientForTesting(client);
+			$appState.set({
+				...$appState.get(),
+				dataset: {
+					id: 'ds-retired',
+					name: 'Stale',
+					source: 'sample',
+					sampleId: 'iris',
+					rowCount: 100,
+					columns: []
+				}
+			});
+			let requests = 0;
+			globalThis.fetch = (async () => {
+				requests++;
+				throw new Error('unexpected request');
+			}) as unknown as typeof fetch;
+			await loadDatasetResources('ds-retired');
+			const guidance = $datasetResources.get().descriptor;
+			expect(guidance?.modeling.defaultTarget).toBe(
+				sampleId === 'titanic' ? 'survived' : 'class'
+			);
+			expect(
+				guidance?.columns.some(
+					(column) => column.name === (sampleId === 'titanic' ? 'alive' : 'plas')
+				)
+			).toBe(true);
+			if (sampleId === 'titanic') {
+				const stats = (name: string) => ({
+					name,
+					type: 'categorical' as const,
+					missingCount: 0,
+					missingTokens: {},
+					invalidCount: 0,
+					invalidExamples: [],
+					distinctCount: 2,
+					categoryCounts: { no: 50, yes: 50 }
+				});
+				const rows = buildFeatureRows(
+					{ ...meta, columns: [stats('survived'), stats('alive')] },
+					'survived',
+					guidance
+				);
+				expect(rows.find((row) => row.name === 'alive')).toMatchObject({
+					initiallySelected: false,
+					reasonCodes: expect.arrayContaining(['LEAKY'])
+				});
+			}
+			await loadPreviewRows('ds-retired', 0, 1);
+			expect($previewRows.get().rows).toHaveLength(1);
+			expect(requests).toBe(0);
+		}
 	});
 
 	it('treats missing descriptor as a non-fatal advisory while missing metadata is an error', async () => {

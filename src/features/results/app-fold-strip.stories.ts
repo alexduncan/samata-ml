@@ -18,6 +18,7 @@ interface FoldStripArgs {
 	evaluation: StoredEvaluation;
 	seriesName?: string;
 	dir?: 'ltr' | 'rtl';
+	paired?: boolean;
 }
 
 const meta = {
@@ -34,7 +35,12 @@ const meta = {
 		}
 	},
 	argTypes: { evaluation: { control: false } },
-	render: ({ evaluation, seriesName = 'Logistic Regression', dir = 'ltr' }: FoldStripArgs) => {
+	render: ({
+		evaluation,
+		seriesName = 'Logistic Regression',
+		dir = 'ltr',
+		paired = false
+	}: FoldStripArgs) => {
 		const wrapper = document.createElement('div');
 		wrapper.dir = dir;
 		const view = buildFoldStripView(
@@ -48,7 +54,10 @@ const meta = {
 		);
 		const element = document.createElement('app-fold-strip');
 		element.labels = englishFoldStripLabels;
-		element.series = view.series;
+		element.series = paired
+			? [...view.series, { ...view.series[0]!, id: 'second', label: 'Model 2' }]
+			: view.series;
+		element.paired = paired;
 		element.baselines = view.baselines;
 		element.caption = sampleCaption;
 		element.formatPercent = format.percent;
@@ -72,6 +81,8 @@ export const CrossValidation: Story = {
 };
 /** One test split draws a single dot and no spread. */
 export const OneShot: Story = { args: { evaluation: breastCancerOneShot() } };
+/** Aligned folds are connected between models. */
+export const Paired: Story = { args: { evaluation: irisCrossValidation(), paired: true } };
 /** A long series name wraps in the chart and in the table. */
 export const LongLabel: Story = {
 	args: {

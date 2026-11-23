@@ -41,7 +41,8 @@ async function buildBrowserAssets(options: {
 	const entrypoints = [
 		path.join(SRC_DIR, 'app.ts'),
 		path.join(SRC_DIR, 'features/data/ingestion/storage.worker.ts'),
-		path.join(SRC_DIR, 'features/models/training/training.worker.ts')
+		path.join(SRC_DIR, 'features/models/training/training.worker.ts'),
+		path.join(SRC_DIR, 'features/results/analysis.worker.ts')
 	];
 	if (process.env.SAMATA_TRAINING_RUNTIME_PROBE === '1') {
 		entrypoints.push(path.join(ROOT_DIR, 'tests/fixtures/training/runtime.worker.ts'));
