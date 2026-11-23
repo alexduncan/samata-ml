@@ -8,6 +8,7 @@ import type { IngestionProgress, IngestionSource } from '../features/data/ingest
 import { getStorageClient, type StorageClient } from '../features/data/ingestion/storage-client';
 import { loadDataset } from '../features/data/load-dataset';
 import { loadSampleDescriptor } from '../features/data/sample-datasets';
+import { trackBetaEvent } from '../common/telemetry/telemetry-client';
 import { retiredSampleGuidance } from '../features/data/retired-sample-guidance';
 import { $appState } from './app.store';
 import type { DatasetMetadata, RawRecord } from '../types/dataset';
@@ -343,6 +344,9 @@ export async function startDatasetLoad(source: IngestionSource): Promise<boolean
 		if (activeAbortController === controller) {
 			$datasetLoad.set({ busy: false, progress: null, errorCode: null });
 			activeAbortController = null;
+			trackBetaEvent(
+				source.kind === 'sample' ? 'sample_dataset_selected' : 'custom_dataset_uploaded'
+			);
 		}
 		return true;
 	} catch (error) {

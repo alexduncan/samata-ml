@@ -10,7 +10,13 @@ if (envGlobals.WEB_ML_RUNTIME_REVISION === undefined) {
 	envGlobals.WEB_ML_RUNTIME_REVISION = 'test';
 }
 
-const window = new GlobalWindow({ url: 'http://localhost:3000' });
+const window = new GlobalWindow({
+	url: 'http://localhost:3000',
+	settings: {
+		disableJavaScriptFileLoading: true,
+		handleDisabledFileLoadingAsSuccess: true
+	}
+});
 
 // Register DOM properties and classes onto globalThis
 for (const key of Object.getOwnPropertyNames(window)) {

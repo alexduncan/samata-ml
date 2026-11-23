@@ -19,11 +19,15 @@ const TEMP_ROOT = path.join(
 const DEFAULT_PROD_DIR = path.join(TEMP_ROOT, 'prod-default');
 const CHANGED_WORKER_DIR = path.join(TEMP_ROOT, 'prod-changed-worker');
 const PUBLIC_STABLE_DIR = path.join(TEMP_ROOT, 'prod-public-stable');
+const BETA_TELEMETRY_DIR = path.join(TEMP_ROOT, 'prod-beta-telemetry');
+const STABLE_TELEMETRY_DIR = path.join(TEMP_ROOT, 'prod-stable-telemetry');
 const DEV_VARIANT_DIR = path.join(TEMP_ROOT, 'dev-default');
 
 let defaultProd!: ProductionBuildResult;
 let changedWorkerProd!: ProductionBuildResult;
 let publicStableProd!: ProductionBuildResult;
+let betaTelemetryProd!: ProductionBuildResult;
+let stableTelemetryProd!: ProductionBuildResult;
 
 async function collectFiles(dir: string, prefix = ''): Promise<string[]> {
 	const entries = await readdir(dir, { withFileTypes: true });
@@ -67,6 +71,17 @@ describe('hashed build, headers and crawler policy', () => {
 			outDir: PUBLIC_STABLE_DIR,
 			version: '1.0.0',
 			crawlerPolicy: 'public'
+		});
+
+		betaTelemetryProd = await buildProductionBundle({
+			outDir: BETA_TELEMETRY_DIR,
+			betaTelemetry: true
+		});
+
+		stableTelemetryProd = await buildProductionBundle({
+			outDir: STABLE_TELEMETRY_DIR,
+			version: '1.0.0',
+			betaTelemetry: true
 		});
 
 		await buildDevBundle({ outDir: DEV_VARIANT_DIR });
@@ -318,5 +333,48 @@ describe('hashed build, headers and crawler policy', () => {
 				expect(code).not.toContain(ident);
 			}
 		}
+	});
+
+	test('REL-TELEM-1: beta telemetry production artefact inserts only Umami CSP tokens and stable telemetry stays off', async () => {
+		const baselineText = await readFile(path.join(ROOT_DIR, 'public', '_headers'), 'utf8');
+		const baselineCsp = baselineText
+			.split('\n')
+			.find((line) => line.trim().toLowerCase().startsWith('content-security-policy:'))!
+			.trim();
+
+		const betaHeadersText = await readFile(path.join(BETA_TELEMETRY_DIR, '_headers'), 'utf8');
+		for (const line of betaHeadersText.split('\n')) {
+			expect(line.length).toBeLessThanOrEqual(2000);
+		}
+		const betaRules = parseHeadersFile(betaHeadersText);
+		expect(betaRules.length).toBeLessThanOrEqual(100);
+		const betaRootHeaders = resolveHeaders(betaRules, '/');
+		const betaCsp = betaRootHeaders.get('content-security-policy')!;
+		expect(betaCsp).toContain(
+			"script-src 'self' https://cloud.umami.is/script.js 'wasm-unsafe-eval'"
+		);
+		expect(betaCsp).toContain('https://gateway.umami.is;');
+		expect(betaCsp).toContain('palmerpenguins');
+		expect(betaCsp).toContain('huggingface.co');
+		expect(betaRootHeaders.get('cross-origin-opener-policy')).toBe('same-origin');
+		expect(betaRootHeaders.get('cross-origin-embedder-policy')).toBe('require-corp');
+		expect(betaRootHeaders.get('cross-origin-resource-policy')).toBe('same-origin');
+
+		const betaBundleText = await readFile(
+			path.join(BETA_TELEMETRY_DIR, betaTelemetryProd.jsFile.slice(1)),
+			'utf8'
+		);
+		expect(betaBundleText).toContain('https://cloud.umami.is/script.js');
+
+		const stableHeadersText = await readFile(
+			path.join(STABLE_TELEMETRY_DIR, '_headers'),
+			'utf8'
+		);
+		const stableCsp = stableHeadersText
+			.split('\n')
+			.find((line) => line.trim().toLowerCase().startsWith('content-security-policy:'))!
+			.trim();
+		expect(stableCsp).toBe(baselineCsp);
+		expect(stableHeadersText).not.toContain('umami');
 	});
 });

@@ -1,6 +1,7 @@
 import { atom } from 'nanostores';
 import { headlineMetrics } from '../../../common/evaluation/headline-metrics';
 import { reportWorkerFailure } from '../../../common/release/worker-failures';
+import { trackBetaEvent } from '../../../common/telemetry/telemetry-client';
 import { INGESTION_LOCK, deleteDataset, getMetadata } from '../../../common/storage/db';
 import {
 	readTrainingCheckpoint,
@@ -505,6 +506,9 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 			},
 			status === 'cancelled' ? 'cancel' : 'finish'
 		);
+		if (status === 'failed' && result.ok) {
+			trackBetaEvent('training_failed', attempt.request.identity.runId);
+		}
 		return result.ok ? { ok: false, code } : result;
 	}
 
@@ -542,6 +546,9 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		);
 		if (!ack.ok) {
 			setTrainingSessionStatus(identity, committed ? 'publication-pending' : 'failed');
+			if (!committed) {
+				trackBetaEvent('training_failed', identity.runId);
+			}
 			return invalidRequest
 				? { ok: false, code: 'invalid-request' }
 				: attempt.cancelled && !committed
@@ -550,6 +557,7 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		}
 		if (attempt.cancelled) return settleStopped(attempt, 'cancelled');
 		setTrainingSessionStatus(identity, 'running');
+		trackBetaEvent('training_started');
 		const reply = await runWorker(attempt);
 		if (attempt.cancelled || reply.kind === 'cancelled')
 			return settleStopped(attempt, 'cancelled');
@@ -607,6 +615,7 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 			return notice(finish.ack, 'finish');
 		}
 		setTrainingSessionStatus(identity, 'complete', entries);
+		trackBetaEvent('training_completed');
 		return { ok: true, value: undefined };
 	}
 
@@ -658,8 +667,10 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		);
 		try {
 			const result = await attempt.done;
-			if (!result.ok && getTrainingSession(identity)?.status === 'pending')
+			if (!result.ok && getTrainingSession(identity)?.status === 'pending') {
 				setTrainingSessionStatus(identity, 'failed');
+				trackBetaEvent('training_failed', identity.runId);
+			}
 			return result;
 		} finally {
 			active.delete(modelNum);

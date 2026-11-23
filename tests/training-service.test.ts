@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, expect, test } from 'bun:test';
+import type { GlobalWindow } from 'happy-dom';
 import { INGESTION_LOCK, deleteDatasetsExcept, openSamataDb } from '../src/common/storage/db';
 import {
 	clearPendingTrainingCheckpoint,
@@ -58,6 +59,12 @@ import {
 	resetWorkerFailuresForTests,
 	type WorkerFailureCode
 } from '../src/common/release/worker-failures';
+import {
+	initBetaTelemetry,
+	resetBetaTelemetryForTests,
+	syncBetaRoute
+} from '../src/common/telemetry/telemetry-client';
+import './fixtures/umami-fake-tracker.js';
 import { fixtureLegacyTrainingResult, fixtureTrainingResult } from './fixtures/training/results';
 import { installFakeIndexedDB } from './helpers/fake-indexeddb';
 import { createTrainingTestLocks } from './helpers/training-locks';
@@ -2101,5 +2108,87 @@ test('REL-STALE-1: reports training worker crash, protocol and startup failures 
 	} finally {
 		unsubscribe();
 		resetWorkerFailuresForTests();
+	}
+});
+
+test('REL-TELEM-4: emits owner-only training telemetry events and suppresses observePublishedStops and retry recovery', async () => {
+	const previousTelemetry = (globalThis as Record<string, unknown>).BETA_TELEMETRY_ENABLED;
+	const previousUrl = window.location.href;
+	const sentEvents: Array<string | undefined> = [];
+	const onDocLoad = (event: Event) => {
+		const target = event.target as HTMLElement | null;
+		if (
+			target?.tagName === 'SCRIPT' &&
+			target.getAttribute('src') === 'https://cloud.umami.is/script.js'
+		) {
+			(
+				globalThis as unknown as {
+					installFakeUmami: (
+						el: Element,
+						send: (body: { payload?: { name?: string } }) => void
+					) => void;
+				}
+			).installFakeUmami(target, (body) => {
+				sentEvents.push(body.payload?.name);
+			});
+		}
+	};
+	document.addEventListener('load', onDocLoad, true);
+	try {
+		(globalThis as Record<string, unknown>).BETA_TELEMETRY_ENABLED = true;
+		(window as unknown as GlobalWindow).happyDOM.setURL('https://beta.samata.ml/models/1');
+		resetBetaTelemetryForTests();
+		initBetaTelemetry(() => true);
+		syncBetaRoute({ kind: 'workflow', path: '/models/1', section: 3, modelNum: 1 });
+
+		seed(3);
+		// 1. Complete run -> training_started + training_completed.
+		const okRun = service.start(1);
+		const worker1 = await workerAt(0);
+		worker1.succeed();
+		expect(await okRun).toMatchObject({ ok: true });
+
+		// 2. Worker crash -> training_failed once; subsequent retry must NOT emit again.
+		const failRun = service.start(2);
+		const worker2 = await workerAt(1);
+		storage.denyRead = true;
+		worker2.onerror?.call(worker2 as unknown as Worker, new ErrorEvent('error'));
+		expect(await failRun).toMatchObject({ ok: false, pending: 'recover' });
+		storage.denyRead = false;
+		// Repair fails before ack above, so settleStopped did NOT emit yet; retry calls repairStopped('recover'), not settleStopped.
+		expect(await service.retry()).toMatchObject({ ok: true });
+
+		// 3. Direct settleStopped failure -> training_failed once.
+		const failRun2 = service.start(3);
+		const worker3 = await workerAt(2);
+		worker3.onerror?.call(worker3 as unknown as Worker, new ErrorEvent('error'));
+		await failRun2;
+
+		// 4. Start checkpoint ack failure (not committed) -> training_failed once.
+		storage.denyRead = true;
+		const startAckFail = await service.start(3);
+		expect(startAckFail).toMatchObject({ ok: false });
+		storage.denyRead = false;
+
+		// 5. observePublishedStops must never emit training events.
+		service.observePublishedStops();
+
+		expect(sentEvents).toEqual([
+			undefined, // initial pageview /models
+			'training_started',
+			'training_completed',
+			'training_started',
+			'training_started',
+			'training_failed',
+			'training_failed'
+		]);
+	} finally {
+		document.removeEventListener('load', onDocLoad, true);
+		document.querySelectorAll('script[src*="umami"]').forEach((el) => el.remove());
+		delete (globalThis as Record<string, unknown>).umami;
+		delete (window as unknown as Record<string, unknown>).umami;
+		resetBetaTelemetryForTests();
+		(globalThis as Record<string, unknown>).BETA_TELEMETRY_ENABLED = previousTelemetry;
+		(window as unknown as GlobalWindow).happyDOM.setURL(previousUrl);
 	}
 });

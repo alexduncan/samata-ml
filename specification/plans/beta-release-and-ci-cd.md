@@ -1,6 +1,6 @@
 # Beta release, asset cache invalidation, Umami telemetry and Cloudflare CI/CD
 
-**Status:** ready | **Updated:** 2026-11-23T14:32:06Z
+**Status:** ready | **Updated:** 2026-11-23T14:41:07Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Codex (GPT-6), Claude Code (claude-opus-5-5) | **Created:** 2026-11-21T19:43:46Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-23T13:44:04Z | **Verification:** approved
 **Verified hash:** sha256:96f39da40609b44e0196a2e90de1a6f2b870e6a43fa215129bbd7967c5cdb565
@@ -334,14 +334,14 @@ A prerelease `minor` or `major` drops the prerelease when the lower components a
         - exception events at most once per code, with error objects and reasons never forwarded;
         - script `error` and a `load` without `window.umami`: no retries, no throws, no rejected promises and no queued replay.
 - **Acceptance criteria:**
-    - [ ] `REL-TELEM-1` — Only the beta production artefact contains both Umami CSP tokens, inserted into the existing directives and keeping every other source (including dataset-plan sources) and isolation headers. Every other artefact's CSP equals `public/_headers`.
-    - [ ] `REL-TELEM-2` — No gate combination short of all three produces a script or send, and an accepted document appends at most one script.
-    - [ ] `REL-TELEM-3` — Forwarded payloads contain only the allowlisted keys and values. Seeded identifying values never appear, and all non-event types are rejected.
-    - [ ] `REL-TELEM-4` — Fixed pageviews, events and exception events fire at the specified points with no event data, and worker settlement and recovery behaviour is unchanged.
-    - [ ] `REL-TELEM-5` — A tracker load failure leaves the app usable with no retries, throws, rejected promises or replay.
-    - [ ] `REL-TELEM-6` — No unit test fetches or executes a remote script, and no test request reaches an Umami host.
+    - [x] `REL-TELEM-1` — Only the beta production artefact contains both Umami CSP tokens, inserted into the existing directives and keeping every other source (including dataset-plan sources) and isolation headers. Every other artefact's CSP equals `public/_headers`.
+    - [x] `REL-TELEM-2` — No gate combination short of all three produces a script or send, and an accepted document appends at most one script.
+    - [x] `REL-TELEM-3` — Forwarded payloads contain only the allowlisted keys and values. Seeded identifying values never appear, and all non-event types are rejected.
+    - [x] `REL-TELEM-4` — Fixed pageviews, events and exception events fire at the specified points with no event data, and worker settlement and recovery behaviour is unchanged.
+    - [x] `REL-TELEM-5` — A tracker load failure leaves the app usable with no retries, throws, rejected promises or replay.
+    - [x] `REL-TELEM-6` — No unit test fetches or executes a remote script, and no test request reaches an Umami host.
 - **Verification:** `bun test tests/telemetry-privacy.test.ts`; `bun test tests/build-cache-invalidation.test.ts`; `bun test tests/model-assets.test.ts`; `bun run check`; `bun run build`; `bun run format:check <changed files>`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-23T14:41:07Z)
 
 ### T5 — Welcome disclosure, acceptance, privacy policy and beta E2E
 
@@ -493,6 +493,7 @@ None.
 | 2026-11-23T14:17:19Z | T1 | Google Antigravity (Gemini 4 Hydrogen High) | Baseline check: 586 pass/0 fail (59 files). E2E baseline (2 runs/project, 389 tests): chromium run1 368 pass/20 fail/1 not run (3.6m), run2 367 pass/21 fail/1 not run (3.6m); firefox run1 299 pass/6 fail/83 skip/1 not run (2.6m), run2 299 pass/6 fail/83 skip/1 not run (2.6m); webkit run1 296 pass/6 fail/86 skip/1 not run (2.3m), run2 295 pass/7 fail/86 skip/1 not run (2.8m). Flaky (1 run only, not listed): MOD-SETUP-4, NAV-E2E-2, MOD-SETUP-1 (chromium), WML-P4-UI-10 (webkit). KNOWN_FAILURES (20 entries): PH-AC-2, DATA-FLOW-2, DATA-UP-2, MOCKUP-REVIEW-1..3 (all 3), WML-P2-ROUTE-2, DATA-PRE-2, MOD-SETUP-2..3, 9 visual-parity tests (chromium), SIDE-AC-10 screenshot (chromium, linux). Verification: release/build-constants/known-failures tests pass; bun run check 594 pass/0 fail (62 files); version:release prerelease --dry-run exit 0; deploy:dry-run exit 0 without credentials (94 files, 0.31 KiB); format:check pass. |
 | 2026-11-23T14:25:06Z | T2 | Google Antigravity (Gemini 4 Hydrogen High) | Added scripts/headers-file.ts, scripts/release-headers.ts, public/robots.txt, two-pass hashed /bundles/ build, release.json, worker/manifest build constants, and --dist _headers emulation. Verification: headers-file, model-assets, and build-cache-invalidation tests pass; bun run check 603 pass/0 fail (64 files); bun run build exit 0; SAMATA_SKIP_KNOWN_FAILURES=1 E2E (training-runtime, classification-training, storage-worker, analysis-worker, comparison, content) 111 pass/26 skip/0 fail; format:check pass. |
 | 2026-11-23T14:32:06Z | T3 | Google Antigravity (Gemini 4 Hydrogen High) | Added src/common/release/worker-failures.ts, src/common/release/stale-release.ts, worker failure hooks in storage-client/training-service/analysis-client, and app-shell-release Reload alert in src/app.ts. Verification: worker-failures/stale-release/storage-client/training-service/analysis-protocol/repository-conventions tests pass; bun run check 612 pass/0 fail (66 files); SAMATA_SKIP_KNOWN_FAILURES=1 E2E tests/app-shell.e2e.ts 126 pass/0 fail; format:check pass. |
+| 2026-11-23T14:41:07Z | T4 | Google Antigravity (Gemini 4 Hydrogen High) | Added src/common/telemetry/telemetry-client.ts, tests/fixtures/umami-fake-tracker.js, happy-dom remote script blocking in tests/setup.ts, and telemetry hooks in src/app.ts, dataset.store.ts and training-service.ts. Verification: telemetry-privacy, build-cache-invalidation (incl. betaTelemetry variants), model-assets, training-service, and repository-conventions tests pass; bun run check 621 pass/0 fail (67 files); bun run build exit 0; format:check pass. |
 
 ## Plan review history
 

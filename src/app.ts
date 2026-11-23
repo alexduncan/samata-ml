@@ -18,6 +18,12 @@ import { $storageSaveNotice, initPersister, refreshTrainingSnapshot } from './st
 import { reconcileProtectedStartup } from './stores/reconciler';
 import { initGlobalStyles } from './styles/global';
 import { $staleAssetDetected, installStaleReleaseDetection } from './common/release/stale-release';
+import { onWorkerFailure } from './common/release/worker-failures';
+import {
+	initBetaTelemetry,
+	reportBetaException,
+	syncBetaRoute
+} from './common/telemetry/telemetry-client';
 import { i18n } from './i18n';
 import { STATE_STORAGE_KEY } from './types/state';
 import {
@@ -252,6 +258,21 @@ export async function bootstrapApp(): Promise<void> {
 
 	// 4. Initialize router
 	initRouter();
+
+	// 4b. Initialize beta telemetry and global error hooks
+	initBetaTelemetry(() => false);
+	window.addEventListener('error', () => {
+		reportBetaException('window-error');
+	});
+	window.addEventListener('unhandledrejection', () => {
+		reportBetaException('unhandled-rejection');
+	});
+	onWorkerFailure((code) => {
+		reportBetaException(code);
+	});
+	$route.subscribe((route) => {
+		syncBetaRoute(route);
+	});
 
 	// 5. Mount root shell
 	const root = document.getElementById('app');
