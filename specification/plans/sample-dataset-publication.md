@@ -1,8 +1,8 @@
 # Sample dataset sourcing and publication history
 
-**Status:** ready-for-review | **Updated:** 2026-11-23T09:15:07Z
+**Status:** draft | **Updated:** 2026-11-23T09:18:24Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-23T09:13:22Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -211,6 +211,7 @@ None.
 
 | Reviewed (UTC) | Agent (model) | Decision | Findings |
 | -------------- | ------------- | -------- | -------- |
+| 2026-11-23T09:18:24Z | Codex (GPT-6 Astra) | changes-requested | MAJOR R1: Scope invariant forbids URL referrers, but fetch-source.ts:117 passes only signal and static-server.ts:4-8,61-69 lacks the production no-referrer policy. T2 must explicitly enforce referrerPolicy no-referrer for remote downloads (or an equivalent universal response policy), with request-level privacy regression coverage. MINOR R2: Browser delivery says retain the COMPAS pin, whereas public/_headers:2 allows its repository prefix; specify whether to retain that prefix or tighten to the exact URL and assert it. MINOR R3: T3 must add the notice to the connected dictionary; app-data-view.ts:576-579 currently uses a literal. SUGGESTION R4: Include storage-worker.e2e.ts:99 and models-setup.e2e.ts:137 in deterministic Penguins interception. Other source/guidance/output contracts scout-verified; upstream model contracts unaffected. Plan checks pass; bun run check unavailable because isolated checkout lacks tsc. |
 
 ## Change log
 
