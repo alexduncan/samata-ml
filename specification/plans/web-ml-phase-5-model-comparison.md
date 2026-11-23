@@ -314,6 +314,13 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 ## Escalations
 
+**Task:** T3
+**Blocker:** The approved component contracts do not define the complete labels-object APIs needed by the controls, table and pair picker.
+**Evidence:** Interfaces §C requires each presentational element to expose an exported, typed labels object with empty defaults and no owned strings. It names the label types and specifies only the pair picker's `swap` and `order` fields. The controls additionally need labels for the group select, model-selection legend, selection-limit reason and group options; the table needs a caption and baseline labelling; the pair picker needs labels for both selects. No component spec exists yet: T7 creates `specification/components/results-comparison.md`.
+**Conflict:** `specification/COMPONENTS.md` §3 treats exported symbols and properties as a closed public API. The required `lit-component-implementer` skill says to stop when the plan leaves out something its checklist needs, and prohibits adding unlisted API.
+**Impact:** T3 cannot define the required accessible, translated controls without choosing unapproved labels fields and their formatting contracts. No T3 product code has been changed.
+**Decision needed:** Revise and independently reverify the plan with the complete labels-object fields and group-option text contract for T3 (and the other new components if applicable), then resume implementation.
+
 **Task:** T2
 **Resolution:** On 2026-11-23 the user authorised the Bun guidance search and retrieval commands as an exception; the JavaScript and performance guides were retrieved.
 **Blocker:** The required modern web guidance search is outside the implement skill's permitted shell commands.
