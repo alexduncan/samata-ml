@@ -1,6 +1,6 @@
 # Sample dataset sourcing and publication history
 
-**Status:** ready | **Updated:** 2026-11-23T11:21:35Z
+**Status:** ready | **Updated:** 2026-11-23T11:34:10Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-23T09:13:22Z
 **Verified by:** Codex (GPT-6 Astra) | **Verified:** 2026-11-23T10:02:32Z | **Verification:** approved
 **Verified hash:** sha256:dfe4aaa5248b435f179e78d0028a7c0e057e441cc69119996c8c1d2e20e1e26a
@@ -205,7 +205,14 @@ In `src/features/data/ingestion/fetch-source.ts`, extend the existing `fetchWith
 
 ## Escalations
 
-None.
+**Plan:** specification/plans/sample-dataset-publication.md
+**Task:** T2
+**Blocker:** Required model-configuration browser verification has failures beyond the documented Chromium baseline.
+**Evidence:** `bun run test:e2e tests/model-configuration.e2e.ts` returned 23 passed and 13 failed: 11 Chromium model-builder failures, plus the unchanged WML-P1-UI-5 help/reload case in Firefox and WebKit. A focused Firefox rerun failed identically, with `#C-number` absent after reload instead of retaining value 2. The setup suite returned 9 passed and 3 Chromium failures; two timed out in the documented model-builder area and MOD-SETUP-1 retained one feature after reload. `git diff main -- src/features/models tests/model-configuration.e2e.ts` shows only a type-only narrowing in feature eligibility and the separate planned Pima replacement test; generated Iris bytes match the original. This evidence suggests an unrelated reload/persistence issue but does not establish a passing baseline.
+**Conflict:** T2 verification requires the named browser suites, with only existing Chromium model-builder failures recorded separately. The additional Firefox/WebKit failure is not recorded in the approved baseline.
+**Impact:** T2 cannot truthfully be marked complete; T3, T4, independent closure and main integration remain blocked.
+**Decision needed:** Determine whether the help/reload failures are accepted pre-existing failures or resolve them in an approved scope, then rerun the required verification.
+**Work completed:** T1 landed at 542d43f. T2 migration and tests are partially implemented in the worktree; scratch comparison passed for seven build outputs and both direct downloads were byte-identical, `bun run check` passed 586 tests, `bun run build` passed, selection passed 15 tests, storage-worker passed 3, Penguins journey passed 12, and Chromium production-header live-provider smoke passed. Partial T2 work remains uncommitted and must be preserved.
 
 ## Review fixes
 
