@@ -886,7 +886,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await page.setViewportSize({ width: 1440, height: 900 });
 		const reference = await context.newPage();
 		await reference.setViewportSize({ width: 1440, height: 900 });
-		await reference.goto('http://localhost:3333/01-1_select-data.html?clean=1');
+		await reference.goto(`${MOCKUPS_URL}/01-1_select-data.html?clean=1`);
 		const geometry = (element: Element) => {
 			const style = getComputedStyle(element);
 			return {
