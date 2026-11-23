@@ -99,8 +99,8 @@ const messages = i18n('app-results-view', {
 	falsePositives: 'False positives (lower is better)',
 	falseNegatives: 'False negatives (lower is better)',
 	errors: 'Errors (lower is better)',
-	fitDuration: 'Fit time',
-	cvDuration: 'Fit + score across folds',
+	fitDuration: 'Fit time (lower is better)',
+	cvDuration: 'Fit + score across folds (lower is better)',
 	showData: 'Show data table',
 	foldTitle: 'Balanced accuracy across partitions',
 	foldTakeaway: 'Each dot is a held-out partition; lines connect matching partitions.',
@@ -397,7 +397,8 @@ export class AppResultsView extends LitElement {
 			'ece',
 			'falsePositives',
 			'falseNegatives',
-			'errors'
+			'errors',
+			'fitDuration'
 		]);
 		const columns = ids.map((id) => ({
 			id,

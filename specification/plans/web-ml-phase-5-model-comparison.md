@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** implemented | **Updated:** 2026-11-23T09:16:01Z
+**Status:** implemented | **Updated:** 2026-11-23T09:21:28Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T08:58:39Z | **Verification:** approved
 **Verified hash:** sha256:76fb1730d0edcb19fba87edced64ddb0935544f9ed111ba6ba4246ccab5bc56e
@@ -338,7 +338,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 - [x] **R1** `src/stores/comparison.store.ts` `$comparison` — Restore D1–D2 and the route's pending-resource contract before T3: while any trained model's current resource is loading (including idle), expose groups and unavailable reasons but choose no initial default group or selection; once all are terminal choose the eligible default. With fewer than two selected return both `pairA` and `pairB` as null. When `selectComparisonModels` is called on an implicit default group, commit its fingerprint and requested selection together so an intentional empty or single selection is retained. Preserve existing explicit group choices and reject stale owners. Test: add `WML-P5-MODEL-1` and `WML-P5-STATE-2` tests in `tests/training-service.test.ts` covering a later-arriving larger group, zero/one selection, default-group selection persistence, and stale owner; run `bun test tests/training-service.test.ts` and `bun run check`.
 - [x] **R2** `tests/analysis-protocol.test.ts` `FakeWorker.sent` — Replace the introduced explicit `any` type with a safe, accurate type and narrow worker messages before inspecting them, preserving test behaviour. This restores the strict TypeScript invariant and the implementation audit checklist's prohibition on introduced `any`. Test: `bun test tests/analysis-protocol.test.ts` and `bun run check` pass; the diff introduces no `any` or type suppression in this file.
 - [x] **R3** `tests/analysis-worker.e2e.ts` `call` — Replace the introduced `Promise<any>` with a safe, accurate type and narrow worker replies before inspecting them, preserving test behaviour. This restores the strict TypeScript invariant and the implementation audit checklist's prohibition on introduced `any`. Test: `bun run test:e2e tests/analysis-worker.e2e.ts` and `bun run check` pass; the diff introduces no `any` or type suppression in this file.
-- [ ] **R4** `src/features/results/app-results-view.ts` `buildViews` — Mark the timing column as lower-is-better for both One-Shot fit time and cross-validation fit-and-score time, as required by D8. Both currently lack that direction in their labels. Test: assert the rendered timing header conveys lower-is-better for each protocol in `tests/comparison.e2e.ts`, then run that suite and `bun run check`.
+- [x] **R4** `src/features/results/app-results-view.ts` `buildViews` — Mark the timing column as lower-is-better for both One-Shot fit time and cross-validation fit-and-score time, as required by D8. Both currently lack that direction in their labels. Test: assert the rendered timing header conveys lower-is-better for each protocol in `tests/comparison.e2e.ts`, then run that suite and `bun run check`.
 
 ## Implementation and verification log
 
@@ -361,6 +361,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-23T09:05:29Z | Implement | Codex (GPT-6) | Marked implemented |
 | 2026-11-23T09:12:53Z | R2 | Codex (GPT-6) | bun test tests/analysis-protocol.test.ts: 3 passed; bun run check: typecheck and 558 tests passed. Narrowed unknown worker messages with isRopeRequest in tests/analysis-protocol.test.ts. |
 | 2026-11-23T09:16:01Z | R3 | Codex (GPT-6) | bun run test:e2e tests/analysis-worker.e2e.ts: 3 passed across Chromium, Firefox and WebKit; bun run check: typecheck and 558 tests passed. Narrowed unknown worker replies using isRopeReply in tests/analysis-worker.e2e.ts. |
+| 2026-11-23T09:21:28Z | R4 | Codex (GPT-6) | bun run test:e2e tests/comparison.e2e.ts: initial 42 passed, 3 Firefox timeouts under concurrent story load; standalone rerun 45 passed across three browsers. bun run check: typecheck and 558 passed; bun test tests/style-tokens.test.ts: 8 passed; bun run test:stories: 582 passed. Timing labels and lowerIsBetter flag updated; protocol-specific browser assertions added. Scope warning for tests/comparison.e2e.ts is required by R4. |
 
 ## Plan review history
 

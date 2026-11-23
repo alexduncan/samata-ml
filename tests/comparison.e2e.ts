@@ -1,6 +1,19 @@
 import { expect, test } from '@playwright/test';
 import { seedComparableGroups, seedComparablePair } from './helpers/seed-results';
 
+for (const [fixture, label] of [
+	['iris', 'Fit + score across folds (lower is better)'],
+	['breast-cancer', 'Fit time (lower is better)']
+] as const) {
+	test(`WML-P5-UI-10: ${fixture} timing header identifies lower as better`, async ({ page }) => {
+		await seedComparablePair(page, fixture);
+		await page.goto('/results');
+		await expect(
+			page.locator('app-comparison-table').getByRole('columnheader', { name: label })
+		).toBeVisible();
+	});
+}
+
 test('WML-P5-UI-10 / WML-P5-UI-11: compare saved models and retain the pair on reload', async ({
 	page
 }) => {
