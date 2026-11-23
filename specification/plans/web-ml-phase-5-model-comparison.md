@@ -1,9 +1,9 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready-for-review | **Updated:** 2026-11-23T06:14:11Z
+**Status:** ready | **Updated:** 2026-11-23T06:16:18Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
-**Verified hash:** —
+**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T06:16:18Z | **Verification:** approved
+**Verified hash:** sha256:ba02134bc3c3f4b1220d9ee3c57ea925a3fdb99a5a936ec22a510a9cec2c6386
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -348,6 +348,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-21T19:58:41Z | Codex (gpt-6.2-astra) | changes-requested | MAJOR §C/T3: disabling the opposite option prevents reversing A/B with two models. Specify an atomic accessible swap and test both orders with exactly two models. MAJOR §C/T4: app-confusion-delta receives numeric counts but has no locale formatter or formatted strings. Supply a formatter or display strings and verify signed counts in a second locale (COMPONENTS §8). MAJOR D10/§A/T1: src/stores/persister.ts lines 589, 742 and 814 copy results across protected-domain merges. Phase 4 fingerprints omit the target. Specify ownership/merge guards and test a stale tab writing after a target switch with the same fingerprint and model numbers, while retaining valid same-context choices. |
 | 2026-11-21T20:09:18Z | Codex (gpt-6.2-astra) | approved          | Approved T1–T7. Independent scout verified the pinned 0.2.0 ROPE contract and shadow-piercing parity selectors. The atomic keyboard swap, locale-aware signed counts and protected preference ownership resolve the three prior findings. Phase 4 integration remains an implementation entry condition. MINOR T7: bring the focus-owner wording in navigation §5.6, COMPONENTS §5 and page-header PH-AC-1 into line with T6 during specification sync.                                                                                                                                                                                                                                                        |
 | 2026-11-23T06:12:27Z | Codex (GPT-6)         | changes-requested | MAJOR: Interfaces A and C omit the formatted text property from ComparisonMetricCell while requiring the connected view to supply it and the table to render it; specify the typed cell contract and verify populated and unavailable values.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 2026-11-23T06:16:18Z | Codex (GPT-6)         | approved          | Reviewed T1–T7, R1, labels and formatted cells; scout verified installed web-ml 0.2.0 contracts and current store defects. Canonical upstream checkout unavailable; pinned release governs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 
 ## Change log
 
