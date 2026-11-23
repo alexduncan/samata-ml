@@ -192,8 +192,8 @@ In `src/features/data/ingestion/fetch-source.ts`, extend the existing `fetchWith
 
 ## Verification and definition of done
 
-- [x] All `DSP-AC-1` through `DSP-AC-9` pass. Verify through `bun run check`, `bun run build`, the named browser suites and stories, `bun run format:check` and `bun run plans:check`.
-- [x] Type-check, formatting, cross-origin security, existing local-user-data privacy, and accessibility checks complete. Record known baseline failures separately.
+- [ ] All `DSP-AC-1` through `DSP-AC-9` pass. Verify through `bun run check`, `bun run build`, the named browser suites and stories, `bun run format:check` and `bun run plans:check`.
+- [ ] Type-check, formatting, cross-origin security, existing local-user-data privacy, and accessibility checks complete. Record known baseline failures separately.
 - [x] Every item under _Specification changes_ is applied and status matches the index.
 - [x] Reviewed first-push instructions and a synthetic dry run are available. The application plan is complete before the maintainer creates the filtered publication copy.
 
@@ -212,7 +212,7 @@ In `src/features/data/ingestion/fetch-source.ts`, extend the existing `fetchWith
 
 ## Review fixes
 
-None.
+- [ ] **R1** `tests/data-selection.e2e.ts` `DSP-AC-6` — The approved interfaces require verification of notice wrapping at 400% browser zoom, but the test sets root font size to 400%, and the implementation log does not establish browser zoom. Text resizing and browser zoom are distinct. Test: verify the notice remains readable and unclipped at actual 400% browser zoom, alongside the existing 320px, RTL and keyboard checks; record the browser and observable result without claiming font-size emulation as browser zoom.
 
 ## Implementation and verification log
 
@@ -224,6 +224,7 @@ None.
 | 2026-11-23T12:27:36Z | T3        | Codex (GPT-6) | Storybook 594 passed with full axe; accessibility 63 passed after removing notice findings (one earlier Firefox timeout passed on rerun); selection 19 passed, 2 intentionally skipped; token 8 passed; bun run check 586 passed. Contrast is 5.88:1 on app background and 6.07:1 on white. Visual parity 60 passed, 9 known documented failures, 138 skipped. Explicit changed-file formatting check passed; bare format:check printed no-parser error despite exit 0. Scope gate passed.                                                                                                                         |
 | 2026-11-23T12:37:37Z | T4        | Codex (GPT-6) | Synthetic documented walkthrough passed using official git-filter-repo v2.47.0 verified against upstream Git blob: omitted alias, unexpected ref and unsafe destination were rejected; source and private backup retained the frozen tip; both old/new paths and alias blob were absent; 2 surviving commits preserved all mapped non-dataset paths and modes. bun run check 586 pass; plans:check pass; explicit changed-file format:check pass; bare format:check printed no-parser error despite exit 0. Scope gate passed with reviewed visual-design count synchronisation warning.                           |
 | 2026-11-23T12:39:29Z | Implement | Codex (GPT-6) | Marked implemented                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| 2026-11-23T12:42:12Z | Review    | Codex (GPT-6) | Review gates pass; independent `bun run check` 586 pass, `bun run build` pass, `bun run test:stories` 594 pass and isolated `bun run test:e2e tests/data-selection.e2e.ts` 19 pass / 2 skipped. The latter verifies 320px and 400% root font size, not the required browser zoom. Native Safari encountered an untrusted local development certificate; the browser warning was not bypassed. `bun run format:check` exited 0 with a no-parser error and did not check files; an explicit changed-file formatting check passed. R1 restores the required zoom evidence.                                            |
 
 ## Plan review history
 
