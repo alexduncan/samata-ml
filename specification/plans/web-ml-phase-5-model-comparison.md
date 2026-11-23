@@ -1,8 +1,8 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready-for-review | **Updated:** 2026-11-23T06:45:16Z
+**Status:** draft | **Updated:** 2026-11-23T06:47:40Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -354,6 +354,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-21T20:09:18Z | Codex (gpt-6.2-astra) | approved          | Approved T1–T7. Independent scout verified the pinned 0.2.0 ROPE contract and shadow-piercing parity selectors. The atomic keyboard swap, locale-aware signed counts and protected preference ownership resolve the three prior findings. Phase 4 integration remains an implementation entry condition. MINOR T7: bring the focus-owner wording in navigation §5.6, COMPONENTS §5 and page-header PH-AC-1 into line with T6 during specification sync.                                                                                                                                                                                                                                                        |
 | 2026-11-23T06:12:27Z | Codex (GPT-6)         | changes-requested | MAJOR: Interfaces A and C omit the formatted text property from ComparisonMetricCell while requiring the connected view to supply it and the table to render it; specify the typed cell contract and verify populated and unavailable values.                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | 2026-11-23T06:16:18Z | Codex (GPT-6)         | approved          | Reviewed T1–T7, R1, labels and formatted cells; scout verified installed web-ml 0.2.0 contracts and current store defects. Canonical upstream checkout unavailable; pinned release governs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 2026-11-23T06:47:40Z | Codex (GPT-6)         | changes-requested | MAJOR: §C closes component APIs but omits chart whenSettled methods needed by T6 for asynchronous Plot rendering; define the settlement contract. MAJOR: Required reading points to the missing active Phase 4 plan; use its archived path. MINOR: T6 should update the existing HUMAN §6 styling item and stale placeholder text.                                                                                                                                                                                                                                                                                                                                                                             |
 
 ## Change log
 
