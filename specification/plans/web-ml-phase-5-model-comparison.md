@@ -1,9 +1,9 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-23T06:40:39Z
+**Status:** ready-for-review | **Updated:** 2026-11-23T06:45:16Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
-**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T06:16:18Z | **Verification:** approved
-**Verified hash:** sha256:ba02134bc3c3f4b1220d9ee3c57ea925a3fdb99a5a936ec22a510a9cec2c6386
+**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -22,7 +22,7 @@
 - An analysis worker and store that call `web-ml`'s Bayesian correlated t-test (WR-9).
 - Presentational elements `app-comparison-controls`, `app-comparison-table`, `app-model-pair-picker`, `app-class-error-bars`, `app-confusion-delta`, `app-rope-bar`, `app-instance-agreement`; a `paired` property on Phase 4's `app-fold-strip`.
 - Connected `app-results-view` replacing the `/results` placeholder, adopting `pageHeaderStyles`, with `focusHeading` and `whenSettled`.
-- New draft `specification/mockups/ui-scaffold/drafts/04_compare-results.html`; stories; three-browser Playwright tests; reference journeys extended to two models.
+- Update the existing draft `specification/mockups/04_compare-results.html`; stories; three-browser Playwright tests; reference journeys extended to two models.
 
 **Out of scope**
 
@@ -54,7 +54,7 @@
 - **Relevant implementation:** `src/app.ts` L51–55, L84–93, L193–216 owns the route, heading-focus dispatch and scroll-settlement callback. `src/router/scroll-restorer.ts` L35–36 has the `results` key. `src/styles/page-header.styles.ts` defines the shared style. `src/stores/app.store.ts` L107–120 uses the ordinary preference setter, and L218–235 discards models on target change. `src/stores/persister.ts` L146–163 currently checks only whether `results.ui` is a plain object. L501–538 publishes pending protected snapshots and L582–591, L730–767 and L770–817 merge ordinary state. `src/common/storage/training-domain.ts` L22–25, L369–386, L492–531 defines protected snapshots and generations. The generation advances even for same-context model changes. `src/features/models/training/training-service.ts` L277–280 and `src/stores/reconciler.ts` L40–43 extract protected snapshots; both must carry the comparison context epoch. Phase 4 provides the results store, evaluation type, Plot controller and fold strip as implementation prerequisites.
 - **Tests and commands:** `tests/app-shell.e2e.ts` L598–627, L771–859 covers heading focus and the shared header. `tests/visual-parity/map.ts` L382–397 covers only the results-page header against `00_first-load.html`; `tests/a11y.e2e.ts` lacks a populated results scan. `tests/state-and-storage.test.ts` L295–334, L950–976 covers direct resets and debounce; `tests/training-service.test.ts` L467–505, L604–653 covers pending publication and foreign writes; `tests/training-domain.test.ts` L203–258, L341–372 covers checkpoint decoding and replay. Before T1, record a new `bun run check` baseline on the integrated Phase 4 base. Main at `6f90ebd` passed typecheck and 402 tests at planning time with the primary checkout dependencies.
 - **Web guidance:** `sortable-table` (header button, active header alone has `aria-sort`), `responsive-table` (caption-named keyboard-scrollable region), `forms` (native labels and constraints), `accessibility` and `html` (native grouping, named controls, keyboard activation of the swap button and chart captions). The [ECMAScript Internationalization API](https://tc39.es/ecma402/#sec-getnumberpattern) defines the nonzero sign display used for confusion differences.
-- **Visual reference:** the shared page header keeps its two existing `00_first-load.html` parity entries. The normative `04_compare-results.html` has an article placeholder. Comparison content follows the T6 draft `drafts/04_compare-results.html`, with no new parity entries.
+- **Visual reference:** the shared page header keeps its two existing `00_first-load.html` parity entries. The existing flat `specification/mockups/04_compare-results.html` is a draft with an article placeholder. T6 preserves its shell, replaces the placeholder with the unstyled semantic comparison states, and queues that draft for human styling; there are no new parity entries for draft-only content.
 - **Domain skills:** `lit-component-implementer` for T3–T6.
 - **Released contract:** `package.json` and `bun.lock` pin the bundled `web-ml@0.2.0` tarball, SHA-256 `82fc9163764805dde88ea1ca13eb3bd1a8a8a3f62d0eeb4930689c47028e76b0`. Its public `dist/index.d.ts` re-exports `dist/src/metrics/index.d.ts`, which exports `model-comparison.d.ts`. The installed declaration and comparison prose in the primary checkout match the tarball byte-for-byte. The canonical checkout's public `index.ts` and comparison prose agree, but its generated declarations are older; the pinned release governs this plan.
 - **Assumptions requiring verification:** None. The implementation entry criteria below name the required Phase 4 artefacts and runtime.
@@ -201,7 +201,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 - [ ] `specification/machine-learning-orchestrator.md` — analysis worker protocol and WR-9 call.
 - [ ] `specification/components/results-comparison.md` (new), `specification/components/model-results.md` (`app-fold-strip.paired`) & `specification/README.md` — closed APIs; status implemented.
 - [ ] `specification/FUTURE.md` — superimposed ROC/PR curves; multi-model reliability; Pareto scatter; decision-boundary gallery; NEC cost slider in comparison.
-- [ ] `specification/TODO.md`, `specification/HUMAN.md` — TODO-03 resolved for classification; HUMAN item to style `drafts/04_compare-results.html`.
+- [ ] `specification/TODO.md`, `specification/HUMAN.md` — TODO-03 resolved for classification; retain the T6 HUMAN item to style `specification/mockups/04_compare-results.html`.
 
 ## Implementation tasks
 
@@ -281,9 +281,9 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 - **Depends on:** T2, T3, T4, T5
 - **Risk:** needs care — replaces a shell route covered by focus, page-header parity and app-shell tests.
-- **Likely files:** `src/features/results/app-results-view.ts`, `src/features/results/app-results-view.stories.ts`, `src/app.ts`, `specification/mockups/ui-scaffold/drafts/04_compare-results.html`, `tests/app-shell.e2e.ts`, `tests/comparison.e2e.ts`, `tests/a11y.e2e.ts`, `tests/helpers/seed-results.ts`, `tests/journeys/iris-classification.e2e.ts`, `tests/journeys/penguins-classification.e2e.ts`
+- **Likely files:** `src/features/results/app-results-view.ts`, `src/features/results/app-results-view.stories.ts`, `src/app.ts`, `specification/mockups/04_compare-results.html`, `specification/HUMAN.md`, `tests/app-shell.e2e.ts`, `tests/comparison.e2e.ts`, `tests/a11y.e2e.ts`, `tests/helpers/seed-results.ts`, `tests/journeys/iris-classification.e2e.ts`, `tests/journeys/penguins-classification.e2e.ts`
 - **Must not touch:** `css/root.css`, `tests/visual-parity/map.ts`, `src/features/models/app-models-view.ts`
-- **Implementation:** Implement `app-results-view` per Interfaces §C, wire `/results` in `src/app.ts`, and add it to `WorkflowFocusView`. Update PH-AC-1 and PH-AC-2 selectors for the new Shadow DOM owner, assert the blocked notification and keep FOCUS-AC-5 passing. Write the 04 draft (structure only, Palmer Penguins sample data, every state). Seed Phase 4 v2 envelopes with the existing journey fixture shape in the comparison and axe suites. Iris trains two comparable CV models and exercises the real analysis worker. Penguins trains two comparable One-Shot models and checks the unavailable ROPE explanation. Check separate incompatible groups with seeded results.
+- **Implementation:** Implement `app-results-view` per Interfaces §C, wire `/results` in `src/app.ts`, and add it to `WorkflowFocusView`. Update PH-AC-1 and PH-AC-2 selectors for the new Shadow DOM owner, assert the blocked notification and keep FOCUS-AC-5 passing. Update the existing flat 04 draft in place (preserve its shell; add the §1.1 draft header, structure only, Palmer Penguins sample data and every state) and add its non-blocking styling item to `specification/HUMAN.md` §6. Seed Phase 4 v2 envelopes with the existing journey fixture shape in the comparison and axe suites. Iris trains two comparable CV models and exercises the real analysis worker. Penguins trains two comparable One-Shot models and checks the unavailable ROPE explanation. Check separate incompatible groups with seeded results.
 - **Acceptance criteria:**
     - [ ] `WML-P5-UI-10` — With fewer than two trained models `/results` shows the existing notification and link; with two comparable models every section renders in order and swapping A/B reverses the matrix signs for nonzero cells, refreshes the CV ROPE result for the reversed order and preserves the selected models; with only incomparable models the "different evaluation rows" notice lists each group.
     - [ ] `WML-P5-UI-11` — Group, selection, sort, pair, ROPE width and the class filter survive reload; heading focus and scroll restoration work on `/results` (FOCUS-AC-5, PH-AC-1, PH-AC-2, `/results` parity entries pass).
@@ -323,7 +323,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 ## Escalations
 
-- [ ] **E5 (T6):** T6 specifies `specification/mockups/ui-scaffold/drafts/04_compare-results.html`, but `specification/visual-design.md` §1.1 and the root agent guide require flat `specification/mockups/<name>.html` drafts served by the mockup catalogue. The existing `specification/mockups/04_compare-results.html` is a draft placeholder. Impact: the approved destination conflicts with repository governance and is not served by the flat mockup server. Decision needed: revise and independently verify the plan to use the existing flat draft, preserving its shell and adding semantic comparison states and the human styling queue item.
+- [x] **E5 (T6):** T6 specified a nested draft path, but `specification/visual-design.md` §1.1 requires flat drafts served by the mockup catalogue. Resolved by specifying the existing flat draft placeholder as the T6 target and requiring its human styling queue item; independent review is required.
 - [x] **E1 (T1):** Phase 4 and dependencies were missing. Resolved by integration and provisioning; `bun run check` passed 540 tests.
 - [x] **E2 (T1):** The runtime probe could not load on a reused development server; 12 of 27 cases failed. Resolved by freeing port 3000 and rerunning `bun run test:e2e tests/training-runtime.e2e.ts`: 27 passed in three browsers.
 - [x] **E3 (T2):** Guidance CLI was outside the implement shell restriction. On 2026-11-23 the user authorised the Bun search and retrieval exception; JavaScript and performance guidance were retrieved.
@@ -359,6 +359,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 | When (UTC)           | Change                                             | Reason                                                                                                                                                                                                                                      |
 | -------------------- | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-23T06:44:22Z | Corrected the draft mockup path                    | Align T6 with `visual-design.md` §1.1 and the flat catalogue.                                                                                                                                                                               |
 | 2026-11-23T06:13:51Z | Defined formatted comparison cell types            | Resolve the independent review finding for presentational table values.                                                                                                                                                                     |
 | 2026-11-23T06:07:07Z | Defined component text contracts and T1 review fix | Close the presentational APIs and restore default selection and pair invariants before T3.                                                                                                                                                  |
 | 2026-11-19T08:47:35Z | Initial draft                                      | User split the former Phase 4 stub; comparison becomes Phase 5 on top of Phase 4's evaluation contract; ROPE and instance agreement selected 2026-11-19.                                                                                    |
@@ -367,3 +368,4 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-21T20:05:41Z | Resolved the first review findings                 | Added an atomic keyboard-operable pair swap, locale-aware signed matrix cells and an ownership guard across preference writers, including the distinction between saved preferences and dirty in-memory edits during protected publication. |
 | 2026-11-21T20:05:51Z | Invalidated approval                               | Clarify the distinct disk and in-memory preference publication paths before independent review                                                                                                                                              |
 | 2026-11-23T06:07:07Z | Invalidated approval                               | Define closed component label and group option contracts before T3                                                                                                                                                                          |
+| 2026-11-23T06:42:50Z | Invalidated approval                               | Resolve T6 mockup path conflict with the flat draft governance                                                                                                                                                                              |
