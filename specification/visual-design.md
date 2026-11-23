@@ -40,7 +40,9 @@ The human owns mockup CSS, `mockups.css`, review acceptance, and promotion. The 
 
 **Promotion:** the human styles the draft in place inside `mockups/`, updates `<meta name="status" content="ready" />` (and later `implemented` once ported), and removes the `DRAFT` header comment. Only then is it normative, and only then do §1 and the parity checks (§6) apply to it.
 
-**Charts against a draft (scoped exception, Phase 4).** Charts drawn by Observable Plot may use the chart tokens (§2) for marks and the minimum chart geometry (margins, mark sizes, dash patterns) while the draft HTML stays unstyled. Typography is inherited from the surrounding component. This allowance covers the Section 6 results charts only and ends when the human promotes a styled mockup.
+**Charts against a draft (scoped exception, Phases 4 and 5).** Charts drawn by Observable Plot may use the chart tokens (§2) for marks and the minimum chart geometry (margins, mark sizes, dash patterns) while the draft HTML stays unstyled. Typography is inherited from the surrounding component. This allowance covers the Section 6 results charts and Phase 5 `/results` comparison charts and ends for each view when the human promotes its styled mockup. The human authorised this extension for Phase 5 on 2026-11-23; WCAG, token and functional requirements remain in force.
+
+**Phase 5 visual follow-up exception.** The human authorised Phase 5 to proceed while visual-only styling differences are recorded for human attention in `HUMAN.md`. Run parity assertions without suppression; record each affected test, measured actual and expected values, evidence that the difference is visual rather than functional or accessibility-related, and its human follow-up. This does not waive WCAG, keyboard operation, readable reflow, content, focus, scroll restoration, or other behaviour. After the human resolves a styling item, verify the corresponding parity assertions again.
 
 **Building against a draft:**
 
