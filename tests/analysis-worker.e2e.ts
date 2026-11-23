@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { isRopeReply } from '../src/features/results/analysis-protocol';
 
 test('WML-P5-ROPE-1: real worker matches the pinned runtime and rejects invalid requests', async ({
 	page
@@ -11,7 +12,7 @@ test('WML-P5-ROPE-1: real worker matches the pinned runtime and rejects invalid 
 		const runtime = await import(/* @vite-ignore */ runtimeUrl);
 		const worker = new Worker('/analysis.worker.js', { type: 'module' });
 		const call = (message: unknown) =>
-			new Promise<any>((resolve, reject) => {
+			new Promise<unknown>((resolve, reject) => {
 				worker.onmessage = (event) => resolve(event.data);
 				worker.onerror = () => reject(new Error('Worker failed'));
 				worker.postMessage(message);
@@ -33,6 +34,11 @@ test('WML-P5-ROPE-1: real worker matches the pinned runtime and rejects invalid 
 			})
 		};
 	});
+	if (!isRopeReply(result.forward) || result.forward.type !== 'rope-result')
+		throw new Error('Expected a forward ROPE result');
+	if (!isRopeReply(result.reverse) || result.reverse.type !== 'rope-result')
+		throw new Error('Expected a reverse ROPE result');
+	if (!isRopeReply(result.invalid)) throw new Error('Expected a ROPE reply');
 	expect(result.forward.type).toBe('rope-result');
 	for (const key of ['probabilityLower', 'probabilityEquivalent', 'probabilityHigher'] as const) {
 		expect(result.forward.result[key]).toBeCloseTo(result.expected[key], 12);
