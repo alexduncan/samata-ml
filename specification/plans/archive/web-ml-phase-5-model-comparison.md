@@ -1,10 +1,10 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** implemented | **Updated:** 2026-11-23T09:26:34Z
+**Status:** archived | **Updated:** 2026-11-23T09:48:00Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T08:58:39Z | **Verification:** approved
 **Verified hash:** sha256:76fb1730d0edcb19fba87edced64ddb0935544f9ed111ba6ba4246ccab5bc56e
-**Implementation verified by:** — | **Implementation verified:** —
+**Implementation verified by:** Codex (GPT-6) | **Implementation verified:** 2026-11-23T09:48:00Z
 
 ## Goal
 
@@ -12,7 +12,7 @@
 
 **Target behaviour:** `/results` renders a connected `app-results-view` that compares 2–8 trained models **evaluated on identical rows and partitions** (equal Phase 4 `partitionFingerprint`). It shows, without choosing a winner: a sortable table lens of balanced accuracy, macro-F1, MCC, accuracy, ROC-AUC, average precision, log loss, Brier, ECE, train–test gap, spread, error counts and protocol-appropriate timing against most-frequent and stratified baselines; paired outer-fold dot plots; per-class error bars; a relative confusion matrix for a chosen pair; a Bayesian ROPE probability bar for a chosen pair of cross-validated models; and an instance-agreement chart. Models evaluated on different rows are listed in other groups and never mixed.
 
-**Why:** Comparison is where learners make choices; it must expose trade-offs, uncertainty and practical equivalence rather than a single-score leaderboard ([metrics-and-visuals note §2](../notes/metrics-and-visuals.md); VISION §7, §10).
+**Why:** Comparison is where learners make choices; it must expose trade-offs, uncertainty and practical equivalence rather than a single-score leaderboard ([metrics-and-visuals note §2](../../notes/metrics-and-visuals.md); VISION §7, §10).
 
 ## Scope
 
@@ -318,7 +318,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 - **Blocking:** None
 - **Implementation entry dependency:** Complete Phase 4 and integrate its approved `StoredEvaluation` v1 and `$modelResults` contracts, `foldSummary`, Plot controller and fold strip into the Phase 5 base. Phase 4's implementation branch started against a prior 0.1.0 scratch distribution. Before Phase 5 T1, reconcile that branch with main's tarball upgrade and verify Phase 4’s evaluation output against vendored `web-ml@0.2.0` with its runtime tests and gates. Phase 5 uses that release for both training and analysis and does not introduce a second runtime or change the Phase 4 contract. The seven declarations and four public prose assets governing Phase 4 §D byte-match between Phase 4's recorded prebuilt package and the vendored 0.2.0 release.
-- **Non-blocking:** The source [WR-9 request](../../../web-ml/specification/requests/2026-11-21-bayesian-correlated-t-test.md) is marked planned upstream. The shipped declarations and prose resolve the API for this integration; follow the pinned release.
+- **Non-blocking:** The source [WR-9 request](../../../../web-ml/specification/requests/2026-11-21-bayesian-correlated-t-test.md) is marked planned upstream. The shipped declarations and prose resolve the API for this integration; follow the pinned release.
 - **Non-blocking:** With few outer folds the posterior can be wide. Name the fold count and practical-equivalence width. Owner: T5 implementer.
 - **Non-blocking:** Draft `04_compare-results.html` awaits human styling (`specification/HUMAN.md`).
 - **Non-blocking, user-authorised 2026-11-23:** Visual-only style differences may remain until the human completes the relevant `specification/HUMAN.md` tasks, including the shared main padding, sidebar geometry, features-table width and comparison draft styling. Continue running existing parity assertions without suppressing or concealing failures. For each deferred failure record its test and browser, actual and expected values, evidence that it is visual-only, and a clear human task; investigate any changed value or new failure before classifying it. PH-AC-2's header and non-padding requirements must be exercised separately. Functional, accessibility, content, focus, scroll restoration and readable reflow failures are never covered by this style exception. Comparison Plot marks follow `specification/visual-design.md` §1.1 until its draft is promoted.
@@ -363,6 +363,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-23T09:12:53Z | R2 | Codex (GPT-6) | bun test tests/analysis-protocol.test.ts: 3 passed; bun run check: typecheck and 558 tests passed. Narrowed unknown worker messages with isRopeRequest in tests/analysis-protocol.test.ts. |
 | 2026-11-23T09:16:01Z | R3 | Codex (GPT-6) | bun run test:e2e tests/analysis-worker.e2e.ts: 3 passed across Chromium, Firefox and WebKit; bun run check: typecheck and 558 tests passed. Narrowed unknown worker replies using isRopeReply in tests/analysis-worker.e2e.ts. |
 | 2026-11-23T09:21:28Z | R4 | Codex (GPT-6) | bun run test:e2e tests/comparison.e2e.ts: initial 42 passed, 3 Firefox timeouts under concurrent story load; standalone rerun 45 passed across three browsers. bun run check: typecheck and 558 passed; bun test tests/style-tokens.test.ts: 8 passed; bun run test:stories: 582 passed. Timing labels and lowerIsBetter flag updated; protocol-specific browser assertions added. Scope warning for tests/comparison.e2e.ts is required by R4. |
+| 2026-11-23T09:48:00Z | Review | Codex (GPT-6) | Closed: Independent audit found no further implementation defects; user-deferred native accessibility checks remain open in HUMAN.md. |
 
 ## Plan review history
 
