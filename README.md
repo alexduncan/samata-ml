@@ -123,7 +123,7 @@ Open the URL the server logs. In the primary checkout it is:
 https://localhost:3000/
 ```
 
-Ports belong to the checkout. The primary checkout uses 3000 (app), 3001 (Playwright's production-build server) and 3333 (mockups). A linked Git worktree derives a stable block of three ports in 20000 to 32762 from its real root path, so parallel worktrees never share servers. Set `SAMATA_PORT_BASE` (1024 to 65533) to choose the app port for any checkout; dist and mockups use the next two ports. `bun run server --port <n>` and `bun run mockups --port <n>` override a single server, and `PORT` is honoured when no `--port` is given. `scripts/ports.ts` is the single source for these values, and both servers answer `GET /__checkout` with their checkout root and mode so tools can tell which checkout owns a port.
+Ports belong to the checkout. The primary checkout uses 3000 (app), 3001 (Playwright's production-build server) and 3333 (mockups). A linked Git worktree derives a stable block of three ports in 20000 to 32764 from its real root path, so parallel worktrees normally get separate servers (two worktrees share a block with probability 1 in 4255; `SAMATA_PORT_BASE` resolves a collision). Set `SAMATA_PORT_BASE` (1024 to 65533) to choose the app port for any checkout; dist and mockups use the next two ports. `bun run server --port <n>` and `bun run mockups --port <n>` override a single server, and `PORT` is honoured when no `--port` is given. `scripts/ports.ts` is the single source for these values, and both servers answer `GET /__checkout` with their checkout root and mode so tools can tell which checkout owns a port.
 
 Development server features:
 
