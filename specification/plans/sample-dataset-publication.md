@@ -1,0 +1,219 @@
+# Sample dataset sourcing and publication history
+
+**Status:** ready-for-review | **Updated:** 2026-11-23T09:15:07Z
+**Authors:** Codex (GPT-6) | **Created:** 2026-11-23T09:13:22Z
+**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified hash:** —
+**Implementation verified by:** — | **Implementation verified:** —
+
+## Goal
+
+**Current behaviour:** Eleven sample CSVs are tracked under `content/datasets/`. COMPAS already downloads directly from ProPublica when selected. The generator accepts a tracked CSV or a direct remote descriptor. Both `content/datasets/` and the former `public/datasets/` paths appear in the history reachable from `main`. Three source-rights cases require particular care: ProPublica restricts redistribution of COMPAS, and the current Pima Diabetes and Titanic licence claims lack confirmed rights-holder evidence.
+
+**Target behaviour:** The ten approved samples remain available with the same data bytes and modelling defaults. Seven are fetched and prepared during the build and served from Samata's origin. Three are fetched directly in the browser. Pima Diabetes and Titanic are withheld from new sample loads, with metadata-only compatibility for saved work. The source checkout tracks no full sample CSV. A reviewed first-push procedure filters all historical copies of the twelve CSVs from the publication clone while retaining ordinary project history.
+
+**Why:** Keep dissertation results reproducible with pinned data, respect upstream terms, and give supervisors a readable entry point to the repositories and milestone evidence.
+
+## Scope
+
+**In scope**
+
+- Dataset provenance, verified acquisition and catalogue delivery for all twelve current samples.
+- Existing saved datasets, source copy and applicable regression tests.
+- A dataset-specific first-push runbook for `samata-ml` and a README review entry point. The maintainer uses the same main-only publication convention for `web-ml`, keeping its existing history.
+
+**Out of scope**
+
+- Pushing, changing remotes, or filtering any existing shared or working repository. The actual first publication is a maintainer operation after implementation and closure.
+- General history squashing, library changes, code-licence selection, dataset substitution, new modelling or metrics.
+- Uploading user data, adding an app-side proxy, externalising generated documentation, or changing the approved visual layout.
+
+**Constraints and invariants**
+
+- Retained IDs, CSV bytes, ordering, schemas, modelling defaults and generated descriptor/index v1 shapes remain compatible. Runtime `csvOrigin` describes browser delivery.
+- Published datasets retain their attribution, licence and transformation notices. Remote availability alone does not establish a licence. The filter removes all full samples being externalised or withheld, including the old COMPAS copy.
+- User-uploaded and already ingested data remain local. No added cross-origin destination receives user data, cookies, URL referrers or app identifiers. Keep COOP `same-origin`, COEP `require-corp`, CORP `same-origin` for Samata assets and the existing policy for unrelated CSP directives.
+- No raw CSV, expanded ZIP, generated output, raw-byte fixture, reconstructed full sample or private Git publication artefact enters the source tree. Small synthetic test CSVs may remain tracked.
+- Browser/UI changes use the existing Lit owner, i18n, native controls, tokens and WCAG 2.2 AA rules.
+
+## Required reading
+
+- `AGENTS.md` §Repository boundary, §Verification Commands, §Git workflow and §Rules.
+- `specification/sample-datasets.md` §§1–6 and `specification/ARCHITECTURE.md` §Delivery and Caching.
+- `specification/workflow-steps.md` §1, `specification/state-and-storage.md` §§3 and 6, `specification/COMPONENTS.md` §§3–10 and `specification/visual-design.md` §1.1.
+- [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), [ProPublica COMPAS catalogue entry](https://projects.propublica.org/datastore/#compas-recidivism-risk-score-data-and-analysis) and [terms](https://projects.propublica.org/datastore/terms/).
+- [Git filter-repo manual](https://github.com/newren/git-filter-repo/blob/main/Documentation/git-filter-repo.txt) and [GitHub history-removal guidance](https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/removing-sensitive-data-from-a-repository).
+
+## Codebase context
+
+- `src/types/sample-dataset.ts` L11–L110 defines the authored contract, `RemoteCsvSource`, `SampleDatasetDescriptor`, `csvOrigin` and index v1. The only current legal exception is `NOASSERTION` for browser-direct delivery.
+- `scripts/generate-datasets.ts` L121–L175, L178–L317, L321–L360 and L420–L561 handles discovery, validation, caches, deterministic catalogue order and emitted files. `scripts/build-assets.ts` L103–L112 and L130–L141 invokes it for both dev and production.
+- `public/_headers` L1–L5 sets Cloudflare CSP and isolation, while `scripts/static-server.ts` L4–L9 and L61–L69 applies local isolation without interpreting that CSP. The storage worker checks browser-direct bytes before parsing in `src/features/data/ingestion/pipeline.ts` L139–L204.
+- `src/features/data/app-data-view.ts` L561–L581 displays the catalogue and the current GitHub-specific notice. `src/stores/dataset.store.ts` L120–L198 loads local IndexedDB metadata first and then sample guidance through `src/features/data/sample-datasets.ts` L34–L52. A missing sample currently loses column and leakage guidance.
+- `tests/sample-datasets-content.test.ts`, `tests/classification-preparation.test.ts`, `tests/data-selection.e2e.ts`, `tests/model-configuration.e2e.ts`, `tests/journeys/penguins-classification.e2e.ts` and `tests/visual-parity/fixtures.ts` depend on today's catalogue or checkout fixtures. Cache and integrity coverage is in `tests/generate-datasets.test.ts` and `tests/ingestion-pipeline.test.ts`. Baseline `bun run check` passed 559 tests.
+- Web guidance uses `security` for preserving the existing CSP and isolation model. Visual reference is the implemented `specification/mockups/01-1_select-data.html` card grid. Existing remote notice has no mockup. Use `lit-component-implementer` for the T3 copy and story. Use the provenance and data-quality portions of `add-dataset` in T2 and T3 for the existing samples.
+
+## Technical decisions
+
+| Decision                            | Chosen approach and rationale                                                                                                                                                  | Rejected alternative / trade-off                                                                                                              |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1 Build-fetched and direct sources | Keep the authored source kind separate from browser `csvOrigin`. Publish same-origin copies only where upstream permits redistribution.                                        | Browser fetches to UCI would fail the verified CORS policy. The Bank mirror is exact but the publisher ZIP gives a more durable build source. |
+| D2 Preserve study inputs            | Pin raw and prepared data by byte length and SHA-256. Reuse current files only as migration comparators. Preserve descriptor IDs and default targets.                          | Substituting a different source variant would change recorded results or category labels.                                                     |
+| D3 Withhold unresolved samples      | Remove Pima and Titanic from discovery, catalogue and new sample loads. Keep non-row metadata needed by existing IndexedDB projects.                                           | OpenML's `Public` label, alternate mirror tags, and Seaborn's upstream link do not establish rights for these exact files.                    |
+| D4 Filter only the publication copy | Keep the private history and filter dataset paths and blob IDs from a fresh main-only clone before first publication. Give supervisors a snapshot permalink and a short guide. | Squashing all changes would erase useful history. Deferring the filter until V1 would expose the old CSVs.                                    |
+
+### Interfaces and behaviour
+
+#### Source contract and integrity
+
+- Add optional `buildSource: BuildCsvSource` to `AuthoredDatasetDescriptor` with `url: string`, `sha256: string`, `byteLength: number`, `transform: 'identity' | 'adult-training' | 'bank-full-zip' | 'german-credit-quotes' | 'strip-utf8-bom'`, `outputSha256: string`, and `outputByteLength: number`. Exactly one of local `data.csv`, `buildSource`, or existing `remoteSource` is allowed. Retain local support for future licensed samples and synthetic tests.
+- Validate positive lengths, lowercase 64-hex digests, permitted HTTPS sources, explicit transforms, and redistributable licence for `buildSource`. Reject unexpected redirects. For the Hugging Face direct URL, the only approved redirect path is the same-origin `/api/resolve-cache/datasets/scikit-learn/credit-card-clients/<pinned revision>/UCI_Credit_Card.csv`; query parameters are transport-only. Verify the response/final URL at the build boundary. For browser requests use the existing loader, CSP and byte check. Keep dataset publisher paths distinct from telemetry config.
+- Route build and direct inputs through the existing cache/download seam. Verify cached bytes and each download before use, cap the download at the declared byte length when reading the response and require an exact final count. Write verified bytes atomically into the ignored cache. A corrupt cache fails explicitly with dataset ID and expected digest. Only a verified cache supports an offline build. Run the chosen build transformation after verification, then check the prepared bytes before profiling and emission. Limit ZIP extraction to the verified `bank-full.csv` member using the pinned build-only `fflate@0.8.2` dependency and refuse a member with an unexpected declared output size.
+- Keep `index.json` v1, `SampleDatasetSummary`, worker messages and hash-versioned output references. Build-fetched `files.csvOrigin` is `bundled`, with a same-origin generated CSV. Browser-direct `files.csvOrigin` is `remote`, with its pinned URL and no CSV written into build output. Keep the pre-existing direct `remoteSource` runtime descriptor field and omit the new authored-only `buildSource` from runtime descriptors. A failed acquisition or validation fails the build without publishing a new index.
+- In the new notice use the existing connected `app-data-view` dictionary, styling and card description association. The exact text is “Downloaded from the source when loaded. Internet connection required.” Keep `focusHeading(signal: AbortSignal): Promise<void>` and `whenSettled(): Promise<void>`, lifecycle and render overrides, and the tag's existing closed inputs. The notice stays plain text in its current position and remains absent on `bundled` cards. Verify keyboard focus, text wrapping at 320 px and 400% zoom, existing contrast, RTL and the scoped axe checks.
+
+#### Approved source inventory
+
+Hashes below describe exact bytes. For a build transformation, the input and output are independently pinned. All seven build inputs use a SHA-256 pin even when the publisher URL itself has no revision.
+
+| ID and licence                                                  | Source and delivery                                                                                                                                                                                                                                                                     | Input SHA-256 and bytes                                                     | Output contract                                                                                                                                                                                                                                         |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `adult-census`, CC BY 4.0                                       | [UCI Adult](https://archive.ics.uci.edu/dataset/2/adult), [training source](https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data), build                                                                                                                          | `5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d`, 3974305 | Read headerless comma records, drop blank records, trim each field, prepend the descriptor's ordered headers, and serialise RFC 4180 with CRLF and final CRLF. `3319b2fef796cbf96ef520c0daf10b9d90c96ab68a2db2589daefc4ed175d11a`, 3551168, 32561 rows. |
+| `bank-marketing`, CC BY 4.0                                     | [UCI Bank Marketing](https://archive.ics.uci.edu/dataset/222/bank+marketing), [publisher ZIP](https://archive.ics.uci.edu/ml/machine-learning-databases/00222/bank.zip), build                                                                                                          | `99d7e8eb12401ed278b793984423915411ea8df099e1795f9fefe254f513fe5e`, 579043  | Exact `bank-full.csv` member, retaining semicolons and quoting. `d1513ec63b385506f7cfce9f2c5caa9fe99e7ba4e8c3fa264b3aaf0f849ed32d`, 4610348, 45211 rows.                                                                                                |
+| `breast-cancer-wisconsin`, CC BY 4.0                            | [UCI WDBC](https://archive.ics.uci.edu/dataset/17/breast+cancer+wisconsin+diagnostic), [CSV](https://archive.ics.uci.edu/static/public/17/data.csv), build                                                                                                                              | `3487b754ff02c93cdc8a18afafe223961d9cfbfdb932e57483e52581042767d7`, 125031  | Identity, 569 rows.                                                                                                                                                                                                                                     |
+| `german-credit`, CC BY 4.0                                      | [UCI Statlog German Credit](https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data), [OpenML 31 CSV](https://www.openml.org/data/get_csv/31/credit-g.csv), build                                                                                                            | `b8b0c9415638f90ace61378df13b70057487b419bba7e1a7311a34a291f26cab`, 152006  | Parse comma CSV, remove one matching pair of surrounding single quotes from data cells only, and serialise RFC 4180 with CRLF and final CRLF. `9888fb06e7bf42963f4db2c8fd57666d5426c0a3692d10b51571de49518a105a`, 140017, 1000 rows.                    |
+| `heart-disease`, CC BY 4.0                                      | [UCI Heart Disease](https://archive.ics.uci.edu/dataset/45/heart+disease), [CSV](https://archive.ics.uci.edu/static/public/45/data.csv), build                                                                                                                                          | `868cd646a53ffbc55611192bae7496911a163937c185710f6b8aa11549b88df1`, 11334   | Identity, 303 rows.                                                                                                                                                                                                                                     |
+| `iris`, CC BY 4.0                                               | [UCI Iris](https://archive.ics.uci.edu/dataset/53/iris), [CSV](https://archive.ics.uci.edu/static/public/53/data.csv), build                                                                                                                                                            | `daaeb5e3e889d07fbdd44544f5a39fe2372a07172e25899d577be0ad74df9e65`, 4615    | Identity, 150 rows.                                                                                                                                                                                                                                     |
+| `student-dropout`, CC BY 4.0                                    | [UCI Student Dropout](https://archive.ics.uci.edu/dataset/697/predict+students+dropout+and+academic+success), [CSV](https://archive.ics.uci.edu/static/public/697/data.csv), build                                                                                                      | `a1b1a6531bbb93a5c7fdf0093b47172776652a4ffb12342fb79655c85b74801b`, 495642  | Strip exactly the leading UTF-8 BOM. `542b53d93cdb250f0f39a470e15cb25d1c24fb559a98e333382afd9c5ae352eb`, 495639, 4424 rows.                                                                                                                             |
+| `credit-card-default`, CC BY 4.0                                | [UCI original terms](https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients), [Hugging Face pinned CSV](https://huggingface.co/datasets/scikit-learn/credit-card-clients/resolve/f809522649eaf948ad40a11ed575c4bb4d4460c1/UCI_Credit_Card.csv), direct                  | `a0f0ab49d6326671d6cd83be5c88dcf18007025fe9a53ecd699119c871176ca1`, 2862995 | Identity, 30000 rows. Keep the UCI attribution despite [mirror metadata](https://huggingface.co/datasets/scikit-learn/credit-card-clients) advertising CC0.                                                                                             |
+| `palmer-penguins`, CC0 1.0                                      | [Curators' terms](https://allisonhorst.github.io/palmerpenguins/#license), [pinned CSV](https://raw.githubusercontent.com/allisonhorst/palmerpenguins/156daa4301838d9fdcc5b018b29b9149bf975552/inst/extdata/penguins.csv), direct                                                       | `f204db2c753b0937caac3cb35258562c14f073e4bbc76be24b4c51ce22767a93`, 15241   | Identity, 344 rows. Preserve the curators' citation.                                                                                                                                                                                                    |
+| `compas-recidivism`, ProPublica terms, descriptor `NOASSERTION` | [Publisher entry](https://projects.propublica.org/datastore/#compas-recidivism-risk-score-data-and-analysis), [already pinned publisher CSV](https://raw.githubusercontent.com/propublica/compas-analysis/bafff5da3f2e45eca6c2d5055faad269defd135a/compas-scores-two-years.csv), direct | `c451db85908b2f7fef1d83203bedf6b71ecda0d5af468d82ae62178f91d0cc7d`, 2546489 | Existing 7214-row source and existing remote-header normalisation. Link the publisher terms, with attribution, and keep its raw bytes out of served assets.                                                                                             |
+
+Withhold `pima-diabetes` and `titanic`. Document the exact [OpenML 37 metadata](https://www.openml.org/api/v1/json/data/37) and [Seaborn provenance](https://github.com/mwaskom/seaborn-data#data-sources). Both matched downloads, but no verified rights-holder grant for those versions was found. A later restoration requires a separate source decision.
+
+#### Retired sample compatibility
+
+- Add `SampleDatasetGuidance = Pick<AuthoredDatasetDescriptor, 'columns' | 'modeling'>` in `src/types/sample-dataset.ts`. Curate a static two-entry lookup in `src/features/data/retired-sample-guidance.ts` from the existing descriptors before deleting their active directories. Copy both fields completely, including column descriptions, roles and missing values and all target-specific leakage rules. Keep no records, source links, runtime URLs or old licence claims in the lookup.
+- `loadDatasetResources(datasetId: string)` checks this lookup only after recovering the already ingested dataset's `sampleId` from IndexedDB. It continues to call `loadSampleDescriptor(id, signal?)` for active samples. Narrow `DatasetResourcesState.descriptor` and the feature/target eligibility inputs to `SampleDatasetGuidance | null`; active descriptors satisfy it structurally. The catalogue resolver retains its existing active-only contract. Broader methods that actually need files, generated stats or per-column counts continue receiving a full `SampleDatasetDescriptor`. This preserves advice without a storage migration or compatibility fetch.
+- The two removed IDs have no entries in `/datasets/index.json`, no downloadable descriptor, datasheet or CSV in the emitted catalogue, and no entry point for a new worker load. Keep the retired rights citations in this plan and in the publication document.
+
+#### Browser delivery policy
+
+At the build boundary accept only the exact URLs in the inventory. Keep future local synthetic fixture support in the injected test fetch seam. Set CSP `connect-src` to keep current unrelated sources and add the pinned Palmer and Credit Card URLs. Retain the current COMPAS pin, and record the permitted Hugging Face same-origin redirect target described above. Runtime publisher requests are GETs for sample assets only. In tests inspect the emitted Cloudflare header, simulate the provider step where feasible, and run a separate manual browser smoke against those headers served on a production-like origin. Verify `crossOriginIsolated`, the worker's download, expected hashes, and failure before data publication on a bad fetch or digest. Since the local server does not apply production CSP, a normal local Playwright run cannot substitute for the header check.
+
+#### First-push contract
+
+- In the maintainer runbook, freeze the verified integrated `samata-ml/main` tip and privately retain its full history. Use a new unpublished, independent clone obtained with `git clone --no-local --single-branch --branch main --no-tags`. Validate source and clone tips, repository paths, absence of alternates, clean status, and the absence of any GitHub target before filtering. The clone's local source remote is allowed only for obtaining the frozen input. Run the rewrite only in this disposable clone, without `--force`.
+- Build an explicit file list for `content/datasets/<id>/data.csv` and `public/datasets/<id>/data.csv` for all twelve IDs in this plan. Enumerate every commit tree reachable from the frozen `main`, collect all versions' blob IDs at those paths, and check all tree paths for aliases, names changed in earlier commits, and full-sample copies in other tracked artefacts. Include positively identified aliases and blob IDs in the filter. Escalate unclassified full-sample data instead of guessing whether it is unrelated.
+- Run `git filter-repo --invert-paths --paths-from-file <paths> --strip-blobs-with-ids <blobs> --replace-refs delete-no-add` in the disposable clone. Keep the filter files, source/filtered tip IDs and generated commit map outside anything to publish. Record the clean tip and verify every reachable tree plus the reachable object-ID set against the paths and blob list, confirm the latest content is identical to the integrated source tree, verify there are no tags, replace refs or remotes containing old history, and scan the exact candidate history for secrets without printing values. Fail closed on any unclassified finding, mismatching tip, alternate old ref or missing verification.
+- Run the normal Bun verification from the clean publication candidate. The maintainer can publish only the clean candidate's `main` after a clean result and separate permission to publish. For `web-ml`, do the main-only secret-scan and verification from its own checkout and preserve its history. Use the filtered clone or a fresh clone of published history for subsequent public `samata-ml` work. Never merge pre-filter refs there. If anything fails before publication, discard the disposable clone and start again from the private source. If the destination already has published history, stop and ask the maintainer to choose a separate remediation.
+- Add a README entry point for supervisors with permanent path links for the architecture, catalogue/licence choices and verification commands, plus instructions to share a commit permalink and optionally publish milestone tags once the verified snapshots exist. Keep links to Git refs out of the guide until the destination and commit IDs are known. Pick a project source-code licence separately before setting public visibility.
+
+## Specification changes
+
+- [ ] `specification/sample-datasets.md` §§1–6 records the three authored source kinds, exact checks and delivery, retired metadata, pinned formats, licence obligations and current sample inventory. Status stays implemented.
+- [ ] `specification/ARCHITECTURE.md` §Directory Structure and §Delivery and Caching documents build versus browser acquisition, current CSP paths and compatibility metadata. Status stays partial.
+- [ ] `specification/workflow-steps.md` §1 records the provider-neutral notice and the absence of retired samples in new selection. Status stays partial.
+- [ ] `specification/mockups/01-1_remote-sample-notice.html` creates a semantic draft showing the existing notice text and state. Record it in `specification/HUMAN.md` §6 for styling. Preserve the implemented selection reference.
+- [ ] `specification/HUMAN.md` §1 records the pre-publication handoff and rights needed to restore retired samples. `README.md` and `specification/publication-history.md` document downloads, supervision and the maintainer runbook. Add the new publication document to `specification/README.md` with the matching status.
+- [ ] Record in the `reference-dataset-regression-tests.md` human queue entry that its author must replace tracked Iris and Penguins sources with generated or verified cached bytes before that draft is submitted. The present plan does not change its normative text.
+
+## Implementation tasks
+
+### T1 — Extend the generator for checked build sources
+
+- **Depends on:** None
+- **Risk:** needs care — validate both inbound and prepared bytes without changing existing local and direct callers.
+- **Likely files:** `src/types/sample-dataset.ts`, `scripts/generate-datasets.ts`, `scripts/dataset-source.ts`, `package.json`, `bun.lock`, `tests/generate-datasets.test.ts`
+- **Must not touch:** `content/datasets/`, `src/features/`, `src/stores/`, `public/_headers`, `vendor/`
+- **Implementation:** Add the authored source type, checked acquisition and fixed transforms in _Interfaces and behaviour_. Reuse existing profile, content hashing and generation code. Pin `fflate@0.8.2` as a dev dependency via Bun; import `unzipSync` only from the build helper. In generator unit tests use synthetic fixtures and injected fetch responses so source, archive and cache failures can be simulated offline. Keep the current catalogue intact until T2.
+- **Acceptance criteria:**
+    - [ ] `DSP-AC-1` — Synthetic cases cover each transform's verified bytes, identity inputs, exact delimiter/line endings, cache reuse and concurrent cold reads.
+    - [ ] `DSP-AC-2` — Reject invalid source count, license, URL/redirect, transport/body error, archive name/size, and raw/prepared length or hash mismatch. Corrupt cache cannot publish output. Generated v1 descriptors and index expose the existing shapes, with only a same-origin CSV for the new build source. Existing generator tests pass.
+- **Verification:** `bun test tests/generate-datasets.test.ts`, `bun run check`, `bun run build`, `bun run format:check`.
+- **Progress:** [ ] Not started
+
+### T2 — Move approved samples and preserve saved projects
+
+- **Depends on:** T1
+- **Risk:** needs care — catalogue and test fixtures switch while saved projects retain previous guidance.
+- **Likely files:** `content/datasets/*/descriptor.ts`, `content/datasets/*/datasheet.md`, `content/datasets/*/data.csv`, `scripts/generate-datasets.ts`, `scripts/dataset-source.ts`, `src/types/sample-dataset.ts`, `public/_headers`, `src/features/data/retired-sample-guidance.ts`, `src/stores/dataset.store.ts`, `src/features/target/target-eligibility.ts`, `src/features/models/feature-eligibility.ts`, `tests/sample-datasets-content.test.ts`, `tests/classification-preparation.test.ts`, `tests/dataset-resources.test.ts`, `tests/data-selection.e2e.ts`, `tests/model-configuration.e2e.ts`, `tests/journeys/helpers.ts`, `tests/journeys/penguins-classification.e2e.ts`, `tests/visual-parity/fixtures.ts`, `tests/model-assets.test.ts`
+- **Must not touch:** `src/features/models/training/`, `src/features/data/ingestion/protocol.ts`, `src/router/`, `specification/mockups/`, `vendor/`
+- **Implementation:**
+    1. Record baseline digests, header order, default targets and class counts before changing active descriptors. Configure the inventory's sources and licence/attribution notes. Preserve classification semantics and column flags. Delete tracked `data.csv` files only after local migration comparison. Remove the two retired descriptors and datasheets after copying their guidance into the designated static lookup. Protect all existing saved ID, column and target data while narrowing only advice consumers.
+    2. Extend emitted Cloudflare CSP as specified and enforce a matching initial-URL allowlist in the build generator. Test the full emitted CSP for the two additions, COMPAS, unchanged isolation and no wildcard provider. Use Playwright plus a local response serving the production CSP for a header-enforced check or record a production-like manual smoke if the test server cannot expose equivalent headers.
+    3. In the catalogue test verify active IDs and their baseline digests from a scratch output. Exercise actual generated Iris bytes in `classification-preparation` via a test-local generator invocation filtered to Iris. For Penguins e2e and parity cases, use the bytes already verified by the same checkout's build cache, via context-level source interception installed before navigation with valid CORS headers, and verify that the request was intercepted. Keep an explicit live provider smoke as a separate check. Replace the Pima-specific E2E selector with Wisconsin Breast Cancer using `Diagnosis` for the same binary-target behaviour. Update the card count and bundled/direct expectations in the selection tests.
+    4. Add a regression exercising saved resources for both retired IDs, including target guidance and leakage exclusions and absence of an old network request. Existing unsampled and missing-descriptor cases still run.
+- **Acceptance criteria:**
+    - [ ] `DSP-AC-3` — Ten active entries have original IDs, ordering relative to one another, expected hashes and targets, with seven same-origin CSVs and three direct URLs. Both retired entries are absent, and no sample CSV survives in tracked source. A cold build reconstructs the seven local outputs from the inventory and a warm build can reuse verified cached bytes.
+    - [ ] `DSP-AC-4` — Active and retired saved projects retain row access, selection/advice and model leakage flags, with no request for a retired source and no storage version change. An attempted new load of a retired ID is rejected before a source fetch.
+    - [ ] `DSP-AC-5` — Production output headers preserve isolation and restrict new publisher connections. With a deterministic fixture and in a separately recorded real-provider smoke, valid direct loads succeed and an altered or blocked download fails without publishing a new dataset. The fallback remains the existing error/retry path.
+- **Verification:** `bun test tests/sample-datasets-content.test.ts`, `bun test tests/dataset-resources.test.ts`, `bun test tests/classification-preparation.test.ts`, `bun test tests/model-assets.test.ts`, `bun run check`, `bun run build`, `bun run test:e2e tests/journeys/penguins-classification.e2e.ts`, `bun run test:e2e tests/model-configuration.e2e.ts`. Record existing Chromium model-builder failures listed in `HUMAN.md` separately from failures introduced here. Inspect emitted dataset files and the header-enforced smoke evidence.
+- **Progress:** [ ] Not started
+
+### T3 — Update the download notice and synchronise dataset documentation
+
+- **Depends on:** T2
+- **Risk:** routine
+- **Likely files:** `src/features/data/app-data-view.ts`, `src/features/data/app-data-view.stories.ts`, `tests/data-selection.e2e.ts`, `tests/a11y.e2e.ts`, `specification/workflow-steps.md`, `specification/sample-datasets.md`, `specification/ARCHITECTURE.md`, `specification/mockups/01-1_remote-sample-notice.html`, `specification/HUMAN.md`
+- **Must not touch:** `css/`, `specification/mockups/01-1_select-data.html`, `specification/mockups/mockups.css`, `src/features/data/ingestion/`, `vendor/`
+- **Implementation:** Change only the connected notice dictionary text. Add Storybook coverage for direct and bundled cards with deterministic resources, with long-label and RTL stories and Do/Don't notes. Reuse the existing labelled actions, card layout, remote-notice selector and contrast tracking. Add the flat draft mockup with required metadata and annotated bundled/direct states. Sync the listed dataset, architecture and workflow specifications and queue the draft for styling. Apply the preview/spec status index rules.
+- **Acceptance criteria:**
+    - [ ] `DSP-AC-6` — Selection renders the exact neutral notice on each direct source and none on bundled cards. Keyboard navigation and accessible names/descriptions remain intact, notice copy does not clip, and affected parity, token and scoped axe checks pass. Existing tracked notice contrast findings are reported separately.
+    - [ ] `DSP-AC-7` — The updated specifications and Storybook cover both origins and describe the source inventory, licence conditions and draft visual treatment.
+- **Verification:** `bun test tests/style-tokens.test.ts`, `bun run test:e2e tests/data-selection.e2e.ts`, `bun run test:e2e tests/a11y.e2e.ts`, `bun run test:e2e tests/visual-parity.e2e.ts`, `bun run test:stories`, `bun run check`, `bun run format:check`.
+- **Progress:** [ ] Not started
+
+### T4 — Document the reproducible first-push procedure and dissertation review
+
+- **Depends on:** T2, T3
+- **Risk:** needs care — the future maintainer operation rewrites only a disposable unpublished repository.
+- **Likely files:** `README.md`, `specification/publication-history.md`, `specification/README.md`, `specification/HUMAN.md`
+- **Must not touch:** `src/`, `vendor/`, `public/`, `content/` — this is a documentation task with no rewrite in the canonical workspace.
+- **Implementation:** Write the exact _First-push contract_ into `specification/publication-history.md`, with a status entry in the index. Include a copyable, reproducible sensitive-path and blob audit procedure, commands scoped to the publication clone, stop conditions, per-repo secret scan and an explicit maintainer-only publication checklist. Provide a testable synthetic walkthrough with old/new paths and a duplicate blob under an alias. Link the guide and the architecture/verification entry points from README. Queue the actual publication and licence-selection decision in `HUMAN.md` §1, and note the Iris/Penguins change against the existing regression plan entry.
+- **Acceptance criteria:**
+    - [ ] `DSP-AC-8` — The documented dry run can remove both historical locations and an alias in a disposable synthetic repository while the source clone, non-dataset tree and surviving commit history remain independently verifiable. Deliberately omitted aliases, unexpected refs, and unsafe destinations trigger the documented stop checks.
+    - [ ] `DSP-AC-9` — A maintainer following the procedure before first push can verify zero matching paths and blob IDs reachable from the exact proposed publishing ref, preserve a private backup and prepare a supervisor permalink with no raw CSV in Git. No push, source history rewrite or approval is implied by completing this task.
+- **Verification:** `bun run plans:check specification/plans/sample-dataset-publication.md`, `bun run check`, `bun run format:check`, and the manual synthetic walkthrough in the new runbook.
+- **Progress:** [ ] Not started
+
+## Verification and definition of done
+
+- [ ] All `DSP-AC-1` through `DSP-AC-9` pass. Verify through `bun run check`, `bun run build`, the named browser suites and stories, `bun run format:check` and `bun run plans:check`.
+- [ ] Type-check, formatting, cross-origin security, existing local-user-data privacy, and accessibility checks complete. Record known baseline failures separately.
+- [ ] Every item under _Specification changes_ is applied and status matches the index.
+- [ ] Reviewed first-push instructions and a synthetic dry run are available. The application plan is complete before the maintainer creates the filtered publication copy.
+
+## Risks and open questions
+
+- **Blocking:** None
+- **Non-blocking:**
+    - Maintainer publication follows verifiable implementation and closure. Source-code licence, GitHub destination and the final pre-push scan are publication-stage decisions, outside the app changes.
+    - The beta release plan also modifies `public/_headers` and documents Cloudflare delivery. Preserve both plans' rules whichever lands first. Rebase stale upstream-only wording as part of integration with the beta plan.
+    - Publisher URLs can become unavailable or change. The verified-cache path remains available and a cold build fails with the affected source named. If the byte pin changes, recheck provenance and reproducibility before updating it.
+    - The catalogue intentionally withholds Pima and Titanic until the maintainer obtains evidence or approves a replacement. Existing saved workflows use static advice. The visual-parity or contrast issues tracked separately in `HUMAN.md` are outside this work.
+
+## Escalations
+
+None.
+
+## Review fixes
+
+None.
+
+## Implementation and verification log
+
+| When (UTC) | Task | Agent (model) | Outcome / commands / evidence |
+| ---------- | ---- | ------------- | ----------------------------- |
+| —          | —    | —             | Not started                   |
+
+## Plan review history
+
+| Reviewed (UTC) | Agent (model) | Decision | Findings |
+| -------------- | ------------- | -------- | -------- |
+
+## Change log
+
+| When (UTC)           | Change        | Reason                                                                                                                                                                                 |
+| -------------------- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-23T09:13:22Z | Initial draft | Maintainer asked to externalise verified datasets and remove the corresponding CSVs from publication history. Source bytes and normalisations were checked against the existing files. |
