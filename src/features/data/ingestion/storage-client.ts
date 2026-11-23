@@ -179,7 +179,7 @@ let singleton: StorageClientImpl | undefined;
 export function getStorageClient(): StorageClient {
 	if (singleton) return singleton;
 	let client!: StorageClientImpl;
-	client = new StorageClientImpl(new Worker('/storage.worker.js', { type: 'module' }), () => {
+	client = new StorageClientImpl(new Worker(STORAGE_WORKER_URL, { type: 'module' }), () => {
 		if (singleton === client) singleton = undefined;
 	});
 	singleton = client;

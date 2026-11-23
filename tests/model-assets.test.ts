@@ -4,6 +4,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildModelAssets } from '../scripts/build-model-assets';
+import { parseHeadersFile, resolveHeaders } from '../scripts/headers-file';
+import { renderHeaders } from '../scripts/release-headers';
 
 const workspaces: string[] = [];
 
@@ -158,5 +160,30 @@ describe('prebuilt model assets', () => {
 			'https://huggingface.co/datasets/scikit-learn/credit-card-clients/resolve/f809522649eaf948ad40a11ed575c4bb4d4460c1/UCI_Credit_Card.csv',
 			'https://huggingface.co/api/resolve-cache/datasets/scikit-learn/credit-card-clients/f809522649eaf948ad40a11ed575c4bb4d4460c1/UCI_Credit_Card.csv'
 		]);
+
+		const rendered = renderHeaders(headers, { telemetry: false, crawler: 'closed' });
+		const rules = parseHeadersFile(rendered);
+		for (const pathname of ['/', '/bundles/x.js', '/web-ml/x/y.js']) {
+			const resolved = resolveHeaders(rules, pathname);
+			expect(resolved.get('cross-origin-opener-policy')).toBe('same-origin');
+			expect(resolved.get('cross-origin-embedder-policy')).toBe('require-corp');
+			expect(resolved.get('cross-origin-resource-policy')).toBe('same-origin');
+			expect(resolved.get('content-security-policy')).toContain(
+				"script-src 'self' 'wasm-unsafe-eval'"
+			);
+			expect(resolved.get('content-security-policy')).toContain("worker-src 'self'");
+			const expectedCache =
+				pathname === '/'
+					? 'public, max-age=0, must-revalidate'
+					: 'public, max-age=31536000, immutable';
+			expect(resolved.get('cache-control')).toBe(expectedCache);
+		}
+
+		expect(() =>
+			renderHeaders(`${headers}\n  Cache-Control: no-store\n`, {
+				telemetry: false,
+				crawler: 'closed'
+			})
+		).toThrow('Cache-Control');
 	});
 });

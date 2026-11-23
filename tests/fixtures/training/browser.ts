@@ -127,7 +127,7 @@ export async function controlTraining(page: Page, isolated = true): Promise<void
 		if (!isolated) Object.defineProperty(window, 'crossOriginIsolated', { value: false });
 		window.Worker = new Proxy(nativeWorker, {
 			construct(target, argumentsList, newTarget) {
-				if (!String(argumentsList[0]).endsWith('/training.worker.js'))
+				if (!/\/training\.worker(\.[0-9a-f]{10})?\.js$/.test(String(argumentsList[0])))
 					return Reflect.construct(target, argumentsList, newTarget);
 				const mock = {
 					onmessage: null,

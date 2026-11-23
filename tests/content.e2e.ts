@@ -72,7 +72,7 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		await welcomeBtn.click();
 		await expect(welcomeBtn).not.toBeVisible();
 
-		await page.route('**/content/en/pages/index.json', (route) =>
+		await page.route('**/content/en/pages/index.json*', (route) =>
 			route.fulfill({ status: 404 })
 		);
 

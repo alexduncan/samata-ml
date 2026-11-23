@@ -295,7 +295,7 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 	const now = options.now ?? Date.now;
 	const elapsed = options.elapsedTime ?? (() => performance.now());
 	const makeWorker =
-		options.createWorker ?? (() => new Worker('/training.worker.js', { type: 'module' }));
+		options.createWorker ?? (() => new Worker(TRAINING_WORKER_URL, { type: 'module' }));
 	const isIsolated =
 		options.isIsolated ?? (() => typeof window !== 'undefined' && window.crossOriginIsolated);
 	const getLocks = () =>

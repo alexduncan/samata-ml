@@ -14,7 +14,7 @@ export class AnalysisClient {
 
 	constructor(
 		private readonly createWorker: () => Worker = () =>
-			new Worker('/analysis.worker.js', { type: 'module' })
+			new Worker(ANALYSIS_WORKER_URL, { type: 'module' })
 	) {}
 
 	private fail(): void {

@@ -7,6 +7,7 @@ import { CERT_DIR, CERT_PATH, ensureHttpsCert, KEY_PATH } from './certificates';
 import { CHECKOUT_IDENTITY_PATH, createCheckoutIdentityResponse } from './checkout-identity';
 import { CONTENT_DIR, CSS_DIR, DEV_DIR, DIST_DIR, PUBLIC_DIR, SRC_DIR } from './config';
 import { isPathInside } from './filesystem';
+import { parseHeadersFile, type HeaderRule } from './headers-file';
 import { CHECKOUT_PORTS, CHECKOUT_ROOT, parsePortOption } from './ports';
 import { serveStaticFile } from './static-server';
 
@@ -331,9 +332,13 @@ log(`HTTPS private key: ${KEY_PATH}`);
 
 const scheduler = SERVE_DIST ? undefined : new DevBuildScheduler(buildDevBundle);
 
+let distHeaderRules: readonly HeaderRule[] | undefined;
+
 if (scheduler) {
 	await scheduler.buildInitial();
 } else {
+	const headersPath = path.join(SERVE_DIR, '_headers');
+	distHeaderRules = parseHeadersFile(await readFile(headersPath, 'utf8'));
 	log(`Serving production files from ${DIST_DIR}.`);
 	log('Hot reload is disabled in dist mode.');
 }
@@ -381,7 +386,8 @@ const server = Bun.serve({
 		return serveStaticFile({
 			requestPath: url.pathname,
 			rootDir: SERVE_DIR,
-			transformHtml: SERVE_DIST ? undefined : injectReloadClient
+			transformHtml: SERVE_DIST ? undefined : injectReloadClient,
+			headerRules: distHeaderRules
 		});
 	}
 });
