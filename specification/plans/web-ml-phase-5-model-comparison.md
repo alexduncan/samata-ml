@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-23T06:34:22Z
+**Status:** ready | **Updated:** 2026-11-23T06:40:39Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T06:16:18Z | **Verification:** approved
 **Verified hash:** sha256:ba02134bc3c3f4b1220d9ee3c57ea925a3fdb99a5a936ec22a510a9cec2c6386
@@ -271,11 +271,11 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 - **Must not touch:** `css/root.css`, `src/stores/`
 - **Implementation:** Per D4, D6 and Interfaces §C. Reuse the same Phase 4 browser fixture helper. Stories: `AClearlyBetter`, `Equivalent`, `Uncertain`, `Loading`, `Unavailable`, `Error`, `LongLabel`, `RTL`; agreement `ThreeModels`, `NoHardCases`.
 - **Acceptance criteria:**
-    - [ ] `WML-P5-UI-7` — The ROPE bar's three segment texts equal the rounded probabilities and sum to 100% after rounding (largest-remainder rounding); the width input rejects values outside 0.001–0.1 with an associated error message.
-    - [ ] `WML-P5-UI-8` — Unavailable and error states show their sentence and no bar; the explanation sentence names both models and the width.
-    - [ ] `WML-P5-UI-9` — The agreement chart has M + 1 columns summing to the evaluated row count; the caption states the hard-case count.
+    - [x] `WML-P5-UI-7` — The ROPE bar's three segment texts equal the rounded probabilities and sum to 100% after rounding (largest-remainder rounding); the width input rejects values outside 0.001–0.1 with an associated error message.
+    - [x] `WML-P5-UI-8` — Unavailable and error states show their sentence and no bar; the explanation sentence names both models and the width.
+    - [x] `WML-P5-UI-9` — The agreement chart has M + 1 columns summing to the evaluated row count; the caption states the hard-case count.
 - **Verification:** `bun run test:e2e tests/comparison-rope.e2e.ts`; `bun run test:stories`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-23T06:40:39Z)
 
 ### T6 — Connected `/results` view, shell wiring, draft and journeys
 
@@ -343,6 +343,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-23T06:18:39Z | R1   | Codex (GPT-6)                 | bun test tests/training-service.test.ts: 81 passed; bun run check: typecheck passed, 558 tests passed. Scope warning for tests/training-service.test.ts is expected: R1 explicitly requires that test file.                                                                                                                        |
 | 2026-11-23T06:28:11Z | T3   | Codex (GPT-6)                 | bun run test:e2e tests/comparison-controls.e2e.ts: 9 passed across three browsers; bun run test:stories: 486 passed; bun test tests/style-tokens.test.ts: 8 passed; bun run check: typecheck passed, 558 tests passed. Scope warning is the browser fixture required by the task.                                                  |
 | 2026-11-23T06:34:22Z | T4   | Codex (GPT-6)                 | bun run test:e2e tests/comparison-charts.e2e.ts: 9 passed across three browsers; bun run test:stories: 513 passed; bun test tests/style-tokens.test.ts: 8 passed; bun run check: typecheck passed, 558 tests passed. Scope warning is the required chart browser fixture.                                                          |
+| 2026-11-23T06:40:39Z | T5   | Codex (GPT-6)                 | bun run test:e2e tests/comparison-rope.e2e.ts: 9 passed in three browsers; bun run test:stories: 552 passed; bun test tests/style-tokens.test.ts: 8 passed; bun run check: typecheck passed, 558 tests passed; scope warning is the required browser fixture.                                                                      |
 
 ## Plan review history
 
