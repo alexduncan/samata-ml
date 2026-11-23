@@ -118,6 +118,18 @@ test.describe('Dataset Selection & Datasheets (DATA-SEL-1 .. DATA-SEL-3)', () =>
 				.locator('.remote-notice')
 				.evaluate((el) => ({ width: el.clientWidth, scroll: el.scrollWidth }));
 			expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width + 1);
+			const colours = await item.locator('.remote-notice').evaluate((el) => {
+				const probe = document.createElement('span');
+				probe.style.color = 'var(--stone-700)';
+				el.append(probe);
+				const result = {
+					notice: getComputedStyle(el).color,
+					token: getComputedStyle(probe).color
+				};
+				probe.remove();
+				return result;
+			});
+			expect(colours.notice).toBe(colours.token);
 			const load = item.locator('app-dataset-card button.btn-primary');
 			await expect(load).toHaveAccessibleName('Load Dataset');
 			await load.focus();

@@ -152,10 +152,10 @@ export class AppDataView extends LitElement {
 
 			.remote-notice {
 				margin: 0;
-				color: var(--stone-600);
+				color: var(--stone-700);
 				font-size: 0.8125rem;
 				line-height: 1.25rem;
-				overflow-wrap: break-word;
+				overflow-wrap: anywhere;
 			}
 
 			.status-notice {

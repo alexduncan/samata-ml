@@ -131,6 +131,7 @@ Measured from token hex values. The user approved the A11Y values on 2026-11-12 
 | A11Y-10 | `.btn` and step links have no focus style                | none                                                                 | translation rule (§4) focus outline                                   | 2.4.7         |
 | A11Y-11 | Fold matrix wrapper and Section 4 links (03-5 draft)     | Browser-default focus indicator                                      | 2px `--focus-ring` outline with 2px offset, visible in forced colours | 2.4.7         |
 | A11Y-12 | Builder Section 5 `.pending-notice`                      | Previous app token `--stone-600` on white (4.10:1)                   | `--neutral-700` on white (10.35:1)                                    | 1.4.3         |
+| A11Y-13 | Sample download notice                                   | stone-600 on stone-50 (3.96)                                         | stone-700 (5.88 on stone-50; 6.07 on white)                           | 1.4.3         |
 
 Disabled controls are exempt from 1.4.3, but they must stay legible ([button.md Q3](components/button.md#q3)). The "Training progress" label hit on `03-2` and `03-3` is a false positive: it sits in a `hidden` container.
 
