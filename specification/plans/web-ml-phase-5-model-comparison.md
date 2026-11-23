@@ -323,6 +323,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 ## Escalations
 
+- [ ] **E5 (T6):** T6 specifies `specification/mockups/ui-scaffold/drafts/04_compare-results.html`, but `specification/visual-design.md` §1.1 and the root agent guide require flat `specification/mockups/<name>.html` drafts served by the mockup catalogue. The existing `specification/mockups/04_compare-results.html` is a draft placeholder. Impact: the approved destination conflicts with repository governance and is not served by the flat mockup server. Decision needed: revise and independently verify the plan to use the existing flat draft, preserving its shell and adding semantic comparison states and the human styling queue item.
 - [x] **E1 (T1):** Phase 4 and dependencies were missing. Resolved by integration and provisioning; `bun run check` passed 540 tests.
 - [x] **E2 (T1):** The runtime probe could not load on a reused development server; 12 of 27 cases failed. Resolved by freeing port 3000 and rerunning `bun run test:e2e tests/training-runtime.e2e.ts`: 27 passed in three browsers.
 - [x] **E3 (T2):** Guidance CLI was outside the implement shell restriction. On 2026-11-23 the user authorised the Bun search and retrieval exception; JavaScript and performance guidance were retrieved.
