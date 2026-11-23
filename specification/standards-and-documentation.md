@@ -1,12 +1,12 @@
 # Code Standards & Documentation
 
-**Status:** partial — TSDoc is required and mostly present in `src/`; `eslint-plugin-tsdoc` is installed, but there is no ESLint config, `lint` script or CI ([Known gap](README.md#known-gaps) 7).
+**Status:** implemented — TSDoc is required across `src/` and `scripts/` and enforced locally (`bun run lint`) and in CI using `oxc-parser`, `@microsoft/tsdoc`, `@microsoft/tsdoc-config`, and `tsdoc.json`.
 
 ## Documentation Standards (TSDoc)
 
 - **Strict Inline Documentation:** This project strictly uses standard TSDoc for all inline code documentation. Every exported function, class, component, and type MUST include a TSDoc comment block.
 - **Synchronous Updates:** Whenever you create, modify, or refactor a function, interface, class, or type alias, you **MUST** simultaneously generate or update the corresponding TSDoc comment block. Do not write code without its accompanying documentation.
-- **Required Tags:** Use `@param`, `@returns`, and `@throws` for all functions. `eslint-plugin-tsdoc` is installed; lint/CI enforcement remains target until its configuration and command exist (Known gap 7).
+- **Required Tags and Lint Enforcement:** Use `@param`, `@returns`, and `@throws` for all functions, and `@fires` for custom element events (configured in `tsdoc.json`). Run `bun run lint` (`scripts/lint-tsdoc.ts`), which parses `src/` and `scripts/` with `oxc-parser` and checks every `/** ... */` block comment via `@microsoft/tsdoc` (enforced locally and in CI).
 - **Provide Examples:** For complex data transformations or utility functions, include an `@example` tag with a brief TypeScript code snippet demonstrating its use.
 
 ## Naming and placement

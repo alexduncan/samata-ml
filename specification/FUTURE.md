@@ -1,6 +1,6 @@
 # Future development
 
-**Updated:** 2026-11-21
+**Updated:** 2026-11-23
 
 Items the specifications mark as _future_, _later_ or _deferred_. They are **not** to be planned or built until a human moves them into a spec. Open questions about current scope are in [TODO.md](TODO.md). Deliberate exclusions are listed under **Non-goals** in each component spec (§11) and are not future work.
 
@@ -31,11 +31,10 @@ Items the specifications mark as _future_, _later_ or _deferred_. They are **not
 
 From [ARCHITECTURE § Future Improvements](ARCHITECTURE.md) unless noted. TODO-51 asks which of these apply to this repo rather than to `web-ml`.
 
-- **CI workflow:** install pinned tool versions, run `bun install --frozen-lockfile`, and gate pull requests on the test suite. It should also run the TSDoc lint that [standards-and-documentation.md](standards-and-documentation.md) says CI enforces (Known gap 7).
 - **`bun run doctor`** setup check: verify the required tools and dependencies, and print instructions for fixing problems.
 - **Devcontainer or Codespaces** configuration for contributors.
+- **Migrate CI to the shared `agent-workflow` template** once it exists.
 - **Upstream partition feasibility.** Replace samatā’s class-count fold limit when web-ml publishes its feasibility check. Phase 3 treats an upstream rejection as authoritative and reopens Training Setup with the reason. [Decision D7](plans/archive/web-ml-phase-2-training-setup.md#technical-decisions)
-- **`SECURITY.md`**, after researching the security requirements.
 
 ## Project
 

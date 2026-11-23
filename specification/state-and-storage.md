@@ -198,7 +198,7 @@ export interface PersistedAppState {
 	version: typeof STORAGE_VERSION;
 	updatedAt: number;
 
-	onboarding: { welcomeDismissed: boolean };
+	onboarding: { welcomeDismissed: boolean; betaTelemetryAccepted: boolean };
 
 	/** What `/` resolves to. Always a workflow path, never a reserved path. */
 	resumePath: WorkflowPath;
@@ -289,6 +289,7 @@ This is what makes "exact same UI" enforceable as the app grows. Each new featur
 | UI state                                                                     | Persisted as                                 | Notes                                                                                                                               |
 | :--------------------------------------------------------------------------- | :------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
 | Welcome modal dismissed                                                      | `onboarding.welcomeDismissed`                |                                                                                                                                     |
+| Beta analytics notice accepted                                               | `onboarding.betaTelemetryAccepted`           | Monotonic cross-tab acceptance (`false \|\|` stored); `dismissWelcome` leaves it `false`; `acceptBetaTelemetry` sets both flags     |
 | `/data` picker vs preview                                                    | `data.mode`                                  |                                                                                                                                     |
 | Open column-details aside                                                    | `data.selectedColumn`                        |                                                                                                                                     |
 | Virtual table scroll offsets                                                 | `ScrollSnapshot.regions['data-table']`       |                                                                                                                                     |
@@ -322,7 +323,7 @@ Ingestion stages rows and metadata under a fresh dataset ID. After ingestion, th
 
 ## 7. Multi-Tab Behaviour
 
-IndexedDB and the v1 state key are shared. Tabs keep their own URL, active view, focus and local workers. On a state storage event, a tab validates the generation under the state lock and applies newer acknowledged protected state in place. The receiving tab keeps its local resume route and workflow focus. Scroll-key changes and general ordinary preference sync are outside this contract.
+IndexedDB and the v1 state key are shared. Tabs keep their own URL, active view, focus and local workers. On a state storage event, a tab validates the generation under the state lock and applies newer acknowledged protected state in place, and also adopts `onboarding.betaTelemetryAccepted: true` into memory without writing back to storage. Ordinary writes merge `onboarding` monotonically so a second tab's `welcomeDismissed` stays local while `betaTelemetryAccepted: true` propagates (`local.betaTelemetryAccepted || stored.betaTelemetryAccepted`). The receiving tab keeps its local resume route and workflow focus. Scroll-key changes and general ordinary preference sync are outside this contract.
 
 An unsaved training log disclosure edit stays visible during refresh and can still be saved after a generation advance when the dataset, target, model number and model creation time match. A saved edit stops participating in later merges. A replaced identity drops its pending edit. Checkpoint replay keeps an existing saved disclosure unless a matching local edit is pending.
 
@@ -341,6 +342,7 @@ For a committed worker failure or cancellation, **Retry saving** restores the gu
 - A version **higher** than the running code understands (a stale tab after a deploy) yields fresh defaults in memory and puts the persister into **read-only mode** for that key for the lifetime of the document: the tab runs from memory and never overwrites newer data.
 - Phase 3 keeps localStorage at v1 and IndexedDB at v2. Missing generation, revision and disclosure fields use their historical defaults. A versioned result envelope is validated before reuse. An old key-only result is treated as unavailable for that model. The checkpoint is validated separately. Advanced version migrations remain target.
 - Phase 5 retains the v1 wire version. Missing comparison epochs default to zero; an invalid epoch resets comparison preferences. Fingerprints are null or 64 lowercase hexadecimal characters, selected numbers are unique positive existing models sorted and capped at eight, and invalid sort, pair, width or class-filter values are normalised. Invalid explicit pending checkpoint epochs use invalid-checkpoint handling.
+- Historical v1 blobs lacking `onboarding.betaTelemetryAccepted` normalise to `false`; if present and non-boolean, validation rejects the blob.
 
 ## 9. Design Rationale
 

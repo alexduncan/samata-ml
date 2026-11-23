@@ -183,6 +183,13 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		// Navigate to /target
 		await page.locator('app-sidebar a[href="/target"]').click();
 		await expect(page.locator('#content h1')).toHaveText('Set Target');
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').resumePath
+				)
+			)
+			.toBe('/target');
 
 		// Visiting root / should resolve to resumePath (/target)
 		await page.goto('/');

@@ -36,6 +36,19 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 				});
 			}
 		});
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const raw = localStorage.getItem('samata-ml:state');
+					if (!raw) return false;
+					const parsed = JSON.parse(raw) as {
+						onboarding?: { welcomeDismissed?: boolean };
+						dataset?: unknown;
+					};
+					return parsed.onboarding?.welcomeDismissed === true && parsed.dataset === null;
+				})
+			)
+			.toBe(true);
 		await page.reload();
 	});
 

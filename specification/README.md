@@ -45,7 +45,7 @@ These rules apply whenever a spec changes, whether in a plan's `Sync specificati
 | [content-and-i18n.md](content-and-i18n.md)                           | partial     | Markdown content pipeline, localisation                                                                                  |
 | [testing.md](testing.md)                                             | partial     | Writing or running tests                                                                                                 |
 | [mockup-review.md](mockup-review.md)                                 | implemented | Reviewing and promoting mockups, requesting markup changes and commissioning an app port                                 |
-| [standards-and-documentation.md](standards-and-documentation.md)     | partial     | Any exported TypeScript (TSDoc rules)                                                                                    |
+| [standards-and-documentation.md](standards-and-documentation.md)     | implemented | Any exported TypeScript (TSDoc rules)                                                                                    |
 
 ### Component specs (`components/`)
 
@@ -87,14 +87,14 @@ Known conflicts between specs, and between specs and code, as of 2026-11-16. A p
 
 1. _Resolved._
 2. _Resolved._
-3. **CSS inlining.** The production build inlines CSS as well as linking it (`scripts/build-assets.ts`, `scripts/html.ts`, README). ARCHITECTURE says "No Inlining".
+3. _Resolved._
 4. _Resolved._
 5. _Resolved._
 6. **Service worker specified but not installed.** ARCHITECTURE's offline-first service-worker caching remains target; no service worker is present. Worker tests exercise the application's own typed protocol, without Comlink.
-7. **Linting.** TSDoc lint/CI enforcement remains target. The plugin is installed, but there is no ESLint config, `lint` script or CI.
+7. _Resolved._
 8. _Resolved._
 9. _Resolved._
-10. **Product name.** VISION and `wrangler.jsonc` say `web-ml-app`; the repository and UI say `samata-ml`/`samatā.ml`.
+10. _Resolved._
 11. **`npx` vs Bun.** The vendored `modern-web-guidance` skill runs `npx`; this repo uses Bun only, so run its commands with `bunx`.
 12. _Resolved._
 13. **Remaining feature accessibility/style coverage.** Shell tokens, mockup layout, semantic translations and document CSS consolidation are verified without token/parity exemptions. Existing data/model contrast findings remain: 23 exact elements with measured ratios of 2.61:1 to 4.10:1 across five feature owners, measured in [a11y-feature-findings.ts](../tests/a11y-feature-findings.ts) and separately queued in HUMAN.md. Feature-story migration and wider private-style consolidation are follow-up work. The static literal-colour checker covers TypeScript declarations/fallbacks; direct CSS declaration scanning remains narrower than the normative prohibition, so passing it alone does not establish complete token use. Mockup accessibility defects remain governed by visual-design's registers; strict shell scans never inherit feature allowances.
