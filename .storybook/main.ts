@@ -1,4 +1,5 @@
 import type { StorybookConfig } from '@storybook/web-components-vite';
+import { TEST_BUILD_CONSTANTS, toDefine } from '../scripts/build-constants';
 
 const config: StorybookConfig = {
 	framework: '@storybook/web-components-vite',
@@ -7,6 +8,10 @@ const config: StorybookConfig = {
 	core: { disableTelemetry: true },
 	viteFinal: async (config) => ({
 		...config,
+		define: {
+			...config.define,
+			...toDefine(TEST_BUILD_CONSTANTS)
+		},
 		optimizeDeps: {
 			...config.optimizeDeps,
 			include: [

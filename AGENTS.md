@@ -39,6 +39,8 @@ Bun only: never npm, yarn, pnpm, or `npx` (use `bunx`).
 - `bun test <path>` — Run one test file.
 - `bun run typecheck` — TypeScript check (`tsc --noEmit`; or `bunx tsgo --noEmit` where configured).
 - `bun run build` — Production build (bundles app + validates sample datasets + compiles `datasheet.md` to HTML for `<dialog>` presentation).
+- `bun run version:release prerelease --dry-run` — Preview the next SemVer version and changelog section without modifying files.
+- `bun run deploy:dry-run` — Run the production build and validate the Cloudflare Workers bundle without deploying.
 - `bun run format <files>` — Prettier on changed files (`bun run format:check` to verify).
 - `bun run test:e2e [file]` — Playwright end-to-end tests (including `tests/visual-parity.e2e.ts` and `tests/a11y.e2e.ts`); servers use this checkout's ports from `scripts/ports.ts`; a result from another checkout's server is not evidence.
 - `bun run server` · `bun run mockups` · `bun run audit:mockups [paths]`.

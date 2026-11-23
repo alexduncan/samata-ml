@@ -1,5 +1,3 @@
-declare const WEB_ML_RUNTIME_URL: string;
-
 const scope = self as unknown as {
 	onmessage:
 		| ((

@@ -1,5 +1,13 @@
 import { defineConfig, devices } from '@playwright/test';
 import { APP_URL, CHECKOUT_PORTS, DIST_URL, MOCKUPS_URL } from './scripts/ports';
+import { knownFailureGrep } from './tests/known-failures';
+
+function projectGrepInvert(name: string): RegExp | undefined {
+	if (process.env.SAMATA_SKIP_KNOWN_FAILURES !== '1') {
+		return undefined;
+	}
+	return knownFailureGrep(name, process.env.SAMATA_KNOWN_FAILURE_PLATFORM ?? process.platform);
+}
 
 export default defineConfig({
 	globalSetup: './tests/global-setup.ts',
@@ -18,15 +26,18 @@ export default defineConfig({
 	projects: [
 		{
 			name: 'chromium',
-			use: { ...devices['Desktop Chrome'] }
+			use: { ...devices['Desktop Chrome'] },
+			grepInvert: projectGrepInvert('chromium')
 		},
 		{
 			name: 'firefox',
-			use: { ...devices['Desktop Firefox'] }
+			use: { ...devices['Desktop Firefox'] },
+			grepInvert: projectGrepInvert('firefox')
 		},
 		{
 			name: 'webkit',
-			use: { ...devices['Desktop Safari'] }
+			use: { ...devices['Desktop Safari'] },
+			grepInvert: projectGrepInvert('webkit')
 		}
 	],
 	webServer: [

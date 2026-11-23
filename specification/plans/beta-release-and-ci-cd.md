@@ -1,6 +1,6 @@
 # Beta release, asset cache invalidation, Umami telemetry and Cloudflare CI/CD
 
-**Status:** ready | **Updated:** 2026-11-23T13:44:04Z
+**Status:** ready | **Updated:** 2026-11-23T14:17:19Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Codex (GPT-6), Claude Code (claude-opus-5-5) | **Created:** 2026-11-21T19:43:46Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-23T13:44:04Z | **Verification:** approved
 **Verified hash:** sha256:96f39da40609b44e0196a2e90de1a6f2b870e6a43fa215129bbd7967c5cdb565
@@ -250,13 +250,13 @@ A prerelease `minor` or `major` drops the prerelease when the lower components a
             - On `darwin` the Linux-only entry removes nothing, and the `SIDE-AC-10` tests at `visual-parity.e2e.ts` L320 and `sidebar-acceptance.e2e.ts` L161 are never removed.
     10. Tests: `tests/release.test.ts` covers every cell of the bump table, invalid inputs (`1.2`, `01.2.3`, `1.2.3-rc.1`, `1.2.3-beta.0`, `1.2.3+meta`), changelog formatting and `wrangler.jsonc` fields. `tests/build-constants.test.ts` covers `toDefine` output and that the preload exposes every constant.
 - **Acceptance criteria:**
-    - [ ] `REL-VER-1` — `package.json` has `name: samata-ml` and `version: 0.1.0-beta.1`. `wrangler.jsonc` has `name: samata-ml`, `preview_urls: true`, `workers_dev: false`, the `beta.samata.ml` Custom Domain and single-page-application assets. `wrangler` is pinned exactly.
-    - [ ] `REL-VER-2` — `bumpSemVer` matches every table cell, and invalid inputs throw an `Error` naming the input.
-    - [ ] `REL-VER-3` — `bun run version:release prerelease --dry-run` exits 0, prints `0.1.0-beta.1 → 0.1.0-beta.2` and the section, and leaves `package.json` and `CHANGELOG.md` byte-identical. An invalid bump exits non-zero.
-    - [ ] `REL-KF-1` — `bun test tests/known-failures.test.ts` passes. With the flag, each project skips exactly the listed tests for the host platform. Without it nothing is skipped, and passing tests that share an ID still run. Every non-platform-specific entry failed in both recorded baseline runs.
-    - [ ] `REL-VER-4` — Under `bun test`, every constant in `TEST_BUILD_CONSTANTS` is readable as a bare identifier. `bun run deploy:dry-run` exits 0, or the implementation log records that it needs credentials, with the exact message; in that case T7 does not run it in the `verify` job.
+    - [x] `REL-VER-1` — `package.json` has `name: samata-ml` and `version: 0.1.0-beta.1`. `wrangler.jsonc` has `name: samata-ml`, `preview_urls: true`, `workers_dev: false`, the `beta.samata.ml` Custom Domain and single-page-application assets. `wrangler` is pinned exactly.
+    - [x] `REL-VER-2` — `bumpSemVer` matches every table cell, and invalid inputs throw an `Error` naming the input.
+    - [x] `REL-VER-3` — `bun run version:release prerelease --dry-run` exits 0, prints `0.1.0-beta.1 → 0.1.0-beta.2` and the section, and leaves `package.json` and `CHANGELOG.md` byte-identical. An invalid bump exits non-zero.
+    - [x] `REL-KF-1` — `bun test tests/known-failures.test.ts` passes. With the flag, each project skips exactly the listed tests for the host platform. Without it nothing is skipped, and passing tests that share an ID still run. Every non-platform-specific entry failed in both recorded baseline runs.
+    - [x] `REL-VER-4` — Under `bun test`, every constant in `TEST_BUILD_CONSTANTS` is readable as a bare identifier. `bun run deploy:dry-run` exits 0, or the implementation log records that it needs credentials, with the exact message; in that case T7 does not run it in the `verify` job.
 - **Verification:** `bun test tests/release.test.ts`; `bun test tests/build-constants.test.ts`; `bun test tests/known-failures.test.ts`; `bun run test:e2e --project=chromium`, `bun run test:e2e --project=firefox` and `bun run test:e2e --project=webkit` (each twice, unflagged, for the baseline); `bun run version:release prerelease --dry-run`; `bun run deploy:dry-run`; `bun run check`; `bun run format:check <changed files>`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-23T14:17:19Z)
 
 ### T2 — Hashed build, headers, local emulation and crawler policy
 
@@ -490,6 +490,7 @@ None.
 | -------------------- | ---- | ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-11-21T19:43:46Z | —    | Google Antigravity (Gemini 4 Argon High) | Initial draft authored after `codebase-scout` inspection of `package.json`, `wrangler.jsonc`, `public/_headers`, `index.html`, `scripts/`, `src/app.ts`, `src/router/`, `src/stores/`, `src/types/`, `content/en/pages/`, `playwright.config.ts`, and `tests/`. Kept `draft` pending human vendor research on Q1–Q3. |
 | 2026-11-22T16:22:03Z | —    | Google Antigravity (Gemini 4 Argon High) | Aligned D7 and T7 with `agent-workflow/specification/plans/github-pull-requests-and-ci.md` and filed upstream request `../agent-workflow/specification/requests/2026-11-22-parameterised-github-ci-cd-and-beta-activation.md`.                                                                                       |
+| 2026-11-23T14:17:19Z | T1 | Google Antigravity (Gemini 4 Hydrogen High) | Baseline check: 586 pass/0 fail (59 files). E2E baseline (2 runs/project, 389 tests): chromium run1 368 pass/20 fail/1 not run (3.6m), run2 367 pass/21 fail/1 not run (3.6m); firefox run1 299 pass/6 fail/83 skip/1 not run (2.6m), run2 299 pass/6 fail/83 skip/1 not run (2.6m); webkit run1 296 pass/6 fail/86 skip/1 not run (2.3m), run2 295 pass/7 fail/86 skip/1 not run (2.8m). Flaky (1 run only, not listed): MOD-SETUP-4, NAV-E2E-2, MOD-SETUP-1 (chromium), WML-P4-UI-10 (webkit). KNOWN_FAILURES (20 entries): PH-AC-2, DATA-FLOW-2, DATA-UP-2, MOCKUP-REVIEW-1..3 (all 3), WML-P2-ROUTE-2, DATA-PRE-2, MOD-SETUP-2..3, 9 visual-parity tests (chromium), SIDE-AC-10 screenshot (chromium, linux). Verification: release/build-constants/known-failures tests pass; bun run check 594 pass/0 fail (62 files); version:release prerelease --dry-run exit 0; deploy:dry-run exit 0 without credentials (94 files, 0.31 KiB); format:check pass. |
 
 ## Plan review history
 

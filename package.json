@@ -1,9 +1,13 @@
 {
 	"name": "samata-ml",
+	"version": "0.1.0-beta.1",
 	"type": "module",
 	"private": true,
 	"scripts": {
 		"build": "bun run scripts/build.ts",
+		"version:release": "bun run scripts/release.ts",
+		"deploy": "bun run build && wrangler deploy",
+		"deploy:dry-run": "bun run build && wrangler deploy --dry-run",
 		"server": "bun run scripts/server.ts",
 		"mockups": "bun run scripts/serve-mockups.ts",
 		"audit:mockups": "bun run scripts/audit-mockups.ts",
@@ -55,7 +59,8 @@
 		"storybook": "10.6.7",
 		"typescript": "^7.0.2",
 		"vite": "7.3.8",
-		"vitest": "5.1.0"
+		"vitest": "5.1.0",
+		"wrangler": "4.166.0"
 	},
 	"dependencies": {
 		"@nanostores/i18n": "^0.10.0",
