@@ -100,7 +100,7 @@ test('WML-P5-ROPE-2: width debounce and invalidation suppress late worker replie
 		onmessage: ((event: MessageEvent<unknown>) => void) | null = null;
 		onerror: (() => void) | null = null;
 		onmessageerror: (() => void) | null = null;
-		sent: any[] = [];
+		sent: unknown[] = [];
 		constructor() {
 			FakeWorker.instances.push(this);
 		}
@@ -156,7 +156,9 @@ test('WML-P5-ROPE-2: width debounce and invalidation suppress late worker replie
 		expect(FakeWorker.instances).toHaveLength(1);
 		expect(FakeWorker.instances[0]!.sent).toHaveLength(1);
 		expect(FakeWorker.instances[0]!.sent[0]).toMatchObject({ rope: 0.015, testFraction: 0.2 });
-		const requestId = FakeWorker.instances[0]!.sent[0].id;
+		const firstRequest = FakeWorker.instances[0]!.sent[0];
+		if (!isRopeRequest(firstRequest)) throw new Error('Expected a ROPE request');
+		const requestId = firstRequest.id;
 		setComparisonUi(owner, {
 			fingerprint: 'a'.repeat(64),
 			selected: [1, 2],
@@ -178,7 +180,9 @@ test('WML-P5-ROPE-2: width debounce and invalidation suppress late worker replie
 		expect($ropeAnalysis.get().status).toBe('loading');
 		await new Promise((resolve) => setTimeout(resolve, 300));
 		expect(FakeWorker.instances[0]!.sent).toHaveLength(2);
-		const secondId = FakeWorker.instances[0]!.sent[1].id;
+		const secondRequest = FakeWorker.instances[0]!.sent[1];
+		if (!isRopeRequest(secondRequest)) throw new Error('Expected a ROPE request');
+		const secondId = secondRequest.id;
 		$appState.set({
 			...$appState.get(),
 			models: $appState
