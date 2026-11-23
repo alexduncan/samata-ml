@@ -1,9 +1,9 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready-for-review | **Updated:** 2026-11-23T08:56:41Z
+**Status:** ready | **Updated:** 2026-11-23T08:58:39Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
-**Verified hash:** —
+**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T08:58:39Z | **Verification:** approved
+**Verified hash:** sha256:76fb1730d0edcb19fba87edced64ddb0935544f9ed111ba6ba4246ccab5bc56e
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -364,6 +364,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-23T06:52:20Z | Codex (GPT-6)         | approved          | Reviewed T1–T7, chart settlement, archived Phase 4 reading and human queue; scout verified installed 0.2.0 contracts and current component hooks; no blockers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | 2026-11-23T08:08:01Z | Codex (GPT-6)         | changes-requested | MAJOR: Interfaces C applies the Phase 4 Plot draft exception to comparison charts, but specification/visual-design.md section 1.1 restricts it to Section 6 results charts; resolve the visual contract and obtain any necessary authorisation before implementing or accepting comparison chart styling. The user-authorised padding exception does not cover this.                                                                                                                                                                                                                                                                                                                                           |
 | 2026-11-23T08:27:01Z | Codex (GPT-6)         | approved          | Reviewed T1–T7, measured visual-only exception and chart specification; scout checked installed 0.2.0 contracts, worker protocol and accessibility hooks. Canonical upstream checkout unavailable; pinned release governs. No blockers.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 2026-11-23T08:58:39Z | Codex (GPT-6)         | approved          | Reviewed T1–T7 and authorised manual-check deferral; scout checked pinned web-ml 0.2.0, worker contracts and accessibility hooks; automated checks remain required, manual observations unperformed and tracked for 2026-11-24; no blockers.                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 ## Change log
 
