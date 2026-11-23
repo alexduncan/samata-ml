@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-23T06:16:18Z
+**Status:** ready | **Updated:** 2026-11-23T06:18:39Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T06:16:18Z | **Verification:** approved
 **Verified hash:** sha256:ba02134bc3c3f4b1220d9ee3c57ea925a3fdb99a5a936ec22a510a9cec2c6386
@@ -330,7 +330,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 ## Review fixes
 
-- [ ] **R1** `src/stores/comparison.store.ts` `$comparison` — Restore D1–D2 and the route's pending-resource contract before T3: while any trained model's current resource is loading (including idle), expose groups and unavailable reasons but choose no initial default group or selection; once all are terminal choose the eligible default. With fewer than two selected return both `pairA` and `pairB` as null. When `selectComparisonModels` is called on an implicit default group, commit its fingerprint and requested selection together so an intentional empty or single selection is retained. Preserve existing explicit group choices and reject stale owners. Test: add `WML-P5-MODEL-1` and `WML-P5-STATE-2` tests in `tests/training-service.test.ts` covering a later-arriving larger group, zero/one selection, default-group selection persistence, and stale owner; run `bun test tests/training-service.test.ts` and `bun run check`.
+- [x] **R1** `src/stores/comparison.store.ts` `$comparison` — Restore D1–D2 and the route's pending-resource contract before T3: while any trained model's current resource is loading (including idle), expose groups and unavailable reasons but choose no initial default group or selection; once all are terminal choose the eligible default. With fewer than two selected return both `pairA` and `pairB` as null. When `selectComparisonModels` is called on an implicit default group, commit its fingerprint and requested selection together so an intentional empty or single selection is retained. Preserve existing explicit group choices and reject stale owners. Test: add `WML-P5-MODEL-1` and `WML-P5-STATE-2` tests in `tests/training-service.test.ts` covering a later-arriving larger group, zero/one selection, default-group selection persistence, and stale owner; run `bun test tests/training-service.test.ts` and `bun run check`.
 
 ## Implementation and verification log
 
@@ -340,6 +340,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-19T08:47:35Z | —    | Claude Code (claude-opus-5-5) | Planning: `codebase-scout` verified `/results` placeholder, focus/parity tests, `$canCompare`, page-header adoption; no `web-ml` statistical tests exist in 0.1.0.                                                                                                                                                                 |
 | 2026-11-22T21:54:13Z | T1   | Codex (GPT-6)                 | bun test tests/comparison-model.test.ts: 5 passed; bun test tests/state-and-storage.test.ts: 41 passed; bun test tests/training-domain.test.ts: 10 passed; bun test tests/training-service.test.ts: 80 passed; bun run check: 554 passed, typecheck passed; comparison grouping, preferences, checkpoint and replay paths updated. |
 | 2026-11-23T05:59:07Z | T2   | Codex (GPT-6)                 | bun test tests/analysis-protocol.test.ts: 3 passed; bun run test:e2e tests/analysis-worker.e2e.ts: 3 passed (Chromium, Firefox, WebKit); bun run build: passed; bun run check: 557 passed, typecheck passed; worker, client, protocol, analysis store and build entry updated.                                                     |
+| 2026-11-23T06:18:39Z | R1   | Codex (GPT-6)                 | bun test tests/training-service.test.ts: 81 passed; bun run check: typecheck passed, 558 tests passed. Scope warning for tests/training-service.test.ts is expected: R1 explicitly requires that test file.                                                                                                                        |
 
 ## Plan review history
 

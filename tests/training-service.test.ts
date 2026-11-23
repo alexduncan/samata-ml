@@ -57,8 +57,13 @@ import { fixtureLegacyTrainingResult, fixtureTrainingResult } from './fixtures/t
 import { installFakeIndexedDB } from './helpers/fake-indexeddb';
 import { createTrainingTestLocks } from './helpers/training-locks';
 import { comparisonOwner } from '../src/stores/comparison-preferences';
-import { $comparison, loadComparisonResults } from '../src/stores/comparison.store';
-import { $modelResults } from '../src/stores/model-results.store';
+import {
+	$comparison,
+	loadComparisonResults,
+	selectComparisonModels
+} from '../src/stores/comparison.store';
+import { $modelResults, currentResultIdentity } from '../src/stores/model-results.store';
+import { irisCrossValidation } from './fixtures/results/evaluations';
 
 const metadata: DatasetMetadata = {
 	id: 'training-dataset',
@@ -348,6 +353,44 @@ test('WML-P5-MODEL-1: comparison loads current runs and reports unavailable resu
 	$modelResults.setKey(2, { ...resource, status: 'lost', evaluation: null });
 	expect($comparison.get().unavailableModels).toContainEqual({ num: 2, reason: 'lost' });
 	expect($comparison.get().groups[0]?.reason).toBe('single-model');
+	$modelResults.set({});
+});
+
+test('WML-P5-MODEL-1 and WML-P5-STATE-2: wait for terminal groups and retain default-group selections', () => {
+	const initial = seed(5);
+	$appState.set({
+		...initial,
+		models: initial.models.map((model) => ({
+			...model,
+			status: 'trained',
+			resultRevision: `run-${model.num}`
+		}))
+	});
+	$modelResults.set({});
+	const evaluation = irisCrossValidation();
+	const publish = (num: number, fingerprint: string) => {
+		$modelResults.setKey(num, {
+			identity: currentResultIdentity(num)!,
+			status: 'ready',
+			evaluation: { ...evaluation, partitionFingerprint: fingerprint },
+			error: ''
+		});
+	};
+	publish(1, 'a'.repeat(64));
+	publish(2, 'a'.repeat(64));
+	expect($comparison.get().activeGroup).toBeNull();
+	expect($comparison.get().selected).toEqual([]);
+	for (const num of [3, 4, 5]) publish(num, 'b'.repeat(64));
+	expect($comparison.get().activeGroup?.fingerprint).toBe('b'.repeat(64));
+	const owner = comparisonOwner($appState.get())!;
+	selectComparisonModels(owner, [4]);
+	expect($appState.get().results.ui.fingerprint).toBe('b'.repeat(64));
+	expect($comparison.get().selected).toEqual([4]);
+	expect([$comparison.get().pairA, $comparison.get().pairB]).toEqual([null, null]);
+	selectComparisonModels(owner, []);
+	expect($comparison.get().selected).toEqual([]);
+	selectComparisonModels({ ...owner, epoch: owner.epoch + 1 }, [3, 4]);
+	expect($comparison.get().selected).toEqual([]);
 	$modelResults.set({});
 });
 

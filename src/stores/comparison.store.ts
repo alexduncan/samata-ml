@@ -56,8 +56,9 @@ export const $comparison = computed([$appState, $modelResults], (state, resource
 	const ui = ownedComparisonResults(state, state).ui;
 	const activeGroup =
 		groups.find((group) => group.fingerprint === ui.fingerprint && !group.disabled) ??
-		groups.find((group) => !group.disabled) ??
-		null;
+		(unavailableModels.some((model) => model.reason === 'loading')
+			? null
+			: (groups.find((group) => !group.disabled) ?? null));
 	const selected = activeGroup
 		? activeGroup.fingerprint === ui.fingerprint
 			? ui.selected.filter((num) => activeGroup.models.some((model) => model.num === num))
@@ -66,11 +67,14 @@ export const $comparison = computed([$appState, $modelResults], (state, resource
 	const selectedModels =
 		activeGroup?.models.filter((model) => selected.includes(model.num)) ?? [];
 	const pairA =
-		selectedModels.find((model) => model.num === ui.pairA) ?? selectedModels[0] ?? null;
-	const pairB =
-		selectedModels.find((model) => model.num === ui.pairB && model.num !== pairA?.num) ??
-		selectedModels.find((model) => model.num !== pairA?.num) ??
-		null;
+		selectedModels.length < 2
+			? null
+			: (selectedModels.find((model) => model.num === ui.pairA) ?? selectedModels[0] ?? null);
+	const pairB = pairA
+		? (selectedModels.find((model) => model.num === ui.pairB && model.num !== pairA.num) ??
+			selectedModels.find((model) => model.num !== pairA.num) ??
+			null)
+		: null;
 	const comparable = selectedModels.length >= 2;
 	return {
 		groups,
@@ -145,7 +149,10 @@ export function selectComparisonModels(owner: ComparisonOwner, selected: number[
 	const active = $comparison.get().activeGroup;
 	if (!active) return;
 	const valid = new Set(active.models.map((model) => model.num));
-	setComparisonUi(owner, { selected: selected.filter((num) => valid.has(num)) });
+	setComparisonUi(owner, {
+		fingerprint: active.fingerprint,
+		selected: selected.filter((num) => valid.has(num))
+	});
 }
 
 declare const WEB_ML_RUNTIME_REVISION: string;
