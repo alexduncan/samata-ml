@@ -1,8 +1,8 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready-for-review | **Updated:** 2026-11-23T08:06:14Z
+**Status:** draft | **Updated:** 2026-11-23T08:08:01Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -359,6 +359,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-23T06:16:18Z | Codex (GPT-6)         | approved          | Reviewed T1–T7, R1, labels and formatted cells; scout verified installed web-ml 0.2.0 contracts and current store defects. Canonical upstream checkout unavailable; pinned release governs.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | 2026-11-23T06:47:40Z | Codex (GPT-6)         | changes-requested | MAJOR: §C closes component APIs but omits chart whenSettled methods needed by T6 for asynchronous Plot rendering; define the settlement contract. MAJOR: Required reading points to the missing active Phase 4 plan; use its archived path. MINOR: T6 should update the existing HUMAN §6 styling item and stale placeholder text.                                                                                                                                                                                                                                                                                                                                                                             |
 | 2026-11-23T06:52:20Z | Codex (GPT-6)         | approved          | Reviewed T1–T7, chart settlement, archived Phase 4 reading and human queue; scout verified installed 0.2.0 contracts and current component hooks; no blockers                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 2026-11-23T08:08:01Z | Codex (GPT-6)         | changes-requested | MAJOR: Interfaces C applies the Phase 4 Plot draft exception to comparison charts, but specification/visual-design.md section 1.1 restricts it to Section 6 results charts; resolve the visual contract and obtain any necessary authorisation before implementing or accepting comparison chart styling. The user-authorised padding exception does not cover this.                                                                                                                                                                                                                                                                                                                                           |
 
 ## Change log
 
