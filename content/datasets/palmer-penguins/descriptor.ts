@@ -2,6 +2,11 @@ import type { AuthoredDatasetDescriptor } from '../../../src/types/sample-datase
 
 export default {
 	id: 'palmer-penguins',
+	remoteSource: {
+		url: 'https://raw.githubusercontent.com/allisonhorst/palmerpenguins/156daa4301838d9fdcc5b018b29b9149bf975552/inst/extdata/penguins.csv',
+		sha256: 'f204db2c753b0937caac3cb35258562c14f073e4bbc76be24b4c51ce22767a93',
+		byteLength: 15241
+	},
 	name: 'Palmer Archipelago Penguins',
 	tagline:
 		"Classify Antarctic penguin species with mixed types, missingness, and Simpson's paradox.",
@@ -119,7 +124,7 @@ export default {
 	provenance: {
 		homepageUrl: 'https://allisonhorst.github.io/palmerpenguins/',
 		sourceRepositoryUrl:
-			'https://raw.githubusercontent.com/allisonhorst/palmerpenguins/main/inst/extdata/penguins.csv',
+			'https://raw.githubusercontent.com/allisonhorst/palmerpenguins/156daa4301838d9fdcc5b018b29b9149bf975552/inst/extdata/penguins.csv',
 		retrievedAt: '2026-11-13',
 		license: 'CC0-1.0',
 		licenseUrl: 'https://creativecommons.org/publicdomain/zero/1.0/',

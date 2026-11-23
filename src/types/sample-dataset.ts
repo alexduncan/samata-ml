@@ -89,6 +89,9 @@ export interface AuthoredDatasetDescriptor {
 	ethicsWarnings?: string[];
 }
 
+/** Column and target advice usable without an active catalogue entry. */
+export type SampleDatasetGuidance = Pick<AuthoredDatasetDescriptor, 'columns' | 'modeling'>;
+
 export interface ComputedDatasetStats {
 	rowCount: number;
 	columnCount: number;

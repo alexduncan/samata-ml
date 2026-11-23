@@ -2,6 +2,14 @@ import type { AuthoredDatasetDescriptor } from '../../../src/types/sample-datase
 
 export default {
 	id: 'student-dropout',
+	buildSource: {
+		url: 'https://archive.ics.uci.edu/static/public/697/data.csv',
+		sha256: 'a1b1a6531bbb93a5c7fdf0093b47172776652a4ffb12342fb79655c85b74801b',
+		byteLength: 495642,
+		transform: 'strip-utf8-bom',
+		outputSha256: '542b53d93cdb250f0f39a470e15cb25d1c24fb559a98e333382afd9c5ae352eb',
+		outputByteLength: 495639
+	},
 	name: 'Higher Education Student Dropout & Success',
 	tagline:
 		'Predict 3-class undergraduate outcomes across demographic and socioeconomic attributes.',

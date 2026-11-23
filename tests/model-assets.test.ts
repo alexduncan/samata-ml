@@ -150,5 +150,13 @@ describe('prebuilt model assets', () => {
 		expect(headers).toContain('Cross-Origin-Resource-Policy: same-origin');
 		expect(headers).toMatch(/script-src 'self' 'wasm-unsafe-eval'/);
 		expect(headers).toMatch(/worker-src 'self'/);
+		const connect = headers.match(/connect-src ([^;]+);/)?.[1]?.split(' ');
+		expect(connect).toEqual([
+			"'self'",
+			'https://raw.githubusercontent.com/propublica/compas-analysis/',
+			'https://raw.githubusercontent.com/allisonhorst/palmerpenguins/156daa4301838d9fdcc5b018b29b9149bf975552/inst/extdata/penguins.csv',
+			'https://huggingface.co/datasets/scikit-learn/credit-card-clients/resolve/f809522649eaf948ad40a11ed575c4bb4d4460c1/UCI_Credit_Card.csv',
+			'https://huggingface.co/api/resolve-cache/datasets/scikit-learn/credit-card-clients/f809522649eaf948ad40a11ed575c4bb4d4460c1/UCI_Credit_Card.csv'
+		]);
 	});
 });

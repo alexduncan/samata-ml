@@ -656,7 +656,7 @@ export default {
 		license: 'NOASSERTION',
 		yearPublished: 2016,
 		creators: ['Julia Angwin', 'Jeff Larson', 'Surya Mattu', 'Lauren Kirchner'],
-		licenseUrl: 'https://github.com/propublica/compas-analysis',
+		licenseUrl: 'https://projects.propublica.org/datastore/terms/',
 		attribution:
 			'Compiled by ProPublica (Julia Angwin, Jeff Larson, Surya Mattu and Lauren Kirchner, 2016) from Broward County, Florida, public records; downloaded from ProPublica’s compas-analysis repository when loaded.',
 		retrievedAt: '2026-11-13',

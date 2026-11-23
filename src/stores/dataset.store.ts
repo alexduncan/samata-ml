@@ -8,9 +8,10 @@ import type { IngestionProgress, IngestionSource } from '../features/data/ingest
 import { getStorageClient, type StorageClient } from '../features/data/ingestion/storage-client';
 import { loadDataset } from '../features/data/load-dataset';
 import { loadSampleDescriptor } from '../features/data/sample-datasets';
+import { retiredSampleGuidance } from '../features/data/retired-sample-guidance';
 import { $appState } from './app.store';
 import type { DatasetMetadata, RawRecord } from '../types/dataset';
-import type { SampleDatasetDescriptor } from '../types/sample-dataset';
+import type { SampleDatasetGuidance } from '../types/sample-dataset';
 
 /** Status of dataset resource loading. */
 export type ResourceStatus = 'idle' | 'loading' | 'ready' | 'error';
@@ -20,7 +21,7 @@ export interface DatasetResourcesState {
 	datasetId: string | null;
 	status: ResourceStatus;
 	metadata: DatasetMetadata | null;
-	descriptor: SampleDatasetDescriptor | null;
+	descriptor: SampleDatasetGuidance | null;
 	error: string | null;
 }
 
@@ -145,21 +146,20 @@ export async function loadDatasetResources(datasetId: string): Promise<void> {
 		}
 
 		// Descriptors resolve through the persisted sampleId, not dataset UUID.
-		const appDataset = $appState.get().dataset;
-		const sampleId =
-			appDataset && appDataset.id === datasetId
-				? appDataset.sampleId
-				: (metadata.sampleId ?? null);
+		const sampleId = metadata.sampleId ?? null;
 
-		let descriptor: SampleDatasetDescriptor | null = null;
+		let descriptor: SampleDatasetGuidance | null = null;
 		if (sampleId) {
-			try {
-				descriptor = await loadSampleDescriptor(sampleId);
-			} catch (descError) {
-				console.warn(
-					'Sample descriptor could not be loaded; continuing without it.',
-					descError
-				);
+			descriptor = retiredSampleGuidance[sampleId] ?? null;
+			if (!descriptor) {
+				try {
+					descriptor = await loadSampleDescriptor(sampleId);
+				} catch (descError) {
+					console.warn(
+						'Sample descriptor could not be loaded; continuing without it.',
+						descError
+					);
+				}
 			}
 		}
 

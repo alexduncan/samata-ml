@@ -2,6 +2,11 @@ import type { AuthoredDatasetDescriptor } from '../../../src/types/sample-datase
 
 export default {
 	id: 'credit-card-default',
+	remoteSource: {
+		url: 'https://huggingface.co/datasets/scikit-learn/credit-card-clients/resolve/f809522649eaf948ad40a11ed575c4bb4d4460c1/UCI_Credit_Card.csv',
+		sha256: 'a0f0ab49d6326671d6cd83be5c88dcf18007025fe9a53ecd699119c871176ca1',
+		byteLength: 2862995
+	},
 	name: 'Default of Credit Card Clients',
 	tagline:
 		'Predict consumer credit card default from 6-month billing histories and demographics.',
@@ -342,7 +347,7 @@ export default {
 	provenance: {
 		homepageUrl: 'https://archive.ics.uci.edu/dataset/350/default+of+credit+card+clients',
 		sourceRepositoryUrl:
-			'https://huggingface.co/datasets/scikit-learn/credit-card-clients/resolve/main/UCI_Credit_Card.csv',
+			'https://huggingface.co/datasets/scikit-learn/credit-card-clients/resolve/f809522649eaf948ad40a11ed575c4bb4d4460c1/UCI_Credit_Card.csv',
 		license: 'CC-BY-4.0',
 		yearPublished: 2009,
 		creators: ['I-Cheng Yeh', 'Che-hui Lien'],

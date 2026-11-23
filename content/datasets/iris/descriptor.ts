@@ -2,6 +2,14 @@ import type { AuthoredDatasetDescriptor } from '../../../src/types/sample-datase
 
 export default {
 	id: 'iris',
+	buildSource: {
+		url: 'https://archive.ics.uci.edu/static/public/53/data.csv',
+		sha256: 'daaeb5e3e889d07fbdd44544f5a39fe2372a07172e25899d577be0ad74df9e65',
+		byteLength: 4615,
+		transform: 'identity',
+		outputSha256: 'daaeb5e3e889d07fbdd44544f5a39fe2372a07172e25899d577be0ad74df9e65',
+		outputByteLength: 4615
+	},
 	name: 'Iris Flower Species',
 	tagline: 'Classify three Iris flower species from sepal and petal measurements.',
 	description:

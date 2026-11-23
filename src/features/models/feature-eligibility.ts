@@ -1,5 +1,5 @@
 import type { DatasetMetadata } from '../../types/dataset';
-import type { SampleDatasetDescriptor } from '../../types/sample-dataset';
+import type { SampleDatasetGuidance } from '../../types/sample-dataset';
 import type { ColumnType } from '../../types/state';
 
 /**
@@ -69,7 +69,7 @@ export function formatFeatureNote(code: FeatureNoteCode): string {
 export function buildFeatureRows(
 	metadata: DatasetMetadata,
 	target: string,
-	descriptor: SampleDatasetDescriptor | null
+	descriptor: SampleDatasetGuidance | null
 ): FeatureRow[] {
 	if (!metadata || !Array.isArray(metadata.columns)) {
 		return [];

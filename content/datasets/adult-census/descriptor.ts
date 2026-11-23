@@ -2,6 +2,14 @@ import type { AuthoredDatasetDescriptor } from '../../../src/types/sample-datase
 
 export default {
 	id: 'adult-census',
+	buildSource: {
+		url: 'https://archive.ics.uci.edu/ml/machine-learning-databases/adult/adult.data',
+		sha256: '5b00264637dbfec36bdeaab5676b0b309ff9eb788d63554ca0a249491c86603d',
+		byteLength: 3974305,
+		transform: 'adult-training',
+		outputSha256: '3319b2fef796cbf96ef520c0daf10b9d90c96ab68a2db2589daefc4ed175d11a',
+		outputByteLength: 3551168
+	},
 	name: 'Adult Census Income',
 	tagline:
 		'Predict >$50K annual income from 1994 US Census records and audit intersectional bias.',

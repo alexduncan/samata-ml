@@ -2,6 +2,14 @@ import type { AuthoredDatasetDescriptor } from '../../../src/types/sample-datase
 
 export default {
 	id: 'bank-marketing',
+	buildSource: {
+		url: 'https://archive.ics.uci.edu/ml/machine-learning-databases/00222/bank.zip',
+		sha256: '99d7e8eb12401ed278b793984423915411ea8df099e1795f9fefe254f513fe5e',
+		byteLength: 579043,
+		transform: 'bank-full-zip',
+		outputSha256: 'd1513ec63b385506f7cfce9f2c5caa9fe99e7ba4e8c3fa264b3aaf0f849ed32d',
+		outputByteLength: 4610348
+	},
 	name: 'Bank Telemarketing Term Deposit',
 	tagline:
 		'Predict term-deposit subscriptions with semicolon CSV parsing and call-duration leakage.',
@@ -196,7 +204,8 @@ export default {
 	],
 	provenance: {
 		homepageUrl: 'https://archive.ics.uci.edu/dataset/222/bank+marketing',
-		sourceRepositoryUrl: 'https://archive.ics.uci.edu/static/public/222/bank+marketing.zip',
+		sourceRepositoryUrl:
+			'https://archive.ics.uci.edu/ml/machine-learning-databases/00222/bank.zip',
 		license: 'CC-BY-4.0',
 		licenseUrl: 'https://creativecommons.org/licenses/by/4.0/',
 		yearPublished: 2012,

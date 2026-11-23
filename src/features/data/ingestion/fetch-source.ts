@@ -7,6 +7,8 @@ export interface FetchWithRetryOptions {
 	signal?: AbortSignal;
 	/** Injectable Fetch implementation, mainly for deterministic tests. */
 	fetchImpl?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+	/** Privacy settings for the requested source. */
+	request?: Pick<RequestInit, 'credentials' | 'referrerPolicy'>;
 	/** Injectable retry delay, mainly for deterministic tests. */
 	sleep?: (milliseconds: number) => Promise<void>;
 }
@@ -114,7 +116,7 @@ export async function fetchWithRetry(
 		if (options.signal?.aborted) throw abortError();
 		let response: Response;
 		try {
-			response = await fetchImpl(resolvedUrl, { signal: options.signal });
+			response = await fetchImpl(resolvedUrl, { ...options.request, signal: options.signal });
 		} catch (error) {
 			if (isAbort(error, options.signal)) throw abortError();
 			if (!(error instanceof TypeError)) {

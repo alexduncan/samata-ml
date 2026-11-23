@@ -2,6 +2,14 @@ import type { AuthoredDatasetDescriptor } from '../../../src/types/sample-datase
 
 export default {
 	id: 'heart-disease',
+	buildSource: {
+		url: 'https://archive.ics.uci.edu/static/public/45/data.csv',
+		sha256: '868cd646a53ffbc55611192bae7496911a163937c185710f6b8aa11549b88df1',
+		byteLength: 11334,
+		transform: 'identity',
+		outputSha256: '868cd646a53ffbc55611192bae7496911a163937c185710f6b8aa11549b88df1',
+		outputByteLength: 11334
+	},
 	name: 'Cleveland Heart Disease Diagnosis',
 	tagline:
 		'Diagnose coronary artery disease severity from clinical vitals, ECGs, and fluoroscopy.',

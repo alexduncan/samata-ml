@@ -270,7 +270,9 @@ describe('runIngestion', () => {
 				csvOrigin: 'remote'
 			}
 		};
-		const fetchImpl = async (input: RequestInfo | URL) => {
+		const requests: { url: string; init?: RequestInit }[] = [];
+		const fetchImpl = async (input: RequestInfo | URL, init?: RequestInit) => {
+			requests.push({ url: String(input), init });
 			if (String(input).endsWith('descriptor.json')) {
 				descriptor.stats.sha256 = expectedHash;
 				return new Response(JSON.stringify(descriptor), {
@@ -284,6 +286,11 @@ describe('runIngestion', () => {
 			{ db: db!, uuid: () => 'remote-match', fetchImpl }
 		);
 		expect(result.sampleId).toBe('remote-sample');
+		expect(requests[0]?.init?.credentials).toBeUndefined();
+		expect(requests[1]?.init).toMatchObject({
+			credentials: 'omit',
+			referrerPolicy: 'no-referrer'
+		});
 		expect(await db!.count('raw_records')).toBe(3);
 
 		expectedHash = '0'.repeat(64);
@@ -298,6 +305,26 @@ describe('runIngestion', () => {
 		});
 		expect(await db!.get('metadata', 'remote-mismatch')).toBeUndefined();
 		expect(await db!.get('raw_records', ['remote-mismatch', 0])).toBeUndefined();
+	});
+
+	it('rejects each retired ID before fetching a source', async () => {
+		for (const sampleId of ['pima-diabetes', 'titanic']) {
+			const requests: string[] = [];
+			await expect(
+				runIngestion(
+					{ kind: 'sample', sampleId },
+					{
+						db: db!,
+						fetchImpl: async (url) => {
+							requests.push(String(url));
+							return new Response('', { status: 404 });
+						}
+					}
+				)
+			).rejects.toMatchObject({ code: 'SAMPLE_NOT_FOUND' });
+			expect(requests).toHaveLength(1);
+			expect(requests[0]).toContain('/datasets/' + sampleId + '/descriptor.json');
+		}
 	});
 
 	it('maps descriptor 404s to SAMPLE_NOT_FOUND', async () => {

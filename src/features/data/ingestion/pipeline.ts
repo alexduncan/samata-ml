@@ -185,6 +185,10 @@ async function resolveSource(
 			.map((column) => [column.name, column.implicitMissingValues!])
 	);
 	const blob = await fetchWithRetry(descriptor.files.csv, {
+		request:
+			descriptor.files.csvOrigin === 'remote'
+				? { credentials: 'omit', referrerPolicy: 'no-referrer' }
+				: undefined,
 		signal: options.signal,
 		fetchImpl: options.fetchImpl,
 		sleep: options.sleep
