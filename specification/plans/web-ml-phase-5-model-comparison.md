@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-23T06:18:39Z
+**Status:** ready | **Updated:** 2026-11-23T06:28:11Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T06:16:18Z | **Verification:** approved
 **Verified hash:** sha256:ba02134bc3c3f4b1220d9ee3c57ea925a3fdb99a5a936ec22a510a9cec2c6386
@@ -243,11 +243,11 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 - **Must not touch:** `css/root.css`, `src/stores/`
 - **Implementation:** Per Interfaces §C and D8. Mount browser fixtures with Phase 4's `tests/helpers/mount-results-fixture.ts`. Stories: `TwoModels` with an enabled swap, `EightModels`, `LimitReached`, `MultipleGroups`, `Binary`, `Multiclass`, `Sorted`, `LongLabel`, `RTL`; docs Do/Don't ("Do compare against the baselines"; "Don't read the top row as the winner").
 - **Acceptance criteria:**
-    - [ ] `WML-P5-UI-1` — Activating a header button cycles ascending → descending → unsorted, updates `aria-sort` on that header only and emits one event; baseline rows never move when sorting.
-    - [ ] `WML-P5-UI-2` — With eight selected, unchecked boxes are disabled and the visible reason is associated via `aria-describedby`; unchecking re-enables them; the pair picker never allows A = B. With exactly two comparable selected models, locate the button by its “Swap models A and B” accessible name and verify that Tab reaches it after the two selects. Enter and then Space each emit one event containing both model numbers in reversed order, focus stays on the button, the status exposes the committed order and the select values show both orders. An invalid pair disables the swap and emits no event.
-    - [ ] `WML-P5-UI-3` — No cell, header or row gets winner styling or text for any fixture; micro-bars are `aria-hidden` and every value is readable text; long model names wrap at 320 px.
+    - [x] `WML-P5-UI-1` — Activating a header button cycles ascending → descending → unsorted, updates `aria-sort` on that header only and emits one event; baseline rows never move when sorting.
+    - [x] `WML-P5-UI-2` — With eight selected, unchecked boxes are disabled and the visible reason is associated via `aria-describedby`; unchecking re-enables them; the pair picker never allows A = B. With exactly two comparable selected models, locate the button by its “Swap models A and B” accessible name and verify that Tab reaches it after the two selects. Enter and then Space each emit one event containing both model numbers in reversed order, focus stays on the button, the status exposes the committed order and the select values show both orders. An invalid pair disables the swap and emits no event.
+    - [x] `WML-P5-UI-3` — No cell, header or row gets winner styling or text for any fixture; micro-bars are `aria-hidden` and every value is readable text; long model names wrap at 320 px.
 - **Verification:** `bun run test:e2e tests/comparison-controls.e2e.ts`; `bun run test:stories`; `bun test tests/style-tokens.test.ts`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-23T06:28:11Z)
 
 ### T4 — Paired fold strip, per-class error bars and relative confusion matrix
 
@@ -341,6 +341,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-22T21:54:13Z | T1   | Codex (GPT-6)                 | bun test tests/comparison-model.test.ts: 5 passed; bun test tests/state-and-storage.test.ts: 41 passed; bun test tests/training-domain.test.ts: 10 passed; bun test tests/training-service.test.ts: 80 passed; bun run check: 554 passed, typecheck passed; comparison grouping, preferences, checkpoint and replay paths updated. |
 | 2026-11-23T05:59:07Z | T2   | Codex (GPT-6)                 | bun test tests/analysis-protocol.test.ts: 3 passed; bun run test:e2e tests/analysis-worker.e2e.ts: 3 passed (Chromium, Firefox, WebKit); bun run build: passed; bun run check: 557 passed, typecheck passed; worker, client, protocol, analysis store and build entry updated.                                                     |
 | 2026-11-23T06:18:39Z | R1   | Codex (GPT-6)                 | bun test tests/training-service.test.ts: 81 passed; bun run check: typecheck passed, 558 tests passed. Scope warning for tests/training-service.test.ts is expected: R1 explicitly requires that test file.                                                                                                                        |
+| 2026-11-23T06:28:11Z | T3   | Codex (GPT-6)                 | bun run test:e2e tests/comparison-controls.e2e.ts: 9 passed across three browsers; bun run test:stories: 486 passed; bun test tests/style-tokens.test.ts: 8 passed; bun run check: typecheck passed, 558 tests passed. Scope warning is the browser fixture required by the task.                                                  |
 
 ## Plan review history
 
