@@ -17,6 +17,7 @@ import { $datasetResources } from './stores/dataset.store';
 import { $storageSaveNotice, initPersister, refreshTrainingSnapshot } from './stores/persister';
 import { reconcileProtectedStartup } from './stores/reconciler';
 import { initGlobalStyles } from './styles/global';
+import { $staleAssetDetected, installStaleReleaseDetection } from './common/release/stale-release';
 import { i18n } from './i18n';
 import { STATE_STORAGE_KEY } from './types/state';
 import {
@@ -37,6 +38,11 @@ const storageMessages = i18n('app-shell-storage', {
 	retrying: 'Saving…',
 	bestEffort: 'Your changes could not be saved. They are available in this tab.',
 	datasetPending: 'The dataset is saved, but finishing is pending. Retry saving.'
+});
+const releaseMessages = i18n('app-shell-release', {
+	message:
+		'A newer version of samatā.ml is available. Reload to continue with your saved progress.',
+	reload: 'Reload'
 });
 
 async function retryStartup(container: HTMLElement): Promise<void> {
@@ -128,10 +134,19 @@ export function renderAppShell(container: HTMLElement): void {
 	const currentRoute = $route.get();
 	const activeWorkflowRoute = getActiveWorkflowRoute(currentRoute);
 	const messages = storageMessages.get();
+	const release = releaseMessages.get();
 
 	const template = html`
 		<app-sidebar></app-sidebar>
 		<main id="content">
+			${$staleAssetDetected.get()
+				? html`<div class="notification notification-alert" role="alert">
+						<span class="notification-text">${release.message}</span>
+						<button type="button" class="btn" @click=${() => window.location.reload()}>
+							${release.reload}
+						</button>
+					</div>`
+				: nothing}
 			${startupRecovery
 				? html`
 						<header class="page-header">
@@ -248,8 +263,11 @@ export async function bootstrapApp(): Promise<void> {
 		});
 		$storageSaveNotice.listen(() => renderAppShell(root));
 		$publicationPending.listen(() => renderAppShell(root));
+		$staleAssetDetected.listen(() => renderAppShell(root));
+		installStaleReleaseDetection();
 		getTrainingService().observePublishedStops();
 		storageMessages.listen(() => renderAppShell(root));
+		releaseMessages.listen(() => renderAppShell(root));
 		window.addEventListener('storage', (event) => {
 			if (event.key !== STATE_STORAGE_KEY && event.key !== null) return;
 			void refreshTrainingSnapshot().then((ack) => {

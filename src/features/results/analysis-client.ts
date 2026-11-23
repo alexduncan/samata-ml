@@ -1,3 +1,4 @@
+import { reportWorkerFailure } from '../../common/release/worker-failures';
 import { isRopeReply, ropeRequestId, type RopeRequest, type RopeView } from './analysis-protocol';
 
 type Pending = {
@@ -17,7 +18,7 @@ export class AnalysisClient {
 			new Worker(ANALYSIS_WORKER_URL, { type: 'module' })
 	) {}
 
-	private fail(): void {
+	private fail(reportFailure = false): void {
 		if (this.worker) {
 			this.worker.onmessage = null;
 			this.worker.onerror = null;
@@ -30,6 +31,9 @@ export class AnalysisClient {
 			pending.reject(new Error('Analysis worker failed'));
 		}
 		this.pending.clear();
+		if (reportFailure) {
+			reportWorkerFailure('analysis-worker-failed');
+		}
 	}
 
 	private getWorker(): Worker {
@@ -53,8 +57,8 @@ export class AnalysisClient {
 			if (event.data.type === 'rope-result') pending.resolve(event.data.result);
 			else pending.reject(new Error(event.data.reason));
 		};
-		worker.onerror = () => this.fail();
-		worker.onmessageerror = () => this.fail();
+		worker.onerror = () => this.fail(true);
+		worker.onmessageerror = () => this.fail(true);
 		this.worker = worker;
 		return worker;
 	}

@@ -14,8 +14,14 @@ import {
 } from '../src/features/models/training/training-service';
 import {
 	createStorageClient,
+	getStorageClient,
 	type StorageClient
 } from '../src/features/data/ingestion/storage-client';
+import {
+	onWorkerFailure,
+	resetWorkerFailuresForTests,
+	type WorkerFailureCode
+} from '../src/common/release/worker-failures';
 import {
 	installWorkerHandler,
 	type WorkerHandlerOptions
@@ -324,6 +330,72 @@ describe('storage worker client and dataset service', () => {
 		for (const filePath of files) {
 			const contents = await readFile(filePath, 'utf8');
 			expect(contents).not.toMatch(/from\s+['"](?:lit|nanostores|[^'"]*\/stores\/)/);
+		}
+	});
+
+	it('REL-STALE-4: rejects pending requests with STORAGE_FAILED, resets singleton and reports worker error once', async () => {
+		resetWorkerFailuresForTests();
+		const reported: WorkerFailureCode[] = [];
+		const unsubscribe = onWorkerFailure((code) => reported.push(code));
+		try {
+			for (const [eventType, expectedCode] of [
+				['error', 'storage-worker-error'],
+				['messageerror', 'storage-worker-protocol-error']
+			] as const) {
+				reported.length = 0;
+				const [clientPort] = createMemoryPortPair();
+				const workerEvents = new EventTarget();
+				const client = createStorageClient(clientPort as unknown as MessagePort, {
+					workerEvents
+				});
+
+				const pending = client.getMetadata('missing');
+				workerEvents.dispatchEvent(new Event(eventType));
+				workerEvents.dispatchEvent(new Event(eventType));
+				await expect(pending).rejects.toMatchObject({
+					name: 'IngestionError',
+					code: 'STORAGE_FAILED'
+				});
+				expect(reported).toEqual([expectedCode]);
+			}
+
+			// Verify getStorageClient singleton resets after error so the next call spawns a fresh worker.
+			const spawned: Array<InMemoryPort & { terminate: () => void }> = [];
+			const previousWorker = globalThis.Worker;
+			class FakeStorageWorker extends InMemoryPort {
+				terminate(): void {
+					this.close();
+				}
+			}
+			Object.defineProperty(globalThis, 'Worker', {
+				configurable: true,
+				value: function () {
+					const worker = new FakeStorageWorker();
+					spawned.push(worker);
+					return worker;
+				}
+			});
+			try {
+				reported.length = 0;
+				const first = getStorageClient();
+				const req = first.getMetadata('abc');
+				spawned[0]!.dispatchEvent(new Event('error'));
+				await expect(req).rejects.toMatchObject({ code: 'STORAGE_FAILED' });
+				expect(reported).toEqual(['storage-worker-error']);
+
+				const second = getStorageClient();
+				expect(second).not.toBe(first);
+				expect(spawned).toHaveLength(2);
+				second.dispose();
+			} finally {
+				Object.defineProperty(globalThis, 'Worker', {
+					configurable: true,
+					value: previousWorker
+				});
+			}
+		} finally {
+			unsubscribe();
+			resetWorkerFailuresForTests();
 		}
 	});
 });

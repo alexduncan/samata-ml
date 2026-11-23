@@ -53,6 +53,11 @@ import {
 	type PersistedAppState
 } from '../src/types/state';
 import { headlineMetrics } from '../src/common/evaluation/headline-metrics';
+import {
+	onWorkerFailure,
+	resetWorkerFailuresForTests,
+	type WorkerFailureCode
+} from '../src/common/release/worker-failures';
 import { fixtureLegacyTrainingResult, fixtureTrainingResult } from './fixtures/training/results';
 import { installFakeIndexedDB } from './helpers/fake-indexeddb';
 import { createTrainingTestLocks } from './helpers/training-locks';
@@ -2043,5 +2048,58 @@ test('WML-P4-STATE-1: a stale preference write merges field by field with anothe
 	} finally {
 		stopPersister();
 		await locks.request(TRAINING_STATE_LOCK, () => {});
+	}
+});
+
+test('REL-STALE-1: reports training worker crash, protocol and startup failures without altering settlement codes', async () => {
+	seed(3);
+	const reported: WorkerFailureCode[] = [];
+	const unsubscribe = onWorkerFailure((code) => reported.push(code));
+	try {
+		const crashRun = service.start(1);
+		const crashWorker = await workerAt(0);
+		crashWorker.onerror?.call(crashWorker as unknown as Worker, new ErrorEvent('error'));
+		await crashRun;
+		expect(getTrainingSession(crashWorker.identity)?.status).toBe('failed');
+		expect($appState.get().models[0]?.error).toMatchObject({
+			code: 'TRAINING_FAILED',
+			details: 'worker-crashed'
+		});
+
+		const protocolRun = service.start(2);
+		const protocolWorker = await workerAt(1);
+		protocolWorker.onmessageerror?.call(
+			protocolWorker as unknown as Worker,
+			new MessageEvent('messageerror')
+		);
+		await protocolRun;
+		expect(getTrainingSession(protocolWorker.identity)?.status).toBe('failed');
+		expect($appState.get().models[1]?.error).toMatchObject({
+			code: 'TRAINING_FAILED',
+			details: 'worker-protocol-error'
+		});
+
+		const startupService = createTrainingService({
+			locks,
+			persistence: { storage },
+			isIsolated: () => true,
+			createWorker: () => {
+				throw new Error('spawn failed');
+			}
+		});
+		await startupService.start(3);
+		expect($appState.get().models[2]?.error).toMatchObject({
+			code: 'TRAINING_FAILED',
+			details: 'worker-startup-failed'
+		});
+
+		expect(reported).toEqual([
+			'training-worker-crashed',
+			'training-worker-protocol-error',
+			'training-worker-startup-failed'
+		]);
+	} finally {
+		unsubscribe();
+		resetWorkerFailuresForTests();
 	}
 });

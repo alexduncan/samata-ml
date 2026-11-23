@@ -1,5 +1,6 @@
 import { atom } from 'nanostores';
 import { headlineMetrics } from '../../../common/evaluation/headline-metrics';
+import { reportWorkerFailure } from '../../../common/release/worker-failures';
 import { INGESTION_LOCK, deleteDataset, getMetadata } from '../../../common/storage/db';
 import {
 	readTrainingCheckpoint,
@@ -439,11 +440,17 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 					}
 					settle(reply);
 				};
-				port.onerror = () => settle({ kind: 'failed', identity, code: 'worker-crashed' });
-				port.onmessageerror = () =>
+				port.onerror = () => {
+					reportWorkerFailure('training-worker-crashed');
+					settle({ kind: 'failed', identity, code: 'worker-crashed' });
+				};
+				port.onmessageerror = () => {
+					reportWorkerFailure('training-worker-protocol-error');
 					settle({ kind: 'failed', identity, code: 'worker-protocol-error' });
+				};
 				port.postMessage(attempt.request);
 			} catch {
+				reportWorkerFailure('training-worker-startup-failed');
 				settle({ kind: 'failed', identity, code: 'worker-startup-failed' });
 			}
 		});

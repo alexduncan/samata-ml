@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { buttonStyles } from '../src/styles/button.styles';
 import { chicletStyles } from '../src/styles/chiclet.styles';
 import { dialogStyles } from '../src/styles/dialog.styles';
-import { loadSampleDataset } from './journeys/helpers';
+import { dismissWelcomeModal, loadSampleDataset } from './journeys/helpers';
 import { MOCKUPS_URL } from '../scripts/ports';
 
 type FocusableView = HTMLElement & { focusHeading(signal: AbortSignal): Promise<void> };
@@ -927,6 +927,128 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await expect(page.locator('main')).toHaveCSS('margin-inline-start', '0px');
 		await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
 		await expect.poll(() => page.evaluate(() => window.__appState!.get().target)).toBe('class');
+	});
+
+	test('REL-STALE-1..3: worker load failure shows reload notice only on build mismatch, passes axe and preserves state across reload', async ({
+		page,
+		browserName
+	}) => {
+		let failStorageWorker = false;
+		if (browserName === 'webkit') {
+			await page.addInitScript(() => {
+				const NativeWorker = window.Worker;
+				window.Worker = new Proxy(NativeWorker, {
+					construct(target, args, newTarget) {
+						const nextArgs = [...args];
+						if (
+							String(nextArgs[0]).endsWith('/storage.worker.js') &&
+							sessionStorage.getItem('samata-fail-storage-worker') === '1'
+						) {
+							nextArgs[0] = '/__html-storage-worker';
+						}
+						return Reflect.construct(target, nextArgs, newTarget);
+					}
+				});
+			});
+			await page.route('**/__html-storage-worker', (route) =>
+				route.fulfill({
+					status: 200,
+					contentType: 'text/html; charset=utf-8',
+					headers: {
+						'Cross-Origin-Opener-Policy': 'same-origin',
+						'Cross-Origin-Embedder-Policy': 'require-corp',
+						'Cross-Origin-Resource-Policy': 'same-origin'
+					},
+					body: '<!doctype html><html><body>Not a worker</body></html>'
+				})
+			);
+		} else {
+			await page.route('**/storage.worker.js', (route) => {
+				if (failStorageWorker) {
+					return route.fulfill({
+						status: 200,
+						contentType: 'text/html; charset=utf-8',
+						headers: {
+							'Cross-Origin-Opener-Policy': 'same-origin',
+							'Cross-Origin-Embedder-Policy': 'require-corp',
+							'Cross-Origin-Resource-Policy': 'same-origin'
+						},
+						body: '<!doctype html><html><body>Not a worker</body></html>'
+					});
+				}
+				return route.continue();
+			});
+		}
+
+		// 1. Matching build in /release.json must not show the stale-release notice.
+		await page.goto('/');
+		await dismissWelcomeModal(page);
+		failStorageWorker = true;
+		await page.evaluate(() => sessionStorage.setItem('samata-fail-storage-worker', '1'));
+
+		let releaseRequests = 0;
+		page.on('request', (req) => {
+			if (new URL(req.url()).pathname === '/release.json') releaseRequests++;
+		});
+
+		await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
+		await expect.poll(() => releaseRequests).toBeGreaterThanOrEqual(1);
+		await expect(
+			page.locator('#content > div.notification.notification-alert[role="alert"]')
+		).toHaveCount(0);
+
+		// 2. Different build in /release.json shows the notice at the top of main, passes axe, and reloads cleanly.
+		await page.route('**/release.json', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					version: '9.9.9',
+					build: 'newer-release-build',
+					workers: {
+						storage: '/storage.worker.js',
+						training: '/training.worker.js',
+						analysis: '/analysis.worker.js'
+					}
+				})
+			})
+		);
+
+		await page.reload();
+		await expect(page.locator('app-welcome-modal dialog')).toBeHidden();
+		await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
+
+		const notice = page.locator('#content > div.notification.notification-alert[role="alert"]');
+		await expect(notice).toBeVisible();
+		await expect(notice).toContainText(
+			'A newer version of samatā.ml is available. Reload to continue with your saved progress.'
+		);
+		const reloadButton = notice.getByRole('button', { name: 'Reload', exact: true });
+		await expect(reloadButton).toBeVisible();
+		await expect(reloadButton).not.toBeFocused();
+
+		const axe = await new AxeBuilder({ page })
+			.include('#content > div.notification.notification-alert[role="alert"]')
+			.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+			.analyze();
+		expect(axe.violations).toEqual([]);
+
+		// Clear failure flag and verify Reload reloads the document while keeping saved state.
+		failStorageWorker = false;
+		await page.evaluate(() => sessionStorage.removeItem('samata-fail-storage-worker'));
+		await reloadButton.focus();
+		await expect(reloadButton).toBeFocused();
+		const navigation = page.waitForEvent('load');
+		await reloadButton.click();
+		await navigation;
+		await expect(notice).toHaveCount(0);
+		await expect(page.locator('app-welcome-modal dialog')).toBeHidden();
+		expect(
+			await page.evaluate(() => {
+				const raw = localStorage.getItem('samata-ml:state');
+				return raw ? JSON.parse(raw).onboarding.welcomeDismissed : false;
+			})
+		).toBe(true);
 	});
 });
 

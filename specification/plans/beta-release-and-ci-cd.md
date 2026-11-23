@@ -1,6 +1,6 @@
 # Beta release, asset cache invalidation, Umami telemetry and Cloudflare CI/CD
 
-**Status:** ready | **Updated:** 2026-11-23T14:25:06Z
+**Status:** ready | **Updated:** 2026-11-23T14:32:06Z
 **Authors:** Google Antigravity (Gemini 4 Argon High), Codex (GPT-6), Claude Code (claude-opus-5-5) | **Created:** 2026-11-21T19:43:46Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-23T13:44:04Z | **Verification:** approved
 **Verified hash:** sha256:96f39da40609b44e0196a2e90de1a6f2b870e6a43fa215129bbd7967c5cdb565
@@ -306,12 +306,12 @@ A prerelease `minor` or `major` drops the prerelease when the lower components a
         - stale check: same build, different build, 404, invalid JSON, network rejection, concurrent calls producing one request, and no throw.
     3. E2E in `tests/app-shell.e2e.ts` (dev server): route `/release.json` to a different `build`, and make the storage worker load fail by serving `/storage.worker.js` as an HTML 200 body through `page.route`. Where a browser does not route dedicated-worker script requests, use the `addInitScript` proxy of `window.Worker` (precedent: `tests/fixtures/training/browser.ts` L96–L128) to substitute a URL that returns HTML. Trigger a fresh storage worker spawn, and expect the alert with a focusable **Reload** that reloads the page and keeps saved state. With a matching `build`, no notice appears. Run scoped axe on the notice.
 - **Acceptance criteria:**
-    - [ ] `REL-STALE-1` — The notice appears only after a worker failure when `/release.json` reports a different build. Ordinary dataset validation or training failures (for example `training-failed`) never probe or show the notice.
-    - [ ] `REL-STALE-2` — **Reload** always reloads, with no session guard, and saved workflow state survives the reload.
-    - [ ] `REL-STALE-3` — The notice is `role="alert"` at the top of `main`, does not steal focus, has a native button with its visible name and passes scoped axe checks. Strings come from `app-shell-release`.
-    - [ ] `REL-STALE-4` — After a storage worker error, pending storage requests reject with `STORAGE_FAILED` and the next request uses a new worker.
+    - [x] `REL-STALE-1` — The notice appears only after a worker failure when `/release.json` reports a different build. Ordinary dataset validation or training failures (for example `training-failed`) never probe or show the notice.
+    - [x] `REL-STALE-2` — **Reload** always reloads, with no session guard, and saved workflow state survives the reload.
+    - [x] `REL-STALE-3` — The notice is `role="alert"` at the top of `main`, does not steal focus, has a native button with its visible name and passes scoped axe checks. Strings come from `app-shell-release`.
+    - [x] `REL-STALE-4` — After a storage worker error, pending storage requests reject with `STORAGE_FAILED` and the next request uses a new worker.
 - **Verification:** `bun test tests/worker-failures.test.ts`; `bun test tests/stale-release.test.ts`; `bun test tests/storage-client.test.ts`; `bun test tests/training-service.test.ts`; `bun test tests/analysis-protocol.test.ts`; `bun test tests/repository-conventions.test.ts`; `bun run check`; `bun run test:e2e tests/app-shell.e2e.ts`; `bun run format:check <changed files>`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-23T14:32:06Z)
 
 ### T4 — Beta Umami client, allowlist and beta headers
 
@@ -492,6 +492,7 @@ None.
 | 2026-11-22T16:22:03Z | —    | Google Antigravity (Gemini 4 Argon High) | Aligned D7 and T7 with `agent-workflow/specification/plans/github-pull-requests-and-ci.md` and filed upstream request `../agent-workflow/specification/requests/2026-11-22-parameterised-github-ci-cd-and-beta-activation.md`.                                                                                       |
 | 2026-11-23T14:17:19Z | T1 | Google Antigravity (Gemini 4 Hydrogen High) | Baseline check: 586 pass/0 fail (59 files). E2E baseline (2 runs/project, 389 tests): chromium run1 368 pass/20 fail/1 not run (3.6m), run2 367 pass/21 fail/1 not run (3.6m); firefox run1 299 pass/6 fail/83 skip/1 not run (2.6m), run2 299 pass/6 fail/83 skip/1 not run (2.6m); webkit run1 296 pass/6 fail/86 skip/1 not run (2.3m), run2 295 pass/7 fail/86 skip/1 not run (2.8m). Flaky (1 run only, not listed): MOD-SETUP-4, NAV-E2E-2, MOD-SETUP-1 (chromium), WML-P4-UI-10 (webkit). KNOWN_FAILURES (20 entries): PH-AC-2, DATA-FLOW-2, DATA-UP-2, MOCKUP-REVIEW-1..3 (all 3), WML-P2-ROUTE-2, DATA-PRE-2, MOD-SETUP-2..3, 9 visual-parity tests (chromium), SIDE-AC-10 screenshot (chromium, linux). Verification: release/build-constants/known-failures tests pass; bun run check 594 pass/0 fail (62 files); version:release prerelease --dry-run exit 0; deploy:dry-run exit 0 without credentials (94 files, 0.31 KiB); format:check pass. |
 | 2026-11-23T14:25:06Z | T2 | Google Antigravity (Gemini 4 Hydrogen High) | Added scripts/headers-file.ts, scripts/release-headers.ts, public/robots.txt, two-pass hashed /bundles/ build, release.json, worker/manifest build constants, and --dist _headers emulation. Verification: headers-file, model-assets, and build-cache-invalidation tests pass; bun run check 603 pass/0 fail (64 files); bun run build exit 0; SAMATA_SKIP_KNOWN_FAILURES=1 E2E (training-runtime, classification-training, storage-worker, analysis-worker, comparison, content) 111 pass/26 skip/0 fail; format:check pass. |
+| 2026-11-23T14:32:06Z | T3 | Google Antigravity (Gemini 4 Hydrogen High) | Added src/common/release/worker-failures.ts, src/common/release/stale-release.ts, worker failure hooks in storage-client/training-service/analysis-client, and app-shell-release Reload alert in src/app.ts. Verification: worker-failures/stale-release/storage-client/training-service/analysis-protocol/repository-conventions tests pass; bun run check 612 pass/0 fail (66 files); SAMATA_SKIP_KNOWN_FAILURES=1 E2E tests/app-shell.e2e.ts 126 pass/0 fail; format:check pass. |
 
 ## Plan review history
 

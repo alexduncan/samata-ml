@@ -1,4 +1,5 @@
 import type { DatasetMetadata, RawRecord } from '../../../types/dataset';
+import { reportWorkerFailure } from '../../../common/release/worker-failures';
 import { IngestionError } from './errors';
 import type { SerializedIngestionError, StorageRequest, StorageResponse } from './protocol';
 import type { IngestionProgress, IngestionSource } from './pipeline';
@@ -43,21 +44,37 @@ function makeCancelledError(): IngestionError {
 	return new IngestionError('CANCELLED', 'Dataset loading was cancelled.');
 }
 
+/** Options for {@link createStorageClient}. */
+export interface StorageClientOptions {
+	/** EventTarget emitting `error` and `messageerror` events for the underlying worker. */
+	workerEvents?: EventTarget;
+}
+
 class StorageClientImpl implements StorageClient {
 	private nextRequestId = 1;
 	private readonly pending = new Map<number, PendingRequest>();
 	private disposed = false;
+	private failureReported = false;
 	private readonly onDispose?: () => void;
+	private readonly workerEvents?: EventTarget;
 	private readonly onMessage: EventListener;
+	private readonly onWorkerError: EventListener;
+	private readonly onWorkerMessageError: EventListener;
 
 	constructor(
 		private readonly port: ClientPort,
-		onDispose?: () => void
+		onDispose?: () => void,
+		workerEvents?: EventTarget
 	) {
 		this.onDispose = onDispose;
+		this.workerEvents = workerEvents;
 		this.onMessage = (event) =>
 			this.handleMessage((event as MessageEvent<StorageResponse>).data);
+		this.onWorkerError = () => this.handleWorkerFailure('storage-worker-error');
+		this.onWorkerMessageError = () => this.handleWorkerFailure('storage-worker-protocol-error');
 		this.port.addEventListener('message', this.onMessage);
+		this.workerEvents?.addEventListener('error', this.onWorkerError);
+		this.workerEvents?.addEventListener('messageerror', this.onWorkerMessageError);
 		this.port.start?.();
 	}
 
@@ -87,10 +104,25 @@ class StorageClientImpl implements StorageClient {
 		return this.send({ requestId: this.nextRequestId++, type: 'deleteDatasetsExcept', keepId });
 	}
 
+	private handleWorkerFailure(
+		code: 'storage-worker-error' | 'storage-worker-protocol-error'
+	): void {
+		if (this.disposed || this.failureReported) return;
+		this.failureReported = true;
+		for (const [requestId, pending] of this.pending) {
+			this.finish(requestId);
+			pending.reject(new IngestionError('STORAGE_FAILED', 'The storage worker stopped.'));
+		}
+		this.dispose();
+		reportWorkerFailure(code);
+	}
+
 	dispose(): void {
 		if (this.disposed) return;
 		this.disposed = true;
 		this.port.removeEventListener('message', this.onMessage);
+		this.workerEvents?.removeEventListener('error', this.onWorkerError);
+		this.workerEvents?.removeEventListener('messageerror', this.onWorkerMessageError);
 		for (const [requestId, pending] of this.pending) {
 			this.finish(requestId);
 			pending.reject(makeCancelledError());
@@ -168,9 +200,18 @@ class StorageClientImpl implements StorageClient {
 	}
 }
 
-/** Creates a correlated request client over a worker or MessagePort. */
-export function createStorageClient(port: MessagePort | Worker): StorageClient {
-	return new StorageClientImpl(port);
+/**
+ * Creates a correlated request client over a worker or MessagePort.
+ *
+ * @param port - MessagePort or Worker carrying storage protocol messages.
+ * @param options - Optional worker event target for `error` and `messageerror` failure detection.
+ * @returns Storage client bound to `port`.
+ */
+export function createStorageClient(
+	port: MessagePort | Worker,
+	options: StorageClientOptions = {}
+): StorageClient {
+	return new StorageClientImpl(port, undefined, options.workerEvents);
 }
 
 let singleton: StorageClientImpl | undefined;
@@ -179,9 +220,14 @@ let singleton: StorageClientImpl | undefined;
 export function getStorageClient(): StorageClient {
 	if (singleton) return singleton;
 	let client!: StorageClientImpl;
-	client = new StorageClientImpl(new Worker(STORAGE_WORKER_URL, { type: 'module' }), () => {
-		if (singleton === client) singleton = undefined;
-	});
+	const worker = new Worker(STORAGE_WORKER_URL, { type: 'module' });
+	client = new StorageClientImpl(
+		worker,
+		() => {
+			if (singleton === client) singleton = undefined;
+		},
+		worker
+	);
 	singleton = client;
 	return client;
 }
