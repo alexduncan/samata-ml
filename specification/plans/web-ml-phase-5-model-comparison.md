@@ -1,9 +1,9 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-23T08:50:02Z
+**Status:** ready-for-review | **Updated:** 2026-11-23T08:56:41Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
-**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T08:27:01Z | **Verification:** approved
-**Verified hash:** sha256:7411d13d2d1f09bc8ebc736beda5a26a24176ae0563c58b6f7c6bdb8355ee223
+**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -288,7 +288,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 - **Acceptance criteria:**
     - [ ] `WML-P5-UI-10` — With fewer than two trained models `/results` shows the existing notification and link; with two comparable models every section renders in order and swapping A/B reverses the matrix signs for nonzero cells, refreshes the CV ROPE result for the reversed order and preserves the selected models; with only incomparable models the "different evaluation rows" notice lists each group.
     - [ ] `WML-P5-UI-11` — Group, selection, sort, pair, ROPE width and the class filter survive reload; heading focus and scroll restoration work on `/results` (FOCUS-AC-5, PH-AC-1, the independently exercised PH-AC-2 header and non-padding geometry, and `/results` parity entries pass except individually evidenced visual-only deviations recorded below). The route's settlement waits for each initially visible chart and the initial ROPE terminal state, and settles promptly after supersession or disconnection.
-    - [ ] `WML-P5-UI-12` — `tests/a11y.e2e.ts` scans a populated `/results` with no new findings; 320 px and 200% zoom reflow; keyboard reaches every control in visual order.
+    - [ ] `WML-P5-UI-12` — `tests/a11y.e2e.ts` scans a populated `/results` with no new findings; 320 px and simulated 200% zoom reflow; keyboard reaches every control in visual order. The user authorised native browser zoom observation to be deferred as recorded below.
     - [ ] `WML-P5-UI-13` — `JOURNEY-IRIS-COMPARE` and `JOURNEY-PENGUINS-COMPARE` each train two models with matching setup. Iris receives a real ROPE posterior; Penguins shows the One-Shot explanation. Both pass in three browsers.
 - **Verification:** `bun run test:e2e tests/comparison.e2e.ts tests/app-shell.e2e.ts tests/a11y.e2e.ts tests/visual-parity.e2e.ts tests/sidebar-acceptance.e2e.ts tests/journeys/iris-classification.e2e.ts tests/journeys/penguins-classification.e2e.ts`; `bun run test:stories`; `bun run check`; `bun run build`.
 - **Progress:** [ ] Not started
@@ -311,7 +311,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 - [ ] All acceptance criteria met with test names starting with `WML-P5-*` or the journey IDs.
 - [ ] `bun run check`, `bun run build`, `bun run test:stories` and the listed Playwright suites pass in three browsers except individually evidenced visual-only styling failures tracked under the user-authorised exception below. Continue running unmodified parity assertions and record actual failures. Functional, accessibility, content, focus, scroll and reflow failures remain blocking.
 - [ ] No score, baseline or posterior computed in `samata-ml`; no winner styling anywhere.
-- [ ] Manual checks recorded: screen-reader reading of the table lens and ROPE bar; keyboard-only sorting, selection and pair swapping with screen-reader confirmation of the new order; forced colours; 200% zoom.
+- [ ] Manual checks deferred with explicit user authorisation until 2026-11-24: screen-reader reading of the table lens and ROPE bar; keyboard-only sorting, selection and pair swapping with screen-reader confirmation of the new order; forced colours; native 200% browser zoom. These observations are unperformed and remain open in `specification/HUMAN.md`; they do not block Phase 5 implementation, audit or landing under the user's 2026-11-23 instruction.
 - [ ] After T7 completes, `bun run plans:task specification/plans/web-ml-phase-5-model-comparison.md --check-complete` passes. Run `bun run format` on every changed file and tick every _Specification changes_ item.
 
 ## Risks and open questions
@@ -325,7 +325,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 ## Escalations
 
-- [ ] **E7 (T6):** Native 200% browser zoom reflow and the required screen-reader observations are not yet verified. The comparison tests passed at 320px and with simulated 200% CSS zoom in Chromium, Firefox and WebKit, but emulation is not native zoom or spoken feedback. The in-app browser rejected the development server's local HTTPS certificate; its security warning requires user handoff and was not bypassed. A populated comparison is available by training two Iris cross-validation models on the local server. Impact: `WML-P5-UI-12` and the manual definition-of-done item cannot be claimed complete, so T6 and T7 remain open. Decision/action needed: the user performs and reports the native zoom and screen-reader checks, or explicitly chooses a different independently reviewed verification contract. The visual-only exception does not cover accessibility or reflow.
+- [x] **E7 (T6):** Native 200% browser zoom and screen-reader observations are unperformed. On 2026-11-23 the user authorised proceeding with implementation and verification today and undertook to perform the manual checks on 2026-11-24; the actual observations remain pending in `specification/HUMAN.md`. The comparison tests passed at 320px and with simulated 200% CSS zoom in Chromium, Firefox and WebKit, which is not native zoom or spoken feedback. The in-app browser rejected the local HTTPS certificate; its warning was not bypassed. This authorisation changes the verification contract and requires independent review; it does not assert that the manual checks passed or waive automated accessibility tests.
 - [x] **E6 (T6):** The user authorised the narrow main-padding exception recorded under Risks and open questions and requested a human follow-up. The other failures in the 304-pass, 19-fail, 138-skip, one-not-run full browser run are not covered and must be investigated. The targeted comparison and Iris/Penguins journey rerun passed 30 cases in three browsers. This revision requires independent plan review.
 - [x] **E5 (T6):** T6 specified a nested draft path, but `specification/visual-design.md` §1.1 requires flat drafts served by the mockup catalogue. Resolved by specifying the existing flat draft placeholder as the T6 target and requiring its human styling queue item; independent review is required.
 - [x] **E1 (T1):** Phase 4 and dependencies were missing. Resolved by integration and provisioning; `bun run check` passed 540 tests.
@@ -369,6 +369,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 
 | When (UTC)           | Change                                              | Reason                                                                                                                                                                                                                                      |
 | -------------------- | --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-23T08:55:57Z | Deferred manual accessibility evidence              | User authorised proceeding today and will perform native screen-reader and browser-zoom checks on 2026-11-24; observations remain unperformed and tracked.                                                                                  |
 | 2026-11-23T08:24:01Z | Extended temporary style exception                  | User authorised deferring style issues and requested a complete human task list; behavioural and accessibility verification remain mandatory.                                                                                               |
 | 2026-11-23T08:05:13Z | Recorded narrow padding exception and styling queue | User authorised the known main-padding exception and requested a human issue and complete styling drafts; other failures remain outside the exception.                                                                                      |
 | 2026-11-23T06:49:25Z | Closed chart settlement APIs and corrected reading  | Resolve independent review findings and update the existing human queue item.                                                                                                                                                               |
@@ -383,3 +384,4 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-23T06:07:07Z | Invalidated approval                                | Define closed component label and group option contracts before T3                                                                                                                                                                          |
 | 2026-11-23T06:42:50Z | Invalidated approval                                | Resolve T6 mockup path conflict with the flat draft governance                                                                                                                                                                              |
 | 2026-11-23T08:04:51Z | Invalidated approval                                | Record the user-authorised main padding exception and human follow-up without waiving unrelated failures                                                                                                                                    |
+| 2026-11-23T08:55:49Z | Invalidated approval                                | Record the user-authorised deferral of native zoom and screen-reader observations until tomorrow                                                                                                                                            |
