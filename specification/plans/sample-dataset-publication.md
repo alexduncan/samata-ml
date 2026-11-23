@@ -1,6 +1,6 @@
 # Sample dataset sourcing and publication history
 
-**Status:** ready | **Updated:** 2026-11-23T12:27:36Z
+**Status:** ready | **Updated:** 2026-11-23T12:37:37Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-23T09:13:22Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T12:20:51Z | **Verification:** approved
 **Verified hash:** sha256:1b72624c9d046545ae4268067c073d05dc80b3414ca2c69ca64d67893eb2566d
@@ -185,10 +185,10 @@ In `src/features/data/ingestion/fetch-source.ts`, extend the existing `fetchWith
 - **Must not touch:** `src/`, `vendor/`, `public/`, `content/` — this is a documentation task with no rewrite in the canonical workspace.
 - **Implementation:** Write the exact _First-push contract_ into `specification/publication-history.md`, with a status entry in the index. Include a copyable, reproducible sensitive-path and blob audit procedure, commands scoped to the publication clone, stop conditions, per-repo secret scan and an explicit maintainer-only publication checklist. Provide a testable synthetic walkthrough with old/new paths and a duplicate blob under an alias. Link the guide and the architecture/verification entry points from README. Queue the actual publication and licence-selection decision in `HUMAN.md` §1, and note the Iris/Penguins change against the existing regression plan entry.
 - **Acceptance criteria:**
-    - [ ] `DSP-AC-8` — The documented dry run can remove both historical locations and an alias in a disposable synthetic repository while the source clone, non-dataset tree and surviving commit history remain independently verifiable. Deliberately omitted aliases, unexpected refs, and unsafe destinations trigger the documented stop checks.
-    - [ ] `DSP-AC-9` — A maintainer following the procedure before first push can verify zero matching paths and blob IDs reachable from the exact proposed publishing ref, preserve a private backup and prepare a supervisor permalink with no raw CSV in Git. No push, source history rewrite or approval is implied by completing this task.
+    - [x] `DSP-AC-8` — The documented dry run can remove both historical locations and an alias in a disposable synthetic repository while the source clone, non-dataset tree and surviving commit history remain independently verifiable. Deliberately omitted aliases, unexpected refs, and unsafe destinations trigger the documented stop checks.
+    - [x] `DSP-AC-9` — A maintainer following the procedure before first push can verify zero matching paths and blob IDs reachable from the exact proposed publishing ref, preserve a private backup and prepare a supervisor permalink with no raw CSV in Git. No push, source history rewrite or approval is implied by completing this task.
 - **Verification:** `bun run plans:check specification/plans/sample-dataset-publication.md`, `bun run check`, `bun run format:check`, and the manual synthetic walkthrough in the new runbook.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-23T12:37:37Z)
 
 ## Verification and definition of done
 
@@ -222,6 +222,7 @@ None.
 | 2026-11-23T11:21:35Z | T1   | Codex (GPT-6) | bun test tests/generate-datasets.test.ts: 17 pass; bun run check: 583 pass; bun run build: pass; bun run format:check without paths printed no-parser error despite exit 0, explicit changed-file check passed; bun run format:check . failed on 230 pre-existing files; scope gate passed. Changed source types, generator, acquisition helper, tests, package.json and bun.lock.                                                                                                                                                                                                                                 |
 | 2026-11-23T11:47:23Z | T2   | Codex (GPT-6) | Scratch cold generation compared seven retained build outputs and two direct files byte-for-byte; catalogue checks all eleven digests and targets. bun run check 586 pass; bun run build pass. Targeted dataset resources 12, classification 4, model assets 5, ingestion source 8, ingestion pipeline 9 pass. Playwright selection 16 pass/2 skipped (live Chromium provider smoke passed); Penguins journey 12, model configuration 36, model setup 12, storage worker 3 pass. Earlier browser failures traced to tests navigating before debounced persistence; tests now await saved state. Scope gate passed. |
 | 2026-11-23T12:27:36Z | T3   | Codex (GPT-6) | Storybook 594 passed with full axe; accessibility 63 passed after removing notice findings (one earlier Firefox timeout passed on rerun); selection 19 passed, 2 intentionally skipped; token 8 passed; bun run check 586 passed. Contrast is 5.88:1 on app background and 6.07:1 on white. Visual parity 60 passed, 9 known documented failures, 138 skipped. Explicit changed-file formatting check passed; bare format:check printed no-parser error despite exit 0. Scope gate passed.                                                                                                                         |
+| 2026-11-23T12:37:37Z | T4   | Codex (GPT-6) | Synthetic documented walkthrough passed using official git-filter-repo v2.47.0 verified against upstream Git blob: omitted alias, unexpected ref and unsafe destination were rejected; source and private backup retained the frozen tip; both old/new paths and alias blob were absent; 2 surviving commits preserved all mapped non-dataset paths and modes. bun run check 586 pass; plans:check pass; explicit changed-file format:check pass; bare format:check printed no-parser error despite exit 0. Scope gate passed with reviewed visual-design count synchronisation warning.                           |
 
 ## Plan review history
 
