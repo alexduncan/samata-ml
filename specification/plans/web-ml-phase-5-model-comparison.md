@@ -1,6 +1,6 @@
 # Phase 5: Compare trained models on identical evaluation rows at `/results`
 
-**Status:** ready | **Updated:** 2026-11-23T06:28:11Z
+**Status:** ready | **Updated:** 2026-11-23T06:34:22Z
 **Authors:** Claude Code (claude-opus-5-5), Codex (GPT-6.2 Sol), Codex (GPT-6) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T06:16:18Z | **Verification:** approved
 **Verified hash:** sha256:ba02134bc3c3f4b1220d9ee3c57ea925a3fdb99a5a936ec22a510a9cec2c6386
@@ -257,11 +257,11 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 - **Must not touch:** `css/root.css`, `src/stores/`, `src/features/results/app-model-results.ts`
 - **Implementation:** Per D7, D9 and Interfaces §C. Reuse `tests/helpers/mount-results-fixture.ts` from Phase 4 for T3–T5. Add a `Paired` story to the existing fold-strip stories. Cover the relative matrix with signed, many-class, equal-matrix and RTL stories. Use an isolated `formatter(atom(locale))` fixture for `en-GB` and `de-DE`, independent of the shipped language choices.
 - **Acceptance criteria:**
-    - [ ] `WML-P5-UI-4` — With `paired`, each partition index has one connecting line across M series; Phase 4 single-series stories render unchanged.
-    - [ ] `WML-P5-UI-5` — Error bars show one bar per model per class with direct labels; the data table lists every value; forced colours keep labels visible.
-    - [ ] `WML-P5-UI-6` — The relative confusion matrix shows grouped +1,234, −1,234 and unsigned 0 (using the formatter’s minus sign) in the `en-GB` fixture and +1.234, −1.234 and 0 in `de-DE`. Assert the rendered texts against the explicit locale’s `Intl.NumberFormat` and that the two locales differ. The sentence uses the same localised signed count for the largest absolute off-diagonal difference. Changing the fixture locale while mounted updates cells and takeaway together. Equal matrices show “No differences”. Above 20 classes, the default and selection use Phase 4 D11 and the named keyboard-scrollable region retains all predicted columns.
+    - [x] `WML-P5-UI-4` — With `paired`, each partition index has one connecting line across M series; Phase 4 single-series stories render unchanged.
+    - [x] `WML-P5-UI-5` — Error bars show one bar per model per class with direct labels; the data table lists every value; forced colours keep labels visible.
+    - [x] `WML-P5-UI-6` — The relative confusion matrix shows grouped +1,234, −1,234 and unsigned 0 (using the formatter’s minus sign) in the `en-GB` fixture and +1.234, −1.234 and 0 in `de-DE`. Assert the rendered texts against the explicit locale’s `Intl.NumberFormat` and that the two locales differ. The sentence uses the same localised signed count for the largest absolute off-diagonal difference. Changing the fixture locale while mounted updates cells and takeaway together. Equal matrices show “No differences”. Above 20 classes, the default and selection use Phase 4 D11 and the named keyboard-scrollable region retains all predicted columns.
 - **Verification:** `bun run test:e2e tests/comparison-charts.e2e.ts`; `bun run test:stories`; `bun run check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-23T06:34:22Z)
 
 ### T5 — ROPE bar and instance-agreement chart
 
@@ -342,6 +342,7 @@ All presentational elements receive pre-translated `labels: <Element>Labels = DE
 | 2026-11-23T05:59:07Z | T2   | Codex (GPT-6)                 | bun test tests/analysis-protocol.test.ts: 3 passed; bun run test:e2e tests/analysis-worker.e2e.ts: 3 passed (Chromium, Firefox, WebKit); bun run build: passed; bun run check: 557 passed, typecheck passed; worker, client, protocol, analysis store and build entry updated.                                                     |
 | 2026-11-23T06:18:39Z | R1   | Codex (GPT-6)                 | bun test tests/training-service.test.ts: 81 passed; bun run check: typecheck passed, 558 tests passed. Scope warning for tests/training-service.test.ts is expected: R1 explicitly requires that test file.                                                                                                                        |
 | 2026-11-23T06:28:11Z | T3   | Codex (GPT-6)                 | bun run test:e2e tests/comparison-controls.e2e.ts: 9 passed across three browsers; bun run test:stories: 486 passed; bun test tests/style-tokens.test.ts: 8 passed; bun run check: typecheck passed, 558 tests passed. Scope warning is the browser fixture required by the task.                                                  |
+| 2026-11-23T06:34:22Z | T4   | Codex (GPT-6)                 | bun run test:e2e tests/comparison-charts.e2e.ts: 9 passed across three browsers; bun run test:stories: 513 passed; bun test tests/style-tokens.test.ts: 8 passed; bun run check: typecheck passed, 558 tests passed. Scope warning is the required chart browser fixture.                                                          |
 
 ## Plan review history
 
