@@ -3,13 +3,13 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import Papa from 'papaparse';
 import { compileMarkdownFragment } from './markdown';
+import { acquireSource, prepareSource, validateSource } from './dataset-source';
 import { DatasetProfiler } from '../src/common/storage/profiler';
 import type { ElectedColumn } from '../src/common/storage/profiler';
 import type {
 	AuthoredDatasetDescriptor,
 	AuthoredColumn,
 	ComputedDatasetStats,
-	RemoteCsvSource,
 	SampleDatasetDescriptor,
 	SampleDatasetIndex,
 	SampleDatasetSummary,
@@ -21,7 +21,6 @@ const DEFAULT_CONTENT_DIR = path.join(ROOT, 'content/datasets');
 const DEFAULT_CACHE_DIR = path.join(ROOT, 'node_modules/.cache/samata-ml/dataset-profiles');
 const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const ALLOWED_LICENSES = new Set(['CC0-1.0', 'CC-BY-4.0', 'PDDL-1.0', 'ODbL-1.0']);
-const REMOTE_CSV_PREFIXES = ['https://raw.githubusercontent.com/propublica/compas-analysis/'];
 const DEFAULT_REMOTE_CACHE_DIR = path.join(ROOT, 'node_modules/.cache/samata-ml/remote-datasets');
 const PROFILE_SOURCE_FILES = [
 	path.join(ROOT, 'src/common/storage/profiler.ts'),
@@ -189,8 +188,14 @@ function validateDescriptor(
 	if (files.includes('metadata.json'))
 		addError(errors, id, 'metadata.json is not allowed; use descriptor.ts');
 	if (!files.includes('descriptor.ts')) addError(errors, id, 'descriptor.ts is required');
-	if (files.includes('data.csv') === Boolean(descriptor.remoteSource))
-		addError(errors, id, 'exactly one of data.csv or remoteSource is required');
+	if (
+		[
+			files.includes('data.csv'),
+			Boolean(descriptor.remoteSource),
+			Boolean(descriptor.buildSource)
+		].filter(Boolean).length !== 1
+	)
+		addError(errors, id, 'exactly one of data.csv, buildSource or remoteSource is required');
 	if (!files.includes('datasheet.md')) addError(errors, id, 'datasheet.md is required');
 	if (profile.errors.length)
 		for (const error of profile.errors) addError(errors, id, `CSV parse: ${error}`);
@@ -307,58 +312,17 @@ function validateDescriptor(
 	if (
 		descriptor.provenance?.license === 'NOASSERTION'
 			? !isRemote
-			: !ALLOWED_LICENSES.has(descriptor.provenance?.license)
+			: descriptor.provenance?.license === 'LicenseRef-Public-Domain'
+				? !(
+						id === 'titanic-inquiry' &&
+						descriptor.buildSource?.transform === 'titanic-inquiry-counts' &&
+						descriptor.provenance.licenseUrl ===
+							'https://www.nationalarchives.gov.uk/terms-and-conditions/copyright/copyright-and-related-rights/'
+					)
+				: !ALLOWED_LICENSES.has(descriptor.provenance?.license)
 	)
 		addError(errors, id, 'licence is outside the allow-list');
-	if (
-		isRemote &&
-		!REMOTE_CSV_PREFIXES.some((prefix) => descriptor.remoteSource?.url.startsWith(prefix))
-	)
-		addError(errors, id, 'remoteSource URL is outside REMOTE_CSV_PREFIXES');
 	return errors;
-}
-
-async function getRemoteCsv(
-	id: string,
-	source: RemoteCsvSource,
-	remoteCacheDir: string,
-	fetchImpl: FetchImpl
-): Promise<Uint8Array> {
-	const cachePath = path.join(remoteCacheDir, `${source.sha256}.csv`);
-	let bytes: Uint8Array;
-	try {
-		bytes = await readFile(cachePath);
-	} catch {
-		let response: Response;
-		try {
-			response = await fetchImpl(source.url);
-		} catch (error) {
-			throw new Error(
-				`${id}: could not download ${source.url}; the first build needs network access (${String(error)})`
-			);
-		}
-		if (!response.ok)
-			throw new Error(
-				`${id}: could not download ${source.url}; the first build needs network access (HTTP ${response.status})`
-			);
-		bytes = new Uint8Array(await response.arrayBuffer());
-	}
-	const actualHash = sha256(bytes);
-	if (bytes.byteLength !== source.byteLength)
-		throw new Error(
-			`${id}: ${source.url} byte length mismatch (expected ${source.byteLength}, got ${bytes.byteLength})`
-		);
-	if (actualHash !== source.sha256)
-		throw new Error(
-			`${id}: ${source.url} SHA-256 mismatch (expected ${source.sha256}, got ${actualHash})`
-		);
-	await mkdir(remoteCacheDir, { recursive: true });
-	try {
-		await readFile(cachePath);
-	} catch {
-		await writeFile(cachePath, bytes);
-	}
-	return bytes;
 }
 
 function buildStats(
@@ -466,26 +430,51 @@ export async function generateSampleDatasets(
 			continue;
 		}
 		const isRemote = Boolean(descriptor.remoteSource);
-		if (isRemote === names.includes('data.csv')) {
-			addError(errors, id, 'exactly one of data.csv or remoteSource is required');
+		const source = descriptor.buildSource ?? descriptor.remoteSource;
+		if (
+			[
+				names.includes('data.csv'),
+				Boolean(descriptor.remoteSource),
+				Boolean(descriptor.buildSource)
+			].filter(Boolean).length !== 1
+		) {
+			addError(
+				errors,
+				id,
+				'exactly one of data.csv or remoteSource or buildSource is required'
+			);
 			continue;
 		}
 		if (
-			descriptor.remoteSource &&
-			!REMOTE_CSV_PREFIXES.some((prefix) => descriptor.remoteSource!.url.startsWith(prefix))
+			descriptor.buildSource &&
+			!ALLOWED_LICENSES.has(descriptor.provenance.license) &&
+			!(
+				descriptor.provenance.license === 'LicenseRef-Public-Domain' &&
+				id === 'titanic-inquiry' &&
+				descriptor.buildSource.transform === 'titanic-inquiry-counts' &&
+				descriptor.provenance.licenseUrl ===
+					'https://www.nationalarchives.gov.uk/terms-and-conditions/copyright/copyright-and-related-rights/'
+			)
 		) {
-			addError(errors, id, 'remoteSource URL is outside REMOTE_CSV_PREFIXES');
+			addError(errors, id, 'licence is outside the allow-list');
+			continue;
+		}
+		if (descriptor.provenance.license === 'NOASSERTION' && !isRemote) {
+			addError(errors, id, 'licence is outside the allow-list');
 			continue;
 		}
 		let bytes: Uint8Array;
 		try {
-			bytes = isRemote
-				? await getRemoteCsv(id, descriptor.remoteSource!, remoteCacheDir, fetchImpl)
-				: await readFile(path.join(directory, 'data.csv'));
+			if (source) {
+				validateSource(id, source, Boolean(descriptor.buildSource));
+				bytes = await acquireSource(id, source, remoteCacheDir, fetchImpl);
+				if (descriptor.buildSource) bytes = prepareSource(id, bytes, descriptor);
+			} else bytes = await readFile(path.join(directory, 'data.csv'));
 		} catch (error) {
 			addError(errors, id, String(error));
 			continue;
 		}
+
 		let text: string;
 		try {
 			text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
@@ -514,8 +503,9 @@ export async function generateSampleDatasets(
 		for (const error of compiled.errors) addError(errors, id, error);
 		if (dsErrors.length || compiled.errors.length) continue;
 		const stats = buildStats(profile, descriptor, bytes.byteLength, csvHash);
+		const { buildSource: _buildSource, ...runtimeDescriptor } = descriptor;
 		const outputDescriptor: SampleDatasetDescriptor = {
-			...descriptor,
+			...runtimeDescriptor,
 			columns: descriptor.columns.map((column: AuthoredColumn) => ({
 				...column,
 				missingCount:

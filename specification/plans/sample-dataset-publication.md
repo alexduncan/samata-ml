@@ -1,6 +1,6 @@
 # Sample dataset sourcing and publication history
 
-**Status:** ready | **Updated:** 2026-11-23T10:02:32Z
+**Status:** ready | **Updated:** 2026-11-23T11:21:35Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-23T09:13:22Z
 **Verified by:** Codex (GPT-6 Astra) | **Verified:** 2026-11-23T10:02:32Z | **Verification:** approved
 **Verified hash:** sha256:dfe4aaa5248b435f179e78d0028a7c0e057e441cc69119996c8c1d2e20e1e26a
@@ -138,10 +138,10 @@ In `src/features/data/ingestion/fetch-source.ts`, extend the existing `fetchWith
 - **Must not touch:** `content/datasets/`, `src/features/`, `src/stores/`, `public/_headers`, `vendor/`
 - **Implementation:** Add the authored source type, checked acquisition and fixed transforms in _Interfaces and behaviour_. Reuse existing profile, content hashing and generation code. Pin `fflate@0.8.2` as a dev dependency via Bun; import `unzipSync` only from the build helper. In generator unit tests use synthetic fixtures and injected fetch responses so source, archive and cache failures can be simulated offline. Keep the current catalogue intact until T2.
 - **Acceptance criteria:**
-    - [ ] `DSP-AC-1` — Synthetic cases cover each transform's verified bytes, identity inputs, exact delimiter/line endings, cache reuse and concurrent cold reads.
-    - [ ] `DSP-AC-2` — Reject invalid source count, license, URL/redirect, transport/body error, archive name/size, and raw/prepared length or hash mismatch. Corrupt cache cannot publish output. Generated v1 descriptors and index expose the existing shapes, with only a same-origin CSV for the new build source. Existing generator tests pass.
+    - [x] `DSP-AC-1` — Synthetic cases cover each transform's verified bytes, identity inputs, exact delimiter/line endings, cache reuse and concurrent cold reads.
+    - [x] `DSP-AC-2` — Reject invalid source count, license, URL/redirect, transport/body error, archive name/size, and raw/prepared length or hash mismatch. Corrupt cache cannot publish output. Generated v1 descriptors and index expose the existing shapes, with only a same-origin CSV for the new build source. Existing generator tests pass.
 - **Verification:** `bun test tests/generate-datasets.test.ts`, `bun run check`, `bun run build`, `bun run format:check`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-23T11:21:35Z)
 
 ### T2 — Move approved samples and preserve saved projects
 
@@ -213,9 +213,10 @@ None.
 
 ## Implementation and verification log
 
-| When (UTC) | Task | Agent (model) | Outcome / commands / evidence |
-| ---------- | ---- | ------------- | ----------------------------- |
-| —          | —    | —             | Not started                   |
+| When (UTC)           | Task | Agent (model) | Outcome / commands / evidence                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------- | ---- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —                    | —    | —             | Not started                                                                                                                                                                                                                                                                                                                                                                        |
+| 2026-11-23T11:21:35Z | T1   | Codex (GPT-6) | bun test tests/generate-datasets.test.ts: 17 pass; bun run check: 583 pass; bun run build: pass; bun run format:check without paths printed no-parser error despite exit 0, explicit changed-file check passed; bun run format:check . failed on 230 pre-existing files; scope gate passed. Changed source types, generator, acquisition helper, tests, package.json and bun.lock. |
 
 ## Plan review history
 
