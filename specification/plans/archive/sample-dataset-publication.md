@@ -1,10 +1,10 @@
 # Sample dataset sourcing and publication history
 
-**Status:** implemented | **Updated:** 2026-11-23T12:49:03Z
+**Status:** archived | **Updated:** 2026-11-23T12:52:38Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-23T09:13:22Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-23T12:20:51Z | **Verification:** approved
 **Verified hash:** sha256:1b72624c9d046545ae4268067c073d05dc80b3414ca2c69ca64d67893eb2566d
-**Implementation verified by:** — | **Implementation verified:** —
+**Implementation verified by:** Codex (GPT-6) | **Implementation verified:** 2026-11-23T12:52:38Z
 
 ## Goal
 
@@ -226,6 +226,7 @@ In `src/features/data/ingestion/fetch-source.ts`, extend the existing `fetchWith
 | 2026-11-23T12:39:29Z | Implement | Codex (GPT-6) | Marked implemented                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | 2026-11-23T12:42:12Z | Review    | Codex (GPT-6) | Review gates pass; independent `bun run check` 586 pass, `bun run build` pass, `bun run test:stories` 594 pass and isolated `bun run test:e2e tests/data-selection.e2e.ts` 19 pass / 2 skipped. The latter verifies 320px and 400% root font size, not the required browser zoom. Native Safari encountered an untrusted local development certificate; the browser warning was not bypassed. `bun run format:check` exited 0 with a no-parser error and did not check files; an explicit changed-file formatting check passed. R1 restores the required zoom evidence.                                            |
 | 2026-11-23T12:49:03Z | R1        | Codex (GPT-6) | Manual Brave browser check of this checkout’s built app served on loopback at the assigned dist port: the browser zoom control and accessibility tree showed 400%; the Palmer internet-connection notice wrapped to two lines and was fully readable without clipping. Restored zoom to 100%. The existing 320px RTL keyboard check remains covered by tests/data-selection.e2e.ts. bun run check: 586 passed, 0 failed.                                                                                                                                                                                           |
+| 2026-11-23T12:52:38Z | Review | Codex (GPT-6) | Closed: Independent review: fingerprint and task gates pass; 586 unit, 594 stories, 63 accessibility, 8 token and 56 targeted tests pass; build and changed-file formatting pass. Native Brave 400% zoom evidence recorded; nine parity baseline failures and bare format command limitation tracked. |
 
 ## Plan review history
 
