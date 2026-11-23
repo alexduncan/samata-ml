@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { STATE_STORAGE_KEY } from '../src/types/state';
+import { MOCKUPS_URL } from '../scripts/ports';
 
 interface WelcomeTestWindow extends Window {
 	__welcomeDismissalWrites: number;
@@ -80,7 +81,7 @@ test('WEL-AC-3: native welcome has reference geometry and semantic names', async
 	await expect(dialog).not.toHaveAttribute('aria-modal');
 	const reference = await context.newPage();
 	await reference.setViewportSize({ width: 1440, height: 900 });
-	await reference.goto('http://localhost:3333/00_first-load.html?clean=1');
+	await reference.goto(`${MOCKUPS_URL}/00_first-load.html?clean=1`);
 	await reference.screenshot({ path: testInfo.outputPath('welcome-reference.png') });
 	await page.screenshot({ path: testInfo.outputPath('welcome-app.png') });
 	const actualBox = await dialog.boundingBox();

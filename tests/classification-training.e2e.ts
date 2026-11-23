@@ -8,6 +8,7 @@ import type { ClassifierId } from '../src/features/models/model-catalogue';
 import { configureDraft } from './fixtures/training/browser';
 import type { StoredEvaluation } from '../src/types/model-evaluation';
 import { dismissWelcomeModal, loadSampleDataset } from './journeys/helpers';
+import { DIST_URL } from '../scripts/ports';
 
 const holdout = { type: 'one_shot', testRatio: 0.2, randomState: 42 } as const;
 const crossValidation = {
@@ -112,7 +113,7 @@ async function run(
 }
 
 test.describe('Deployed Chromium classification worker', () => {
-	test.use({ baseURL: 'https://localhost:3001' });
+	test.use({ baseURL: DIST_URL });
 	test.skip(
 		({ browserName }) => browserName !== 'chromium',
 		'Full classifier matrix runs in Chromium'

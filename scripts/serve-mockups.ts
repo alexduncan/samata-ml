@@ -2,8 +2,10 @@ import type { Server } from 'bun';
 import { watch } from 'node:fs';
 import { lstat, readdir, readFile, realpath, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { CHECKOUT_IDENTITY_PATH, createCheckoutIdentityResponse } from './checkout-identity';
 import { MOCKUPS_DIR } from './config';
 import { isPathInside } from './filesystem';
+import { CHECKOUT_PORTS, CHECKOUT_ROOT, parsePortOption } from './ports';
 import { contentTypeFromPath } from './static-server';
 
 /** Lifecycle status declared by a mockup HTML document. */
@@ -43,7 +45,6 @@ export interface ServerCliOptions {
 
 type ReloadClient = ReadableStreamDefaultController<Uint8Array>;
 
-const DEFAULT_PORT = 3333;
 const DEFAULT_HOSTNAME = 'localhost';
 const WATCH_DEBOUNCE_MS = 150;
 const TEXT_SOURCE_EXTENSION = /\.(html?|css|js|mjs|json|md|txt)$/i;
@@ -208,21 +209,14 @@ export async function getMockupFiles(dir: string = MOCKUPS_DIR): Promise<MockupI
  * @returns Resolved server binding and browser-launch options.
  */
 export function parseCliArgs(argv: string[]): ServerCliOptions {
-	const envPort = Number.parseInt(process.env.PORT ?? '', 10);
-	let port = Number.isInteger(envPort) && envPort >= 0 ? envPort : DEFAULT_PORT;
+	const port = parsePortOption(argv, process.env, CHECKOUT_PORTS.mockups, ['--port', '-p']);
 	let hostname = DEFAULT_HOSTNAME;
 	let open = false;
 	for (let index = 0; index < argv.length; index++) {
 		const argument = argv[index];
-		if (argument === '--port' || argument === '-p') {
-			const candidate = Number.parseInt(argv[++index] ?? '', 10);
-			if (Number.isInteger(candidate) && candidate >= 0 && candidate <= 65535)
-				port = candidate;
-		} else if (argument?.startsWith('--port=')) {
-			const candidate = Number.parseInt(argument.slice('--port='.length), 10);
-			if (Number.isInteger(candidate) && candidate >= 0 && candidate <= 65535)
-				port = candidate;
-		} else if (argument === '--host' || argument === '-h') hostname = argv[++index] ?? hostname;
+		if (argument === '--port' || argument === '-p') index++;
+		else if (argument?.startsWith('--port=')) continue;
+		else if (argument === '--host' || argument === '-h') hostname = argv[++index] ?? hostname;
 		else if (argument === '--open' || argument === '-o') open = true;
 	}
 	return { port, hostname, open };
@@ -637,6 +631,18 @@ export async function startMockupsServer(
 				const headers = noStoreHeaders('text/plain; charset=utf-8');
 				headers.set('Allow', 'GET, HEAD');
 				return new Response('Method not allowed', { status: 405, headers });
+			}
+			if (url.pathname === CHECKOUT_IDENTITY_PATH) {
+				return createCheckoutIdentityResponse(
+					{
+						service: 'samata-ml-mockups',
+						root: CHECKOUT_ROOT,
+						servingDir: rootDir,
+						mode: null,
+						trainingRuntimeProbe: null
+					},
+					request.method
+				);
 			}
 			if (url.pathname === '/__hmr') {
 				bunServer?.timeout(request, 0);

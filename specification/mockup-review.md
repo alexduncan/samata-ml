@@ -12,14 +12,14 @@ Start the read-only catalogue from the repository root:
 bun run mockups
 ```
 
-Open `http://localhost:3333/`. The `/` index page renders `<body class="mockup-index">` and populates `<table class="mockups">` from live `GET /index.json`, listing every top-level HTML mockup with its plain-English name, filename, description, lifecycle status (`draft`, `ready`, or `implemented`), and `View source` / `Clean preview` actions. Search matches name, filename, and description client-side, and the status selector filters by `all`, `draft`, `ready`, or `implemented`.
+Open the checkout's mockup URL (`http://localhost:3333/` in the primary checkout; a linked worktree derives its own port, see `scripts/ports.ts`). The `/` index page renders `<body class="mockup-index">` and populates `<table class="mockups">` from live `GET /index.json`, listing every top-level HTML mockup with its plain-English name, filename, description, lifecycle status (`draft`, `ready`, or `implemented`), and `View source` / `Clean preview` actions. Search matches name, filename, and description client-side, and the status selector filters by `all`, `draft`, `ready`, or `implemented`.
 
 File URLs are served flat from `specification/mockups/`, for example:
 
-- Preview: `http://localhost:3333/03-0_models-overview.html`
-- Original source: `http://localhost:3333/__source/03-0_models-overview.html`
-- Clean preview: `http://localhost:3333/03-0_models-overview.html?clean=1`
-- Live metadata: `http://localhost:3333/index.json`
+- Preview: `<mockup URL>/03-0_models-overview.html`
+- Original source: `<mockup URL>/__source/03-0_models-overview.html`
+- Clean preview: `<mockup URL>/03-0_models-overview.html?clean=1`
+- Live metadata: `<mockup URL>/index.json`
 
 Normal HTML previews inject `<link rel="stylesheet" href="/mockups.css" />` into `<head>` and a light-DOM `#__mockup-review-helper-host` bar before `</body>` showing the mockup name, status badge, description, an Index link (`/`), and a `#preview-page` `<select>` populated from `/index.json` that navigates immediately on `change`. Human-authored rules in `specification/mockups/mockups.css` style both the helper bar and the `body.mockup-index` catalogue directly. The `?clean=1` URL returns untouched raw file bytes from disk without injected CSS, helper markup, or live-reload scripts, so it is suitable for visual-parity screenshots and automated accessibility audits. CSS and asset URLs (`./style.css`, `css/*.css`) resolve directly from the flat root. The server never writes files; edit and save them in the local editor. Save DevTools experiments to disk before a live reload.
 
@@ -29,7 +29,7 @@ Run a focused audit in another terminal while the server is running:
 bun run audit:mockups 03-0_models-overview.html 03-4_train-models-3-configure-model.html
 ```
 
-To audit every non-empty top-level HTML file, omit the filenames. An optional `--port 3333` selects a different local server port. Pass top-level HTML filenames directly inside `specification/mockups/`. Empty explicit targets, missing files, nested paths, non-HTML files, and invalid paths are setup errors. Empty HTML files discovered in all-pages mode are listed as skipped. The command overwrites `test-results/mockup-a11y/latest.json` and `latest.html` for each run.
+To audit every non-empty top-level HTML file, omit the filenames. The audit defaults to the checkout's mockup port (3333 in the primary checkout) and refuses a server that belongs to another checkout; an optional `--port <port>` selects another port of this checkout. Pass top-level HTML filenames directly inside `specification/mockups/`. Empty explicit targets, missing files, nested paths, non-HTML files, and invalid paths are setup errors. Empty HTML files discovered in all-pages mode are listed as skipped. The command overwrites `test-results/mockup-a11y/latest.json` and `latest.html` for each run.
 
 Exit status `0` means no automated violations were found; `1` means a violation or file-level navigation/runtime error; `2` means arguments, eligible pages, the server, or the browser prevented a valid run. Reports include filenames and clean URLs, Chromium version, 1440×900 viewport, axe-core version, tags, violation selectors and help links, incomplete findings, errors, and skipped empty files. Contrast is included. Review incomplete findings manually. A static scan does not test app interactions or establish WCAG conformance.
 
