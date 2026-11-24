@@ -133,7 +133,6 @@ Whenever an agent combines multiple HTML fragments representing different possib
 - [ ] Style unsupported columns.
 - [ ] Load dataset progress bar. Progress knowable?!?
 
-
 ## Dot Rules
 A key pedagogical principle of this application is to let the user navigate instead of automatically advancing to the next step. However, the `<div class="dot"></div>` element is used to indicate to a user when there is a next logical step for them to move to.
 
@@ -143,11 +142,48 @@ It is currently used in the following siutations:
 
 ## General Fixes
 
+
+### Feature Selection
+Add 'filter' step during "Design Features" which will only permit features through to the next step which are capable of being used by a model for example `datetime`.
+
 ### Sidebar
 - Resolve models nested link problem.
 - Temporarily change the `<button class="btn-icon project-settings"` into a "delete" link that displays an "Are you sure?" modal with options for "cancel" and "delete." If the user clicks "delete" on the modal, the state should be reset, except for the parameter which records if the welcome modal was dismissed.
 
+### Hover Menu
+
+- Component to display a hover menu adjacent to the triggering element.
+- Ideally use CSS anchor positioning. 
+- Ensure the menu stays on screen when the triggering element is close to the edge of the viewport.
+- Attach an event that closes the menu whenever the user clicks elsewhere on the viewport outside of the menu.
+- The menu should accept an array of buttons.
+
+### Edit Project Menu
+
+Use the hover menu component to display a hover menu when the user clicks on the project.
+The menu should contain:
+- Edit Project Name
+- Download Project as Zip
+- Delete Project
+
+### Training Step Warning
+
+Warn a user when trainibg a later model that it isn't good to compare a model trained by One-shot versus cross-validation.
+
+### Edit Model Menu
+
+### Colors for Models
+
+Allow each model to have a color which is used for all of it's visuals.
+
 ### Large Screens
 
 - Don't allow `.page-body` to expand beyond `max-width: 60rem`.
+
+### Sidebar
+
+- Display `{ModelName} ({numFeatures} features)` instead of `Model #`
+
+### CSS Principles
+
 - Prefer logical CSS properties instead of physical properties to better support i18n.
