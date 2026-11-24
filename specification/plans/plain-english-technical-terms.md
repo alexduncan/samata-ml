@@ -260,7 +260,7 @@ No release capability is required for the current UI work. The pinned public ref
 
 ## Verification and definition of done
 
-- [ ] All task acceptance criteria met and matched to browser tests for the affected components.
+- [x] All task acceptance criteria met and matched to browser tests for the affected components.
 - [x] Relevant verification commands from `AGENTS.md` pass with no new failures.
 - [x] Type checking, formatting and build pass. Run `bun run format <files>` as the final file-editing step.
 - [x] Manual WCAG 2.2 AA checks recorded for keyboard, touch, zoom and screen-reader access. App privacy boundaries and installed release contracts preserved.
