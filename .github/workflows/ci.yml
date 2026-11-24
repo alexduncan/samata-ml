@@ -1,59 +1,77 @@
 name: CI
 
 on:
-    push:
+    pull_request:
         branches:
             - main
-    pull_request:
+    push:
         branches:
             - main
 
 permissions:
     contents: read
 
-concurrency:
-    group: ci-${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+env:
+    WRANGLER_SEND_METRICS: 'false'
 
 jobs:
     verify:
         name: Verify
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         timeout-minutes: 60
+        concurrency:
+            group: verify-${{ github.ref }}
+            cancel-in-progress: ${{ github.event_name == 'pull_request' }}
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  fetch-depth: 0
+                  persist-credentials: false
+
+            - name: Verify vendored web-ml tarball checksum
+              run: cd vendor/web-ml && sha256sum -c web-ml-0.2.0.tgz.sha256
 
             - name: Install Bun
-              uses: oven-sh/setup-bun@v2
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
               with:
                   bun-version-file: .bun-version
 
             - name: Install dependencies
               run: bun install --frozen-lockfile --ignore-scripts
 
-            - name: Install Playwright browsers for story and mockup checks
-              run: bunx playwright install --with-deps chromium firefox webkit
+            - name: Check formatting of changed files
+              env:
+                  BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+              run: |
+                  if [ -n "$BASE" ] && ! printf '%s' "$BASE" | grep -Eq '^0+$'; then
+                    git diff --name-only --diff-filter=ACMR -z "$BASE" HEAD -- '*.ts' '*.mjs' '*.js' '*.json' '*.jsonc' '*.md' '*.css' '*.html' '*.yml' '*.yaml' | xargs -0 -r bun run format:check
+                  fi
 
             - name: Run TSDoc lint
               run: bun run lint
 
+            - name: Install Playwright browsers for mockup and story checks
+              run: bunx playwright install --with-deps chromium firefox webkit
+
             - name: Run typecheck and unit tests
               run: bun run check
-
-            - name: Build production assets
-              run: bun run build
-
-            - name: Run Storybook interaction tests
-              run: bun run test:stories
 
             - name: Validate Cloudflare Workers bundle (dry run)
               run: bun run deploy:dry-run
 
+            - name: Run Storybook interaction tests
+              run: bun run test:stories
+
     e2e:
         name: E2E (${{ matrix.project }})
-        runs-on: ubuntu-latest
+        needs:
+            - verify
+        runs-on: ubuntu-24.04
         timeout-minutes: 30
+        concurrency:
+            group: e2e-${{ github.ref }}-${{ matrix.project }}
+            cancel-in-progress: ${{ github.event_name == 'pull_request' }}
         strategy:
             fail-fast: false
             matrix:
@@ -63,10 +81,15 @@ jobs:
                     - webkit
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Verify vendored web-ml tarball checksum
+              run: cd vendor/web-ml && sha256sum -c web-ml-0.2.0.tgz.sha256
 
             - name: Install Bun
-              uses: oven-sh/setup-bun@v2
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
               with:
                   bun-version-file: .bun-version
 
@@ -74,22 +97,15 @@ jobs:
               run: bun install --frozen-lockfile --ignore-scripts
 
             - name: Install Playwright browser
-              run: bunx playwright install --with-deps ${{ matrix.project }}
+              env:
+                  PROJECT: ${{ matrix.project }}
+              run: bunx playwright install --with-deps "$PROJECT"
 
             - name: Run E2E suite
               env:
+                  PROJECT: ${{ matrix.project }}
                   SAMATA_SKIP_KNOWN_FAILURES: '1'
-              run: bun run test:e2e --project=${{ matrix.project }}
-
-            - name: Upload Playwright test results on failure
-              if: failure()
-              uses: actions/upload-artifact@v4
-              with:
-                  name: playwright-results-${{ matrix.project }}
-                  path: |
-                      playwright-report/
-                      test-results/
-                  if-no-files-found: ignore
+              run: bun run test:e2e --project="$PROJECT"
 
     deploy:
         name: Deploy (beta.samata.ml)
@@ -97,15 +113,23 @@ jobs:
             - verify
             - e2e
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        runs-on: ubuntu-latest
-        timeout-minutes: 30
+        runs-on: ubuntu-24.04
+        timeout-minutes: 20
         environment: cloudflare-beta
+        concurrency:
+            group: cloudflare-deploy-main
+            cancel-in-progress: false
         steps:
             - name: Checkout repository
-              uses: actions/checkout@v4
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Verify vendored web-ml tarball checksum
+              run: cd vendor/web-ml && sha256sum -c web-ml-0.2.0.tgz.sha256
 
             - name: Install Bun
-              uses: oven-sh/setup-bun@v2
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
               with:
                   bun-version-file: .bun-version
 
@@ -114,8 +138,8 @@ jobs:
 
             - name: Deploy beta build to Cloudflare Workers
               env:
-                  BETA_TELEMETRY_ENABLED: 'true'
-                  SAMATA_CRAWLER_POLICY: closed
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+                  BETA_TELEMETRY_ENABLED: 'true'
+                  SAMATA_CRAWLER_POLICY: closed
               run: bun run deploy
