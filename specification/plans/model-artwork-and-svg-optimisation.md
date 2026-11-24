@@ -1,9 +1,9 @@
 # Model artwork and production SVG optimisation
 
-**Status:** ready-for-review | **Updated:** 2026-11-24T08:50:59Z
+**Status:** ready | **Updated:** 2026-11-24T08:54:35Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-24T08:25:54Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
-**Verified hash:** —
+**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-24T08:54:35Z | **Verification:** approved
+**Verified hash:** sha256:a3c949f20e846b2f7f0f798ab6eee416f26bcc35ff2e9b9b1077426b245e7b75
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -301,6 +301,7 @@ None.
 | 2026-11-24T08:32:12Z | Codex (GPT-6) | changes-requested | MAJOR T2: define the replacement button names and heading descriptions, and specify whether Logistic Regression card copy is retained. Existing text-entry names include the model and card names do not (app-model-builder-view.ts:1106–1157, app-model-card.ts:93–105). MAJOR MODEL-ART-1: text and datetime are rejected by the target action and reconciler, so define isolated fixtures without changing eligibility. Clarify MODEL-ART-2 keyboard versus pointer focus restoration because the dialog restores the previously focused element. MAJOR T3: reconcile the express non-goals in components/card.md §11 and stale artwork and story coverage in FUTURE.md, TODO.md and testing.md. T1: make the numeric raster check repeatable and clarify uppercase file MIME scope.                                |
 | 2026-11-24T08:38:30Z | Codex (GPT-6) | approved          | Reviewed T1–T3 with independent scout evidence. The nine assets, recursive production copy, preserved development paths, eight-card catalogue, component events and selection, accessible names and focus, and existing journey, Storybook and parity contracts align. The revised tests cover malformed SVGs, raster fidelity and reachable target states. No blocking findings.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | 2026-11-24T08:48:36Z | Codex (GPT-6) | changes-requested | MAJOR T2: the required static Storybook build fails on main and the beta preview. The sidebar story imports tests/visual-parity/fixtures.ts, whose dynamic scripts/ports.ts dependency pulls node:fs into Vite. Pass the checkout mockup URL from all four Playwright callers, scope the helper in T2 and retain the Storybook and parity gates. MAJOR T2: the beta TSDoc gate rejects the proposed @slot (tsdoc-undefined-tag); register it in tsdoc.json alongside @fires and verify manifest metadata and lint. MAJOR T1: the Risks section gates for beta-first only; require the beta integration to retain the production transform at the shared runBuild copy stage and rerun SVG, build-cache and lint gates when SVG lands first. MINOR: correct the 03-2 mockup locators to section.cards and article.card. |
+| 2026-11-24T08:54:35Z | Codex (GPT-6) | approved          | Independently reviewed T1–T3 against main 1a7f6ab and provisional beta_release_cicd 13b3b4b. Scout confirmed the production copy and cache contracts, both landing orders, beta TSDoc registration, all four checkout URL consumers and active model-card parity. Reproduced the inherited Storybook failure and verified the T2 repair scope. No blockers.                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 ## Change log
 
