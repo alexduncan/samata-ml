@@ -1,7 +1,28 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { SaxNamespaceParser } from '@federicocarboni/saxe';
 import { optimize } from 'svgo';
 import { copyDirContents } from './filesystem';
+
+function validateSvgDocument(source: string): void {
+	let sawRoot = false;
+	const parser = new SaxNamespaceParser(
+		{
+			startTag(name) {
+				if (sawRoot) return;
+				if (!name.matches('svg', 'http://www.w3.org/2000/svg')) {
+					throw new SyntaxError('Expected an <svg> root in the SVG namespace.');
+				}
+				sawRoot = true;
+			},
+			endTag() {},
+			text() {}
+		},
+		// Preserve internal XML entities. The parser does not fetch external entities.
+		{ dtd: 'process' }
+	);
+	parser.parse(source);
+}
 
 /**
  * Copies public files to the production output, optimising lowercase SVG files in place
@@ -15,17 +36,7 @@ export async function copyOptimisedPublicFiles(sourceDir: string, outDir: string
 				await readFile(sourcePath)
 			);
 			// SVGO can recover from some malformed XML. Validate before it rewrites the source.
-			const root = Bun.XML.parse(source, { compact: false });
-			const separator = root.name.indexOf(':');
-			const localName = root.name.slice(separator + 1);
-			const namespaceAttribute =
-				separator === -1 ? 'xmlns' : 'xmlns:' + root.name.slice(0, separator);
-			if (
-				localName !== 'svg' ||
-				root.attributes[namespaceAttribute] !== 'http://www.w3.org/2000/svg'
-			) {
-				throw new SyntaxError('Expected a root element in the SVG namespace named svg.');
-			}
+			validateSvgDocument(source);
 			return optimize(source, { path: sourcePath, floatPrecision: 6 }).data;
 		} catch (cause) {
 			const relative = path.relative(sourceDir, sourcePath);

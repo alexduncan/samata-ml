@@ -37,6 +37,7 @@
 	"devDependencies": {
 		"@axe-core/playwright": "^4.14.0",
 		"@custom-elements-manifest/analyzer": "^0.10.4",
+		"@federicocarboni/saxe": "0.8.0",
 		"@microsoft/tsdoc": "0.17.1",
 		"@microsoft/tsdoc-config": "0.18.3",
 		"@playwright/test": "^1.50.0",

@@ -17,6 +17,7 @@
       "devDependencies": {
         "@axe-core/playwright": "^4.14.0",
         "@custom-elements-manifest/analyzer": "^0.10.4",
+        "@federicocarboni/saxe": "0.8.0",
         "@microsoft/tsdoc": "0.17.1",
         "@microsoft/tsdoc-config": "0.18.3",
         "@playwright/test": "^1.50.0",
@@ -140,6 +141,8 @@
     "@esbuild/win32-ia32": ["@esbuild/win32-ia32@0.28.2", "", { "os": "win32", "cpu": "ia32" }, "sha512-YmJbfTlvU7Sdn9BB+4PRES4oB6pxgS37MAONj+hBr/cpXS1aBPKXxNnDbu+QCWPj0o9dgyxeq79g6c5P8KeuYA=="],
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.28.2", "", { "os": "win32", "cpu": "x64" }, "sha512-5ebpxr3nWMzrL/rnUI755Jkuee0bHL/Gq0WTF9lvcpv73wAp5eu8MfBUgWK9bhWvZjj7yX8etf/8tI8Ney695g=="],
+
+    "@federicocarboni/saxe": ["@federicocarboni/saxe@0.8.0", "", {}, "sha512-l3KPI+js9P3blZUxTxWOIDzMbsedfnRwYBzuKSG5RbsYRAJF0tOmbK9pmi4+s+7wGiv4BkjseyWYLLm3YRCThw=="],
 
     "@github/catalyst": ["@github/catalyst@1.8.1", "", {}, "sha512-dnN4WWpbeuQvA17LvsGdlXEueJdBk9y+I+WO5pdNpoHNOXPsFcz3hJrq1iRmdsNgQOf4S8e83axtwIxvG62eWA=="],
 

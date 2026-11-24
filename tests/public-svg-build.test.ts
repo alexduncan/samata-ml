@@ -100,6 +100,36 @@ test('SVG-BUILD-2: accepts SVG with an explicit namespace prefix', async () => {
 
 const svgRoot = '<svg xmlns="' + SVG_NAMESPACE + '"';
 
+test('SVG-BUILD-2: accepts matching attribute local names in distinct namespaces', async () => {
+	const source = path.join(temporary, 'source');
+	await mkdir(source);
+	await writeFile(
+		path.join(source, 'distinct.svg'),
+		svgRoot + ' xmlns:a="urn:first" xmlns:b="urn:second" a:x="one" b:x="two"/>'
+	);
+	const output = path.join(temporary, 'production');
+	await copyOptimisedPublicFiles(source, output);
+	const result = await readFile(path.join(output, 'distinct.svg'), 'utf8');
+	expect(result).toContain('a:x="one"');
+	expect(result).toContain('b:x="two"');
+});
+
+test('SVG-BUILD-2: preserves a title that uses a declared internal entity', async () => {
+	const source = path.join(temporary, 'source');
+	await mkdir(source);
+	await writeFile(
+		path.join(source, 'title.svg'),
+		'<!DOCTYPE svg [<!ENTITY caption "An illustration">]>' +
+			svgRoot +
+			'><title>&caption;</title></svg>'
+	);
+	const output = path.join(temporary, 'production');
+	await copyOptimisedPublicFiles(source, output);
+	expect(await readFile(path.join(output, 'title.svg'), 'utf8')).toContain(
+		'<title>An illustration</title>'
+	);
+});
+
 test.each([
 	['mismatched tags', svgRoot + '><path></svg>'],
 	['an empty file', ''],
@@ -109,6 +139,16 @@ test.each([
 	['truncated trailing markup', svgRoot + '/><'],
 	['an unclosed trailing comment', svgRoot + '/><!-- unclosed'],
 	['duplicate attributes', svgRoot + ' id="first" id="second"/>'],
+	[
+		'duplicate expanded attribute names',
+		svgRoot + ' xmlns:a="urn:shared" xmlns:b="urn:shared" a:x="one" b:x="two"/>'
+	],
+	[
+		'duplicate expanded attribute names in a nested element',
+		svgRoot + ' xmlns:a="urn:shared"><g xmlns:b="urn:shared" a:x="one" b:x="two"/></svg>'
+	],
+	['an unbound attribute prefix', svgRoot + '><g missing:id="one"/></svg>'],
+	['an invalid binding of the xml prefix', svgRoot + '><g xmlns:xml="urn:other"/></svg>'],
 	['an undeclared entity', svgRoot + '><title>&copy;</title></svg>'],
 	[
 		'invalid UTF-8',
