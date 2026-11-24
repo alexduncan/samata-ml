@@ -107,3 +107,38 @@ body {
 [for="preview-page"] {
 	display: none;
 }
+
+.mockup-index {
+	padding: 1rem;
+	font-family:
+		-apple-system,
+		BlinkMacSystemFont,
+		avenir next,
+		avenir,
+		segoe ui,
+		helvetica neue,
+		Adwaita Sans,
+		Cantarell,
+		Ubuntu,
+		roboto,
+		noto,
+		helvetica,
+		arial,
+		sans-serif;
+}
+
+.mockups {
+	border-collapse: collapse;
+	width: 100%;
+
+	th,
+	td {
+		border: 1px solid #ddd;
+		padding: 0.5rem;
+	}
+
+	th {
+		background-color: #f4f4f4;
+		text-align: left;
+	}
+}

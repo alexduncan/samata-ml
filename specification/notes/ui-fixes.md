@@ -16,24 +16,24 @@ Here is my proposed updated HTML:
   <div id="mockup-details">
     <h4 class="mockup-name">
 		<!-- Give each mockup a simple plain English name -->
-      {Simple Plain English Name of Mockup}
+      {MockupName: Simple Plain English Name of Mockup}
 
 	  <!-- Add a status to each mockup (draft, ready, implemented) -->
       <span class="mockup-status mockup-status-{status}">
-        {draft|ready|implemented}
+        {MockupStatus: draft|ready|implemented}
       </span>
     </h4>
 	<!-- Add a simple description of the mockup to help reviewers understand its context -->
     <p class="mockup-description">
-      {Simple description of the situation in which a user will encounter this
+      {MockupDescription: Simple description of the situation in which a user will encounter this
       ui.}
     </p>
   </div>
   <nav id="mockup-controls" aria-label="Mockup review">
     <!-- Removed label for the select element. WCAG comliance isn't important for this mockup review tool -->
     <select id="preview-page">
-      <option value="/files/basic-html-structure.html">
-        basic-html-structure.html
+      <option value="{file-name.html}">
+        {Mockup Name} ({file-name.html})
       </option>
       <!-- {remaining mockup options} -->
     </select>
@@ -75,14 +75,48 @@ See example in `./samata-ml/specification/mockups/ui-scaffold/drafts/01-6_virtua
 
 I used the term `scaffold` when first creating ui for the app. Now that the basics are established change all references to `scaffold` to `mockups` for ongoing ui refinement.
 
+Change the command `bun run serve:scaffold` to `bun run mockups`.
+
 ### 4) Create a Mockups Index
 
-Flatten the structure of `./samata-ml/specification/mockups/`. All HTML files should live directly inside the folder. Use `<meta 
+Flatten the structure of `./samata-ml/specification/mockups/`. All HTML files should live directly inside the folder.
 
-Write a python script
+When an agent creates a mockup it should add the metadata to the `<head>` of the HTML file using:
+- `<meta name="name" content="{Name of The Mockup}"/>`
+- `<meta name="description" content="{Description The Mockup}"/>`
+- `<meta name="status" content="{draft|ready|implemented}"/>`
+
+The bun script which serves mockups should use this meta data to generate `/index.json` which can be fetched by a script in each page to generate the `<select>` options for switching between mockups.
+
+Javascript can render the table of mockups when the user loads `http://localhost:3000/` in a browser.
+
+### 5) HTML Comments For Clearer Explainations
+
+Whenever an agent combines multiple HTML fragments representing different possible UI states into a single file it should wrap each fragment in opening and closing HTML comments to make it clear for me. For example:
+```html
+<!-- Empty -->
+<!-- This will display when... -->
+<section>
+	<h2>Empty</h2>
+	<p>This model has not completed training.</p>
+</section>
+<!-- / Empty -->
+
+<!-- Result Error -->
+<!-- This will display when... -->
+<section>
+	<h2>Result error</h2>
+	<p role="alert">
+		The result layout could not be loaded or uses an unsupported version.
+	</p>
+	<button class="btn" type="button">Retry</button>
+</section>
+<!-- / Result Error -->
+```
 
 ## Improve Virtualized Table
-1. Move scroll to body. Unwrap `ui-virtual-table` so it sits directly inside `<main>`.
+1. Remove the loading element and table navigation elements.
+2. Move scroll to body. Unwrap `ui-virtual-table` so it sits directly inside `<main>`.
 2. Set the height on `div.table-body` by multiplying row height by the number of rows.
 3. Each row `div.table-row` is positioned using `transform: translateY({scroll-distance});will-change: transform;`.
 4. Maintain an **overscan buffer** of `visibleRows * 2` to avoid the user seeing empty space.
@@ -98,8 +132,6 @@ Write a python script
 - [ ] Format Dates & times better.
 - [ ] Style unsupported columns.
 - [ ] Load dataset progress bar. Progress knowable?!?
-- [ ] 
-
 
 ## Dot Rules
 A key pedagogical principle of this application is to let the user navigate instead of automatically advancing to the next step. However, the `<div class="dot"></div>` element is used to indicate to a user when there is a next logical step for them to move to.
@@ -110,5 +142,48 @@ It is currently used in the following siutations:
 
 ## General Fixes
 
+
+### Feature Selection
+Add 'filter' step during "Design Features" which will only permit features through to the next step which are capable of being used by a model for example `datetime`.
+
 ### Sidebar
 - Resolve models nested link problem.
+- Temporarily change the `<button class="btn-icon project-settings"` into a "delete" link that displays an "Are you sure?" modal with options for "cancel" and "delete." If the user clicks "delete" on the modal, the state should be reset, except for the parameter which records if the welcome modal was dismissed.
+
+### Hover Menu
+
+- Component to display a hover menu adjacent to the triggering element.
+- Ideally use CSS anchor positioning. 
+- Ensure the menu stays on screen when the triggering element is close to the edge of the viewport.
+- Attach an event that closes the menu whenever the user clicks elsewhere on the viewport outside of the menu.
+- The menu should accept an array of buttons.
+
+### Edit Project Menu
+
+Use the hover menu component to display a hover menu when the user clicks on the project.
+The menu should contain:
+- Edit Project Name
+- Download Project as Zip
+- Delete Project
+
+### Training Step Warning
+
+Warn a user when trainibg a later model that it isn't good to compare a model trained by One-shot versus cross-validation.
+
+### Edit Model Menu
+
+### Colors for Models
+
+Allow each model to have a color which is used for all of it's visuals.
+
+### Large Screens
+
+- Don't allow `.page-body` to expand beyond `max-width: 60rem`.
+
+### Sidebar
+
+- Display `{ModelName} ({numFeatures} features)` instead of `Model #`
+
+### CSS Principles
+
+- Prefer logical CSS properties instead of physical properties to better support i18n.

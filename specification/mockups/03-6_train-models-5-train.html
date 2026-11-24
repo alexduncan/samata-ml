@@ -244,26 +244,130 @@
 					<li class="train-step step-active" aria-current="step">
 						<section class="train-step-panel" aria-labelledby="step-5-title">
 							<header class="train-step-header">
-								<h2 id="step-5-title" tabindex="-1">5. Train Model</h2>
+								<h2 id="step-5-title">5. {Training Model...|Training Stopped}</h2>
+
 								<span class="train-step-action train-step-status">
 									<button type="button" class="btn">Cancel Training</button>
 									<button type="button" class="btn" disabled>View Results</button>
 								</span>
 							</header>
+
 							<div class="train-step-content">
-								<progress
-									aria-label="Training progress"
-									max="100"
-									value="35"></progress>
-								<details open>
-									<summary>Fold 1 complete</summary>
-									<ol>
-										<li>Preparing data</li>
-										<li>Starting fold 1 of 3</li>
-										<li>Fold 1 complete</li>
-									</ol>
-								</details>
-								<p class="visually-hidden" role="status" aria-live="polite"></p>
+								<!-- One-Shot Model Training -->
+								<div class="progress training-active">
+									<div class="progress-header">
+										<label for="model-train-bar">Overall progress</label>
+										<!-- Visual percentage only; <progress> already exposes the value to assistive tech -->
+										<span class="progress-percent" aria-hidden="true">62%</span>
+									</div>
+									<!-- Determinate: set value (0–99 while running, 100 on completed).
+         							Indeterminate (queued, SVC/SVR training): remove the value attribute entirely. -->
+									<progress
+										id="model-train-bar"
+										max="100"
+										value="62"
+										class="progress-bar"></progress>
+								</div>
+								<!-- Plain text for current step (not a live region, so screen readers aren't spammed) -->
+								<p class="phase-message">Learning from your data…</p>
+								<!-- Polite live region: populate ONLY on completion or cancellation -->
+								<p class="outcome-message" role="status"></p>
+								<!-- Assertive alert: populate ONLY on 'failed' -->
+								<div class="error-banner" role="alert" hidden>
+									<p class="error-summary"></p>
+									<button type="button" class="retry-button">Try again</button>
+									<details class="error-details">
+										<summary>Technical details</summary>
+										<p class="error-raw"></p>
+									</details>
+								</div>
+
+								<hr />
+
+								<!-- Cross-validate Model training -->
+								<div class="progress training-active">
+									<div class="progress-header">
+										<label for="cv-bar">Overall progress</label>
+										<span class="progress-percent" aria-hidden="true">64%</span>
+									</div>
+									<!-- Omit value before first fold-start or while queued/SVC native fit -->
+									<progress
+										id="cv-bar"
+										max="100"
+										value="64"
+										class="progress-bar"></progress>
+								</div>
+								<p class="phase-message">Running check 4 of 5…</p>
+								<!-- Optional visual step tracker (e.g. dots or pills in CSS);
+       						add a final <li> only when request.refit === true -->
+								<ol class="step-list" aria-label="Progress steps">
+									<li data-status="complete">Check 1</li>
+									<li data-status="complete">Check 2</li>
+									<li data-status="complete">Check 3</li>
+									<li data-status="active" aria-current="step">Check 4</li>
+									<li data-status="pending">Check 5</li>
+									<li data-status="pending">Final model</li>
+								</ol>
+								<!-- Populate ONLY on final completion or cancellation -->
+								<p class="outcome-message" role="status"></p>
+								<div class="error-banner" role="alert" hidden>
+									<p class="error-summary"></p>
+									<button type="button" class="retry-button">Try again</button>
+								</div>
+
+								<hr />
+
+								<!-- Nested Cross-validation Model training -->
+								<div class="progress training-active progress--primary">
+									<div class="progress-header">
+										<label for="nested-overall-bar">Overall progress</label>
+										<span class="progress-percent" aria-hidden="true">46%</span>
+									</div>
+									<!-- Omit value before the first outer-fold-start -->
+									<progress
+										id="nested-overall-bar"
+										max="100"
+										value="46"
+										class="progress-bar"></progress>
+								</div>
+								<!-- Secondary bar: activity inside the current round -->
+								<div class="progress training-active progress--secondary">
+									<div class="progress-header">
+										<label for="nested-round-bar">Current round (3 of 5)</label>
+										<span class="progress-counter" aria-hidden="true"
+											>3 of 10 checked</span
+										>
+									</div>
+									<!-- Omit value while queued, loading data, or finalizing the round -->
+									<progress
+										id="nested-round-bar"
+										max="10"
+										value="3"
+										class="progress-bar"></progress>
+								</div>
+								<p class="phase-message">Round 3 of 5 · Testing settings…</p>
+								<!-- Polite live region: update on each outer-fold-complete (e.g. "Completed round 2 of 5")
+       						and on final completion/cancellation -->
+								<p class="outcome-message" role="status"></p>
+								<div class="error-banner" role="alert" hidden>
+									<p class="error-summary"></p>
+									<button type="button" class="retry-button">Try again</button>
+								</div>
+
+								<hr />
+								<!-- Training Cancelled -->
+								<div class="progress training-stopped">
+									<div class="progress-header">
+										<label for="cv-bar">Overall progress</label>
+										<span class="progress-percent" aria-hidden="true">64%</span>
+									</div>
+									<!-- Omit value before first fold-start or while queued/SVC native fit -->
+									<progress
+										id="cv-bar"
+										max="100"
+										value="64"
+										class="progress-bar"></progress>
+								</div>
 							</div>
 						</section>
 					</li>
