@@ -1,0 +1,294 @@
+# Plain-English definitions for technical terms
+
+**Status:** ready-for-review | **Updated:** 2026-11-23T21:21:09Z
+**Authors:** Codex (GPT-6) | **Created:** 2026-11-23T21:15:58Z
+**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified hash:** —
+**Implementation verified by:** — | **Implementation verified:** —
+
+## Goal
+
+**Current behaviour:** The workflow keeps technical names. The existing Training Setup and Configure Model Help articles explain some choices. Configure Model also puts definitions of full words such as “solver” in native abbreviation titles. The data inspector has compact headings, and results use terms such as “held-out”, “Macro-F1” and “ROC-AUC” with varying amounts of context.
+
+**Target behaviour:** Learners can look up the terms below where they make a choice or interpret a result, using a keyboard, pointer or touch. Technical names, compact tables and the normal path through the workflow remain familiar to experienced users.
+
+**Why:** Understanding what a score measures or a setting does is part of learning to train a model. The app can preserve precise vocabulary and keep explanations at the point where they matter.
+
+## Scope
+
+**In scope**
+
+- Audit the English UI from data selection and inspection through target and feature selection, model configuration, Training Setup, training summaries, single-model results and comparison. Use the inventory below as the copy contract.
+- Update the three existing Help articles, correct the existing Configure Model abbreviation semantics, mark the compact categorical frequency header, and add an optional terms disclosure in each ready results view.
+- Keep Mean Squared Error in the inventory for a future regression view. It has no live samatā occurrence at the audited revision.
+
+**Out of scope**
+
+- A standalone glossary route or search, dynamic Help topics, author-defined abbreviations in arbitrary Markdown, a tooltip system, optional formulas, rewriting model descriptions or sample datasheets, and model-specific results or tuning from Phases 6–7.
+- Regression UI, training, preprocessing, evaluation formulas, statistical analysis, worker protocols, storage, exports and data changes.
+
+**Constraints and invariants**
+
+- WCAG 2.2 AA and Baseline Widely Available. An abbreviation title supplements visible accessible copy. Native controls, headings, chart descriptions, links and table relationships retain their names and behaviour. Add one optional tab stop per results view.
+- All values, sorting IDs, training strategy option values and saved summaries retain their current contracts. Only display copy and semantic HTML change. The pinned `web-ml` release remains the authority on results.
+- Existing app i18n dictionaries and presentational label overrides govern live strings. Render text through Lit bindings. Keep authored articles on the validated Markdown pipeline. No new network access, dependencies, persistent UI state, chart recomputation or per-cell markup for uploaded values.
+
+## Required reading
+
+- `specification/VISION.md` §4, `specification/workflow-steps.md` §§1–4 and `specification/content-and-i18n.md` §Static Content.
+- `specification/COMPONENTS.md` §§3–10, `specification/visual-design.md` §§1.1, 4–6 and `specification/standards-and-documentation.md` §TSDoc.
+- `specification/components/sidepanel.md` §3, `specification/components/model-configuration.md` §§3–9, `specification/components/training-setup.md` §§4–8, `specification/components/model-results.md` and `specification/components/results-comparison.md` §§3–9.
+
+## Codebase context
+
+- **Relevant specifications:** `workflow-steps.md` governs labels and behaviour. `TODO.md` TODO-40 covers progressive disclosure. The existing Help topics already have stable reserved paths. The independent `router-help-history-and-dynamic-topics.md` stub can proceed on its own schedule.
+- **Relevant implementation:** `content/en/pages/help.md:5–12`, `configure-model.md:11–59` and `training-setup.md:5–21` contain the current guide. `src/features/shell/app-content-modal.ts:85–104,149–163` resolves existing routes. `src/common/content/fragment-policy.ts:16–54` and `scripts/markdown.ts:327` constrain authored HTML. The dialog renders inside a shadow root and `src/router.ts:289–297` ignores hash-only links for app routing. The plan uses the existing whole articles.
+- **Relevant implementation:** `src/features/data/app-column-details.ts:310–453` owns the statistics and category header, with `Freq.` at line 378. `src/features/data/app-upload-dataset-dialog.ts:420–422` displays `.csv` as a file extension. `src/features/models/feature-eligibility.ts:53–54` provides “May cause target leakage”. `src/features/models/app-model-configuration.ts:594–629`, `model-option-copy.ts:174–210,249–252,286–297`, `model-presentation-policy.ts:134–156` and `src/common/description-segments.ts:9–19` implement the current full-word title mechanism.
+- **Relevant implementation:** `src/features/models/app-training-setup.ts:401–425,449–490` owns fold help, native strategies and `#strategy-help`. `app-model-builder-view.ts:1677–1731,1926–1948` owns logs and the completed setup summary. `app-models-view.ts:328–349` displays the summary as plain table text.
+- **Relevant implementation:** `src/features/results/app-model-results.ts:65–143,268–354,745–806` owns single-model copy, labels and ready markup. `app-results-summary.ts:166–217` owns the separate More metrics disclosure. `results-view-model.ts:145–198` uses the mean of fold balanced accuracies for the CV headline. `app-results-view.ts:79–148,403–406,593–635,693–728` owns comparison labels and markup. `comparison-model.ts:100–115,126–145` uses pooled held-out scores in the comparison table. `app-comparison-table.ts:143–167` has native sort buttons, and `app-rope-bar.ts:162–191` already labels the width field.
+- **Release evidence:** Scout used the installed `web-ml@0.2.0` from `vendor/web-ml/web-ml-0.2.0.tgz`. For model terms, public catalogue JSON locates the options, public declarations beneath `dist/src/models/` and `specification/public-api/hyperparameters.md` lines 181–243 and 410–434 provide semantics. Strategy evidence comes from public `dist/src/training/{holdout-validate,cross-validate,classifier-evaluation}.d.ts` and `specification/public-api/tabular-preprocessing.md:171–177`. Metric evidence comes from public `dist/src/metrics/{types,classification,ranking,classification-curves,model-comparison,regression}.d.ts` and `specification/public-api/{metrics,model-comparison}.md`. Evidence concerns the pinned release and the app's display choices.
+- **Tests and commands:** `bun run check` passed type checking, 586 unit tests, zero failures with access to public sample URLs and a local test server. The initial restricted run had 570 passes and five test failures from dataset DNS and socket binding restrictions. The UI, story and parity commands below are implementation gates.
+- **Web guidance:** `html` §§1, 5 for native summaries and title-independent access, `forms` §2 and `accessibility` §§3, 5, 7 for form descriptions and focus. [WHATWG HTML, abbr](https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-abbr-element), [WHATWG HTML, dfn](https://html.spec.whatwg.org/multipage/text-level-semantics.html#the-dfn-element) and [W3C inline definitions](https://www.w3.org/WAI/WCAG21/Techniques/general/G112) govern expansion and defining markup.
+- **Visual reference:** Implemented `01-5_preview-dataset-aside.html` already shows the categorical frequency abbreviation. Keep its table styling. The target and features reference markup remains unchanged. `03-4_train-models-3-configure-model.html`, `03-5_train-models-4-configure-training.html`, `03-7_train-models-5-results.html` and `04_compare-results.html` are structure-only drafts. Retain `.field` help structure from `src/styles/hyperparameters.styles.ts` and the relevant setup classes. Extend the two results drafts with native semantic disclosures. Use the `details`, `summary` and `summary:focus-visible` presentation in `src/styles/results.styles.ts:33–48` and scope any new rule to the terms disclosure. Record any measured drift under visual design §5 at implementation.
+- **Domain skills:** `lit-component-implementer` for T1–T3. The plan applies `lit-architecture-planner` and `modern-web-guidance`.
+- **Assumptions requiring verification:** None.
+
+## Technical decisions
+
+| Decision         | Chosen approach and rationale                                                                                                                                                                   | Rejected alternative / trade-off                                                           |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| Choice of markup | Use `<abbr title="Expansion">` only for actual shortened forms. Use `<dfn>` in the native results definition list for full terms. Keep adjacent plain-English copy visible when help is opened. | This limits markup to useful defining occurrences and keeps the compact workflow readable. |
+| Placement        | Use existing Help for source and model terminology, a short contextual hint for the chosen strategy, and native results disclosures.                                                            | Native disclosure gives each ready result one focus stop.                                  |
+| Source of copy   | Keep one authoritative definition per concept and context, using the destination assigned below. Keep summaries, logs and chart data labels plain.                                              | The fold-mean and pooled scores require separate contextual explanations.                  |
+| UI architecture  | Modify existing tiers. Data inspector and configuration are presentational. Training Setup is presentational. Each results view is connected. Native HTML holds the results disclosure state.   | No new component or shared rendering helper is needed.                                     |
+
+### Interfaces and behaviour
+
+**Editorial and semantic rules.** Keep app casing and punctuation in labels, and use British English in definitions. “Held-out”, “Balanced accuracy”, “Cross-Validation” and “One-Shot” are full terms. The long form “Mean Squared Error” is also a full term. Use its abbreviation only if a future interface shows “MSE”. An expansion gives the full name, and the adjacent sentence explains what it means. `%` is a symbol. `C`, `p`, `F1` and literal option values remain plain. Keep original copy in data cells, native option labels, accessible names, SVG text, chart axes and tooltips, and progress lines. Preserve `abbr` text escaping and native focus behaviour. No token scans over arbitrary prose or user data.
+
+#### A. Data, target and modelling terms
+
+Use these entries under “Data and model choices” in `content/en/pages/help.md` after the existing steps. Use Markdown subheadings and list entries with bold terms and the supplied sentences. Keep the existing upload requirement and workflow names. Expand “Comma-separated values (CSV)” and “Coordinated Universal Time (UTC)” in visible Help text. In the inspector, wrap only the built-in categorical `Freq.` fallback in `<abbr title="Frequency">`, with accessible columnheader name “Frequency” and unchanged scope. Supply the expansion as a Tier 2 English default with optional `labels.frequencyExpansion` for an explicitly localised short label. With no non-empty `labels.frequency`, use the English abbreviation and expansion together. With a supplied frequency label, use `labels.frequencyExpansion` only if the consumer supplies a non-empty expansion for that label. With a full custom label, let that label name the header. Leave the Boolean `Count` and `%` headers and the formatted datetime values alone.
+
+| Live term or label                       | Definition                                                                                                                                                                                                                    |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| CSV                                      | A plain-text file that stores a table, usually with commas between values.                                                                                                                                                    |
+| Categorical / category / class           | A categorical column groups rows by a value such as a species name. When a model predicts a category, each possible answer is called a class.                                                                                 |
+| Numeric / Boolean / Date and time / Text | A numeric column holds numbers. A Boolean column holds two values, true and false. A date and time column holds dates or times. A text column holds written values.                                                           |
+| Empty (missing) / Invalid                | A missing value was left empty or uses a recognised placeholder for missing data. An invalid value is present but does not fit the column's detected type.                                                                    |
+| Distinct values / Constant               | Distinct values are the different values that appear. A constant column has the same value wherever a value is present.                                                                                                       |
+| Identifier / Identifier candidate        | An identifier names an individual row or item. A column with a different value for every row may be an identifier.                                                                                                            |
+| Min / Max; Median; Mean                  | Minimum and maximum are the smallest and largest values. The median is the middle value in order, or the average of the middle two values when there are an even number. The mean is the sum divided by the number of values. |
+| Histogram / range / count                | A histogram groups numbers into ranges. The count tells you how many values fall in a range.                                                                                                                                  |
+| Freq. / %                                | Frequency is how many times a category appears. In the inspector, its percentage is the count divided by the number of non-missing values.                                                                                    |
+| UTC                                      | A common time reference used to show dates and times consistently across time zones.                                                                                                                                          |
+| Target / Feature                         | The target is the column you want to predict. A feature is a column the model uses to make that prediction.                                                                                                                   |
+| Target leakage                           | An input gives away the answer or uses information that would be unavailable when making a real prediction.                                                                                                                   |
+| Classification / Regression              | Classification predicts a category. Regression predicts a number. This workflow currently trains classifiers.                                                                                                                 |
+| Model / Algorithm                        | A model uses patterns learned from data to make predictions. An algorithm is the method used to learn those patterns.                                                                                                         |
+
+“Min” and “Max” qualify as shortened forms if a future layout needs a dedicated expansion. “CSV” and “UTC” qualify where shown as plain HTML labels. The current file-extension and formatted timestamp placements retain their text format. Keep model type badges, model names and existing Model Description entry points, which already lead to algorithm-specific descriptions.
+
+#### B. Configure Model terms
+
+In `content/en/pages/configure-model.md`, retain the existing H1, setting guidance and model-specific examples. Integrate entries below by topic and replace any overlapping definitions in the article. The existing section heading link opens this article. Beside fields, render the existing complete help sentence as text with its existing ID and `aria-describedby` association. The presentational element keeps its current tag, properties and events. Remove only the obsolete `terms` member from `OptionLabels` and the now-unused segmentation and glossary policy/copy metadata. The builder keeps supplying the same label dictionary through its existing adapter.
+
+| Term                                               | Definition                                                                                                                                                                                                                                                                                                                    |
+| -------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Hyperparameter / Manual / Random Search (advanced) | A hyperparameter is a setting chosen before training that controls how the model learns. Manual means you choose the settings. Random search tries different combinations drawn from ranges or options you choose. Random Search is currently unavailable in this form.                                                       |
+| Solver / Iteration / Tolerance                     | The solver is the method used to find the model's settings. An iteration is one step of that method. Tolerance helps decide when further steps are making too little difference to continue. The exact stopping check depends on the solver.                                                                                  |
+| Penalty / Regularisation / L1 / L2 / Elastic Net   | A penalty makes some fitted models cost more during training. Regularisation uses that penalty to limit how strongly the model fits the training rows. L1 can shrink some input weights to zero. L2 shrinks weights towards zero. Elastic Net mixes the two.                                                                  |
+| Learning rate                                      | How large a step the model takes each time it adjusts its weights during training.                                                                                                                                                                                                                                            |
+| Intercept                                          | A starting offset added to the model's score before counting the effects of its inputs.                                                                                                                                                                                                                                       |
+| Class weights                                      | Settings that decide how much examples of each class count during training.                                                                                                                                                                                                                                                   |
+| Activation function / Hidden layers                | An activation function changes a neuron's input into its output. Hidden layers are groups of neurons between the input and prediction that learn intermediate patterns.                                                                                                                                                       |
+| Seed                                               | A starting number for a repeatable sequence of random choices.                                                                                                                                                                                                                                                                |
+| Impurity / Criterion                               | Impurity measures how mixed the classes are in a group of rows. A split criterion is the rule a tree uses to score possible splits.                                                                                                                                                                                           |
+| Neighbours / Distance metric                       | Neighbours are the training rows closest to a new row. A distance metric defines how that closeness is measured.                                                                                                                                                                                                              |
+| Smoothing / Priors                                 | Smoothing reduces the effect of values or combinations that rarely occur. Count smoothing can keep an unseen combination from getting a zero estimate. Gaussian variance smoothing keeps estimated spreads from becoming too small. Priors are the starting chances assigned to the classes before looking at a row's inputs. |
+| Binarise                                           | Turn a value into one of two values according to which side of a cutoff it falls on.                                                                                                                                                                                                                                          |
+| Kernel / Gamma                                     | A kernel is the rule the classifier uses to compare rows. Gamma controls how quickly the influence of a row falls away with distance for a radial basis kernel. For other kernels its role depends on the kernel.                                                                                                             |
+| Probability estimates                              | The model's estimated chances for the possible answers.                                                                                                                                                                                                                                                                       |
+| Multiclass / One-vs-Rest / One-vs-One              | Multiclass means there are more than two possible answers. One-vs-Rest learns to separate each class from all the others. One-vs-One learns to separate each pair of classes.                                                                                                                                                 |
+| SGD / L-BFGS                                       | Stochastic gradient descent and limited-memory Broyden–Fletcher–Goldfarb–Shanno are methods for taking steps towards a better fit. SGD uses a direction based on the current slope. L-BFGS also uses information from recent steps to choose the next one.                                                                    |
+| ReLU / RBF / tanh                                  | Rectified linear unit keeps positive inputs and turns negative inputs into zero. A radial basis function gives more influence to nearby rows. Hyperbolic tangent maps values to a scale between minus one and one.                                                                                                            |
+
+The last two rows are Help expansions for the abbreviations behind visible solver and kernel choices. Keep machine tokens such as `sgd`, `lbfgs`, `rbf`, `tanh` and all option values inside native selections as text. Preserve the exact value range, class handling and configuration behaviour. Keep model-specific uses of settings such as `C` within their existing setting help.
+
+#### C. Training and evaluation protocol terms
+
+Use these sentences in the existing Training Setup article, integrating with its current practical explanation and fold-limit example. In `#strategy-help`, preserve the help link and the One-Shot 80/20 note. Add the selected strategy sentence before the link, using two complete messages in `TrainingSetupLabels` (keys `oneShotDefinition` and `crossValidationDefinition`, English defaults as below). Supply them through the existing builder i18n adapter. Give the text inside `#strategy-help` the ID `strategy-description`. Point the select’s `aria-describedby` to that text, including the existing One-Shot note when applicable. Put the Help link after the description, outside the text target. Display one sentence at a time and keep focus on the control while the choice changes. Keep fold, validation and refit explanations in Help and the shared results entries where listed.
+
+| Term                   | Definition                                                                                                                |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| One-Shot               | Train once on one part of the data and test on the part set aside.                                                        |
+| Cross-Validation       | Divide the data into groups, then train and check a model several times, using a different group for the check each time. |
+| Held-out rows          | Rows left out of training for the model that made those predictions.                                                      |
+| Training / test split  | The training rows teach the model. The test rows are set aside to check how it performs on other rows.                    |
+| Fold / validation fold | A fold is one group of rows in cross-validation. The validation fold is the group set aside for one check.                |
+| Stratified split       | A split that tries to keep the shares of each class similar in the groups.                                                |
+| Refit                  | Train the final model again using all the eligible rows after cross-validation has checked performance.                   |
+
+Training Setup continues to describe the requested 80% training and 20% test split, seed 42 and actual fold limits. Results use “held-out” for either the test split or the rows set aside in each fold. The later refit does not produce the displayed held-out scores.
+
+#### D. Results and comparison terms
+
+In the ready single-model view insert one native `<details>` after `<app-results-summary>` and before the fold section. In the comparison view insert one immediately after the sortable metrics table in the group that has a comparison projection. Use “What do these results terms mean?” as the first-child `<summary>` in both. Put the relevant rows below in a native `<dl>` in inventory order. Each term label is in a `<dt>`, with full terms marked by `<dfn>` and its definition in the corresponding `<dd>`. For MCC, ROC-AUC and ECE, put the acronym in `<abbr title="Expanded name">` in the `<dt>`, and provide the expanded name visibly at the beginning of the `<dd>` before the definition. Apply these markers in the disclosure. The existing results labels and plotting strings stay plain and stable.
+
+Publish shared English text as readonly data in `src/features/results/result-term-copy.ts`. This module exports one documented readonly object, `RESULT_TERM_COPY`, in inventory order. Keys are the IDs below. Each entry has `term: string`, `definition: string`, optional `expansion: string` and `surface` (`both`, `single`, `comparison`, `cross-validation` or `binary`). The last two values apply only to single-model results. It imports no app, Lit or stores. Both connected owners register the relevant text under `term.<id>.name`, `term.<id>.definition` and, if present, `term.<id>.expansion` in their existing dictionaries. Each renders its local template. Do not concatenate the expansion and definition into one localised string. Filter the entries by the Where column and use the table order. Key the rendered entries by ID, including across protocol and class changes. No custom-element APIs change. No new events or stores. Both disclosures start closed, are independently operable and retain their native open state across same-view updates while mounted. Returning to a fresh view starts closed. Keep the existing More metrics event/persistence contract and the chart table disclosures independent. Existing caption/error text still governs metric availability, including absent probabilities or classes.
+
+“S” means single model, “C” means Compare Results. Both list the same definition for shared concepts. The parenthetical expansions below are visible at the start of the respective definitions. Maintain the existing higher/lower-is-better text in metric labels.
+
+| ID                      | Term                                                             | Where               | Definition                                                                                                                                                 |
+| ----------------------- | ---------------------------------------------------------------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| held-out-rows           | Held-out rows                                                    | S, C                | Rows left out of training for the model that made those predictions.                                                                                       |
+| balanced-accuracy       | Balanced accuracy                                                | S, C                | Find the share of rows correctly predicted within each class, then average those shares so each class counts equally.                                      |
+| mean-across-folds       | Mean across folds                                                | S, Cross-Validation | Score each held-out fold separately, then average the fold scores.                                                                                         |
+| pooled-score            | Pooled held-out score                                            | C                   | Put the held-out predictions together, then calculate one score from the combined predictions.                                                             |
+| accuracy                | Accuracy                                                         | S, C                | The share of rows for which the model predicted the correct class.                                                                                         |
+| baseline                | Baseline                                                         | S, C                | A reference score for judging how much the model improves on a simple rule.                                                                                |
+| most-frequent-class     | Most frequent class                                              | S, C                | The baseline that always picks the commonest answer.                                                                                                       |
+| random-by-class-share   | Random guesses by class share                                    | S, C                | The baseline that guesses according to how common each class is.                                                                                           |
+| percentage-point        | Percentage point                                                 | S, C                | A unit for the difference between percentages, such as the five points from 75% to 80%.                                                                    |
+| train-test-gap          | Train–test gap                                                   | S, C                | The training score minus the corresponding held-out score.                                                                                                 |
+| standard-deviation      | Standard deviation                                               | S, C                | Describes how far fold scores tend to spread around their mean.                                                                                            |
+| interquartile-range     | Interquartile range                                              | S, C                | The width of the middle half of the fold scores.                                                                                                           |
+| precision               | Precision                                                        | S, C                | Of the rows predicted to be in a class, the share that really belong to it.                                                                                |
+| recall                  | Recall                                                           | S, C                | Of the rows that actually belong to a class, the share that the model found.                                                                               |
+| f1                      | F1                                                               | S, C                | Combines precision and recall into one score that drops when either is low.                                                                                |
+| macro-f1                | Macro-F1                                                         | S, C                | Averages F1 equally across classes.                                                                                                                        |
+| mcc                     | MCC (Matthews correlation coefficient)                           | S, C                | A score for how closely predicted and actual classes agree across correct predictions and errors. Higher values indicate stronger agreement.               |
+| roc-auc                 | ROC-AUC (Area under the receiver operating characteristic curve) | S, C                | Summarises how well the model ranks members of a class ahead of other rows across possible cutoffs.                                                        |
+| average-precision       | Average precision                                                | S, C                | Summarises how precise the model's predictions are as the score cutoff changes and it finds more members of a class.                                       |
+| log-loss                | Log loss                                                         | S, C                | Measures how much chance the model gave to the answers that actually happened. Confident wrong answers increase the loss sharply.                          |
+| brier-score             | Brier score                                                      | S, C                | Measures squared gaps between the model's predicted chances and what happened. Smaller gaps give a lower score.                                            |
+| calibration             | Calibration                                                      | S, C                | Checks whether predicted chances match how often the events happen.                                                                                        |
+| ece                     | ECE (Expected calibration error)                                 | S, C                | Averages the gaps between predicted chances and observed outcomes across groups of predictions, giving larger groups more weight.                          |
+| true-class              | True class                                                       | S, C                | The recorded answer for a row.                                                                                                                             |
+| predicted-class         | Predicted class                                                  | S, C                | The model's answer for a row.                                                                                                                              |
+| confusion-matrix        | Confusion matrix                                                 | S, C                | A table that counts each pairing of recorded and predicted answers.                                                                                        |
+| positive-class          | Positive class                                                   | S, C                | The category treated as the yes answer in a two-category check.                                                                                            |
+| false-positive          | False positive                                                   | S, C                | Predicting the positive answer when the actual answer is negative.                                                                                         |
+| false-negative          | False negative                                                   | S, C                | Missing the positive answer when it is present.                                                                                                            |
+| error-rate              | Error rate                                                       | C                   | The share of predictions that are wrong. For a specific class, count the errors among rows that actually belong to that class.                             |
+| probability-threshold   | Probability threshold                                            | S, binary results   | The cutoff that turns a predicted chance into a yes-or-no decision for the positive class.                                                                 |
+| practical-equivalence   | Practical equivalence                                            | C                   | Differences inside the chosen range are treated as small enough to count as similar.                                                                       |
+| equivalence-width       | Equivalence width                                                | C                   | The range on each side of zero. For example, one percentage point allows a difference of up to one point in either direction.                              |
+| equivalence-probability | Equivalence probability                                          | C                   | The estimated chance that the expected balanced-accuracy difference between the two models lies inside the chosen range, based on their paired evaluation. |
+| instance-agreement      | Instance agreement                                               | C                   | Groups the same held-out rows by how many of the selected models got each row right.                                                                       |
+| fit-time                | Fit time                                                         | S, C                | Time spent training the model.                                                                                                                             |
+| fit-and-score-time      | Fit + score across folds                                         | S, C                | Time spent training and evaluating the folds.                                                                                                              |
+
+ROPE (region of practical equivalence) is developer vocabulary here. Display the existing full wording for practical equivalence. The fold-mean definition appears only for Cross-Validation in single-model results, and the pooled-score definition appears only in comparison. The probability threshold definition appears only for binary results. A definition remains useful when a metric is unavailable in the current run.
+
+#### E. Reference for future regression results
+
+| Term                     | Intended placement                                                                                                          | Definition                                                                                                                                |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| Mean Squared Error (MSE) | A future regression metric definition. Use `<abbr title="Mean squared error">MSE</abbr>` if the metric is displayed as MSE. | Average the squared differences between the model's numerical predictions and the actual values. Squaring makes larger misses count more. |
+
+No release capability is required for the current UI work. The pinned public reference for MSE is `specification/public-api/metrics.md:478–481` in the installed package.
+
+## Specification changes
+
+- [ ] `specification/workflow-steps.md` §§1–4 describes Help placement, the selected strategy hint, and the single and comparison disclosures. Status stays partial.
+- [ ] `specification/content-and-i18n.md` §Static Content defines ownership of these English definitions, valid abbreviation expansions and accessible visible copy. Status stays partial.
+- [ ] `specification/components/sidepanel.md` §3 documents the categorical header fallback, the optional label expansion and the visible Help definition. Status stays implemented.
+- [ ] `specification/components/model-configuration.md` §§3, 6–9 documents the revised per-field label shape, full-term Help copy and tests. `specification/components/training-setup.md` §§4, 6–9 documents the new label keys, association and stories. Statuses stay implemented.
+- [ ] `specification/components/model-results.md` and `specification/components/results-comparison.md` §§4–10 document disclosure placement, shared copy, lifecycle, accessibility and evidence. Statuses stay implemented.
+- [ ] `specification/TODO.md` and `specification/HUMAN.md` narrow TODO-40 to standalone reference/formula follow-ups and reflect the two updated drafts in the current styling queue. Keep spec statuses aligned with `specification/README.md`.
+
+## Implementation tasks
+
+### T1 — Explain data and model configuration terms using existing Help
+
+- **Depends on:** None
+- **Risk:** needs care — field descriptions and their form associations must survive removal of the title-only segmentation.
+- **Likely files:** `content/en/pages/help.md`, `content/en/pages/configure-model.md`, `src/features/data/app-column-details.ts`, `src/features/data/app-column-details.stories.ts`, `src/features/models/app-model-configuration.ts`, `src/features/models/app-model-configuration.stories.ts`, `src/features/models/model-option-copy.ts`, `src/features/models/model-presentation-policy.ts`, `src/common/description-segments.ts`, `src/styles/hyperparameters.stories.ts`, `tests/content.e2e.ts`, `tests/data-preview.e2e.ts`, `tests/model-configuration.e2e.ts`, `tests/description-segments.test.ts`, `tests/model-options.test.ts`
+- **Must not touch:** `src/router.ts`, `src/common/content/`, `scripts/`, `src/features/models/training/`, `vendor/`, `specification/mockups/01-5_preview-dataset-aside.html`
+- **Implementation:** Apply A and B. Delete the obsolete segmentation module and its dedicated unit test once its single runtime consumer is removed. Remove only the term-metadata invariant from model-option coverage. Keep existing field copy, labels, help IDs and valid control behaviour. Update Configure Model stories and documentation to match the plain help sentences. Add inspector stories for categorical, override, Boolean, numeric, date/time, text, narrow/long label and RTL. Reuse existing table styling.
+- **Acceptance criteria:**
+    - [ ] TERM-AC-1: The existing Help and Configure Model Help links reveal the A/B definitions through the existing dialog with keyboard and touch activation. Closing restores focus. The build safely compiles both articles.
+    - [ ] TERM-AC-2: The categorical table retains visible “Freq.” and exposes “Frequency” as its columnheader name and abbreviation expansion by default. Consumer-provided full text and the Boolean “Count” retain their visible and accessible text. User category labels containing literal markup render as text.
+    - [ ] TERM-AC-3: All eight current classifier forms retain accessible names, field hint/error associations, option values and validation. A field help sentence containing a full technical term contains no `abbr`. Focus and layout work at 320 px, 200% zoom, with long labels, RTL and forced colours.
+- **Verification:** `bun run check`, `bun run build`, `bun run test:e2e tests/content.e2e.ts`, `bun run test:e2e tests/data-preview.e2e.ts`, `bun run test:e2e tests/model-configuration.e2e.ts`, `bun run test:e2e tests/visual-parity.e2e.ts`, `bun test tests/style-tokens.test.ts`, `bun run test:stories`.
+- **Progress:** [ ] Not started
+
+### T2 — Define the strategy at the point of choice
+
+- **Depends on:** None
+- **Risk:** routine
+- **Likely files:** `content/en/pages/training-setup.md`, `src/features/models/app-training-setup.ts`, `src/features/models/app-training-setup.stories.ts`, `src/features/models/app-model-builder-view.ts`, `src/features/models/app-model-builder-view.stories.ts`, `specification/mockups/03-5_train-models-4-configure-training.html`, `tests/training-setup.e2e.ts`
+- **Must not touch:** `src/features/models/training/`, `src/types/`, `src/stores/`, `src/router.ts`
+- **Implementation:** Apply C in the existing setup help block and article. Keep the release split/fold guardrails and the existing accessible form. Reflect the two strategy states in the existing draft with state comments. Extend the setup and builder stories for both strategy hints, blocked and disabled states, long labels and RTL.
+- **Acceptance criteria:**
+    - [ ] TERM-AC-4: Selecting either strategy with mouse, touch or keyboard updates the visible description and select's accessible description. The native select options stay plain. Fold fields retain their existing validation and focus. The long and RTL labels wrap without clipping.
+    - [ ] TERM-AC-5: Both Help links still open the existing article. It distinguishes held-out rows, test split, stratification, folds and refit. No obsolete strategy help remains visible after a selection change, and trained-model summaries keep their original text.
+- **Verification:** `bun run check`, `bun run build`, `bun run test:e2e tests/training-setup.e2e.ts`, `bun run test:e2e tests/models-overview.e2e.ts`, `bun test tests/style-tokens.test.ts`, `bun run test:stories`.
+- **Progress:** [ ] Not started
+
+### T3 — Explain metrics in ready single and comparison results
+
+- **Depends on:** None
+- **Risk:** needs care — the headline CV mean and comparison pooled score differ, and unsupported metrics must retain their unavailable reasons.
+- **Likely files:** `src/features/results/app-model-results.ts`, `src/features/results/app-model-results.stories.ts`, `src/features/results/app-results-view.ts`, `src/features/results/app-results-view.stories.ts`, `src/features/results/result-term-copy.ts`, `src/styles/results.styles.ts`, `specification/mockups/03-7_train-models-5-results.html`, `specification/mockups/04_compare-results.html`, `tests/model-results.e2e.ts`, `tests/comparison-controls.e2e.ts`, `tests/a11y.e2e.ts`
+- **Must not touch:** `src/features/results/charts/`, `src/features/results/*-model.ts`, `src/features/results/analysis-*.ts`, `src/features/models/training/`, `src/stores/`, `vendor/`, `specification/mockups/mockups.css`
+- **Implementation:** Apply D in the two connected render paths and ready draft fragments. Match existing native disclosure presentation with visible focus, at least 24 × 24 CSS px summary target, inherited typography and logical layout. Preserve the native marker and use the existing focus-ring token if styling is needed. No animation. Extend ready and state stories to demonstrate native activation, absence in dead-end states, long labels and RTL. The supplied Mean Squared Error definition stays as future reference in this plan.
+- **Acceptance criteria:**
+    - [ ] TERM-AC-6: Single results display one initially closed disclosure for One-Shot and CV. Mouse, keyboard and touch all open and close it, and focus stays on the summary. Balanced accuracy and held-out rows have the supplied definitions. The fold mean appears for CV, and binary-only threshold terms appear for binary results.
+    - [ ] TERM-AC-7: Comparison displays one disclosure after the populated table with pooled scores and equivalence width explained. It stays absent when there is no comparison projection and retains native open state during ordinary updates to a mounted comparison. Sort header names/states and the width control remain intact.
+    - [ ] TERM-AC-8: MCC, ROC-AUC and ECE expose their expansions in visible text and have exact expansion-only titles. Full terms remain plain or defining markup. Each disclosure works with titles disabled and preserves the existing More metrics preference, unavailable-metric reason, chart alternatives and table disclosures.
+    - [ ] TERM-AC-9: Both open disclosures and chart/data content remain usable at 320 px, 200% browser zoom, in RTL, with long text and in forced colours. Axe checks cover the open disclosures. Manually check keyboard activation, touch activation and Safari/VoiceOver reading order, abbreviations and disclosure state.
+- **Verification:** `bun run check`, `bun run test:e2e tests/model-results.e2e.ts`, `bun run test:e2e tests/comparison-controls.e2e.ts`, `bun run test:e2e tests/a11y.e2e.ts`, `bun run test:e2e tests/visual-parity.e2e.ts`, `bun test tests/style-tokens.test.ts`, `bun run test:stories`.
+- **Progress:** [ ] Not started
+
+### T4 — Sync the specifications
+
+- **Depends on:** T1, T2, T3
+- **Risk:** routine
+- **Likely files:** `specification/workflow-steps.md`, `specification/content-and-i18n.md`, `specification/components/sidepanel.md`, `specification/components/model-configuration.md`, `specification/components/training-setup.md`, `specification/components/model-results.md`, `specification/components/results-comparison.md`, `specification/visual-design.md`, `specification/TODO.md`, `specification/HUMAN.md`, `specification/README.md`
+- **Must not touch:** `src/`, `content/`, `tests/`, `specification/mockups/`
+- **Implementation:** Complete Specification changes. Keep lasting rules in their owning specifications and reflect any measured visual deviations. Update the outstanding mockup styling items and narrow TODO-40 without closing the remaining formula work.
+- **Acceptance criteria:**
+    - [ ] TERM-AC-10: Specifications describe the shipped places, semantics, closed API, tests and visual decisions. The specification index and human queue match actual status.
+- **Verification:** `bun run plans:check specification/plans/plain-english-technical-terms.md`, `bun run check` and manual review of changed specifications and links.
+- **Progress:** [ ] Not started
+
+## Verification and definition of done
+
+- [ ] All task acceptance criteria met and matched to browser tests for the affected components.
+- [ ] Relevant verification commands from `AGENTS.md` pass with no new failures.
+- [ ] Type checking, formatting and build pass. Run `bun run format <files>` as the final file-editing step.
+- [ ] Manual WCAG 2.2 AA checks recorded for keyboard, touch, zoom and screen-reader access. App privacy boundaries and installed release contracts preserved.
+- [ ] Every item under _Specification changes_ is ticked, and specifications match the implemented code.
+- [ ] No unintended changes outside the tasks' likely files. Task commit IDs belong in the implementation log.
+
+## Risks and open questions
+
+- **Blocking:** None
+- **Non-blocking:** Phases 6 and 7 introduce new labels and overlap the Configure Model and results surfaces. When those plans are next reviewed, reconcile any references to the retired per-option glossary metadata and reuse the result definition rules. This plan defines the labels that ship at the audited revision. Optional formula and standalone glossary work remains under TODO-40.
+
+## Escalations
+
+None.
+
+## Review fixes
+
+None.
+
+## Implementation and verification log
+
+| When (UTC) | Task | Agent (model) | Outcome / commands / evidence |
+| ---------- | ---- | ------------- | ----------------------------- |
+| —          | —    | —             | Not started                   |
+
+## Plan review history
+
+| Reviewed (UTC) | Agent (model) | Decision | Findings |
+| -------------- | ------------- | -------- | -------- |
+
+## Change log
+
+| When (UTC)           | Change        | Reason                                                          |
+| -------------------- | ------------- | --------------------------------------------------------------- |
+| 2026-11-23T21:15:58Z | Initial draft | User-requested terminology audit and plain-English definitions. |
