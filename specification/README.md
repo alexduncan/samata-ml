@@ -42,7 +42,7 @@ These rules apply whenever a spec changes, whether in a plan's `Sync specificati
 | [publication-history.md](publication-history.md)                     | implemented | First-push dataset history audit and maintainer publication procedure                                                    |
 | [preview-dataset.md](preview-dataset.md)                             | implemented | Dataset preview table and column inspector                                                                               |
 | [machine-learning-orchestrator.md](machine-learning-orchestrator.md) | implemented | Browser worker, evaluation and durable classification training                                                           |
-| [content-and-i18n.md](content-and-i18n.md)                           | partial     | Markdown content pipeline, localisation                                                                                  |
+| [content-and-i18n.md](content-and-i18n.md)                           | partial     | Markdown content pipeline, localisation and contextual Help definitions                                                  |
 | [testing.md](testing.md)                                             | partial     | Writing or running tests                                                                                                 |
 | [mockup-review.md](mockup-review.md)                                 | implemented | Reviewing and promoting mockups, requesting markup changes and commissioning an app port                                 |
 | [standards-and-documentation.md](standards-and-documentation.md)     | implemented | Any exported TypeScript (TSDoc rules)                                                                                    |
@@ -51,23 +51,23 @@ These rules apply whenever a spec changes, whether in a plan's `Sync specificati
 
 Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only where it says so.
 
-| Spec                                                        | Status      | Tier                                                                                         |
-| ----------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------- |
-| [button.md](components/button.md)                           | draft       | Style primitive `.btn`                                                                       |
-| [chiclet.md](components/chiclet.md)                         | implemented | Style primitive `.chiclet`                                                                   |
-| [dialog.md](components/dialog.md)                           | implemented | Shared native-dialog style primitive                                                         |
-| [page-header.md](components/page-header.md)                 | implemented | Page-header/focus style primitive                                                            |
-| [sidebar.md](components/sidebar.md)                         | implemented | Connected `app-sidebar`                                                                      |
-| [welcome-modal.md](components/welcome-modal.md)             | implemented | Connected `app-welcome-modal`                                                                |
-| [content-modal.md](components/content-modal.md)             | implemented | Connected `app-content-modal` and presentational `app-content-dialog`; prose styling pending |
-| [training-progress.md](components/training-progress.md)     | implemented | Native progress, ordered log, disclosure preference and live milestones                      |
-| [training-setup.md](components/training-setup.md)           | implemented | Training strategy form, paired fold inputs and accessible fold matrix                        |
-| [model-results.md](components/model-results.md)             | implemented | Connected `app-model-results` and eight presentational Section 6 results elements            |
-| [results-comparison.md](components/results-comparison.md)   | implemented | Connected comparison route and presentational comparison elements                            |
-| [card.md](components/card.md)                               | implemented | Presentational `app-dataset-card`, `app-model-card`                                          |
-| [virtual-table.md](components/virtual-table.md)             | implemented | Presentational `ui-virtual-table` (styled appearance pending)                                |
-| [sidepanel.md](components/sidepanel.md)                     | implemented | Presentational `app-column-details`                                                          |
-| [model-configuration.md](components/model-configuration.md) | implemented | Presentational `app-model-configuration` (Section 3 hyperparameter form)                     |
+| Spec                                                        | Status      | Tier                                                                                          |
+| ----------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| [button.md](components/button.md)                           | draft       | Style primitive `.btn`                                                                        |
+| [chiclet.md](components/chiclet.md)                         | implemented | Style primitive `.chiclet`                                                                    |
+| [dialog.md](components/dialog.md)                           | implemented | Shared native-dialog style primitive                                                          |
+| [page-header.md](components/page-header.md)                 | implemented | Page-header/focus style primitive                                                             |
+| [sidebar.md](components/sidebar.md)                         | implemented | Connected `app-sidebar`                                                                       |
+| [welcome-modal.md](components/welcome-modal.md)             | implemented | Connected `app-welcome-modal`                                                                 |
+| [content-modal.md](components/content-modal.md)             | implemented | Connected `app-content-modal` and presentational `app-content-dialog`; prose styling pending  |
+| [training-progress.md](components/training-progress.md)     | implemented | Native progress, ordered log, disclosure preference and live milestones                       |
+| [training-setup.md](components/training-setup.md)           | implemented | Training strategy definitions, paired fold inputs and accessible fold matrix                  |
+| [model-results.md](components/model-results.md)             | implemented | Connected `app-model-results`, its terms disclosure and eight presentational results elements |
+| [results-comparison.md](components/results-comparison.md)   | implemented | Connected comparison route, terms disclosure and presentational comparison elements           |
+| [card.md](components/card.md)                               | implemented | Presentational `app-dataset-card`, `app-model-card`                                           |
+| [virtual-table.md](components/virtual-table.md)             | implemented | Presentational `ui-virtual-table` (styled appearance pending)                                 |
+| [sidepanel.md](components/sidepanel.md)                     | implemented | Presentational `app-column-details`                                                           |
+| [model-configuration.md](components/model-configuration.md) | implemented | Presentational `app-model-configuration` (Section 3 hyperparameter form)                      |
 
 ### Backlog
 

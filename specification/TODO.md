@@ -94,7 +94,7 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 ## 5. Vision requirements with no spec yet ([VISION.md](VISION.md))
 
-- **TODO-40** — §4 Progressive disclosure: how plain-English definitions, a glossary and optional formulas are authored and shown.
+- **TODO-40** — §4 Progressive disclosure: standalone glossary/reference and optional formulas. Contextual definitions are implemented in Help, Training Setup and the ready results views.
 - **TODO-41** — §5 Model-specific interactive visualisations (decision boundaries and similar). The chart-library choice is _resolved_: Observable Plot 0.6.17 through the shared `PlotController`. Model-specific charts remain open (Phase 6).
 - **TODO-42** — §6 Ethical sample datasets (including Folktables and German Credit), and future additions to the catalogue. Follow [sample-datasets.md](sample-datasets.md) for dataset authoring and licensing. COMPAS is a remote sample because ProPublica declares no licence; it is fetched from its pinned source when loaded.
 - **TODO-43** — §8 Fairness auditing (group metrics) and the fairness prompts the workflow asks. The probability threshold slider and false-positive and false-negative rates are implemented in Section 6 (Phase 4).

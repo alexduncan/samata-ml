@@ -44,6 +44,8 @@ The model builder binds the saved value and current fold limit with Lit property
 </app-training-setup>
 ```
 
+The Strategy select points to `#strategy-description`, which contains the selected strategy sentence and, for One-Shot, the 80/20 test-split note. The Learn more link follows the description and opens the same Training Setup article as the section heading link. Native option labels and the saved training summaries remain plain text.
+
 The first switch to Cross-Validation uses five folds or the supplied maximum, whichever is lower. The two CV counts in a committed setup are equal. With a saved value above the current maximum, the number and matrix keep the saved count and the slider clamps to the maximum. Submission requires a correction. Empty, unfinished or out-of-range input keeps the last valid matrix and leaves the store untouched. Switching to One-Shot clears the fold error.
 
 The builder keys the form by dataset ID, target name and model number. It checks the route, draft status and current eligible metadata before applying an intent. The same instance stays mounted during Help, retaining its invalid draft and link focus on return. Changing the dataset, target or model creates a fresh form for the current setup. Valid submission captures the setup and starts the protected training service. An accepted start opens Section 5. A start rejected before worker launch, or a cancelled or failed run, leaves the form available with a safe reason.
@@ -56,7 +58,7 @@ Changes from mockup CSS follow [the deviation registers](../visual-design.md#5-d
 
 ## 6. Accessibility
 
-- The form and Strategy select have accessible names. The range and exact number field each have a label, with shared fold help. On an invalid fold edit, the described error comes first and is announced politely on blur and read as the focused field’s description on invalid submit. The same native number control retains unfinished input across updates. Train Model remains available with a field error and sends focus to the number field on invalid submission.
+- The form and Strategy select have accessible names. The select announces the chosen strategy description. Changing the choice keeps focus on the control. The range and exact number field each have a label, with shared fold help. On an invalid fold edit, the described error comes first and is announced politely on blur and read as the focused field’s description on invalid submit. The same native number control retains unfinished input across updates. Train Model remains available with a field error and sends focus to the number field on invalid submission.
 - A blocked form disables all form controls. Its alert describes the submit control. A disabled form with no blocked reason omits the alert and its description.
 - A table caption names both the table and its focusable scroll region. The table uses scoped row and column headers and a visually hidden “Training” or “Validation” label per cell. Visible en dashes and check marks, dashed and solid borders, and matching legend swatches distinguish roles in forced colours. Keyboard focus is visible on the wrapper and Learn more.
 - Safari's accessibility tree exposed the Strategy select, both fold inputs, matrix headers, cell labels and the named Help dialog. The maintainer verified the corresponding spoken announcements with VoiceOver in Safari. NVDA and Orca were unavailable on the test host.
@@ -65,7 +67,7 @@ Changes from mockup CSS follow [the deviation registers](../visual-design.md#5-d
 
 ## 7. Internationalisation
 
-The builder supplies labels and formatters through `TrainingSetupLabels`. This includes the strategy and fold inputs, form, summary percentages, legend, cell roles, error and submit text. The form uses logical layout and accommodates RTL, long labels and narrow widths. The content router localises the Help dialog independently.
+The builder supplies labels and formatters through `TrainingSetupLabels`. This includes the strategy and fold inputs, form, summary percentages, legend, cell roles, error and submit text. `oneShotDefinition` and `crossValidationDefinition` are complete sentences supplied by the builder. The One-Shot ratio note is a separate message. The form uses logical layout and accommodates RTL, long labels and narrow widths. The content router localises the Help dialog independently.
 
 ## 8. Acceptance criteria
 
@@ -73,7 +75,9 @@ The builder supplies labels and formatters through `TrainingSetupLabels`. This i
 2. `WML-P2-COMP-2` — The table and keyboard region have names. Row and column headers and both cell roles are present.
 3. `WML-P2-COMP-3` — A saved count above the maximum remains visible and prevents submission until corrected. A corrected value submits once.
 4. `WML-P2-COMP-4` — Blocked and disabled forms suppress both intents. Only the blocked state presents a described alert.
-5. `WML-P2-COMP-5` — All ten component stories render and pass axe checks. Eight include play checks for form structure or events. `LongLabel` and `RTL` are render and axe stories. `WML-P2-UI-2`, `-4`, `-5` and `-7` cover native invalid input, Help, forced colours, narrow/RTL scrolling and model isolation in the builder.
+5. `WML-P2-COMP-5` — All ten component stories render and pass axe checks. Eight include play checks for form structure or events. `LongLabel` and `RTL` exercise wrapping and axe. The setup and builder stories check selection-specific hints, and the setup stories retain blocked and disabled coverage. `WML-P2-UI-2`, `-4`, `-5` and `-7` cover native invalid input, Help, forced colours, narrow/RTL scrolling and model isolation in the builder.
+
+`TERM-AC-4` checks the selected visible and accessible hint. `TERM-AC-5` checks both Help links and the training article. Saved summary expectations are exercised by the Training Setup and Models overview journeys.
 
 ## 9. Stories
 

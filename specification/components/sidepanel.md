@@ -30,7 +30,8 @@ An overlay side panel (`<app-column-details>`) that displays summary statistics,
 - **Dismissal & keyboard:** Clicking the close button or pressing Escape emits `app-column-details-close`. The consumer sets `selectedColumn = null` and restores focus to the column header button.
 - **Summary metrics:** Displays missing count/percentage and invalid count/percentage if > 0.
 - **Numeric columns:** Displays min, median, mean (4 decimals), max, and precomputed histogram bins. Standard deviation is intentionally omitted (not stored).
-- **Categorical columns:** Displays distinct count, value frequencies sorted descending (then alphabetical), percentages over non-missing values, showing first 50 entries with a "Show all" / "Show fewer" toggle.
-- **Boolean columns:** Displays true and false counts and percentages.
+- **Categorical columns:** Displays distinct count, value frequencies sorted descending (then alphabetical), percentages over non-missing values, showing first 50 entries with a "Show all" / "Show fewer" toggle. The compact English header displays `Freq.` in `<abbr title="Frequency">` and the scoped column header is named “Frequency”. An explicitly supplied `labels.frequency` supplies the visible and accessible text. A non-empty `labels.frequencyExpansion` pairs with a non-empty localised short label and supplies its title and accessible name. With a blank label the English pair is used. Help & Guide defines frequency and the percentage denominator.
+- **Boolean columns:** Displays true and false counts with the default `Count` and `%` headers.
 - **Datetime columns:** Displays earliest and latest timestamps formatted in UTC.
 - **Text columns:** Displays distinct count and an "Identifier candidate" badge when distinct count equals dataset row count.
+- **Definition coverage:** `TERM-AC-2` in `tests/data-preview.e2e.ts` checks default, full and abbreviated override labels, Boolean headers and escaped category values. Inspector stories cover all five types, long labels and RTL.

@@ -14,14 +14,14 @@ Controls are generated from the `web-ml` model catalogue (control kind, scale, d
 
 Tag `app-model-configuration`, class `AppModelConfiguration`. Properties (all `attribute: false` except `disabled`):
 
-| Property     | Type                         | Default                          | Purpose                                                                                                          |
-| ------------ | ---------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `document`   | `ModelDocument \| null`      | `null`                           | Typed catalogue document of the selected classifier. `null` renders nothing.                                     |
-| `value`      | `HyperparameterConfig`       | `{ mode: 'manual', values: {} }` | Stored configuration; `values` holds sparse canonical overrides.                                                 |
-| `context`    | `ModelOptionContext`         | `{ rowCount: 0, classCount: 0 }` | Dataset facts for context-dependent defaults and domains (for example nearest-neighbour count versus row count). |
-| `multiclass` | `MulticlassStrategy \| null` | `null`                           | Read-only strategy shown in the multiclass note when `classCount > 2`.                                           |
-| `disabled`   | `boolean`                    | `false`                          | Disables every control and `Save & Continue`, and suppresses both events (trained or otherwise locked models).   |
-| `labels`     | `ConfigurationLabels`        | `DEFAULT_CONFIGURATION_LABELS`   | Form chrome, error messages and per-option copy; the connected builder passes its `i18n` strings.                |
+| Property     | Type                         | Default                          | Purpose                                                                                                                                                                  |
+| ------------ | ---------------------------- | -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `document`   | `ModelDocument \| null`      | `null`                           | Typed catalogue document of the selected classifier. `null` renders nothing.                                                                                             |
+| `value`      | `HyperparameterConfig`       | `{ mode: 'manual', values: {} }` | Stored configuration; `values` holds sparse canonical overrides.                                                                                                         |
+| `context`    | `ModelOptionContext`         | `{ rowCount: 0, classCount: 0 }` | Dataset facts for context-dependent defaults and domains (for example nearest-neighbour count versus row count).                                                         |
+| `multiclass` | `MulticlassStrategy \| null` | `null`                           | Read-only strategy shown in the multiclass note when `classCount > 2`.                                                                                                   |
+| `disabled`   | `boolean`                    | `false`                          | Disables every control and `Save & Continue`, and suppresses both events (trained or otherwise locked models).                                                           |
+| `labels`     | `ConfigurationLabels`        | `DEFAULT_CONFIGURATION_LABELS`   | Form chrome, error messages and per-option `name`, `description` and `notes`, plus optional `choices` and `valueLabel`. The connected builder passes its `i18n` strings. |
 
 Events (`bubbles: false`, `composed: false`; the owner binds on the element):
 
@@ -47,7 +47,7 @@ Mapped from `specification/mockups/03-4_train-models-3-configure-model.html` and
 ## 6. Accessibility
 
 - Every control has an accessible name equal to its visible label; number inputs add a visually hidden `{name} (exact value)` label; layer inputs are `Layer {n} size`.
-- `aria-invalid` is `"true"` or `"false"` on every control; `aria-describedby` lists the error (when shown) before the help text.
+- `aria-invalid` is `"true"` or `"false"` on every control. `aria-describedby` lists the error, when shown, before the full field hint. Each hint is a complete plain-text sentence. The Section 3 heading link opens Configure Model Help for technical definitions.
 - One polite live region announces errors revealed on blur; it is suppressed on a failed submit, where focus moves to the first invalid control.
 - Log-scale ranges expose `aria-valuetext` with the real value.
 - Focus outlines are `2px` (`A11Y-08`); layout survives 320 px, 200% zoom, RTL, long labels and forced colours.
@@ -57,7 +57,7 @@ Manual checks that remain (V1 release checks in `HUMAN.md`): VoiceOver with Safa
 
 ## 7. Internationalisation
 
-The element owns default English labels only. The connected builder supplies `labels` from `i18n('app-model-builder-view', …)`, including per-option names, descriptions, glossary terms and choice texts. Numbers are formatted with the document locale; dictionary segments carry `<abbr title>` glossary terms.
+The element owns default English labels only. The connected builder supplies `labels` from `i18n('app-model-builder-view', …)`, including per-option names, descriptions, dependency notes and choice texts. Numbers are formatted with the document locale.
 
 ## 8. Acceptance criteria
 
@@ -72,6 +72,8 @@ The element owns default English labels only. The connected builder supplies `la
 | WML-P1-UI-7 | Stories pass axe in three browsers (`bun run test:stories`).                                                                                               |
 | WML-P1-UI-8 | Compound fields and the layer editor, including edit-state cleanup when a compound mode leaves its value mode.                                             |
 | WML-P1-UI-9 | `Edit` button names (WCAG 2.5.3); builder stories exclude only the listed `tests/a11y-feature-findings.ts` targets.                                        |
+
+`TERM-AC-1` checks Help activation and focus restoration. `TERM-AC-3` checks names, field descriptions and validation across the eight forms. The Logistic story checks the complete solver hint.
 
 ## 9. Stories
 

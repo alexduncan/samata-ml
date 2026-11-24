@@ -37,11 +37,11 @@ For comparison, `paired = true` connects the corresponding partition indices acr
 
 The builder renders `<app-model-results model-num="N">` inside Section 6 when the model is trained and its results are acknowledged. It handles four resource states besides ready: loading (a labelled native `progress`), legacy (a Phase 3 result: a message and a link to Models), lost (a result that has gone missing since View Results) and error (an alert with Retry). The model must be trained for any state but empty.
 
-Display preferences persist per model through `setModelResultsUi`: the threshold index, the class filter and whether More metrics is open ([state-and-storage §5](../state-and-storage.md#5-ui-state-persistence-rule)). The "Show data table" disclosures are transient. Exploring the threshold never changes a stored score or `ModelRecord.metrics`.
+Display preferences persist per model through `setModelResultsUi`: the threshold index, the class filter and whether More metrics is open ([state-and-storage §5](../state-and-storage.md#5-ui-state-persistence-rule)). The ready view adds one native “What do these results terms mean?” disclosure after the summary, before the fold section. It starts closed, keeps its native open state while mounted and opens independently of More metrics and the chart tables. A fresh view starts closed. Cross-Validation includes the fold-mean definition, and binary results include the probability threshold definition. Other resource states have no disclosure. The “Show data table” disclosures are transient. Exploring the threshold never changes a stored score or `ModelRecord.metrics`.
 
 ## 5. Visual specification
 
-There is no normative mockup. The draft is structure only. Elements use `table.styles.ts`, `notification.styles.ts`, `button.styles.ts` and `src/styles/results.styles.ts` (chart figures, the data-table disclosure and the keyboard-scrollable table region) plus the nine chart tokens ([visual-design §2](../visual-design.md#2-tokens)). Chart marks use token colours; typography is inherited. Correct and incorrect flowchart outcomes differ by outline style (solid and dashed), a striped fill and an icon as well as colour. See the scoped chart allowance in [visual-design §1.1](../visual-design.md#11-draft-mockups).
+There is no normative mockup. The draft is structure only. Elements use `table.styles.ts`, `notification.styles.ts`, `button.styles.ts` and `src/styles/results.styles.ts` (chart figures, result and data-table disclosures and the keyboard-scrollable table region) plus the nine chart tokens ([visual-design §2](../visual-design.md#2-tokens)). Chart marks use token colours; typography is inherited. Correct and incorrect flowchart outcomes differ by outline style (solid and dashed), a striped fill and an icon as well as colour. See the scoped chart allowance in [visual-design §1.1](../visual-design.md#11-draft-mockups).
 
 ## 6. Accessibility
 
@@ -50,23 +50,26 @@ There is no normative mockup. The draft is structure only. Elements use `table.s
 - The threshold is a labelled native range input from 0 to 100 with a formatted `aria-valuetext`. The readout is an ordinary definition list with no live region, and the sentence that exploring does not change the stored scores stays visible beside it. Arrow keys move one point; Home and End reach the ends.
 - Tables use `contain: inline-size` on their scroll region so a wide matrix never widens the page at 320 px.
 - The diagnostic gap card is a `.notification` without `role="alert"`; only the read-error message is an alert.
-- Manual checks (WCAG 2.2 AA): VoiceOver in Safari reading one chart figure and its table; keyboard-only threshold exploration; forced colours; 200% zoom. Automated axe scans cover binary and multiclass Section 6 with every table open.
+- The native summary adds one keyboard stop, preserves the marker and has a visible focus outline with a target at least 24 × 24 CSS px. A definition list presents full terms and expansions. The visible expansions accompany the `title` values for MCC, ROC-AUC and ECE.
+- Manual checks (WCAG 2.2 AA): VoiceOver in Safari reading one chart figure and its table; keyboard-only threshold exploration; forced colours; 200% zoom. Automated axe scans cover binary and multiclass Section 6 with every table and the definitions open. Safari showed the expected term order, visible expansions, expanded and collapsed states and focused summary at browser zoom. Spoken VoiceOver output remains a manual follow-up.
 
 ## 7. Internationalisation
 
-`app-model-results` owns the strings (messages key `app-model-results`) and builds every presentational `labels` object. Counts use plural forms. Numbers use the application formatter: percentages with one decimal place, whole counts, seconds, percentage points and three-decimal scores. Layouts use logical properties, wrap long class names and shorten them on chart axes while the table carries the full name. Tested with `dir="rtl"`.
+`app-model-results` owns the strings (messages key `app-model-results`) and builds every presentational `labels` object. It registers the shared `RESULT_TERM_COPY` entries under `term.<id>.name`, `term.<id>.definition` and `term.<id>.expansion`. Counts use plural forms. Numbers use the application formatter: percentages with one decimal place, whole counts, seconds, percentage points and three-decimal scores. Layouts use logical properties, wrap long class names and shorten them on chart axes while the table carries the full name. Tested with `dir="rtl"`.
 
 ## 8. Acceptance criteria
 
 Test names begin with the ID. `WML-P4-UI-1` to `WML-P4-UI-4` cover the summary, fold strip, confusion matrix and per-class table (`tests/results-view-model.test.ts`, `tests/results-summary.e2e.ts`); `WML-P4-UI-5` and `WML-P4-UI-6` the flowchart and Classee strips (`tests/results-errors.e2e.ts`); `WML-P4-UI-7` to `WML-P4-UI-9` the threshold explorer and reliability diagram (`tests/results-probability.e2e.ts`); `WML-P4-UI-10` to `WML-P4-UI-13` the connected Section 6, persisted preferences, accessibility and the Iris and Penguins journeys (`tests/model-results.e2e.ts`, `tests/a11y.e2e.ts`, `tests/journeys/`). The scroll-landing part of `WML-P4-UI-11` is not met; see Open questions.
 
+`TERM-AC-6`, `TERM-AC-8` and `TERM-AC-9` exercise the single disclosure, unchanged metric reasons and other disclosures, and reflow. A six-row fixture distinguishes the 75% cross-validation fold mean and 25-point paired gap from the 83.3% pooled score.
+
 ## 9. Stories
 
-Co-located `*.stories.ts` cover every element: CrossValidation, OneShot, Binary, Multiclass, GapWarning, MetricsUnavailable, ManyClasses, PerfectModel, AllOneClass, ExtremeThresholds, NoProbabilities, EmptyBin, Loading, Empty, Legacy, Lost, ReadError, LongLabel and RTL, each with Do and Don't guidance in the docs description.
+Co-located `*.stories.ts` cover every element: CrossValidation, OneShot, Binary, Multiclass, GapWarning, MetricsUnavailable, ManyClasses, PerfectModel, AllOneClass, ExtremeThresholds, NoProbabilities, EmptyBin, Loading, Empty, Legacy, Lost, ReadError, LongLabel and RTL, each with Do and Don't guidance in the docs description. The ready, RTL and long-label stories open the definitions, and the non-ready stories check their absence.
 
 ## 10. Files
 
-`src/features/results/` (the nine elements, their stories, `results-view-model.ts`, `evaluation-decoder.ts`, `charts/plot-controller.ts`), `src/styles/results.styles.ts`, `src/stores/model-results.store.ts`, `src/types/model-evaluation.ts`, `src/common/evaluation/`, and the Section 6 wiring in `src/features/models/app-model-builder-view.ts`.
+`src/features/results/` (the nine elements, their stories, `results-view-model.ts`, `result-term-copy.ts`, `evaluation-decoder.ts`, `charts/plot-controller.ts`), `src/styles/results.styles.ts`, `src/stores/model-results.store.ts`, `src/types/model-evaluation.ts`, `src/common/evaluation/`, and the Section 6 wiring in `src/features/models/app-model-builder-view.ts`.
 
 ## 11. Non-goals
 
