@@ -37,7 +37,14 @@ export async function copyOptimisedPublicFiles(sourceDir: string, outDir: string
 			);
 			// SVGO can recover from some malformed XML. Validate before it rewrites the source.
 			validateSvgDocument(source);
-			return optimize(source, { path: sourcePath, floatPrecision: 6 }).data;
+			return optimize(source, {
+				path: sourcePath,
+				floatPrecision: 6,
+				// Internal DTD defaults can supply the SVG namespace or visible geometry.
+				plugins: [
+					{ name: 'preset-default', params: { overrides: { removeDoctype: false } } }
+				]
+			}).data;
 		} catch (cause) {
 			const relative = path.relative(sourceDir, sourcePath);
 			const message = cause instanceof Error ? cause.message : String(cause);

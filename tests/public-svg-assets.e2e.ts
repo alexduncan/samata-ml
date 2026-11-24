@@ -1,3 +1,6 @@
+import { execFileSync } from 'node:child_process';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { APP_URL, DIST_URL } from '../scripts/ports';
 
@@ -12,6 +15,47 @@ const artwork = [
 	'multinomial-naive-bayes.svg',
 	'support-vector-classifier.svg'
 ] as const;
+
+test('SVG-BUILD-2: optimisation preserves DOCTYPE defaults used for rendering', async ({
+	page
+}, testInfo) => {
+	const sourceDir = testInfo.outputPath('public');
+	const outputDir = testInfo.outputPath('optimised');
+	await mkdir(sourceDir, { recursive: true });
+	const source = `<!DOCTYPE svg [
+		<!ATTLIST svg xmlns CDATA "http://www.w3.org/2000/svg">
+		<!ATTLIST rect width CDATA "40">
+	]>
+	<svg width="40" height="24"><rect height="24" fill="red"/></svg>`;
+	await writeFile(path.join(sourceDir, 'doctype.svg'), source);
+	// Playwright runs in Node, while the production copy helper runs in Bun.
+	execFileSync('bun', [
+		'-e',
+		`import { copyOptimisedPublicFiles } from './scripts/build-public-assets.ts';
+		await copyOptimisedPublicFiles(...process.argv.slice(-2));`,
+		sourceDir,
+		outputDir
+	]);
+	const output = await readFile(path.join(outputDir, 'doctype.svg'), 'utf8');
+
+	for (const svg of [source, output]) {
+		const rendered = await page.evaluate(async (markup) => {
+			const image = new Image();
+			image.src = `data:image/svg+xml,${encodeURIComponent(markup)}`;
+			await image.decode();
+			const canvas = document.createElement('canvas');
+			canvas.width = image.naturalWidth;
+			canvas.height = image.naturalHeight;
+			const context = canvas.getContext('2d')!;
+			context.drawImage(image, 0, 0);
+			return {
+				size: [image.naturalWidth, image.naturalHeight],
+				pixel: Array.from(context.getImageData(20, 12, 1, 1).data)
+			};
+		}, svg);
+		expect(rendered).toEqual({ size: [40, 24], pixel: [255, 0, 0, 255] });
+	}
+});
 
 test('SVG-BUILD-3 / SVG-BUILD-4: both servers deliver the artwork with the production cache policy', async ({
 	request
