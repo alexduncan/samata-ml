@@ -11,11 +11,6 @@ import { customElement, property, state } from 'lit/decorators.js';
 import { live } from 'lit/directives/live.js';
 import { repeat } from 'lit/directives/repeat.js';
 import {
-	segmentDescription,
-	type DescriptionSegment,
-	type GlossaryTerm
-} from '../../common/description-segments';
-import {
 	fromSliderPosition,
 	parseNumberText,
 	sliderBounds,
@@ -48,10 +43,8 @@ import {
 export interface OptionLabels {
 	/** Field label. */
 	name: string;
-	/** Plain-English description; glossary terms found in it become `<abbr>`. */
+	/** Plain-English field description. */
 	description: string;
-	/** Translated glossary terms for this description. */
-	terms: readonly GlossaryTerm[];
 	/** Dependency notes keyed by the policy note key. */
 	notes: Readonly<Record<string, string>>;
 	/** `<option>` text of a compound field's mode select, keyed by mode. */
@@ -591,7 +584,7 @@ export class AppModelConfiguration extends LitElement {
 	// ---- rendering -----------------------------------------------------------------------
 
 	private optionLabels(name: string): OptionLabels {
-		return this.labels.options[name] ?? { name, description: '', terms: [], notes: {} };
+		return this.labels.options[name] ?? { name, description: '', notes: {} };
 	}
 
 	private displayText(key: string, canonical: number | undefined): string {
@@ -599,14 +592,6 @@ export class AppModelConfiguration extends LitElement {
 		if (edit?.status === 'empty') return '';
 		if (edit?.status === 'text') return edit.text;
 		return canonical === undefined ? '' : String(canonical);
-	}
-
-	private renderSegments(segments: readonly DescriptionSegment[]): TemplateResult[] {
-		return segments.map((segment) =>
-			'abbr' in segment
-				? html`<abbr title=${segment.title}>${segment.abbr}</abbr>`
-				: html`${segment.text}`
-		);
 	}
 
 	private renderDescription(name: string, policy: OptionPolicy | null): TemplateResult {
@@ -620,13 +605,7 @@ export class AppModelConfiguration extends LitElement {
 					? html`<p id="${name}-error" class="field-error">${this.text(error)}</p>`
 					: nothing}
 				<div id="${name}-help">
-					${copy.description
-						? html`<p>
-								${this.renderSegments(
-									segmentDescription(copy.description, copy.terms)
-								)}
-							</p>`
-						: nothing}
+					${copy.description ? html`<p>${copy.description}</p>` : nothing}
 					${notes.map((note) =>
 						copy.notes[note.key]
 							? html`<p class="field-dependent">${copy.notes[note.key]}</p>`

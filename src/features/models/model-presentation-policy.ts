@@ -30,8 +30,6 @@ export interface PolicyNote {
 }
 
 interface PolicyBase {
-	/** Glossary term keys that the description may wrap in `<abbr>`. */
-	readonly terms?: readonly string[];
 	/** Dependency and explanatory notes. */
 	readonly notes?: readonly PolicyNote[];
 	/** The option is rendered and emitted only while this returns `true` (default: always). */
@@ -130,34 +128,6 @@ const adamNotes: readonly PolicyNote[] = [
 	{ key: 'adam-rate-value', when: (e) => e.solver === 'adam' }
 ];
 
-/** Glossary term keys that `/help/configure-model` must define. */
-export const GLOSSARY_TERM_KEYS = [
-	'solver',
-	'penalty',
-	'regularisation',
-	'learning-rate',
-	'tolerance',
-	'iteration',
-	'intercept',
-	'class-weight',
-	'activation',
-	'hidden-layer',
-	'seed',
-	'impurity',
-	'criterion',
-	'neighbour',
-	'metric',
-	'smoothing',
-	'prior',
-	'binarise',
-	'kernel',
-	'gamma',
-	'probability-estimate'
-] as const;
-
-/** A glossary term key used by the presentation policy. */
-export type GlossaryTermKey = (typeof GLOSSARY_TERM_KEYS)[number];
-
 /**
  * Presentation policy for every option of the eight classifiers.
  * The `satisfies` clause makes `tsc` reject any key that is not a `web-ml` option.
@@ -166,7 +136,6 @@ export const MODEL_OPTION_POLICY = {
 	'logistic-regression': {
 		solver: {
 			kind: 'select',
-			terms: ['solver'],
 			disabledChoices: (e) =>
 				e.penalty === 'l1' || e.penalty === 'elasticnet' ? ['lbfgs'] : [],
 			notes: [
@@ -183,7 +152,6 @@ export const MODEL_OPTION_POLICY = {
 		},
 		penalty: {
 			kind: 'select',
-			terms: ['penalty', 'regularisation'],
 			disabledChoices: (e) => (e.solver === 'lbfgs' ? ['l1', 'elasticnet'] : []),
 			notes: [
 				{ key: 'lbfgs-penalty', when: (e) => e.solver === 'lbfgs' },
@@ -193,73 +161,65 @@ export const MODEL_OPTION_POLICY = {
 		},
 		C: {
 			kind: 'range',
-			terms: ['regularisation'],
 			scale: { scale: 'logarithmic', min: 1e-4, max: 1e4, step: 0.1 },
 			domain: POSITIVE,
 			activeWhen: (e) => e.penalty !== 'none'
 		},
 		l1Ratio: {
 			kind: 'range',
-			terms: ['regularisation'],
 			scale: { scale: 'linear', min: 0, max: 1, step: 0.01 },
 			domain: { min: 0, max: 1, messageKey: 'unit-interval' },
 			activeWhen: (e) => e.penalty === 'elasticnet'
 		},
 		classWeight: { kind: 'hidden' },
-		fitIntercept: { kind: 'checkbox', terms: ['intercept'] },
+		fitIntercept: { kind: 'checkbox' },
 		learningRate: {
 			kind: 'range',
-			terms: ['learning-rate'],
 			scale: { scale: 'logarithmic', min: 1e-6, max: 1, step: 0.1 },
 			domain: POSITIVE,
 			activeWhen: (e) => e.solver === 'sgd'
 		},
 		maxIter: {
 			kind: 'range',
-			terms: ['iteration'],
 			scale: MAX_ITER_SCALE,
 			domain: MAX_ITER_DOMAIN,
 			notes: [{ key: 'max-iter-cap' }]
 		},
-		tol: { kind: 'number-reset', terms: ['tolerance'], domain: NON_NEGATIVE },
+		tol: { kind: 'number-reset', domain: NON_NEGATIVE },
 		multiClass: { kind: 'hidden' },
 		multiLabel: { kind: 'hidden' },
 		nIterations: { kind: 'alias', target: 'maxIter' },
 		threshold: { kind: 'fixed', notes: [{ key: 'fixed-threshold' }] }
 	},
 	'mlp-classifier': {
-		hiddenLayerSizes: { kind: 'layers', terms: ['hidden-layer'] },
-		activation: { kind: 'select', terms: ['activation'] },
+		hiddenLayerSizes: { kind: 'layers' },
+		activation: { kind: 'select' },
 		solver: {
 			kind: 'select',
-			terms: ['solver'],
 			notes: adamNotes
 		},
 		learningRate: {
 			kind: 'range',
-			terms: ['learning-rate'],
 			scale: { scale: 'logarithmic', min: 1e-6, max: 1, step: 0.1 },
 			domain: POSITIVE,
 			activeWhen: (e) => e.solver === 'sgd'
 		},
 		maxIter: {
 			kind: 'range',
-			terms: ['iteration'],
 			scale: MAX_ITER_SCALE,
 			domain: MAX_ITER_DOMAIN,
 			notes: [{ key: 'max-iter-cap' }]
 		},
-		tol: { kind: 'number-reset', terms: ['tolerance'], domain: NON_NEGATIVE },
+		tol: { kind: 'number-reset', domain: NON_NEGATIVE },
 		validationFraction: { kind: 'hidden' },
 		randomState: {
 			kind: 'number-reset',
-			terms: ['seed'],
 			domain: SEED_DOMAIN,
 			blankIsOmitted: true
 		}
 	},
 	'decision-tree-classifier': {
-		criterion: { kind: 'select', terms: ['criterion', 'impurity'] },
+		criterion: { kind: 'select' },
 		maxDepth: {
 			kind: 'nullable-mode',
 			scale: { scale: 'integer', min: 1, max: 50, step: 1 },
@@ -278,14 +238,12 @@ export const MODEL_OPTION_POLICY = {
 		},
 		minImpurityDecrease: {
 			kind: 'number-reset',
-			terms: ['impurity'],
 			domain: NON_NEGATIVE
 		}
 	},
 	'k-neighbors-classifier': {
 		nNeighbors: {
 			kind: 'range',
-			terms: ['neighbour'],
 			scale: (context) => ({
 				scale: 'integer',
 				min: 1,
@@ -299,7 +257,6 @@ export const MODEL_OPTION_POLICY = {
 		leafSize: { kind: 'hidden' },
 		metric: {
 			kind: 'select',
-			terms: ['metric'],
 			notes: [{ key: 'metric-p', when: (e) => e.metric !== 'minkowski' }]
 		},
 		p: {
@@ -309,48 +266,43 @@ export const MODEL_OPTION_POLICY = {
 		}
 	},
 	'gaussian-nb': {
-		priors: { kind: 'fixed', terms: ['prior'], notes: [{ key: 'fixed-priors' }] },
-		varSmoothing: { kind: 'number-reset', terms: ['smoothing'], domain: NON_NEGATIVE }
+		priors: { kind: 'fixed', notes: [{ key: 'fixed-priors' }] },
+		varSmoothing: { kind: 'number-reset', domain: NON_NEGATIVE }
 	},
 	'multinomial-nb': {
 		alpha: {
 			kind: 'range',
-			terms: ['smoothing'],
 			scale: { scale: 'logarithmic', min: 1e-4, max: 1e2, step: 0.1 },
 			domain: NON_NEGATIVE
 		},
-		forceAlpha: { kind: 'checkbox', terms: ['smoothing'] },
-		fitPrior: { kind: 'checkbox', terms: ['prior'] },
-		classPrior: { kind: 'fixed', terms: ['prior'], notes: [{ key: 'fixed-priors' }] }
+		forceAlpha: { kind: 'checkbox' },
+		fitPrior: { kind: 'checkbox' },
+		classPrior: { kind: 'fixed', notes: [{ key: 'fixed-priors' }] }
 	},
 	'bernoulli-nb': {
 		alpha: {
 			kind: 'range',
-			terms: ['smoothing'],
 			scale: { scale: 'logarithmic', min: 1e-4, max: 1e2, step: 0.1 },
 			domain: NON_NEGATIVE
 		},
-		forceAlpha: { kind: 'checkbox', terms: ['smoothing'] },
+		forceAlpha: { kind: 'checkbox' },
 		binarize: {
 			kind: 'nullable-mode',
-			terms: ['binarise'],
 			domain: FINITE,
 			startValue: 0
 		},
-		fitPrior: { kind: 'checkbox', terms: ['prior'] },
-		classPrior: { kind: 'fixed', terms: ['prior'], notes: [{ key: 'fixed-priors' }] }
+		fitPrior: { kind: 'checkbox' },
+		classPrior: { kind: 'fixed', notes: [{ key: 'fixed-priors' }] }
 	},
 	'support-vector-classifier': {
 		C: {
 			kind: 'range',
-			terms: ['regularisation'],
 			scale: { scale: 'logarithmic', min: 1e-4, max: 1e4, step: 0.1 },
 			domain: POSITIVE
 		},
-		classWeight: { kind: 'class-weight', terms: ['class-weight'] },
+		classWeight: { kind: 'class-weight' },
 		kernel: {
 			kind: 'select',
-			terms: ['kernel'],
 			notes: [
 				{ key: 'kernel-degree', when: (e) => e.kernel !== 'poly' },
 				{ key: 'kernel-gamma', when: (e) => e.kernel === 'linear' },
@@ -365,7 +317,6 @@ export const MODEL_OPTION_POLICY = {
 		},
 		gamma: {
 			kind: 'gamma-mode',
-			terms: ['gamma'],
 			scale: { scale: 'logarithmic', min: 1e-4, max: 1e2, step: 0.1 },
 			domain: NON_NEGATIVE,
 			startValue: 0.1,
@@ -376,8 +327,8 @@ export const MODEL_OPTION_POLICY = {
 			domain: FINITE,
 			activeWhen: (e) => e.kernel === 'poly' || e.kernel === 'sigmoid'
 		},
-		tol: { kind: 'number-reset', terms: ['tolerance'], domain: POSITIVE },
-		probability: { kind: 'checkbox', terms: ['probability-estimate'] }
+		tol: { kind: 'number-reset', domain: POSITIVE },
+		probability: { kind: 'checkbox' }
 	}
 } as const satisfies {
 	readonly [A in ClassifierId]: {

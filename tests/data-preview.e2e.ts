@@ -1,4 +1,78 @@
 import { expect, test } from '@playwright/test';
+import type { AppColumnDetails } from '../src/features/data/app-column-details';
+
+test('TERM-AC-2: the categorical frequency header expands only abbreviated labels', async ({
+	page
+}) => {
+	await page.goto('/data');
+	await page.locator('app-welcome-modal button.btn-primary').click();
+	await page.evaluate(() => {
+		const inspector = document.createElement('app-column-details');
+		inspector.rowCount = 3;
+		inspector.column = {
+			name: 'Species',
+			type: 'categorical',
+			missingCount: 0,
+			missingTokens: {},
+			invalidCount: 0,
+			invalidExamples: [],
+			distinctCount: 2,
+			categoryCounts: { '<b>Literal value</b>': 2, Other: 1 }
+		};
+		document.body.append(inspector);
+	});
+
+	const inspector = page.locator('body > app-column-details');
+	const header = inspector.getByRole('columnheader', { name: 'Frequency', exact: true });
+	await expect(header).toHaveAttribute('scope', 'col');
+	await expect(header.locator('abbr')).toHaveText('Freq.');
+	await expect(header.locator('abbr')).toHaveAttribute('title', 'Frequency');
+	await expect(inspector.getByRole('cell', { name: '<b>Literal value</b>' })).toBeVisible();
+	await expect(inspector.locator('td b')).toHaveCount(0);
+
+	await inspector.evaluate((node) => {
+		const element = node as AppColumnDetails;
+		element.labels = { ...element.labels, frequency: 'Anzahl' };
+	});
+	await expect(inspector.getByRole('columnheader', { name: 'Anzahl' })).toHaveText('Anzahl');
+	await expect(inspector.locator('abbr')).toHaveCount(0);
+
+	await inspector.evaluate((node) => {
+		const element = node as AppColumnDetails;
+		element.labels = {
+			...element.labels,
+			frequency: 'Häuf.',
+			frequencyExpansion: 'Häufigkeit'
+		};
+	});
+	const localised = inspector.getByRole('columnheader', { name: 'Häufigkeit' });
+	await expect(localised).toHaveText('Häuf.');
+	await expect(localised.locator('abbr')).toHaveAttribute('title', 'Häufigkeit');
+
+	await inspector.evaluate((node) => {
+		const element = node as AppColumnDetails;
+		element.labels = { ...element.labels, frequency: '' };
+	});
+	await expect(header.locator('abbr')).toHaveAttribute('title', 'Frequency');
+
+	await inspector.evaluate((node) => {
+		const element = node as AppColumnDetails;
+		element.column = {
+			name: 'Accepted',
+			type: 'boolean',
+			missingCount: 0,
+			missingTokens: {},
+			invalidCount: 0,
+			invalidExamples: [],
+			trueCount: 2,
+			falseCount: 1,
+			lexicon: ['true', 'false']
+		};
+	});
+	await expect(inspector.getByRole('columnheader', { name: 'Count' })).toHaveText('Count');
+	await expect(inspector.getByRole('columnheader', { name: '%' })).toHaveText('%');
+	await expect(inspector.locator('abbr')).toHaveCount(0);
+});
 
 test.describe('Dataset Preview & Column Inspector (DATA-PRE-1 .. DATA-PRE-3)', () => {
 	test.describe.configure({ mode: 'serial' });
@@ -123,6 +197,7 @@ test.describe('Dataset Preview & Column Inspector (DATA-PRE-1 .. DATA-PRE-3)', (
 		// Check categorical distribution table
 		const catTable = aside.locator('table.table:has(th:has-text("Category"))');
 		await expect(catTable).toBeVisible();
+		await expect(catTable.getByRole('columnheader', { name: 'Frequency' })).toHaveText('Freq.');
 		await expect(catTable.locator('tbody tr')).toHaveCount(3);
 		await expect(catTable).toContainText('Iris-setosa');
 		await expect(catTable).toContainText('50');

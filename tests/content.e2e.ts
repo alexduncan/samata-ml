@@ -1,6 +1,43 @@
 import { expect, test } from '@playwright/test';
 
 test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
+	test.describe('Help term definitions', () => {
+		test.use({ hasTouch: true });
+
+		test('TERM-AC-1: Help definitions are available by keyboard and touch', async ({
+			page
+		}) => {
+			await page.goto('/data');
+			await page.locator('app-welcome-modal button.btn-primary').click();
+			const help = page
+				.locator('app-sidebar')
+				.getByRole('link', { name: 'help', exact: true });
+			const dialog = page.getByRole('dialog', { name: 'Help & Guide' });
+			const article = dialog.locator('.modal-body');
+
+			await help.focus();
+			await page.keyboard.press('Enter');
+			await expect(
+				dialog.getByRole('heading', { name: 'Data and model choices' })
+			).toBeVisible();
+			for (const term of [
+				'Comma-separated values (CSV)',
+				'Coordinated Universal Time (UTC)',
+				'Target leakage'
+			]) {
+				await expect(article).toContainText(term);
+			}
+			await page.keyboard.press('Escape');
+			await expect(dialog).toBeHidden();
+			await expect(help).toBeFocused();
+
+			await help.tap();
+			await expect(dialog).toBeVisible();
+			await dialog.getByRole('button', { name: 'Close' }).tap();
+			await expect(dialog).toBeHidden();
+		});
+	});
+
 	test('CNT-E2E-1: /privacy renders heading, accessible name, lang/dir, and markdown body', async ({
 		page
 	}) => {
@@ -29,7 +66,9 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 
 		const modal = page.locator('app-content-modal dialog');
 		await expect(modal).toBeVisible();
-		await expect(modal.locator('h2')).toHaveText('Help & Guide');
+		await expect(
+			modal.getByRole('heading', { name: 'Help & Guide', exact: true })
+		).toBeVisible();
 
 		const items = modal.locator('.modal-body ol > li');
 		await expect(items).toHaveCount(4);

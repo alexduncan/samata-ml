@@ -19,7 +19,7 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Select, checkbox, range pair, number with Reset, abbreviation, dependent note and error. */
+/** Select, checkbox, range pair, number with Reset, plain help, dependent note and error. */
 export const Default: Story = {};
 
 /** WML-P1-STYLE-2: computed border and focus outline checks. */

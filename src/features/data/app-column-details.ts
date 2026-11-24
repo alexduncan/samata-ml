@@ -26,6 +26,8 @@ export interface ColumnDetailsLabels {
 	count: string;
 	category: string;
 	frequency: string;
+	/** Expansion for a supplied abbreviated categorical frequency label. */
+	frequencyExpansion?: string;
 	percentage: string;
 	showAll: string;
 	showFewer: string;
@@ -364,6 +366,9 @@ export class AppColumnDetails extends LitElement {
 		});
 
 		const displayEntries = this.expanded ? entries : entries.slice(0, 50);
+		const customFrequency = this.labels.frequency?.trim() ? this.labels.frequency : '';
+		const frequency = customFrequency || 'Freq.';
+		const expansion = customFrequency ? this.labels.frequencyExpansion?.trim() : 'Frequency';
 
 		return html`
 			<p>
@@ -375,7 +380,11 @@ export class AppColumnDetails extends LitElement {
 				<thead>
 					<tr>
 						<th scope="col">${this.labels.category || 'Category'}</th>
-						<th scope="col">${this.labels.frequency || 'Freq.'}</th>
+						<th scope="col" aria-label=${expansion || nothing}>
+							${expansion
+								? html`<abbr title=${expansion}>${frequency}</abbr>`
+								: frequency}
+						</th>
 						<th scope="col">${this.labels.percentage || '%'}</th>
 					</tr>
 				</thead>

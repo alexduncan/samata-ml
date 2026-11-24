@@ -161,7 +161,10 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		const mode = form.locator('select#mode');
 		await expect(mode).toHaveValue('manual');
 		await expect(mode.locator('option[value="tuning"]')).toBeDisabled();
-		await expect(form.locator('abbr[title]').first()).toBeVisible();
+		await expect(form.locator('#solver-help')).toContainText(
+			'The solver is the method used to fit the model.'
+		);
+		await expect(form.locator('#solver-help abbr')).toHaveCount(0);
 
 		// Logistic Regression: classWeight hidden; solver and penalty rules
 		await expect(form.getByLabel('Class weights')).toHaveCount(0);
@@ -315,13 +318,16 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		expect(await seed.evaluate((el: HTMLInputElement) => el.validity.badInput)).toBe(false);
 	});
 
-	test('WML-P1-UI-3: every control has a name, validity and description', async ({ page }) => {
+	test('TERM-AC-3: WML-P1-UI-3 every control has a name, validity and plain description', async ({
+		page
+	}) => {
 		const form = await openConfigure(page);
 		for (const { id, setup } of CLASSIFIERS) {
 			await useModel(page, id);
 			if (setup) await form.locator(`select#${setup[0]}`).selectOption(setup[1]);
 			await expect(form.locator('select#mode')).toBeVisible();
 			await expectControlsAccessible(form);
+			await expect(form.locator('.field-description abbr')).toHaveCount(0);
 		}
 
 		// Named examples from each control kind
@@ -485,6 +491,29 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		await useModel(page, 'gaussian-nb');
 		await expect(form.locator('.form-note').first()).toContainText('more than two classes');
 		await expect(form.locator('.form-note').last()).toContainText('Class priors');
+	});
+
+	test.describe('Configure Model term definitions', () => {
+		test.use({ hasTouch: true });
+
+		test('TERM-AC-1: Configure Model Help works by keyboard and touch', async ({ page }) => {
+			await openConfigure(page);
+			const help = page.locator('app-model-builder-view a[href="/help/configure-model"]');
+			const dialog = page.getByRole('dialog', { name: 'What do these settings mean?' });
+			const article = dialog.locator('.modal-body');
+			await help.focus();
+			await page.keyboard.press('Enter');
+			await expect(article).toContainText('The exact stopping check depends on the solver.');
+			await expect(article).toContainText('limited-memory Broyden–Fletcher–Goldfarb–Shanno');
+			await page.keyboard.press('Escape');
+			await expect(dialog).toBeHidden();
+			await expect(help).toBeFocused();
+
+			await help.tap();
+			await expect(dialog).toBeVisible();
+			await dialog.getByRole('button', { name: 'Close' }).tap();
+			await expect(dialog).toBeHidden();
+		});
 	});
 
 	test('WML-P1-UI-5: help link opens the dialog and closing returns to the model', async ({
