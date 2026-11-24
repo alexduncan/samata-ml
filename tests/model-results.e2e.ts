@@ -1,9 +1,11 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { PersistedAppState } from '../src/types/state';
+import { divergentBinaryCrossValidation } from './fixtures/results/evaluations';
 import {
 	deleteEnvelope,
 	downgradeEnvelope,
 	interceptResultReads,
+	payloadFor,
 	seedTrainedModel
 } from './helpers/seed-results';
 
@@ -95,6 +97,16 @@ test.describe('Section 6 shared results', () => {
 	});
 
 	test('TERM-AC-6: the CV headline and train–test gap retain the fold mean', async ({ page }) => {
+		const payload = payloadFor(divergentBinaryCrossValidation());
+		expect(payload).toMatchObject({
+			strategy: 'cross_validation',
+			crossValidation: {
+				folds: [{ score: 2 / 3 }, { score: 1 }],
+				diagnostics: { precision: 0.875, recall: expect.closeTo(5 / 6, 7) },
+				meanScore: expect.closeTo(5 / 6, 12),
+				standardDeviation: expect.closeTo(1 / 6, 12)
+			}
+		});
 		await seedTrainedModel(page, 'divergent-binary-cv');
 		await waitForResults(page);
 		const host = results(page);

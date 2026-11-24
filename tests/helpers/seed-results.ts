@@ -75,28 +75,33 @@ export function payloadFor(evaluation: StoredEvaluation): TrainingResultPayload 
 		};
 	}
 	const report = pooled.test;
+	const folds = partitions.map((part) => {
+		const validationIndices = Uint32Array.from(
+			Array.from(outputs.partitionIndex, (partition, row) => [partition, row] as const)
+				.filter(([partition]) => partition === part.index)
+				.map(([, row]) => row)
+		);
+		return {
+			foldIndex: part.index,
+			score: part.test.accuracy,
+			durationMs: part.durationMs,
+			validationSampleCount: validationIndices.length,
+			validationIndices
+		};
+	});
+	const meanScore = folds.reduce((sum, fold) => sum + fold.score, 0) / folds.length;
+	// The fixture describes the full set of supplied folds, using population spread.
+	const variance =
+		folds.reduce((sum, fold) => sum + (fold.score - meanScore) ** 2, 0) / folds.length;
+	const macroPrecision =
+		report.precisionPerClass.reduce((sum, value) => sum + value, 0) /
+		report.precisionPerClass.length;
 	return {
 		...base,
 		sourceRowIndices: Array.from(outputs.sourceRowIndex),
 		strategy: 'cross_validation',
 		crossValidation: {
-			folds: partitions.map((part) => {
-				const validationIndices = Uint32Array.from(
-					Array.from(
-						outputs.partitionIndex,
-						(partition, row) => [partition, row] as const
-					)
-						.filter(([partition]) => partition === part.index)
-						.map(([, row]) => row)
-				);
-				return {
-					foldIndex: part.index,
-					score: part.test.accuracy,
-					durationMs: part.durationMs,
-					validationSampleCount: validationIndices.length,
-					validationIndices
-				};
-			}),
+			folds,
 			diagnostics: {
 				task: 'classification' as const,
 				sampleCount: outputs.sourceRowIndex.length,
@@ -105,15 +110,15 @@ export function payloadFor(evaluation: StoredEvaluation): TrainingResultPayload 
 				support: report.support,
 				predictedCount: report.predictedCount,
 				accuracy: report.accuracy,
-				precision: report.balancedAccuracy,
+				precision: macroPrecision,
 				recall: report.balancedAccuracy,
 				f1: report.macroF1,
 				precisionPerClass: report.precisionPerClass,
 				recallPerClass: report.recallPerClass,
 				f1PerClass: report.f1PerClass
 			},
-			meanScore: report.accuracy,
-			standardDeviation: 0.01
+			meanScore,
+			standardDeviation: Math.sqrt(variance)
 		}
 	} as TrainingResultPayload;
 }
