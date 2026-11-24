@@ -1,6 +1,6 @@
 # Model artwork and production SVG optimisation
 
-**Status:** ready | **Updated:** 2026-11-24T13:40:20Z
+**Status:** ready | **Updated:** 2026-11-24T13:41:39Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-24T08:25:54Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-24T08:54:35Z | **Verification:** approved
 **Verified hash:** sha256:a3c949f20e846b2f7f0f798ab6eee416f26bcc35ff2e9b9b1077426b245e7b75
@@ -169,15 +169,15 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
 
 ## Specification changes
 
-- [ ] `specification/ARCHITECTURE.md` — Production public-file delivery includes SVG optimisation for lowercase `.svg` files with stable URLs and authored sources. With beta release delivery, integrate this rule into the public-file layout and retain the release header and caching rules. Status partial → partial.
-- [ ] `specification/workflow-steps.md` §3.1 — Each of the eight classifiers has a mapped illustration, with the current selection conveyed visibly and programmatically. Status partial → partial.
-- [ ] `specification/components/card.md` §§2–9, 11 — Document both decorative slot forms, the selected property and marker, model-specific accessible button names, geometry, acceptance tests and model-card stories. Update §11 to allow the defined model selected state and required empty `alt` on the decorative `img`. Keep the dataset-card contract. Status implemented → implemented.
-- [ ] `specification/visual-design.md` §5.3 — MODELS-UI-03 records eight illustrated cards, the supplied art and current-selection marker with 03-2 as the per-card geometry reference. Status partial → partial.
-- [ ] `specification/HUMAN.md` — Close the model text-entry styling and optional illustration queue items when the illustrated chooser replaces the text entries. Keep the draft mockup file as a historical reference.
-- [ ] `specification/TODO.md` TODO-07 — Replace the Logistic-only and text-entry details with the eight illustrated classifiers and reference the current workflow specification.
-- [ ] `specification/FUTURE.md` §2 — Remove the completed deferred classifier illustration and text-entry replacement item.
-- [ ] `specification/testing.md` — Record model card and chooser story coverage in the coverage boundary. Status partial → partial.
-- [ ] `specification/README.md` and `specification/COMPONENTS.md` — Check status alignment and known gaps. Scope broader story and contrast gaps to outstanding work if needed.
+- [x] `specification/ARCHITECTURE.md` — Production public-file delivery includes SVG optimisation for lowercase `.svg` files with stable URLs and authored sources. With beta release delivery, integrate this rule into the public-file layout and retain the release header and caching rules. Status partial → partial.
+- [x] `specification/workflow-steps.md` §3.1 — Each of the eight classifiers has a mapped illustration, with the current selection conveyed visibly and programmatically. Status partial → partial.
+- [x] `specification/components/card.md` §§2–9, 11 — Document both decorative slot forms, the selected property and marker, model-specific accessible button names, geometry, acceptance tests and model-card stories. Update §11 to allow the defined model selected state and required empty `alt` on the decorative `img`. Keep the dataset-card contract. Status implemented → implemented.
+- [x] `specification/visual-design.md` §5.3 — MODELS-UI-03 records eight illustrated cards, the supplied art and current-selection marker with 03-2 as the per-card geometry reference. Status partial → partial.
+- [x] `specification/HUMAN.md` — Close the model text-entry styling and optional illustration queue items when the illustrated chooser replaces the text entries. Keep the draft mockup file as a historical reference.
+- [x] `specification/TODO.md` TODO-07 — Replace the Logistic-only and text-entry details with the eight illustrated classifiers and reference the current workflow specification.
+- [x] `specification/FUTURE.md` §2 — Remove the completed deferred classifier illustration and text-entry replacement item.
+- [x] `specification/testing.md` — Record model card and chooser story coverage in the coverage boundary. Status partial → partial.
+- [x] `specification/README.md` and `specification/COMPONENTS.md` — Check status alignment and known gaps. Scope broader story and contrast gaps to outstanding work if needed.
 
 ## Implementation tasks
 
@@ -261,9 +261,9 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
   architecture description is present, extend it with the SVG rule. Close only the illustration
   and text-entry items in the human queue.
 - **Acceptance criteria:**
-    - [ ] All listed specifications agree on the card slots, current selection, catalogue coverage and production SVG path rules. Statuses and the human queue agree with shipped behaviour.
+    - [x] All listed specifications agree on the card slots, current selection, catalogue coverage and production SVG path rules. Statuses and the human queue agree with shipped behaviour.
 - **Verification:** `bun run plans:check specification/plans/model-artwork-and-svg-optimisation.md`, `bun run check`, `bun run build`, `bun run format:check <changed files>`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-24T13:41:39Z)
 
 ## Verification and definition of done
 
@@ -295,6 +295,7 @@ None.
 | —                    | —    | —             | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 | 2026-11-24T13:29:02Z | T1   | Codex (GPT-6) | bun add --dev --exact svgo@4.1.0; bun run check (627 passed); bun test tests/public-svg-build.test.ts (3 passed); bun test tests/build-cache-invalidation.test.ts (7 passed); bun run build and bun run lint passed; bun run test:e2e tests/public-svg-assets.e2e.ts --workers=2 (4 passed, 2 Chromium-only skips). Visually compared all nine source and production pairs at 360×216 and 720×432, including Linear Regression. Total 43,915 → 31,646 bytes.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | 2026-11-24T13:40:20Z | T2   | Codex (GPT-6) | bun test tests/model-catalogue.test.ts tests/style-tokens.test.ts (10 passed); bun run test:e2e tests/models-setup.e2e.ts tests/model-card.e2e.ts tests/model-configuration.e2e.ts tests/a11y.e2e.ts --workers=2 (127 passed, 2 Chromium-only skips); bun run test:e2e tests/visual-parity.e2e.ts --project=chromium --grep PARITY-models-card (1 passed); SAMATA_SKIP_KNOWN_FAILURES=1 bun run test:e2e tests/visual-parity.e2e.ts --workers=2 (60 passed, 138 skips under Chromium-only/known-failure rules; card active and passed); bun run storybook:build (static SVG matches original; CEM exposes image slot); bun run test:stories (660 passed); bun run check (627 passed), bun run lint and format check passed. Native Safari at 200% verified keyboard selection, visible focus and marker, Escape restoring description focus, named buttons and decorative image omission from the accessibility tree. Spoken VoiceOver output was unavailable; tree inspection and browser assertions are the recorded evidence. |
+| 2026-11-24T13:41:39Z | T3   | Codex (GPT-6) | bun run plans:check passed for plan and specification index; bun run check passed 627 tests; bun run build passed and emitted production /assets/ SVGs; bun run format:check passed for all ten specs and the plan. Updated MODELS-UI-03 and closed the two artwork and text-entry queue items. Reference mockups were preserved.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 
 ## Plan review history
 

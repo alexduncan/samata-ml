@@ -1,6 +1,6 @@
 # Specification TODO
 
-**Updated:** 2026-11-21
+**Updated:** 2026-11-24
 
 Open questions and missing specification found by reviewing every Markdown and HTML file in `specification/`. Each item names its source. These are **decisions for a human**: agents must not resolve them silently. When one is answered, update the source spec and delete the item here. Plans can cite items by ID (e.g. "decides TODO-05").
 
@@ -19,7 +19,7 @@ Open questions and missing specification found by reviewing every Markdown and H
 - **TODO-06 — Select Features** ([workflow-steps §3.2](workflow-steps.md)):
     - _Resolved for Step 3:_ Implemented in `feature-eligibility.ts` and `app-model-builder-view.ts`: target column displayed with Target badge and no checkbox (never selectable); unsupported (text, datetime), constant, and all-missing columns disabled with explanatory note codes; identifiers and target-candidate leaky columns default unticked with advisory notes and deliberate selection override; at least one feature required; initial features populated once on Choose Model completion via `initialiseFeatureSelection`.
 - **TODO-07 — Choose Model** ([workflow-steps §3.1](workflow-steps.md)):
-    - _Resolved for Step 3:_ Supervised models filtered by active target type from `web-ml` library index (`model-catalogue.ts`); clustering/PCA excluded; `logistic-regression` rendered as illustrated card (`03-2`); remaining 13 supervised models rendered via accessible native text entries (`03-9`); authored prose loaded via safe content loader with fallback to library JSON description for unauthored models.
+    - _Resolved for Step 3:_ The [Choose Model workflow](workflow-steps.md#1-choose-model) renders the eight eligible classifiers as illustrated cards in library index order. The current choice is visible and programmatically identified. Descriptions use authored prose or fall back to the model catalogue.
 - **TODO-08 — Models table on `/models`** ([workflow-steps §3](workflow-steps.md)):
     - _Resolved for Step 3:_ Monotonically numbered sequentially (Model 1, Model 2); Model Name displays `Model {num} — {Library Name}` or `Model {num}`; features listed in dataset order or "Not selected"; configuration shows persisted values or "Not configured"; Training Setup shows the formatted One-Shot split or Cross-Validation fold count, or "Not configured"; duration shows formatted seconds or "Not trained"; Action links to `/models/{num}` ("View Results" if trained, "Continue" if draft); renaming/deleting/duplicating excluded; empty state displays clear guidance; Compare Results disabled with visible hint until ≥ 2 models trained.
 - **TODO-09 — Custom dataset upload** ([workflow-steps §1](workflow-steps.md)):

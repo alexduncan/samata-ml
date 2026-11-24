@@ -1,6 +1,6 @@
 # Future development
 
-**Updated:** 2026-11-23
+**Updated:** 2026-11-24
 
 Items the specifications mark as _future_, _later_ or _deferred_. They are **not** to be planned or built until a human moves them into a spec. Open questions about current scope are in [TODO.md](TODO.md). Deliberate exclusions are listed under **Non-goals** in each component spec (§11) and are not future work.
 
@@ -25,7 +25,6 @@ Items the specifications mark as _future_, _later_ or _deferred_. They are **not
     - **Prediction latency** alongside fit time.
     - **Hand-built SVG charts** that replace Observable Plot where a bespoke chart is clearer, such as a Sankey-style confusion flow.
 - **Richer model comparison:** Superimposed ROC and precision–recall curves, multi-model reliability plots, a Pareto scatter, a decision-boundary gallery and normalised expected cost with a cost-ratio slider remain future work.
-- **Authored model illustrations and replacement of text-entry fallback:** Dedicated SVG illustrations for the 13 supervised models beyond Logistic Regression (Decision Trees, Naive Bayes variants, SVM, k-NN, Multi-Layer Perceptrons, Linear/Polynomial Regression). Each new illustrated card requires a human-approved, model-appropriate SVG adhering to the 360×216 viewBox and semantic color tokens. Until authored, these models render via the accessible native text-entry fallback (`03-9_choose-model-text-entries.html`).
 
 ## Engineering
 

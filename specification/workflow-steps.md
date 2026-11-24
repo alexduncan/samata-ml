@@ -130,15 +130,15 @@ Each individual model builder view is routed at `/models/{num}`. Navigating to a
 
 The catalogue adapter (`model-catalogue.ts`) exposes supervised algorithms from `web-ml` suitable for predicting the active target:
 
-- Categorical or Boolean target: the 8 classification algorithms, in library index order.
-- Numeric, text and datetime targets: no model is offered. Section 1 shows the notice `No classification model available` with a link to `/target`. Regression, clustering and PCA algorithms are excluded.
+- Categorical or Boolean target. Eight classifiers are available in library index order.
+- A numeric target reaches Section 1 and shows `No classification model available` with a link to `/target`. Text and datetime have empty catalogue lists. Target selection and saved-state hydration exclude both before the builder. Regression, clustering and PCA are excluded.
 - A model whose `modelId` is no longer available is reset to Section 1 at startup.
 
 The UI renders candidate models:
 
-- **Illustrated card:** `logistic-regression` renders as an `<app-model-card>` with an approved SVG illustration (`03-2_train-models-1-choose-model.html`) using semantic tokens.
-- **Native text-entry fallback:** Remaining classifiers without custom artwork render as semantic list items (`03-9_choose-model-text-entries.html`) displaying the model name, description, an accessible "Model Description: {name}" button, and a "Select Model: {name}" button.
-- Selecting a model updates `model.modelId` in app state and visually highlights the selection, but does **not** advance the workflow.
+- Each classifier appears in a native list item containing an [illustrated model card](components/card.md). Bernoulli, Gaussian and Multinomial Naive Bayes use `bernoulli-naive-bayes.svg`, `gaussian-naive-bayes.svg` and `multinomial-naive-bayes.svg`. The other classifiers use `k-nearest-neighbours-classifier.svg`, `logistic-regression.svg`, `mlp-classifier.svg`, `support-vector-classifier.svg` and `decision-tree-classifier.svg`. All eight use `/assets/` URLs and the per-card geometry from [03-2](mockups/03-2_train-models-1-choose-model.html).
+- The card shows `Model Description` and `Select Model`. Their accessible names include the model name. The current model shows `Selected` beside its select button, and that button exposes `aria-current="true"`.
+- Selection updates `model.modelId` and leaves Section 1 active. Choosing the current ID preserves setup data. Reload restores the choice from the saved ID.
 - A primary "Continue" button in `.section-actions` completes Section 1, initialises candidate features once via `initialiseFeatureSelection`, and activates Section 2.
 - The "Model Description" button opens an `<app-model-description-dialog>` presenting authored Markdown content or falling back to library JSON metadata if unauthored.
 - Once completed, the section header displays an "Edit" button (`reopen-btn`). Clicking "Edit" prompts a native modal confirmation; confirming clears downstream completions while preserving selections.

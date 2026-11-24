@@ -1,6 +1,6 @@
 # Engineering Conventions for Components
 
-**Status:** partial — the shared primitives, shell, base-locale i18n, CEM workbench and three-browser story runner are implemented. Existing data/target/model/virtual-table story coverage and wider feature-style consolidation remain follow-up work; exact outstanding feature contrast findings are tracked in [Known gap](README.md#known-gaps) 13.
+**Status:** partial — the shared primitives, shell, base-locale i18n, CEM workbench and three-browser story runner are implemented. Model card and chooser stories are implemented. Remaining data, target, model and virtual-table story coverage and wider feature-style consolidation are follow-up work; exact outstanding feature contrast findings are tracked in [Known gap](README.md#known-gaps) 13.
 
 Applies to every component, style primitive and store in this repository. Agents MUST read this file before implementing any spec in `specification/components/`.
 
