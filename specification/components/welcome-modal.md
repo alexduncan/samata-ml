@@ -20,7 +20,7 @@ Tag `app-welcome-modal`, class `AppWelcomeModal`, `src/features/shell/app-welcom
 <app-welcome-modal></app-welcome-modal>
 ```
 
-Mount once in the shell. It opens with `showModal` while undismissed (`!welcomeDismissed`, or in beta mode `!(welcomeDismissed && betaTelemetryAccepted)`) on root/workflow routes. Non-beta **Get Started** and native dismissal persist `welcomeDismissed` once; beta **Get Started** persists `acceptBetaTelemetry()` and records the `beta_get_started` milestone once, while navigating to the inline `/privacy` link keeps the notice undismissed and returns smoothly. Route hiding/disconnection suppresses queued closes without writing dismissal; returning from an untouched reserved route reopens onboarding. A later render never reopens an explicitly dismissed/accepted welcome.
+Mount once in the shell. It opens with `showModal` while undismissed (`!welcomeDismissed`, or in beta mode `!betaTelemetryAccepted`) on root/workflow routes. Non-beta **Get Started** and native dismissal persist `welcomeDismissed` once; beta **Get Started** persists `acceptBetaTelemetry()` and records the `beta_get_started` milestone once, while navigating to the inline `/privacy` link keeps the notice undismissed and returns smoothly. Route hiding/disconnection suppresses queued closes without writing dismissal; returning from an untouched reserved route reopens onboarding. A later render never reopens an explicitly dismissed/accepted welcome.
 
 ## 5. Visual specification
 

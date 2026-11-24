@@ -114,7 +114,7 @@ During every dev or production build, `scripts/html.ts` replaces those variables
 The same HTML transform also rewrites asset tags:
 
 - In development, the HTML points at `/style.css` and `/app.js`.
-- In production, the HTML links external content-hashed assets under `/bundles/`, such as `/bundles/style.d954b9081e.css` and `/bundles/app.524e1e5624.js`, and sets the `<meta name="samata:version">` tag without inlining CSS into `index.html`.
+- In production, the HTML links external content-hashed assets under `/bundles/`, such as `/bundles/style.d954b9081e.css` and `/bundles/app.524e1e5624.js`, and sets the `<meta name="app-version">` tag without inlining CSS into `index.html`.
 
 ## Start the Local Development Server
 
@@ -245,24 +245,28 @@ bun run deploy:dry-run
 
 `.github/workflows/ci.yml` runs on `push` and `pull_request` to `main`:
 
-1. `verify` — Installs Bun from `.bun-version`, installs frozen dependencies, installs Playwright browsers, and runs `lint`, `check`, `build`, `test:stories`, and `deploy:dry-run`.
-2. `e2e` — Runs `SAMATA_SKIP_KNOWN_FAILURES=1 bun run test:e2e --project=<browser>` across Chromium, Firefox, and WebKit (`fail-fast: false`).
-3. `deploy` — Runs on `push` to `main` after `verify` and `e2e` succeed, inside the `cloudflare-beta` GitHub environment with `BETA_TELEMETRY_ENABLED=true` and `SAMATA_CRAWLER_POLICY=closed`.
+1. `verify` — Checks out full history, verifies `vendor/web-ml/web-ml-0.2.0.tgz.sha256`, installs Bun from `.bun-version`, installs frozen dependencies (`--ignore-scripts`), runs changed-file Prettier checks, runs `lint`, `check`, and `deploy:dry-run`, installs Playwright browsers, and runs `test:stories`.
+2. `e2e` (`needs: [verify]`) — Runs `SAMATA_SKIP_KNOWN_FAILURES=1 bun run test:e2e --project=<browser>` across Chromium, Firefox, and WebKit (`fail-fast: false`, `workers: 1` in CI).
+3. `deploy` (`needs: [verify, e2e]`) — Runs on `push` to `main` inside the `cloudflare-beta` GitHub environment with `BETA_TELEMETRY_ENABLED=true` and `SAMATA_CRAWLER_POLICY=closed`.
 
 Configure two environment secrets in GitHub under **Settings -> Environments -> `cloudflare-beta`**:
 
 - `CLOUDFLARE_API_TOKEN` — API token with Cloudflare Workers Scripts Edit and Custom Domains / Routes permissions for `beta.samata.ml`.
 - `CLOUDFLARE_ACCOUNT_ID` — Target Cloudflare account identifier.
 
-Before publicising `https://beta.samata.ml`, add a hostname-scoped Cloudflare WAF custom rule matching `http.host eq "beta.samata.ml"` to block automated search and AI crawlers in addition to the generated closed `robots.txt` and `X-Robots-Tag: noindex, nofollow` headers.
+Before publicising `https://beta.samata.ml`, add a hostname-scoped Cloudflare WAF custom rule with the **Block** action in addition to the generated closed `robots.txt` and global `X-Robots-Tag: noindex, nofollow, nosnippet` headers:
+
+- Match when `http.host eq "beta.samata.ml"` and `http.request.uri.path ne "/robots.txt"`, and either `cf.verified_bot_category in {"Search Engine Crawler" "AI Crawler" "AI Search" "AI Assistant"}` or `lower(http.user_agent)` contains any of `googlebot`, `bingbot`, `gptbot`, `oai-searchbot`, `chatgpt-user`, `claudebot`, `claude-searchbot`, `claude-user`, `perplexitybot`, or `perplexity-user` (if the zone lacks `cf.verified_bot_category`, use the user-agent list and note the narrower enforcement).
+- Check rule order against any Skip rules and verify Cloudflare managed robots directives do not alter the emitted `Disallow: /` file.
+- Verify live responses after deploy: `/robots.txt` serves `text/plain` `Disallow: /` (not the SPA HTML fallback), representative search/AI crawler user agents receive `403`, normal browsers load `https://beta.samata.ml/`, and non-beta / Version URL hostnames on `workers.dev` stay outside the WAF rule while still serving closed crawler headers.
 
 ### Live Umami beta smoke check
 
 After deploying to `https://beta.samata.ml`, verify in a fresh browser profile:
 
-1. **Pre-consent isolation:** Before clicking **Get Started**, no request leaves for `https://cloud.umami.is/script.js` or `/telemetry/api/send`, and document/worker responses include COOP `same-origin`, COEP `require-corp`, CORP `same-origin`, and strict CSP headers.
-2. **Consent and reload:** Click **Get Started**, reload the page, and confirm `/script.js` loads once while the workflow remains functional even if content blockers block it.
-3. **Allowlisted payloads only:** Trigger `/data`, `/target`, `/models`, `/results`, and a synthetic error category check; verify Umami receives `beta_get_started`, canonical route paths, and fixed event/error names only—never CSV filenames, row counts, column names, targets, metrics, or stack traces.
+1. **Pre-consent isolation:** Before clicking **Get Started**, no request leaves for `https://cloud.umami.is/script.js` or `https://gateway.umami.is/api/send`, `window.crossOriginIsolated` is `true`, and document/worker responses include COOP `same-origin`, COEP `require-corp`, CORP `same-origin`, and strict CSP headers.
+2. **Consent, reload, and preflight:** Click **Get Started**, reload the page, confirm `https://cloud.umami.is/script.js` loads once, confirm the gateway `OPTIONS` preflight allows `x-umami-website-id` and `x-umami-hostname` headers, and confirm the workflow remains functional even if content blockers block it.
+3. **Allowlisted payloads only:** Trigger `/data`, `/target`, `/models`, `/results`, and a synthetic fixed exception event check; confirm the Umami dashboard receives one pageview, `beta_get_started`, and the triggered fixed exception event, and verify outgoing bodies contain only allowlisted fields—never CSV filenames, row counts, column names, targets, metrics, or stack traces.
 
 ### V1 public opening procedure
 
