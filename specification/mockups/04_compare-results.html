@@ -215,6 +215,148 @@
 						</tr>
 					</tbody>
 				</table>
+				<details>
+					<summary>What do these results terms mean?</summary>
+					<dl>
+						<dt><dfn>Held-out rows</dfn></dt>
+						<dd>
+							Rows left out of training for the model that made those predictions.
+						</dd>
+						<dt><dfn>Balanced accuracy</dfn></dt>
+						<dd>
+							Find the share of rows correctly predicted within each class, then
+							average those shares so each class counts equally.
+						</dd>
+						<dt><dfn>Pooled held-out score</dfn></dt>
+						<dd>
+							Put the held-out predictions together, then calculate one score from the
+							combined predictions.
+						</dd>
+						<dt><dfn>Accuracy</dfn></dt>
+						<dd>The share of rows for which the model predicted the correct class.</dd>
+						<dt><dfn>Baseline</dfn></dt>
+						<dd>
+							A reference score for judging how much the model improves on a simple
+							rule.
+						</dd>
+						<dt><dfn>Most frequent class</dfn></dt>
+						<dd>The baseline that always picks the commonest answer.</dd>
+						<dt><dfn>Random guesses by class share</dfn></dt>
+						<dd>The baseline that guesses according to how common each class is.</dd>
+						<dt><dfn>Percentage point</dfn></dt>
+						<dd>
+							A unit for the difference between percentages, such as the five points
+							from 75% to 80%.
+						</dd>
+						<dt><dfn>Train–test gap</dfn></dt>
+						<dd>
+							Training balanced accuracy minus held-out balanced accuracy for the same
+							split. For Cross-Validation, average those differences across folds.
+						</dd>
+						<dt><dfn>Standard deviation</dfn></dt>
+						<dd>Describes how far fold scores tend to spread around their mean.</dd>
+						<dt><dfn>Interquartile range</dfn></dt>
+						<dd>The width of the middle half of the fold scores.</dd>
+						<dt><dfn>Precision</dfn></dt>
+						<dd>
+							Of the rows predicted to be in a class, the share that really belong to
+							it.
+						</dd>
+						<dt><dfn>Recall</dfn></dt>
+						<dd>
+							Of the rows that actually belong to a class, the share that the model
+							found.
+						</dd>
+						<dt>F1</dt>
+						<dd>
+							Combines precision and recall into one score that drops when either is
+							low.
+						</dd>
+						<dt><dfn>Macro-F1</dfn></dt>
+						<dd>Averages F1 equally across classes.</dd>
+						<dt><abbr title="Matthews correlation coefficient">MCC</abbr></dt>
+						<dd>
+							Matthews correlation coefficient. A score for how closely predicted and
+							actual classes agree across correct predictions and errors. Higher
+							values indicate stronger agreement.
+						</dd>
+						<dt>
+							<abbr title="Area under the receiver operating characteristic curve"
+								>ROC-AUC</abbr
+							>
+						</dt>
+						<dd>
+							Area under the receiver operating characteristic curve. Summarises how
+							well the model ranks members of a class ahead of other rows across
+							possible cutoffs.
+						</dd>
+						<dt><dfn>Average precision</dfn></dt>
+						<dd>
+							Summarises how precise the model's predictions are as the score cutoff
+							changes and it finds more members of a class.
+						</dd>
+						<dt><dfn>Log loss</dfn></dt>
+						<dd>
+							Measures how much chance the model gave to the answers that actually
+							happened. Confident wrong answers increase the loss sharply.
+						</dd>
+						<dt><dfn>Brier score</dfn></dt>
+						<dd>
+							Measures squared gaps between the model's predicted chances and what
+							happened. Smaller gaps give a lower score.
+						</dd>
+						<dt><dfn>Calibration</dfn></dt>
+						<dd>Checks whether predicted chances match how often the events happen.</dd>
+						<dt><abbr title="Expected calibration error">ECE</abbr></dt>
+						<dd>
+							Expected calibration error. Averages the gaps between predicted chances
+							and observed outcomes across groups of predictions, giving larger groups
+							more weight.
+						</dd>
+						<dt><dfn>True class</dfn></dt>
+						<dd>The recorded answer for a row.</dd>
+						<dt><dfn>Predicted class</dfn></dt>
+						<dd>The model's answer for a row.</dd>
+						<dt><dfn>Confusion matrix</dfn></dt>
+						<dd>A table that counts each pairing of recorded and predicted answers.</dd>
+						<dt><dfn>Positive class</dfn></dt>
+						<dd>The category treated as the yes answer in a two-category check.</dd>
+						<dt><dfn>False positive</dfn></dt>
+						<dd>Predicting the positive answer when the actual answer is negative.</dd>
+						<dt><dfn>False negative</dfn></dt>
+						<dd>Missing the positive answer when it is present.</dd>
+						<dt><dfn>Error rate</dfn></dt>
+						<dd>
+							The share of predictions that are wrong. For a specific class, count the
+							errors among rows that actually belong to that class.
+						</dd>
+						<dt><dfn>Practical equivalence</dfn></dt>
+						<dd>
+							Differences inside the chosen range are treated as small enough to count
+							as similar.
+						</dd>
+						<dt><dfn>Equivalence width</dfn></dt>
+						<dd>
+							The range on each side of zero. For example, one percentage point allows
+							a difference of up to one point in either direction.
+						</dd>
+						<dt><dfn>Equivalence probability</dfn></dt>
+						<dd>
+							The estimated chance that the expected balanced-accuracy difference
+							between the two models lies inside the chosen range, based on their
+							paired evaluation.
+						</dd>
+						<dt><dfn>Instance agreement</dfn></dt>
+						<dd>
+							Groups the same held-out rows by how many of the selected models got
+							each row right.
+						</dd>
+						<dt><dfn>Fit time</dfn></dt>
+						<dd>Time spent training the model.</dd>
+						<dt><dfn>Fit + score across folds</dfn></dt>
+						<dd>Time spent training and evaluating the folds.</dd>
+					</dl>
+				</details>
 			</section>
 			<section>
 				<h2>Balanced accuracy across partitions</h2>

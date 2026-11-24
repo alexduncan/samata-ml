@@ -7,12 +7,15 @@ import { seedComparablePair, seedTrainedModel, type SeedName } from './helpers/s
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
-test('WML-P5-UI-12: populated comparison has no unexpected accessibility findings', async ({
+test('TERM-AC-9: WML-P5-UI-12 populated comparison and open terms have no unexpected findings', async ({
 	page
 }) => {
 	await seedComparablePair(page);
 	await page.goto('/results');
 	await expect(page.locator('app-results-view app-comparison-table')).toBeVisible();
+	const terms = page.locator('app-results-view details.terms-disclosure');
+	await terms.locator('summary').press('Enter');
+	await expect(terms.locator('dl')).toBeVisible();
 	await assertNoUnexpectedViolations(page);
 });
 
@@ -501,6 +504,7 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 				};
 				open(document);
 			});
+			await expect(results.locator('.terms-disclosure dl')).toBeVisible();
 			const audit = await new AxeBuilder({ page })
 				.include({
 					fromShadowDom: [

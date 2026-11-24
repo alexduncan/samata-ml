@@ -1,8 +1,8 @@
 import { css, type CSSResult } from 'lit';
 
 /**
- * Shared rules for the Section 6 results elements: chart figures, the "Show data table"
- * disclosure and the keyboard-scrollable table region. Follows COMPONENTS.md §6.2.
+ * Shared rules for results elements, including chart figures, native disclosures and
+ * keyboard-scrollable table regions. Follows COMPONENTS.md §6.2.
  */
 export const resultsStyles: CSSResult = css`
 	:host {
@@ -45,6 +45,23 @@ export const resultsStyles: CSSResult = css`
 	input:focus-visible {
 		outline: 2px solid var(--focus-ring);
 		outline-offset: 2px;
+	}
+
+	.terms-disclosure > summary {
+		min-block-size: 24px;
+	}
+
+	.terms-disclosure dl {
+		margin-block: 0.5rem 0;
+		overflow-wrap: anywhere;
+	}
+
+	.terms-disclosure dd {
+		margin-inline-start: 1rem;
+	}
+
+	.terms-disclosure dd + dt {
+		margin-block-start: 0.5rem;
 	}
 
 	.table-region {

@@ -46,6 +46,105 @@ function blocks(page: Page): Promise<string[]> {
 }
 
 test.describe('Section 6 shared results', () => {
+	test.describe('Result terms', () => {
+		test.use({ hasTouch: true });
+
+		test('TERM-AC-6: One-Shot and cross-validation have one native terms disclosure', async ({
+			page
+		}) => {
+			await seedTrainedModel(page, 'breast-cancer');
+			await waitForResults(page);
+			const host = results(page);
+			const disclosure = host.locator('details.terms-disclosure');
+			const summary = disclosure.locator('summary');
+			await expect(disclosure).toHaveCount(1);
+			await expect(summary).toHaveText('What do these results terms mean?');
+			await expect(disclosure).toHaveJSProperty('open', false);
+			await expect(
+				host.locator('app-results-summary + details.terms-disclosure')
+			).toHaveCount(1);
+			await summary.focus();
+			await summary.click();
+			await expect(disclosure).toHaveJSProperty('open', true);
+			await summary.press('Space');
+			await expect(disclosure).toHaveJSProperty('open', false);
+			await expect(summary).toBeFocused();
+			await summary.tap();
+			await expect(disclosure).toHaveJSProperty('open', true);
+			await summary.tap();
+			await expect(disclosure).toHaveJSProperty('open', false);
+			await summary.press('Enter');
+			await expect(summary).toBeFocused();
+			await expect(
+				disclosure.getByText(
+					'Rows left out of training for the model that made those predictions.',
+					{ exact: true }
+				)
+			).toBeVisible();
+			await expect(
+				disclosure.getByText(
+					'Find the share of rows correctly predicted within each class, then average those shares so each class counts equally.',
+					{ exact: true }
+				)
+			).toBeVisible();
+			await expect(
+				disclosure.locator('dfn').filter({ hasText: 'Probability threshold' })
+			).toBeVisible();
+			await expect(disclosure.getByText('Mean across folds', { exact: true })).toHaveCount(0);
+		});
+	});
+
+	test('TERM-AC-6: the CV headline and train–test gap retain the fold mean', async ({ page }) => {
+		await seedTrainedModel(page, 'divergent-binary-cv');
+		await waitForResults(page);
+		const host = results(page);
+		const scores = host.locator('app-results-summary');
+		await expect(scores.locator('.headline .primary .value')).toHaveText(/^75%/);
+		await expect(scores.locator('.notification')).toContainText('25 percentage points lower');
+		const disclosure = host.locator('details.terms-disclosure');
+		await expect(disclosure).toHaveJSProperty('open', false);
+		await disclosure.locator('summary').click();
+		await expect(disclosure.getByText('Mean across folds', { exact: true })).toBeVisible();
+		await expect(disclosure.getByText('Probability threshold', { exact: true })).toBeVisible();
+		await expect(disclosure.getByText('Pooled held-out score', { exact: true })).toHaveCount(0);
+	});
+
+	test('TERM-AC-8: expansions are visible independently of More metrics and chart tables', async ({
+		page
+	}) => {
+		await seedTrainedModel(page, 'svc-no-probabilities');
+		await waitForResults(page);
+		const host = results(page);
+		const disclosure = host.locator('details.terms-disclosure');
+		const more = host.locator('app-results-summary details');
+		const chartTable = host.locator('app-fold-strip details');
+		await disclosure.locator('summary').click();
+		await expect(more).toHaveJSProperty('open', false);
+		await expect(chartTable).toHaveJSProperty('open', false);
+		for (const [term, expansion] of [
+			['MCC', 'Matthews correlation coefficient'],
+			['ROC-AUC', 'Area under the receiver operating characteristic curve'],
+			['ECE', 'Expected calibration error']
+		] as const) {
+			const acronym = disclosure.locator('abbr').filter({ hasText: new RegExp(`^${term}$`) });
+			await expect(acronym).toHaveAttribute('title', expansion);
+			await acronym.evaluate((element) => element.removeAttribute('title'));
+			await expect(disclosure.locator('dd').filter({ hasText: expansion })).toBeVisible();
+		}
+		await expect(disclosure.locator('abbr')).toHaveCount(3);
+		await more.locator('summary').click();
+		await expect(more).toContainText(
+			'Unavailable because this model was trained without probability estimates.'
+		);
+		await chartTable.locator('summary').click();
+		await expect(chartTable.getByRole('table')).toBeVisible();
+		await expect(disclosure).toHaveJSProperty('open', true);
+		await page.reload();
+		await waitForResults(page);
+		await expect(disclosure).toHaveJSProperty('open', false);
+		await expect(more).toHaveJSProperty('open', true);
+	});
+
 	test('WML-P4-UI-10: a seeded binary model shows every shared section in order', async ({
 		page
 	}) => {
@@ -54,6 +153,7 @@ test.describe('Section 6 shared results', () => {
 		expect(await blocks(page)).toEqual([
 			'h3:Scores on held-out rows',
 			'app-results-summary',
+			'details',
 			'h3:Score on the test split',
 			'app-fold-strip',
 			'h3:Where the model makes mistakes',
@@ -81,6 +181,7 @@ test.describe('Section 6 shared results', () => {
 		expect(await blocks(page)).toEqual([
 			'h3:Scores on held-out rows',
 			'app-results-summary',
+			'details',
 			'h3:Scores across folds',
 			'app-fold-strip',
 			'h3:Where the model makes mistakes',
@@ -92,6 +193,11 @@ test.describe('Section 6 shared results', () => {
 		]);
 		await expect(results(page).locator('app-threshold-explorer')).toHaveCount(0);
 		await expect(results(page).locator('app-results-summary')).toContainText('5-fold');
+		await expect(
+			results(page)
+				.locator('.terms-disclosure')
+				.getByText('Probability threshold', { exact: true })
+		).toHaveCount(0);
 	});
 
 	test('WML-P4-UI-10: a model without probabilities explains each unavailable section', async ({
@@ -249,16 +355,49 @@ test.describe('Section 6 shared results', () => {
 		await expect.poll(() => page.evaluate(() => Math.round(window.scrollY))).toBe(savedTop);
 	});
 
-	test('WML-P4-UI-12: Section 6 has no horizontal overflow at 320 px', async ({ page }) => {
+	test('TERM-AC-9: WML-P4-UI-12 Section 6 reflows with the terms disclosure open', async ({
+		page,
+		browserName
+	}) => {
 		await seedTrainedModel(page, 'many-classes');
 		await waitForResults(page);
 		await page.setViewportSize({ width: 320, height: 800 });
-		await page.waitForTimeout(300);
+		const disclosure = results(page).locator('details.terms-disclosure');
+		const summary = disclosure.locator('summary');
+		await summary.press('Enter');
 		await settled(page);
+		await expect(disclosure.locator('dl')).toBeVisible();
 		const overflow = await page.evaluate(
 			() => document.documentElement.scrollWidth - document.documentElement.clientWidth
 		);
 		expect(overflow).toBeLessThanOrEqual(0);
+		await page.setViewportSize({ width: 640, height: 800 });
+		await page.evaluate(() => {
+			document.documentElement.dir = 'rtl';
+			document.documentElement.style.zoom = '2';
+		});
+		if (browserName !== 'webkit') await page.emulateMedia({ forcedColors: 'active' });
+		if (browserName === 'firefox') {
+			await page.keyboard.press('Shift+Tab');
+			await page.keyboard.press('Tab');
+		}
+		await expect(summary).toBeFocused();
+		const target = await summary.evaluate((element) => ({
+			inline: element.clientWidth,
+			block: element.clientHeight,
+			overflow: element.scrollWidth - element.clientWidth,
+			outline: getComputedStyle(element).outlineStyle
+		}));
+		expect(target.inline).toBeGreaterThanOrEqual(24);
+		expect(target.block).toBeGreaterThanOrEqual(24);
+		expect(target.overflow).toBeLessThanOrEqual(1);
+		expect(target.outline).toBe('solid');
+		await expect(disclosure.locator('dl')).toBeVisible();
+		expect(
+			await page.evaluate(
+				() => document.documentElement.scrollWidth - document.documentElement.clientWidth
+			)
+		).toBeLessThanOrEqual(1);
 	});
 
 	test('WML-P4-UI-12: the threshold is keyboard operable in DOM order', async ({

@@ -1,6 +1,6 @@
 import { html } from 'lit';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
-import { expect, waitFor } from 'storybook/test';
+import { expect, userEvent, waitFor } from 'storybook/test';
 import {
 	breastCancerOneShot,
 	irisCrossValidation,
@@ -129,6 +129,12 @@ export const Binary: Story = {
 			expect(element.shadowRoot!.querySelectorAll('section.block h3')).toHaveLength(5)
 		);
 		expect(element.shadowRoot!.querySelector('app-threshold-explorer')).not.toBeNull();
+		const disclosure =
+			element.shadowRoot!.querySelector<HTMLDetailsElement>('.terms-disclosure')!;
+		expect(disclosure.open).toBe(false);
+		await userEvent.click(disclosure.querySelector('summary')!);
+		expect(disclosure.open).toBe(true);
+		expect(disclosure.querySelector('dl')?.textContent).toContain('Probability threshold');
 	}
 };
 /** Multiclass target, five-fold Cross-Validation: Classee strips, no threshold explorer. */
@@ -138,6 +144,11 @@ export const Multiclass: Story = {
 		const element = await settled(canvasElement);
 		expect(element.shadowRoot!.querySelector('app-classee-strips')).not.toBeNull();
 		expect(element.shadowRoot!.querySelector('app-threshold-explorer')).toBeNull();
+		const disclosure =
+			element.shadowRoot!.querySelector<HTMLDetailsElement>('.terms-disclosure')!;
+		await userEvent.click(disclosure.querySelector('summary')!);
+		expect(disclosure.open).toBe(true);
+		expect(disclosure.querySelector('dl')?.textContent).toContain('Mean across folds');
 	}
 };
 /** Twenty-five classes show a filter and scrolling tables. */
@@ -148,26 +159,47 @@ export const NoProbabilities: Story = {
 };
 /** Long class names wrap or are shortened on the axes and complete in the tables. */
 export const LongLabel: Story = {
-	beforeEach: () => seed('ready', withLongLabels(irisCrossValidation()))
+	beforeEach: () => seed('ready', withLongLabels(irisCrossValidation())),
+	play: async ({ canvasElement }) => {
+		const element = await settled(canvasElement);
+		const disclosure =
+			element.shadowRoot!.querySelector<HTMLDetailsElement>('.terms-disclosure')!;
+		await userEvent.click(disclosure.querySelector('summary')!);
+		expect(disclosure.open).toBe(true);
+	}
 };
 /** Logical layout under right-to-left direction. */
 export const RTL: Story = {
 	beforeEach: () => seed('ready', irisCrossValidation()),
-	render: () => html`<div dir="rtl"><app-model-results model-num="1"></app-model-results></div>`
+	render: () => html`<div dir="rtl"><app-model-results model-num="1"></app-model-results></div>`,
+	play: async ({ canvasElement }) => {
+		const element = await settled(canvasElement);
+		const disclosure =
+			element.shadowRoot!.querySelector<HTMLDetailsElement>('.terms-disclosure')!;
+		await userEvent.click(disclosure.querySelector('summary')!);
+		expect(disclosure.open).toBe(true);
+		expect(getComputedStyle(disclosure).direction).toBe('rtl');
+	}
 };
+async function expectTermsAbsent({ canvasElement }: { canvasElement: HTMLElement }) {
+	const element = canvasElement.querySelector<AppModelResults>('app-model-results')!;
+	await element.updateComplete;
+	expect(element.shadowRoot!.querySelector('.terms-disclosure')).toBeNull();
+}
 /** The saved results are being read. */
-export const Loading: Story = { beforeEach: () => seed('loading') };
+export const Loading: Story = { beforeEach: () => seed('loading'), play: expectTermsAbsent };
 /** A model that has not been trained has nothing to show. */
-export const Empty: Story = { beforeEach: () => seed('untrained') };
+export const Empty: Story = { beforeEach: () => seed('untrained'), play: expectTermsAbsent };
 /** A Phase 3 result stays usable but has no detailed results. */
-export const Legacy: Story = { beforeEach: () => seed('legacy') };
+export const Legacy: Story = { beforeEach: () => seed('legacy'), play: expectTermsAbsent };
 /** The saved result has gone missing since it was acknowledged. */
-export const Lost: Story = { beforeEach: () => seed('lost') };
+export const Lost: Story = { beforeEach: () => seed('lost'), play: expectTermsAbsent };
 /** A read failure gives an alert and Retry. */
 export const ReadError: Story = {
 	beforeEach: () => seed('error'),
 	play: async ({ canvasElement }) => {
 		const element = await settled(canvasElement);
 		expect(element.shadowRoot!.querySelector('[role="alert"]')).not.toBeNull();
+		expect(element.shadowRoot!.querySelector('.terms-disclosure')).toBeNull();
 	}
 };

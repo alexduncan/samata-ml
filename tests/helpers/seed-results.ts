@@ -1,8 +1,9 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import type { StoredEvaluation } from '../../src/types/model-evaluation';
 import type { TrainingResultPayload } from '../../src/types/model-result';
 import {
 	breastCancerOneShot,
+	divergentBinaryCrossValidation,
 	irisCrossValidation,
 	manyClasses,
 	svcBinaryNoProbabilities
@@ -11,14 +12,29 @@ import { withPooledConfusion } from '../fixtures/results/variants';
 import { configureDraft, controlTraining, openSetup } from '../fixtures/training/browser';
 
 /** Hand-written evaluations that can be saved as the result of a trained model. */
-export type SeedName = 'iris' | 'breast-cancer' | 'svc-no-probabilities' | 'many-classes';
+export type SeedName =
+	| 'iris'
+	| 'breast-cancer'
+	| 'svc-no-probabilities'
+	| 'many-classes'
+	| 'divergent-binary-cv';
 
 const evaluations: Record<SeedName, () => StoredEvaluation> = {
 	iris: irisCrossValidation,
 	'breast-cancer': breastCancerOneShot,
 	'svc-no-probabilities': svcBinaryNoProbabilities,
-	'many-classes': manyClasses
+	'many-classes': manyClasses,
+	'divergent-binary-cv': divergentBinaryCrossValidation
 };
+
+async function selectEvaluationSetup(setup: Locator, evaluation: StoredEvaluation): Promise<void> {
+	if (evaluation.protocol.kind !== 'cross_validation') return;
+	await setup.getByRole('combobox', { name: 'Training Strategy' }).selectOption('nested_cv');
+	const folds = setup.getByRole('spinbutton');
+	await folds.fill(String(evaluation.protocol.folds));
+	await folds.blur();
+	await expect(folds).toHaveValue(String(evaluation.protocol.folds));
+}
 
 /**
  * Builds the worker success payload for a stored evaluation. The retained rows are every row
@@ -134,10 +150,7 @@ export async function seedTrainedModel(
 	const evaluation = evaluations[name]();
 	await controlTraining(page);
 	const setup = await openSetup(page);
-	if (evaluation.protocol.kind === 'cross_validation') {
-		await setup.getByRole('combobox', { name: 'Training Strategy' }).selectOption('nested_cv');
-		await expect(setup.getByRole('spinbutton')).toHaveValue(String(evaluation.protocol.folds));
-	}
+	await selectEvaluationSetup(setup, evaluation);
 	await setup.getByRole('button', { name: 'Train Model' }).click();
 	await expect
 		.poll(() =>
@@ -217,9 +230,7 @@ async function seedAdditionalModel(
 ): Promise<void> {
 	await page.locator('app-sidebar a[href="/models"]').click();
 	const setup = await configureDraft(page, num);
-	if (evaluation.protocol.kind === 'cross_validation') {
-		await setup.getByRole('combobox', { name: 'Training Strategy' }).selectOption('nested_cv');
-	}
+	await selectEvaluationSetup(setup, evaluation);
 	await setup.getByRole('button', { name: 'Train Model' }).click();
 	await expect
 		.poll(

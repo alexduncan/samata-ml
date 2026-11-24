@@ -1,6 +1,72 @@
 import { expect, test } from '@playwright/test';
 import { seedComparableGroups, seedComparablePair } from './helpers/seed-results';
 
+test('TERM-AC-7: comparison terms explain pooled scores and the paired fold gap', async ({
+	page
+}) => {
+	await seedComparablePair(page, 'divergent-binary-cv');
+	await page.goto('/results');
+	const view = page.locator('app-results-view');
+	const table = view.locator('app-comparison-table');
+	const disclosure = view.locator('app-comparison-table + details.terms-disclosure');
+	const summary = disclosure.locator('summary');
+	await expect(disclosure).toHaveCount(1);
+	await expect(disclosure).toHaveJSProperty('open', false);
+
+	const model = table
+		.getByRole('row')
+		.filter({ has: page.getByRole('rowheader', { name: 'Model 1', exact: true }) });
+	const balancedAccuracy = table.getByRole('columnheader', {
+		name: 'Balanced accuracy',
+		exact: true
+	});
+	const gap = table.getByRole('columnheader', { name: 'Train–test gap', exact: true });
+	const indexOf = (header: typeof gap) =>
+		header.evaluate((cell) => (cell as HTMLTableCellElement).cellIndex - 1);
+	await expect(model.getByRole('cell').nth(await indexOf(balancedAccuracy))).toHaveText('83.3%');
+	await expect(model.getByRole('cell').nth(await indexOf(gap))).toHaveText('25%');
+
+	await summary.press('Enter');
+	await expect(summary).toBeFocused();
+	await expect(
+		disclosure.getByText(
+			'Put the held-out predictions together, then calculate one score from the combined predictions.',
+			{ exact: true }
+		)
+	).toBeVisible();
+	await expect(
+		disclosure.getByText(
+			'Training balanced accuracy minus held-out balanced accuracy for the same split. For Cross-Validation, average those differences across folds.',
+			{ exact: true }
+		)
+	).toBeVisible();
+	await expect(disclosure.getByText('Equivalence width', { exact: true })).toBeVisible();
+	await expect(disclosure.getByText('Mean across folds', { exact: true })).toHaveCount(0);
+	await expect(disclosure.locator('abbr')).toHaveCount(3);
+	for (const [acronym, expansion] of [
+		['MCC', 'Matthews correlation coefficient'],
+		['ROC-AUC', 'Area under the receiver operating characteristic curve'],
+		['ECE', 'Expected calibration error']
+	] as const) {
+		const term = disclosure.locator('abbr').filter({ hasText: new RegExp(`^${acronym}$`) });
+		await expect(term).toHaveAttribute('title', expansion);
+		await term.evaluate((element) => element.removeAttribute('title'));
+		await expect(disclosure.locator('dd').filter({ hasText: expansion })).toBeVisible();
+	}
+
+	await balancedAccuracy.getByRole('button', { name: 'Balanced accuracy' }).click();
+	await expect(balancedAccuracy).toHaveAttribute('aria-sort', 'ascending');
+	await view.getByRole('spinbutton', { name: 'Equivalence width' }).fill('0.02');
+	await expect(view.getByRole('spinbutton', { name: 'Equivalence width' })).toHaveValue('0.02');
+	await expect(disclosure).toHaveJSProperty('open', true);
+
+	const modelTwo = view.locator('app-comparison-controls').getByLabel('Model 2');
+	await modelTwo.uncheck();
+	await expect(disclosure).toHaveCount(0);
+	await modelTwo.check();
+	await expect(disclosure).toHaveJSProperty('open', false);
+});
+
 for (const [fixture, label] of [
 	['iris', 'Fit + score across folds (lower is better)'],
 	['breast-cancer', 'Fit time (lower is better)']
@@ -62,18 +128,43 @@ test('WML-P5-UI-12: comparison controls reflow and remain keyboard accessible at
 	await expect(view).toContainText('Select at least two models to compare.');
 	await second.press('Space');
 	await expect(view.locator('app-comparison-table')).toBeVisible();
+	const disclosure = view.locator('details.terms-disclosure');
+	await disclosure.locator('summary').press('Enter');
+	await expect(disclosure.locator('dl')).toBeVisible();
 	expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(
 		true
 	);
 });
 
-test('WML-P5-UI-12: comparison reflows at simulated 200% zoom', async ({ page }) => {
+test('TERM-AC-9: WML-P5-UI-12 comparison reflows at simulated 200% zoom with terms open', async ({
+	page,
+	browserName
+}) => {
 	await seedComparablePair(page);
 	await page.setViewportSize({ width: 640, height: 900 });
 	await page.goto('/results');
 	await page.evaluate(() => {
+		document.documentElement.dir = 'rtl';
 		document.documentElement.style.zoom = '2';
 	});
+	if (browserName !== 'webkit') await page.emulateMedia({ forcedColors: 'active' });
+	const disclosure = page.locator('app-results-view details.terms-disclosure');
+	const summary = disclosure.locator('summary');
+	await summary.press('Enter');
+	if (browserName === 'firefox') {
+		await page.keyboard.press('Shift+Tab');
+		await page.keyboard.press('Tab');
+	}
+	await expect(summary).toBeFocused();
+	await expect(disclosure.locator('dl')).toBeVisible();
+	const size = await summary.evaluate((element) => ({
+		width: element.clientWidth,
+		height: element.clientHeight,
+		outline: getComputedStyle(element).outlineStyle
+	}));
+	expect(size.width).toBeGreaterThanOrEqual(24);
+	expect(size.height).toBeGreaterThanOrEqual(24);
+	expect(size.outline).toBe('solid');
 	await expect(page.locator('app-results-view app-comparison-table')).toBeVisible();
 	await expect(page.locator('app-comparison-controls').getByLabel('Model 1')).toBeVisible();
 	expect(

@@ -2,6 +2,7 @@ import { count, params } from '@nanostores/i18n';
 import { StoreController } from '@nanostores/lit';
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { repeat } from 'lit/directives/repeat.js';
 import { $format, i18n } from '../../i18n';
 import {
 	$modelResults,
@@ -13,6 +14,7 @@ import { $appState, setModelResultsUi } from '../../stores/app.store';
 import { flushNow } from '../../stores/persister';
 import { buttonStyles } from '../../styles/button.styles';
 import { notificationStyles } from '../../styles/notification.styles';
+import { resultsStyles } from '../../styles/results.styles';
 import type { MetricUnavailableReason, StoredEvaluation } from '../../types/model-evaluation';
 import { DEFAULT_MODEL_RESULTS_UI, type ModelRecord } from '../../types/state';
 import { SUPERVISED_MODELS } from '../models/model-catalogue';
@@ -53,8 +55,21 @@ import {
 	type ResultsSummaryView,
 	type ThresholdView
 } from './results-view-model';
+import { RESULT_TERM_COPY } from './result-term-copy';
+
+const resultTerms = Object.entries(RESULT_TERM_COPY).filter(
+	([, term]) => term.surface !== 'comparison'
+);
+const resultTermMessages: Record<`term.${string}`, string> = {};
+for (const [id, term] of resultTerms) {
+	resultTermMessages[`term.${id}.name`] = term.term;
+	resultTermMessages[`term.${id}.definition`] = term.definition;
+	if ('expansion' in term) resultTermMessages[`term.${id}.expansion`] = term.expansion;
+}
 
 const messages = i18n('app-model-results', {
+	...resultTermMessages,
+	resultTermsSummary: 'What do these results terms mean?',
 	loading: 'Loading results…',
 	empty: 'Train this model to see its results.',
 	legacy: 'This model was trained before detailed results were saved. Train it again to see them.',
@@ -467,6 +482,7 @@ export class AppModelResults extends LitElement {
 	static override styles = [
 		buttonStyles,
 		notificationStyles,
+		resultsStyles,
 		css`
 			:host {
 				display: block;
@@ -717,6 +733,45 @@ export class AppModelResults extends LitElement {
 		`;
 	}
 
+	private renderTerms(oneShot: boolean, binary: boolean): TemplateResult {
+		const text = this.text.value as Messages & typeof resultTermMessages;
+		const terms = resultTerms.filter(
+			([, term]) =>
+				(term.surface !== 'cross-validation' || !oneShot) &&
+				(term.surface !== 'binary' || binary)
+		);
+		return html`
+			<details class="terms-disclosure">
+				<summary>${text.resultTermsSummary}</summary>
+				<dl>
+					${repeat(
+						terms,
+						([id]) => id,
+						([id, term]) => {
+							const label = text[`term.${id}.name`];
+							const expansion =
+								'expansion' in term ? text[`term.${id}.expansion`] : undefined;
+							return html`
+								<dt>
+									${expansion
+										? html`<abbr title=${expansion}>${label}</abbr>`
+										: id === 'f1'
+											? label
+											: html`<dfn>${label}</dfn>`}
+								</dt>
+								<dd>
+									${expansion ? html`${expansion}. ` : nothing}${text[
+										`term.${id}.definition`
+									]}
+								</dd>
+							`;
+						}
+					)}
+				</dl>
+			</details>
+		`;
+	}
+
 	override render() {
 		const t = this.text.value;
 		const model = this.model;
@@ -750,6 +805,7 @@ export class AppModelResults extends LitElement {
 					.moreOpen=${preferences.moreMetricsOpen}
 					.labels=${labels.summary}
 					@app-results-more-toggle=${this.handleMoreToggle}></app-results-summary>
+				${this.renderTerms(oneShot, binary)}
 			</section>
 			<section class="block" aria-labelledby="folds-heading">
 				<h3 id="folds-heading">${oneShot ? t.foldHeadingOneShot : t.foldHeadingCv}</h3>

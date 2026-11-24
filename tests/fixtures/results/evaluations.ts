@@ -240,6 +240,76 @@ export function irisCrossValidation(): StoredEvaluation {
 	};
 }
 
+/** Two unequal-support folds whose mean balanced accuracy differs from the pooled score. */
+export function divergentBinaryCrossValidation(): StoredEvaluation {
+	const heldOut = [
+		[2, 0, 1, 0],
+		[1, 0, 0, 2]
+	];
+	const training = [
+		[1, 0, 0, 2],
+		[2, 0, 0, 1]
+	];
+	// Each most-frequent prediction comes from the training side of the fold.
+	const mostFrequent = [
+		[0, 2, 0, 1],
+		[1, 0, 2, 0]
+	];
+	const stratified = [
+		[1, 1, 0, 1],
+		[1, 0, 1, 1]
+	];
+	const unscored = {
+		rocAuc: unavailable('probabilities-unavailable'),
+		averagePrecision: unavailable('probabilities-unavailable'),
+		logLoss: unavailable('probabilities-unavailable'),
+		brier: unavailable('probabilities-unavailable')
+	};
+	const report = (cells: readonly number[], mcc: StoredMetric) =>
+		reportFromConfusion(2, cells, { ...unscored, mcc });
+	const noMcc = unavailable('not-applicable');
+	const partitions: StoredPartition[] = heldOut.map((cells, index) => ({
+		index,
+		kind: 'outer-fold',
+		trainSampleCount: 3,
+		testSampleCount: 3,
+		durationMs: 120 + index * 10,
+		timing: 'fold-fit-and-score',
+		test: report(cells, index === 0 ? noMcc : available(1)),
+		train: report(training[index]!, available(1)),
+		baselines: {
+			mostFrequent: report(mostFrequent[index]!, noMcc),
+			stratified: report(stratified[index]!, available(0.5))
+		}
+	}));
+	return {
+		schemaVersion: 1,
+		protocol: { kind: 'cross_validation', folds: 2, randomState: 42 },
+		classLabels: ['Negative', 'Positive'],
+		positiveClassIndex: 1,
+		partitionFingerprint: 'd'.repeat(64),
+		partitions,
+		pooled: {
+			test: report(addCells(heldOut), available(Math.SQRT1_2)),
+			baselines: {
+				mostFrequent: report(addCells(mostFrequent), available(-1 / 3)),
+				stratified: report(addCells(stratified), available(1 / 3))
+			}
+		},
+		outputs: {
+			sourceRowIndex: Uint32Array.of(0, 1, 2, 3, 4, 5),
+			partitionIndex: Uint16Array.of(0, 0, 0, 1, 1, 1),
+			trueIndex: Uint16Array.of(0, 0, 1, 0, 1, 1),
+			predictedIndex: Uint16Array.of(0, 0, 0, 0, 1, 1),
+			probabilities: null,
+			probabilitySource: null,
+			positiveScores: null,
+			rankingScoreSource: null
+		},
+		curves: { thresholdSweep: null, calibration: null, ranking: null }
+	};
+}
+
 function binaryBase(withProbabilities: boolean): StoredEvaluation {
 	const extras: ReportExtras = withProbabilities
 		? {}
