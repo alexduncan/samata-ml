@@ -1,6 +1,6 @@
 import { html } from 'lit';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
-import { expect, fn, waitFor } from 'storybook/test';
+import { expect, fn, userEvent, waitFor } from 'storybook/test';
 import { $route } from '../../router/router';
 import { $appState } from '../../stores/app.store';
 import { $modelResults, currentResultIdentity } from '../../stores/model-results.store';
@@ -178,7 +178,21 @@ export const ConfigureModelComplete: Story = {
 /** WML-P2-UI-8: Section 4 ready for an eligible target. */
 export const ConfigureTraining: Story = {
 	name: 'WML-P2-UI-8: ConfigureTraining',
-	beforeEach: () => seedTraining()
+	beforeEach: () => seedTraining(),
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const setup = builder.shadowRoot!.querySelector('app-training-setup')!;
+		await setup.updateComplete;
+		const root = setup.shadowRoot!;
+		const description = root.getElementById('strategy-description')!;
+		expect(description.textContent).toContain('Train once on one part of the data');
+		await userEvent.selectOptions(root.querySelector('select')!, 'nested_cv');
+		await builder.updateComplete;
+		await setup.updateComplete;
+		expect(description.textContent).toContain('Divide the data into groups');
+		expect(description.textContent).not.toContain('80%');
+	}
 };
 /** A saved draft from before training became available can reopen its setup. */
 export const TrainingSetupCompleted: Story = {

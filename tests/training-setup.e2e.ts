@@ -172,6 +172,40 @@ async function interceptMetadataRequests(page: Page): Promise<DatasetMetadata> {
 }
 
 test.describe('Standalone Training Setup component', () => {
+	test('TERM-AC-4: the native select describes just the selected strategy', async ({
+		page,
+		browserName
+	}) => {
+		const form = await mountStandalone(page);
+		const strategy = form.getByRole('combobox', { name: 'Training Strategy' });
+		const oneShotHint = 'Train once on one part of the data and test on the part set aside.';
+		const crossValidationHint =
+			'Divide the data into groups, then train and check a model several times, using a different group for the check each time.';
+		const description = form.locator('#strategy-description');
+		await expect(strategy).toHaveAccessibleDescription(
+			`${oneShotHint} Requests an 80% training and 20% held-out test split.`
+		);
+		await expect(description.getByRole('link')).toHaveCount(0);
+		await expect(strategy.locator('option')).toHaveText(['One-Shot', 'Cross-Validation']);
+		await expect(strategy.locator('option abbr')).toHaveCount(0);
+
+		await strategy.focus();
+		if (browserName === 'chromium') {
+			await page.keyboard.press('c');
+		} else {
+			await strategy.selectOption('nested_cv');
+		}
+		await expect(strategy).toBeFocused();
+		await expect(strategy).toHaveValue('nested_cv');
+		await expect(strategy).toHaveAccessibleDescription(crossValidationHint);
+		await expect(description).toHaveText(crossValidationHint);
+		await expect(form.getByRole('spinbutton')).toHaveValue('5');
+		await strategy.selectOption('one_shot');
+		await expect(strategy).toBeFocused();
+		await expect(description).toContainText(oneShotHint);
+		await expect(description).not.toContainText(crossValidationHint);
+	});
+
 	test('WML-P2-COMP-1: strategy and range emit direct changes and redraw the matrix', async ({
 		page
 	}) => {
@@ -600,7 +634,7 @@ test.describe('Connected Training Setup', () => {
 		expect(await trainingState(page)).toEqual(before);
 	});
 
-	test('WML-P2-UI-4: Help keeps the form, error and invoking link while Edit follows downstream completion', async ({
+	test('TERM-AC-5: WML-P2-UI-4 both Help links open the article and preserve the form', async ({
 		page
 	}) => {
 		const form = await openSetup(page);
@@ -614,6 +648,16 @@ test.describe('Connected Training Setup', () => {
 		await setupStep(page).getByRole('link', { name: 'What is this?' }).click();
 		const modal = page.getByRole('dialog', { name: 'Training Setup' });
 		await expect(page).toHaveURL('/help/training-setup');
+		const article = modal.locator('.modal-body');
+		for (const text of [
+			'Rows left out of training for the model that made those predictions',
+			'The test rows are set aside to check how it performs on other rows',
+			'A stratified split tries to keep the shares of each class similar',
+			'The validation fold is the group set aside for one check',
+			'Train the final model again using all the eligible rows'
+		]) {
+			await expect(article).toContainText(text, { ignoreCase: true });
+		}
 		await modal.getByRole('button', { name: 'Close' }).click();
 		await expect(page).toHaveURL('/models/1');
 
@@ -632,6 +676,9 @@ test.describe('Connected Training Setup', () => {
 		await page.keyboard.press('Enter');
 		await expect(page).toHaveURL('/help/training-setup');
 		await expect(modal).toBeVisible();
+		await expect(article).toContainText(
+			'using all the eligible rows after cross-validation has checked performance'
+		);
 		await builder(page).evaluate(async (el) => {
 			const host = el as HTMLElementTagNameMap['app-model-builder-view'];
 			host.requestUpdate();

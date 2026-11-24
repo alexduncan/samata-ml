@@ -22,7 +22,8 @@ export interface TrainingSetupLabels {
 	readonly strategyLabel: string;
 	readonly strategyOneShot: string;
 	readonly strategyCrossValidation: string;
-	readonly strategyHelp: string;
+	readonly oneShotDefinition: string;
+	readonly crossValidationDefinition: string;
 	readonly strategyHelpLinkText: string;
 	readonly strategyHelpHref: string;
 	readonly oneShotNote: string;
@@ -54,7 +55,9 @@ const DEFAULT_TRAINING_SETUP_LABELS: TrainingSetupLabels = {
 	strategyLabel: 'Training Strategy',
 	strategyOneShot: 'One-Shot',
 	strategyCrossValidation: 'Cross-Validation',
-	strategyHelp: 'How the rows are divided to train and evaluate the model.',
+	oneShotDefinition: 'Train once on one part of the data and test on the part set aside.',
+	crossValidationDefinition:
+		'Divide the data into groups, then train and check a model several times, using a different group for the check each time.',
 	strategyHelpLinkText: 'Learn more',
 	strategyHelpHref: '/help/training-setup',
 	oneShotNote: 'Requests an 80% training and 20% held-out test split.',
@@ -466,7 +469,7 @@ export class AppTrainingSetup extends LitElement {
 						id="strategy"
 						name="strategy"
 						class="field-control"
-						aria-describedby="strategy-help"
+						aria-describedby="strategy-description"
 						.value=${live(this.strategy)}
 						?disabled=${this.controlsDisabled}
 						@change=${this.handleStrategyChange}>
@@ -474,13 +477,17 @@ export class AppTrainingSetup extends LitElement {
 						<option value="nested_cv">${t.strategyCrossValidation}</option>
 					</select>
 					<div id="strategy-help" class="field-description">
-						<p>
-							${t.strategyHelp}
-							<a href=${t.strategyHelpHref}>${t.strategyHelpLinkText}</a>
-						</p>
-						${this.strategy === 'one_shot'
-							? html`<p class="field-dependent">${t.oneShotNote}</p>`
-							: nothing}
+						<div id="strategy-description">
+							<p>
+								${this.strategy === 'one_shot'
+									? t.oneShotDefinition
+									: t.crossValidationDefinition}
+							</p>
+							${this.strategy === 'one_shot'
+								? html`<p class="field-dependent">${t.oneShotNote}</p>`
+								: nothing}
+						</div>
+						<p><a href=${t.strategyHelpHref}>${t.strategyHelpLinkText}</a></p>
 					</div>
 				</div>
 				${this.strategy === 'nested_cv' ? this.renderFolds() : nothing}

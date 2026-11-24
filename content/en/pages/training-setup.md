@@ -4,15 +4,19 @@ title: Training Setup
 
 ## One-Shot Training
 
-One-Shot requests a single split of your labelled data: 80% for training and 20% for testing. The split is stratified, which means it aims to keep the proportion of each class similar in both groups. The fixed random seed of 42 makes the split reproducible with the same data and settings.
+Train once on one part of the data and test on the part set aside. One-Shot requests a single split of your labelled data, with 80% for training and 20% for testing. The training rows teach the model. The test rows are set aside to check how it performs on other rows.
 
-The test rows are held out during training. They let you check how well the fitted model predicts labels for rows it has never seen.
+The split is **stratified**. A stratified split tries to keep the shares of each class similar in the groups. The fixed random seed of 42 makes the split reproducible with the same data and settings.
+
+The test rows are held out during training. **Held-out rows** are rows left out of training for the model that made those predictions.
 
 ## Cross-Validation
 
-Cross-validation divides the labelled data into groups called folds. With manual settings, each fold takes one turn as the validation set. In each round, the other folds are used for training. More folds mean more rounds of fitting and evaluating the model, which can take longer.
+Divide the data into groups, then train and check a model several times, using a different group for the check each time. A **fold** is one group of rows in cross-validation. The **validation fold** is the group set aside for one check. With manual settings, each fold takes one turn as the validation set. In each round, the other folds are used for training. More folds mean more rounds of fitting and evaluating the model, which can take longer.
 
 The matrix shows which folds are used for training and validation in each round. Its percentages illustrate the proportions for equal-sized folds. Actual row assignments and group sizes depend on your data.
+
+To **refit**, train the final model again using all the eligible rows after cross-validation has checked performance. The displayed held-out scores come from the validation folds used before refitting.
 
 ## How many folds can I choose?
 

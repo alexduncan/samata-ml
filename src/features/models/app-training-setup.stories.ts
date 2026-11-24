@@ -54,7 +54,12 @@ export const OneShot: Story = {
 	play: async ({ canvasElement }) => {
 		const { setup, root, form } = await getForm(canvasElement);
 		expect(root.querySelector('select')?.value).toBe('one_shot');
-		expect(root.querySelector('.field-dependent')?.textContent).toContain('80%');
+		expect(root.querySelector('#strategy-description')?.textContent).toContain(
+			'Train once on one part of the data'
+		);
+		expect(root.querySelector('#strategy-description .field-dependent')?.textContent).toContain(
+			'80%'
+		);
 		expect(root.querySelector('.fold-matrix')).toBeNull();
 
 		const submit = fn();
@@ -80,6 +85,10 @@ export const CrossValidation: Story = {
 		setup.addEventListener('app-training-setup-change', change);
 		await userEvent.selectOptions(root.querySelector('select')!, 'nested_cv');
 		await setup.updateComplete;
+		expect(root.querySelector('#strategy-description')?.textContent).toContain(
+			'Divide the data into groups'
+		);
+		expect(root.querySelector('#strategy-description .field-dependent')).toBeNull();
 		expect(change).toHaveBeenCalledTimes(1);
 		expect(change).toHaveBeenCalledWith(
 			expect.objectContaining({
@@ -179,6 +188,9 @@ export const Blocked: Story = {
 		);
 		expect(root.querySelector('select')?.disabled).toBe(true);
 		expect(root.querySelector('button')?.disabled).toBe(true);
+		expect(root.querySelector('#strategy-description')?.textContent).toContain(
+			'Train once on one part of the data'
+		);
 	}
 };
 
@@ -191,6 +203,9 @@ export const Disabled: Story = {
 		expect(
 			root.querySelectorAll('select:disabled, input:disabled, button:disabled')
 		).toHaveLength(4);
+		expect(root.querySelector('#strategy-description')?.textContent).toContain(
+			'Divide the data into groups'
+		);
 		const submit = fn();
 		setup.addEventListener('app-training-setup-submit', submit);
 		form.requestSubmit();
@@ -208,9 +223,17 @@ export const LongLabel: Story = {
 		setup.labels = {
 			...setup.labels,
 			strategyLabel: 'Training strategy for evaluating the fitted model',
+			crossValidationDefinition:
+				'Divide your labelled rows into several groups, then train a model and check how it performs several times, setting aside a different group on each check.',
 			foldsLabel: 'Number of cross-validation folds for evaluating the fitted model'
 		};
 		return setup;
+	},
+	play: async ({ canvasElement }) => {
+		const { root } = await getForm(canvasElement);
+		const description = root.getElementById('strategy-description')!;
+		expect(description.textContent).toContain('Divide your labelled rows into several groups');
+		expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth + 1);
 	}
 };
 
@@ -219,5 +242,11 @@ export const RTL: Story = {
 	name: 'WML-P2-COMP-5: RTL',
 	render: () => html`
 		<app-training-setup dir="rtl" .value=${createCrossValidationSetup(5)}></app-training-setup>
-	`
+	`,
+	play: async ({ canvasElement }) => {
+		const { root } = await getForm(canvasElement);
+		const description = root.getElementById('strategy-description')!;
+		expect(getComputedStyle(description).direction).toBe('rtl');
+		expect(description.scrollWidth).toBeLessThanOrEqual(description.clientWidth + 1);
+	}
 };
