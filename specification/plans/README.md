@@ -39,6 +39,8 @@ Each substantive change has one plan here. The shared `agent-workflow` skills ru
 | [worktree-scoped-servers.md](archive/worktree-scoped-servers.md)                               | archived         | Claude Code (claude-opus-5-5)                                                                                                                                               | —                                       | Per-checkout dev, dist and mockup ports from `scripts/ports.ts` (primary keeps 3000/3001/3333), a `/__checkout` identity endpoint checked by a Playwright `globalSetup` and `audit:mockups`, and test URLs from one module.                     |
 | [sample-dataset-publication.md](archive/sample-dataset-publication.md)                         | archived         | Codex (GPT-6)                                                                                                                                                               | Codex (GPT-6)                           | Verified sample sources, saved-project compatibility and a filtered first-push procedure.                                                                                                                                                       |
 
+| [model-artwork-and-svg-optimisation.md](model-artwork-and-svg-optimisation.md) | ready-for-review | Codex (GPT-6) | — | Illustrate all eight chooser cards and optimise every production public SVG with SVGO. |
+
 ## Lifecycle
 
 `stub` → `draft` → `ready-for-review` → `ready` → `implemented` → `archived`, enforced by `bun run plans:*`. See `agent-workflow/docs/WORKFLOW.md` for how to run each step.
