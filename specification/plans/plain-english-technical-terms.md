@@ -1,8 +1,8 @@
 # Plain-English definitions for technical terms
 
-**Status:** ready-for-review | **Updated:** 2026-11-23T21:21:09Z
+**Status:** draft | **Updated:** 2026-11-24T07:32:33Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-23T21:15:58Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -284,8 +284,9 @@ None.
 
 ## Plan review history
 
-| Reviewed (UTC) | Agent (model) | Decision | Findings |
-| -------------- | ------------- | -------- | -------- |
+| Reviewed (UTC)       | Agent (model)         | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| -------------------- | --------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 2026-11-24T07:32:33Z | Codex (GPT-6.2 Astra) | changes-requested | MAJOR T3 §D: define train–test gap as training balanced accuracy minus held-out balanced accuracy for each partition, then the mean of those differences for CV. The adjacent comparison balanced accuracy is pooled (src/features/results/comparison-model.ts:127–148 and results-view-model.ts:126–142). Require a case where the pooled and fold-mean scores differ. MAJOR T1 §B: clarify that the solver fits weights or other learned parameters. Calling them settings conflates them with the manually chosen hyperparameters in the preceding row (web-ml 0.2.0 public hyperparameters.md:185–198). MINOR: cite src/router/router.ts:290 and protect src/router/ in T1/T2. T4 must account for the three draft mockups in HUMAN.md:98,100–101. |
 
 ## Change log
 
