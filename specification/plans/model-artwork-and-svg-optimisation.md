@@ -1,9 +1,9 @@
 # Model artwork and production SVG optimisation
 
-**Status:** ready-for-review | **Updated:** 2026-11-24T08:35:23Z
+**Status:** ready | **Updated:** 2026-11-24T08:38:30Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-24T08:25:54Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
-**Verified hash:** —
+**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-24T08:38:30Z | **Verification:** approved
+**Verified hash:** sha256:28a417b5a974722aeb8e7d7247bdeee883e24d8ed12de87f19996a03dd5f6d84
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -246,6 +246,7 @@ None.
 | Reviewed (UTC)       | Agent (model) | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | -------------------- | ------------- | ----------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-11-24T08:32:12Z | Codex (GPT-6) | changes-requested | MAJOR T2: define the replacement button names and heading descriptions, and specify whether Logistic Regression card copy is retained. Existing text-entry names include the model and card names do not (app-model-builder-view.ts:1106–1157, app-model-card.ts:93–105). MAJOR MODEL-ART-1: text and datetime are rejected by the target action and reconciler, so define isolated fixtures without changing eligibility. Clarify MODEL-ART-2 keyboard versus pointer focus restoration because the dialog restores the previously focused element. MAJOR T3: reconcile the express non-goals in components/card.md §11 and stale artwork and story coverage in FUTURE.md, TODO.md and testing.md. T1: make the numeric raster check repeatable and clarify uppercase file MIME scope. |
+| 2026-11-24T08:38:30Z | Codex (GPT-6) | approved          | Reviewed T1–T3 with independent scout evidence. The nine assets, recursive production copy, preserved development paths, eight-card catalogue, component events and selection, accessible names and focus, and existing journey, Storybook and parity contracts align. The revised tests cover malformed SVGs, raster fidelity and reachable target states. No blocking findings.                                                                                                                                                                                                                                                                                                                                                                                                       |
 
 ## Change log
 
