@@ -26,7 +26,8 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 			// Open the unmodified mockup document on the review server.
 			const mockupPage = await context.newPage();
 			await mockupPage.goto(`${MOCKUPS_URL}/${encodeURIComponent(entry.mockupPage)}?clean=1`);
-			if (entry.fixture) await prepareSidebarReference(mockupPage, entry.fixture);
+			if (entry.fixture)
+				await prepareSidebarReference(mockupPage, entry.fixture, MOCKUPS_URL);
 			const mockupEl = mockupPage.locator(entry.mockupSelector).first();
 			await mockupEl.waitFor({ state: 'attached', timeout: 5000 });
 
@@ -135,7 +136,9 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 					await page.getByRole('button', { name: 'Train New Model' }).click();
 					await expect(page).toHaveURL(/\/models\/1$/);
 					await page
-						.locator('app-model-builder-view app-model-card')
+						.locator(
+							'app-model-builder-view app-model-card[model-id="logistic-regression"]'
+						)
 						.waitFor({ state: 'attached', timeout: 5000 });
 				} else if (entry.mockupPage === '03-3_train-models-2-select-features.html') {
 					await page.goto('/data');
@@ -268,7 +271,7 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 		for (const fixture of ['empty', 'models'] as const) {
 			await prepareSidebarFixture(page, fixture);
 			const reference = await context.newPage();
-			await prepareSidebarReference(reference, fixture);
+			await prepareSidebarReference(reference, fixture, MOCKUPS_URL);
 			await reference.screenshot({
 				path: testInfo.outputPath(`sidebar-${fixture}-reference.png`)
 			});
@@ -288,7 +291,7 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 	}) => {
 		await prepareSidebarFixture(page, 'empty');
 		const reference = await context.newPage();
-		await prepareSidebarReference(reference, 'empty');
+		await prepareSidebarReference(reference, 'empty', MOCKUPS_URL);
 		const referenceBox = await reference.locator('.sidebar .steps').boundingBox();
 		const assertHeight = async () => {
 			const actual = await page.locator('app-sidebar .steps').boundingBox();
@@ -323,7 +326,7 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 	}) => {
 		await prepareSidebarFixture(page, 'empty');
 		const reference = await context.newPage();
-		await prepareSidebarReference(reference, 'empty');
+		await prepareSidebarReference(reference, 'empty', MOCKUPS_URL);
 		const actual = page.locator('app-sidebar .step:nth-child(2) .step-link');
 		const expected = reference.locator('.sidebar .step:nth-child(2) .step-link');
 		await actual.hover();

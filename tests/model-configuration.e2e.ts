@@ -73,7 +73,9 @@ async function openConfigure(page: Page, target = 'class', dataset = 'iris'): Pr
 	await page.locator('app-models-view button:has-text("Train New Model")').click();
 	const builder = page.locator('app-model-builder-view');
 	const step1 = builder.locator('.train-step').nth(0);
-	await step1.locator('app-model-card button:has-text("Select Model")').click();
+	await step1
+		.locator('app-model-card[model-id="logistic-regression"] button:has-text("Select Model")')
+		.click();
 	await step1.locator('.section-actions button:has-text("Continue")').click();
 	await builder
 		.locator('.train-step')

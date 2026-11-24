@@ -87,12 +87,12 @@ export async function prepareSidebarFixture(page: Page, fixture: SidebarFixture)
 /** Normalises reference content and current state only, preserving its CSS and layout structure. */
 export async function prepareSidebarReference(
 	page: Page,
-	fixture: 'empty' | 'models'
+	fixture: 'empty' | 'models',
+	mockupsUrl: string
 ): Promise<void> {
-	const { MOCKUPS_URL } = await import('../../scripts/ports');
 	await page.emulateMedia({ reducedMotion: 'reduce' });
 	await page.goto(
-		`${MOCKUPS_URL}/${fixture === 'empty' ? '01-1_select-data.html' : '03-2_train-models-1-choose-model.html'}?clean=1`
+		`${mockupsUrl}/${fixture === 'empty' ? '01-1_select-data.html' : '03-2_train-models-1-choose-model.html'}?clean=1`
 	);
 	await page.evaluate((populated) => {
 		const sidebar = document.querySelector('.sidebar')!;

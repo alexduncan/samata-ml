@@ -5,6 +5,11 @@
 			"tagName": "@fires",
 			"syntaxKind": "block",
 			"allowMultiple": true
+		},
+		{
+			"tagName": "@slot",
+			"syntaxKind": "block",
+			"allowMultiple": true
 		}
 	]
 }

@@ -36,7 +36,9 @@ export const cardStyles: CSSResult = css`
 
 		.card-image {
 			display: block;
+			flex: none;
 			background-color: var(--stone-100);
+			aspect-ratio: 5 / 3;
 			inline-size: 100%;
 			block-size: auto;
 		}
@@ -91,11 +93,29 @@ export const cardStyles: CSSResult = css`
 			gap: 0.5rem;
 			margin-block-start: auto;
 		}
+
+		.card-selection {
+			display: flex;
+			flex-wrap: wrap;
+			align-items: center;
+			gap: 0.5rem;
+			color: var(--stone-900);
+			overflow-wrap: anywhere;
+
+			button {
+				flex: 1 1 auto;
+			}
+		}
 	}
 
-	::slotted(svg) {
+	::slotted(svg),
+	::slotted(img) {
 		display: block;
 		inline-size: 100%;
 		block-size: auto;
+	}
+
+	::slotted(img) {
+		aspect-ratio: 5 / 3;
 	}
 `;

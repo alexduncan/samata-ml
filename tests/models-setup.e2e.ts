@@ -1,8 +1,45 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
 import { interceptSampleDownload } from './fixtures/sample-dataset-downloads';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
+
+const CLASSIFIER_ARTWORK = [
+	['bernoulli-nb', 'bernoulli-naive-bayes'],
+	['gaussian-nb', 'gaussian-naive-bayes'],
+	['multinomial-nb', 'multinomial-naive-bayes'],
+	['k-neighbors-classifier', 'k-nearest-neighbours-classifier'],
+	['logistic-regression', 'logistic-regression'],
+	['mlp-classifier', 'mlp-classifier'],
+	['support-vector-classifier', 'support-vector-classifier'],
+	['decision-tree-classifier', 'decision-tree-classifier']
+] as const;
+
+async function expectIllustratedCatalogue(step: Locator) {
+	const cards = step.locator('ul.cards-grid[role="list"] > li > app-model-card');
+	await expect(cards).toHaveCount(CLASSIFIER_ARTWORK.length);
+	for (const [index, [id, artwork]] of CLASSIFIER_ARTWORK.entries()) {
+		const card = cards.nth(index);
+		await expect(card).toHaveAttribute('model-id', id);
+		const image = card.locator('img[slot="image"]');
+		await expect(image).toHaveCount(1);
+		await expect(image).toHaveAttribute('src', '/assets/' + artwork + '.svg');
+		await expect(image).toHaveAttribute('alt', '');
+		expect(
+			await image.evaluate(async (img: HTMLImageElement) => {
+				await img.decode();
+				return [img.naturalWidth, img.naturalHeight];
+			})
+		).toEqual([360, 216]);
+
+		const heading = (await card.getByRole('heading', { level: 3 }).innerText()).trim();
+		for (const label of ['Model Description', 'Select Model']) {
+			await expect(
+				card.getByRole('button', { name: label + ': ' + heading, exact: true })
+			).toHaveText(label);
+		}
+	}
+}
 
 test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 	let assertDownload: () => void;
@@ -224,7 +261,11 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const step2 = builder.locator('.train-step').nth(1);
 
 		// Select Logistic Regression and Continue
-		await step1.locator('app-model-card button:has-text("Select Model")').click();
+		await step1
+			.locator(
+				'app-model-card[model-id="logistic-regression"] button:has-text("Select Model")'
+			)
+			.click();
 		await step1.locator('.section-actions button:has-text("Continue")').click();
 
 		// Now in Section 2 (Select Features)
@@ -295,7 +336,11 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const step3 = builder.locator('.train-step').nth(2);
 
 		// Choose Logistic Regression & Continue
-		await step1.locator('app-model-card button:has-text("Select Model")').click();
+		await step1
+			.locator(
+				'app-model-card[model-id="logistic-regression"] button:has-text("Select Model")'
+			)
+			.click();
 		await step1.locator('.section-actions button:has-text("Continue")').click();
 
 		// Select only 2 features & Continue
@@ -339,6 +384,33 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 
 		await expect(step1).toHaveAttribute('aria-current', 'step');
 
+		const currentSelect = step1.getByRole('button', {
+			name: 'Select Model: Logistic Regression',
+			exact: true
+		});
+		await expect(currentSelect).toHaveAttribute('aria-current', 'true');
+		await currentSelect.click();
+		expect(await page.evaluate(() => window.__appState!.get().models[0])).toEqual(
+			state.models[0]
+		);
+
+		const otherSelect = step1.getByRole('button', {
+			name: 'Select Model: Bernoulli Naive Bayes',
+			exact: true
+		});
+		await otherSelect.click();
+		await expect(otherSelect).toHaveAttribute('aria-current', 'true');
+		await expect(step1.locator('button[aria-current="true"]')).toHaveCount(1);
+		await expect(step1).toHaveAttribute('aria-current', 'step');
+		await step1.getByRole('button', { name: 'Continue', exact: true }).click();
+		await expect(step2).toHaveAttribute('aria-current', 'step');
+		state = await page.evaluate(() => window.__appState!.get());
+		expect(state.models[0]).toMatchObject({
+			modelId: 'bernoulli-nb',
+			features: ['petal length', 'petal width'],
+			completedSteps: ['choose-model']
+		});
+
 		// 4. Sections 5 and 6 are still placeholders.
 		for (let i = 4; i <= 5; i++) {
 			const pendingStep = builder.locator('.train-step').nth(i);
@@ -347,7 +419,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		}
 	});
 
-	test('MOD-SETUP-4: Logistic Regression has SVG slot; other IDs render native text actions; classifier cards and numeric-target notice', async ({
+	test('MOD-SETUP-4 / MODEL-ART-1 and 2: illustrated catalogue, native actions and numeric-target notice', async ({
 		page
 	}) => {
 		// 1. Classification target (Iris -> class)
@@ -382,42 +454,69 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const builder = page.locator('app-model-builder-view');
 		const step1 = builder.locator('.train-step').nth(0);
 
-		// Logistic Regression has app-model-card with SVG
-		const lrCard = step1.locator('app-model-card[model-id="logistic-regression"]');
-		await expect(lrCard).toBeVisible();
-		await expect(lrCard.locator('svg[slot="image"]')).toBeVisible();
-
-		// Remaining 7 classifiers are rendered as text entries
-		const textEntries = step1.locator('ul.text-model-entries li');
-		await expect(textEntries).toHaveCount(7);
-
-		// Verify Bernoulli Naive Bayes text entry
-		const bnbEntry = step1.locator(
-			'li.text-model-entry:has(h3:has-text("Bernoulli Naive Bayes"))'
-		);
-		await expect(bnbEntry).toBeVisible();
-		const bnbDescBtn = bnbEntry.locator('button[aria-label^="Model Description"]');
-		const bnbSelectBtn = bnbEntry.locator('button[aria-label^="Select Model"]');
-		await expect(bnbDescBtn).toBeVisible();
-		await expect(bnbSelectBtn).toBeVisible();
-
-		// Select Bernoulli Naive Bayes -> updates state
-		await bnbSelectBtn.click();
-		let state = await page.evaluate(() => window.__appState!.get());
-		expect(state.models[0]?.modelId).toBe('bernoulli-nb');
-
-		// Description opens description dialog
-		await bnbDescBtn.click();
-		const descDialog = builder.locator('app-model-description-dialog dialog.modal');
+		await expectIllustratedCatalogue(step1);
+		await expect(step1.locator('button[aria-current="true"]')).toHaveCount(0);
+		const bnb = step1.locator('app-model-card[model-id="bernoulli-nb"]');
+		const bnbDesc = bnb.getByRole('button', {
+			name: 'Model Description: Bernoulli Naive Bayes',
+			exact: true
+		});
+		const bnbSelect = bnb.getByRole('button', {
+			name: 'Select Model: Bernoulli Naive Bayes',
+			exact: true
+		});
+		const descDialog = builder.getByRole('dialog', { name: 'Bernoulli Naive Bayes' });
+		await bnbDesc.focus();
+		await page.keyboard.press('Enter');
 		await expect(descDialog).toBeVisible();
-		// Bernoulli Naive Bayes is unauthored prose -> renders missing fallback state with plain text
 		await expect(descDialog.locator('.missing-notice')).toContainText(
 			'A detailed description is not available'
 		);
 		await expect(descDialog.locator('.fallback-text')).toContainText('Bernoulli Naive Bayes');
+		await page.keyboard.press('Escape');
+		await expect(descDialog).not.toBeVisible();
+		await expect(bnbDesc).toBeFocused();
 
+		await bnbSelect.focus();
+		const focusRestored = await bnbDesc.evaluateHandle((button) => {
+			const focusedElement = () => {
+				let focused = document.activeElement;
+				while (focused?.shadowRoot?.activeElement)
+					focused = focused.shadowRoot.activeElement;
+				return focused;
+			};
+			let previous: Element | null = null;
+			button.addEventListener('click', () => (previous = focusedElement()), {
+				capture: true,
+				once: true
+			});
+			return () => focusedElement() === previous;
+		});
+		await bnbDesc.click();
+		await expect(descDialog).toBeVisible();
 		await descDialog.locator('button.close-btn').click();
 		await expect(descDialog).not.toBeVisible();
+		await expect.poll(() => focusRestored.evaluate((restored) => restored())).toBe(true);
+		await focusRestored.dispose();
+
+		await bnbSelect.click();
+		await expect(bnbSelect).toHaveAttribute('aria-current', 'true');
+		await expect(bnb.getByText('Selected', { exact: true })).toBeVisible();
+		await expect(step1.getByText('Selected', { exact: true })).toHaveCount(1);
+		await expect(step1).toHaveAttribute('aria-current', 'step');
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').models[0]
+							?.modelId
+				)
+			)
+			.toBe('bernoulli-nb');
+
+		await page.reload();
+		await expect(bnbSelect).toHaveAttribute('aria-current', 'true');
+		await expect(step1.locator('button[aria-current="true"]')).toHaveCount(1);
 
 		// 2. Regression target (Boston Housing or Penguins bill_length_mm)
 		await page.goto('/target');
@@ -442,7 +541,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 
 		// WML-P1-CAT-2: a numeric target has no available classifier
 		await expect(step1.locator('app-model-card')).toHaveCount(0);
-		await expect(step1.locator('ul.text-model-entries li')).toHaveCount(0);
+		await expect(step1.locator('ul.cards-grid')).toHaveCount(0);
 		const notice = step1.locator('.no-model-notice');
 		await expect(notice.locator('h3')).toHaveText('No classification model available');
 		const targetLink = notice.locator('a[href="/target"]');
@@ -458,5 +557,52 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 			.analyze();
 		const unexpectedViolations = axeResults.violations.filter((v) => v.id !== 'color-contrast');
 		expect(unexpectedViolations).toEqual([]);
+	});
+
+	test('MODEL-ART-1: an uploaded Boolean target offers all eight illustrated cards', async ({
+		page
+	}) => {
+		await page.getByRole('button', { name: 'Upload Dataset', exact: true }).click();
+		await page.locator('app-upload-dataset-dialog input[type="file"]').setInputFiles({
+			name: 'boolean-target.csv',
+			mimeType: 'text/csv',
+			buffer: Buffer.from('feature,flag\n1,true\n2,false\n3,true\n4,false\n')
+		});
+		await expect(page.locator('app-dataset-preview')).toBeVisible();
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const state = JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}');
+					return state.dataset?.columns.find(
+						(column: { name: string }) => column.name === 'flag'
+					)?.type;
+				})
+			)
+			.toBe('boolean');
+
+		await page.goto('/target');
+		const targetView = page.locator('app-target-view');
+		await targetView
+			.getByRole('row')
+			.filter({
+				has: page.getByRole('rowheader', { name: 'flag', exact: true })
+			})
+			.getByRole('button')
+			.click();
+		await targetView.locator('header a[href="/models"]').click();
+		await page.getByRole('button', { name: 'Train New Model', exact: true }).click();
+		const step = page.locator('app-model-builder-view .train-step').first();
+		await expect(step).toHaveAttribute('aria-current', 'step');
+		await expectIllustratedCatalogue(step);
+
+		await page.setViewportSize({ width: 320, height: 800 });
+		const grid = step.locator('ul.cards-grid');
+		expect(await grid.evaluate((el) => el.scrollWidth - el.clientWidth)).toBeLessThanOrEqual(1);
+		const firstCard = grid.locator('app-model-card[model-id="bernoulli-nb"]');
+		const secondCard = grid.locator('app-model-card[model-id="gaussian-nb"]');
+		const first = (await firstCard.boundingBox())!;
+		const second = (await secondCard.boundingBox())!;
+		expect(second.x).toBeCloseTo(first.x);
+		expect(second.y).toBeGreaterThan(first.y + first.height);
 	});
 });

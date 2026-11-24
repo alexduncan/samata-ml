@@ -55,13 +55,20 @@ function model(overrides: Partial<ModelRecord>): ModelRecord {
 	};
 }
 
-function seed(targetType: 'categorical' | 'numeric', overrides: Partial<ModelRecord> = {}) {
-	const target = targetType === 'categorical' ? 'class' : 'sepal length';
+function seed(
+	targetType: 'categorical' | 'numeric' | 'boolean',
+	overrides: Partial<ModelRecord> = {}
+) {
+	const target = targetType === 'numeric' ? 'sepal length' : 'class';
 	const columns = [
 		{ name: 'sepal length', type: 'numeric', missingCount: 0 },
 		{ name: 'petal length', type: 'numeric', missingCount: 0 },
 		{ name: 'petal width', type: 'numeric', missingCount: 0 },
-		{ name: 'class', type: 'categorical', missingCount: 0 }
+		{
+			name: 'class',
+			type: targetType === 'boolean' ? 'boolean' : 'categorical',
+			missingCount: 0
+		}
 	] as const;
 	const state: PersistedAppState = {
 		...structuredClone(INITIAL_APP_STATE),
@@ -101,7 +108,9 @@ function seed(targetType: 'categorical' | 'numeric', overrides: Partial<ModelRec
 							distinctCount: 3,
 							categoryCounts: { a: 50, b: 50, c: 50 }
 						}
-					: { ...c, count: 150, min: 0, max: 1, mean: 0, median: 0, integer: false }
+					: c.type === 'boolean'
+						? { ...c, trueCount: 75, falseCount: 75, lexicon: ['true', 'false'] }
+						: { ...c, count: 150, min: 0, max: 1, mean: 0, median: 0, integer: false }
 			)
 		} as unknown as DatasetMetadata
 	});
@@ -375,6 +384,18 @@ export const ModelResultsShown: Story = {
 			expect(results.shadowRoot!.querySelector('app-results-summary')).not.toBeNull()
 		);
 	}
+};
+/** All illustrated classifiers are available for a categorical target. */
+export const ChooseCategoricalModel: Story = {
+	beforeEach: () => seed('categorical', { completedSteps: [], modelId: null, features: [] })
+};
+/** All illustrated classifiers are available for a Boolean target. */
+export const ChooseBooleanModel: Story = {
+	beforeEach: () => seed('boolean', { completedSteps: [], modelId: null, features: [] })
+};
+/** The current choice stays visible while Section 1 is active. */
+export const ChooseModelSelected: Story = {
+	beforeEach: () => seed('categorical', { completedSteps: [], features: [] })
 };
 /** A numeric target has no classification model. */
 export const NoClassifierNumericTarget: Story = {

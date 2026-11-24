@@ -2,6 +2,7 @@ import { LitElement, css, html, nothing, type PropertyValues, type TemplateResul
 import { customElement, property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import { ref } from 'lit/directives/ref.js';
+import { repeat } from 'lit/directives/repeat.js';
 import { StoreController } from '@nanostores/lit';
 import { computed } from 'nanostores';
 import { ContentLoadError, loadContentEntry } from '../../common/content/content-loader';
@@ -56,6 +57,7 @@ import {
 	isClassifierId,
 	modelsForTarget,
 	SUPERVISED_MODELS,
+	type ClassifierId,
 	type ModelCatalogueEntry
 } from './model-catalogue';
 import type { ModelDescriptionStatus } from './app-model-description-dialog';
@@ -94,7 +96,21 @@ import {
 	type TrainingCommandFailure
 } from './training/training-service';
 
+const MODEL_ART: Readonly<Record<ClassifierId, string>> = {
+	'bernoulli-nb': '/assets/bernoulli-naive-bayes.svg',
+	'decision-tree-classifier': '/assets/decision-tree-classifier.svg',
+	'gaussian-nb': '/assets/gaussian-naive-bayes.svg',
+	'k-neighbors-classifier': '/assets/k-nearest-neighbours-classifier.svg',
+	'logistic-regression': '/assets/logistic-regression.svg',
+	'mlp-classifier': '/assets/mlp-classifier.svg',
+	'multinomial-nb': '/assets/multinomial-naive-bayes.svg',
+	'support-vector-classifier': '/assets/support-vector-classifier.svg'
+};
+
 const messages = i18n('app-model-builder-view', {
+	logisticCardTitle: 'Logistic Regression',
+	logisticCardDescription:
+		'A classification tool used to predict a binary outcome by estimating the exact probability of an event happening. Highly reliable for clear-cut, two-option decisions.',
 	noModelHeading: 'No classification model available',
 	noModelText: 'This target is numeric. Regression will be added later.',
 	noModelLink: 'Choose a categorical or boolean target',
@@ -380,9 +396,15 @@ export class AppModelBuilderView extends LitElement {
 			/* Models list in Section 1 */
 			.cards-grid {
 				display: grid;
-				grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+				grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
 				gap: 1.5rem;
-				margin-block-start: 1rem;
+				margin-block: 1rem 0;
+				padding: 0;
+				list-style: none;
+
+				app-model-card {
+					block-size: 100%;
+				}
 			}
 
 			.no-model-notice {
@@ -396,51 +418,6 @@ export class AppModelBuilderView extends LitElement {
 				> p {
 					margin: 0 0 0.5rem;
 					color: var(--stone-700);
-				}
-			}
-
-			.text-model-entries {
-				display: grid;
-				gap: 1rem;
-				margin-block-start: 1.5rem;
-				padding: 0;
-				list-style: none;
-
-				&[hidden] {
-					display: none;
-				}
-
-				> li {
-					box-sizing: border-box;
-					border: 1px solid var(--stone-300);
-					border-radius: 0.5rem;
-					background-color: var(--surface);
-					padding: 1rem;
-
-					&.selected {
-						box-shadow: 0 0 0 1px var(--blue-500);
-						border-color: var(--blue-500);
-					}
-
-					h3 {
-						margin: 0 0 0.25rem 0;
-						color: var(--stone-900);
-						font-weight: 600;
-						font-size: 1.125rem;
-					}
-
-					p {
-						margin: 0 0 1rem 0;
-						color: var(--stone-700);
-						font-size: 0.875rem;
-						line-height: 1.4;
-					}
-
-					.entry-actions {
-						display: flex;
-						flex-wrap: wrap;
-						gap: 0.5rem;
-					}
 				}
 			}
 
@@ -684,15 +661,6 @@ export class AppModelBuilderView extends LitElement {
 		void this.openModelDescription(e.detail.modelId, e.detail.name);
 	}
 
-	private handleTextDescriptionClick(e: MouseEvent): void {
-		const btn = e.currentTarget as HTMLElement;
-		const modelId = btn.dataset.modelId;
-		const name = btn.dataset.name;
-		if (modelId && name) {
-			void this.openModelDescription(modelId, name);
-		}
-	}
-
 	private handleDescriptionClose(): void {
 		this.dialogOpen = false;
 	}
@@ -709,14 +677,6 @@ export class AppModelBuilderView extends LitElement {
 
 	private handleModelSelect(e: CustomEvent<{ modelId: string; name: string }>): void {
 		chooseModel(this.modelNum, e.detail.modelId);
-	}
-
-	private handleTextSelectClick(e: MouseEvent): void {
-		const btn = e.currentTarget as HTMLElement;
-		const modelId = btn.dataset.modelId;
-		if (modelId) {
-			chooseModel(this.modelNum, modelId);
-		}
 	}
 
 	private handleContinueChooseModel(): void {
@@ -807,218 +767,6 @@ export class AppModelBuilderView extends LitElement {
 	// Render Sections
 	// ==========================================
 
-	private renderLogisticRegressionSvg(): TemplateResult {
-		return html`
-			<svg class="card-image" slot="image" viewBox="0 0 360 216" aria-hidden="true">
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(95 60)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(192 159)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(222 115)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(174 34)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(272 48)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(130 83)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(39 115)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(21 50)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(83 28)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(78 95)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(220 36)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(168 140)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(82 192)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(116 134)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(142 165)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(245 138)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(297 122)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(251 83)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(192 74)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(95 115)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(154 80)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(141 54)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(196 48)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(143 91)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(167 173)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(186 119)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(208 101)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(142 126)" />
-				<line
-					x1="10"
-					x2="350"
-					y1="185"
-					y2="10"
-					stroke="var(--stone-700)"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="6" />
-			</svg>
-		`;
-	}
-
 	private renderChooseModelSection(
 		model: ModelRecord,
 		isActive: boolean,
@@ -1037,6 +785,7 @@ export class AppModelBuilderView extends LitElement {
 		}
 
 		const availableModels = modelsForTarget(targetType);
+		const t = this.translations.value;
 
 		let selectedModelName = '';
 		if (model.modelId) {
@@ -1104,72 +853,48 @@ export class AppModelBuilderView extends LitElement {
 												</div>
 											`
 										: nothing}
-
-									<!-- 1. Illustrated entry for Logistic Regression (if available for target) -->
-									${availableModels.some((m) => m.id === 'logistic-regression')
+									${availableModels.length
 										? html`
-												<div class="cards-grid">
-													<app-model-card
-														model-id="logistic-regression"
-														type="classification"
-														name="Logistic Regression"
-														description="A classification tool used to predict a binary outcome by estimating the exact probability of an event happening. Highly reliable for clear-cut, two-option decisions."
-														@app-model-description-open=${this
-															.handleModelDescriptionOpen}
-														@app-model-select=${this.handleModelSelect}>
-														${this.renderLogisticRegressionSvg()}
-													</app-model-card>
-												</div>
+												<ul class="cards-grid" role="list">
+													${repeat(
+														availableModels,
+														(entry) => entry.id,
+														(entry) => {
+															const isLogistic =
+																entry.id === 'logistic-regression';
+															return html`
+																<li>
+																	<app-model-card
+																		model-id=${entry.id}
+																		type=${entry.taskType}
+																		.name=${isLogistic
+																			? t.logisticCardTitle
+																			: entry.name}
+																		.description=${isLogistic
+																			? t.logisticCardDescription
+																			: entry.description}
+																		.selected=${model.modelId ===
+																		entry.id}
+																		@app-model-description-open=${this
+																			.handleModelDescriptionOpen}
+																		@app-model-select=${this
+																			.handleModelSelect}>
+																		<img
+																			slot="image"
+																			src=${MODEL_ART[
+																				entry.id
+																			]}
+																			alt=""
+																			width="360"
+																			height="216" />
+																	</app-model-card>
+																</li>
+															`;
+														}
+													)}
+												</ul>
 											`
 										: nothing}
-
-									<!-- 2. Native text entries fallback for remaining models -->
-									<ul
-										class="text-model-entries"
-										?hidden=${availableModels.length === 0}
-										aria-label="Available models text entries">
-										${availableModels
-											.filter((m) => m.id !== 'logistic-regression')
-											.map(
-												(entry) => html`
-													<li
-														class="text-model-entry ${model.modelId ===
-														entry.id
-															? 'selected'
-															: ''}">
-														<h3>${entry.name}</h3>
-														<p>${entry.description}</p>
-														<div class="entry-actions">
-															<button
-																type="button"
-																class="btn"
-																aria-label="Model Description: ${entry.name}"
-																data-model-id="${entry.id}"
-																data-name="${entry.name}"
-																@click=${this
-																	.handleTextDescriptionClick}>
-																Model Description
-															</button>
-															<button
-																type="button"
-																class="btn ${model.modelId ===
-																entry.id
-																	? 'btn-selected'
-																	: 'btn-primary'}"
-																aria-label="Select Model: ${entry.name}"
-																data-model-id="${entry.id}"
-																data-name="${entry.name}"
-																@click=${this
-																	.handleTextSelectClick}>
-																${model.modelId === entry.id
-																	? 'Selected'
-																	: 'Select Model'}
-															</button>
-														</div>
-													</li>
-												`
-											)}
-									</ul>
 
 									<div class="section-actions">
 										<button

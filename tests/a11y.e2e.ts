@@ -36,7 +36,7 @@ async function openTrainingSetupForAxe(page: Page) {
 	const builder = await createDraftForAxe(page);
 	await builder
 		.locator('app-model-card[model-id="logistic-regression"]')
-		.getByRole('button', { name: 'Select Model' })
+		.getByRole('button', { name: 'Select Model: Logistic Regression', exact: true })
 		.click();
 	for (const step of [0, 1]) {
 		await builder
@@ -411,7 +411,7 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		const builder = await createDraftForAxe(page);
 		await builder
 			.locator('app-model-card[model-id="logistic-regression"]')
-			.getByRole('button', { name: 'Select Model' })
+			.getByRole('button', { name: 'Select Model: Logistic Regression', exact: true })
 			.click();
 		await builder
 			.locator('.train-step')
@@ -425,7 +425,9 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 
 	test('A11Y-E2E-15: Route /models/:num with model description dialog open', async ({ page }) => {
 		const builder = await createDraftForAxe(page);
-		const descBtn = builder.locator('app-model-card button:has-text("Model Description")');
+		const descBtn = builder.locator(
+			'app-model-card[model-id="logistic-regression"] button:has-text("Model Description")'
+		);
 		await expect(descBtn).toBeVisible({ timeout: 10000 });
 		await descBtn.click();
 

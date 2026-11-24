@@ -709,7 +709,8 @@ export const parityMap: ParityEntry[] = [
 		mockupPage: '03-2_train-models-1-choose-model.html',
 		mockupSelector: 'article.card',
 		appRoute: '/models/1',
-		appSelector: 'app-model-builder-view app-model-card article.card',
+		appSelector:
+			'app-model-builder-view app-model-card[model-id="logistic-regression"] article.card',
 		properties: ['display', 'flex-direction', 'border-radius', 'background-color']
 	},
 	{
