@@ -1,9 +1,9 @@
 # Plain-English definitions for technical terms
 
-**Status:** ready-for-review | **Updated:** 2026-11-24T07:42:13Z
+**Status:** ready | **Updated:** 2026-11-24T07:45:37Z
 **Authors:** Codex (GPT-6), Codex (GPT-6.1 Sol) | **Created:** 2026-11-23T21:15:58Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
-**Verified hash:** —
+**Verified by:** Codex (GPT-6.2 Astra) | **Verified:** 2026-11-24T07:45:37Z | **Verification:** approved
+**Verified hash:** sha256:3e2f26b138576f2988fe00ffdb88d015b2a97f3858a7be85ad0c86f8d682b59f
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -291,6 +291,7 @@ None.
 | Reviewed (UTC)       | Agent (model)         | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | -------------------- | --------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | 2026-11-24T07:32:33Z | Codex (GPT-6.2 Astra) | changes-requested | MAJOR T3 §D: define train–test gap as training balanced accuracy minus held-out balanced accuracy for each partition, then the mean of those differences for CV. The adjacent comparison balanced accuracy is pooled (src/features/results/comparison-model.ts:127–148 and results-view-model.ts:126–142). Require a case where the pooled and fold-mean scores differ. MAJOR T1 §B: clarify that the solver fits weights or other learned parameters. Calling them settings conflates them with the manually chosen hyperparameters in the preceding row (web-ml 0.2.0 public hyperparameters.md:185–198). MINOR: cite src/router/router.ts:290 and protect src/router/ in T1/T2. T4 must account for the three draft mockups in HUMAN.md:98,100–101. |
+| 2026-11-24T07:45:37Z | Codex (GPT-6.2 Astra) | approved          | Fresh scout verified T1–T4 paths, accessibility and label contracts, web-ml 0.2.0 public terminology, connected results and complementary fold matrices. The fixture distinguishes 75% single-model mean, 83.3% pooled comparison and 25-point paired gap. For fixture coherence T3 must populate variant-specific macro precision and fold spread in the permitted seeding helper. Solver wording, protected router paths and all three mockup queue items resolve the previous findings. No blocking questions or contract mismatches.                                                                                                                                                                                                               |
 
 ## Change log
 
