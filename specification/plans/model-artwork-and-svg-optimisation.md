@@ -1,6 +1,6 @@
 # Model artwork and production SVG optimisation
 
-**Status:** implemented | **Updated:** 2026-11-24T13:42:07Z
+**Status:** implemented | **Updated:** 2026-11-24T13:46:04Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-24T08:25:54Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-24T08:54:35Z | **Verification:** approved
 **Verified hash:** sha256:a3c949f20e846b2f7f0f798ab6eee416f26bcc35ff2e9b9b1077426b245e7b75
@@ -267,7 +267,7 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
 
 ## Verification and definition of done
 
-- [x] All task acceptance criteria met.
+- [ ] All task acceptance criteria met.
 - [x] Relevant verification commands from `AGENTS.md` pass with no new failures.
 - [x] Type-check, formatting and build checks pass. If the beta release code is present, its
       TSDoc lint and build-cache regression checks also pass under that checkout’s `AGENTS.md`.
@@ -286,7 +286,7 @@ None.
 
 ## Review fixes
 
-None.
+- [ ] **R1** `scripts/build-public-assets.ts` `copyOptimisedPublicFiles` — SVG-BUILD-2 requires malformed SVG inputs to fail with a public-relative path and underlying cause. Validate that the original input is a well-formed XML document with one SVG root before passing it to the existing optimiser. Test: Cover empty input, multiple roots, a non-SVG root and malformed XML around or within a namespaced SVG root in `tests/public-svg-build.test.ts`. Require each rejection to identify the nested public-relative path and retain an underlying `Error`. Keep valid standalone SVGs and the existing asset regressions passing.
 
 ## Implementation and verification log
 
@@ -297,6 +297,8 @@ None.
 | 2026-11-24T13:40:20Z | T2        | Codex (GPT-6) | bun test tests/model-catalogue.test.ts tests/style-tokens.test.ts (10 passed); bun run test:e2e tests/models-setup.e2e.ts tests/model-card.e2e.ts tests/model-configuration.e2e.ts tests/a11y.e2e.ts --workers=2 (127 passed, 2 Chromium-only skips); bun run test:e2e tests/visual-parity.e2e.ts --project=chromium --grep PARITY-models-card (1 passed); SAMATA_SKIP_KNOWN_FAILURES=1 bun run test:e2e tests/visual-parity.e2e.ts --workers=2 (60 passed, 138 skips under Chromium-only/known-failure rules; card active and passed); bun run storybook:build (static SVG matches original; CEM exposes image slot); bun run test:stories (660 passed); bun run check (627 passed), bun run lint and format check passed. Native Safari at 200% verified keyboard selection, visible focus and marker, Escape restoring description focus, named buttons and decorative image omission from the accessibility tree. Spoken VoiceOver output was unavailable; tree inspection and browser assertions are the recorded evidence. |
 | 2026-11-24T13:41:39Z | T3        | Codex (GPT-6) | bun run plans:check passed for plan and specification index; bun run check passed 627 tests; bun run build passed and emitted production /assets/ SVGs; bun run format:check passed for all ten specs and the plan. Updated MODELS-UI-03 and closed the two artwork and text-entry queue items. Reference mockups were preserved.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | 2026-11-24T13:42:07Z | Implement | Codex (GPT-6) | Marked implemented                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 2026-11-24T13:46:04Z | Review    | Codex (GPT-6) | Independently audited `3a73aa1886a3eb181157224894f8c162e129b9d1` against `9d73b710bb5c5fefc720ef831c3340c0e52a9c06`. Approval and completion gates matched before R1. Reproduced SVG-BUILD-2 failures with `bun -e` invoking the production helper on nested temporary files. It delivered zero bytes, two SVG roots and an HTML root. It accepted trailing `<`, an unclosed comment, duplicate attributes and undeclared `&copy;` in namespaced SVGs. The mismatched-tag control rejected with the relative path and `SvgoParserError`. Validate input because SVGO can discard the malformed content. Added R1 and left the plan implemented.                                                                                                                                                                                                                                                                                                                                                                                  |
+| 2026-11-24T13:46:04Z | Review    | Codex (GPT-6) | `bun run check` passed 627 tests with loopback access. `bun run lint`, `bun run build`, `bun run storybook:build` and formatting passed. SVG, build-cache, catalogue and style-token units passed 20 cases. Targeted Playwright acceptance passed 131 with four Chromium-only skips. Focused Chromium model-card parity passed. Nine SVGs passed headers, raster tests and visual comparison at both sizes, saving 12,269 bytes. Chooser and accessibility changes match the approved scope. The recorded manual Safari checks relied on the accessibility tree because spoken VoiceOver was unavailable.                                                                                                                                                                                                                                                                                                                                                                                                                        |
 
 ## Plan review history
 
