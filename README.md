@@ -245,7 +245,7 @@ bun run deploy:dry-run
 
 `.github/workflows/ci.yml` runs on `push` and `pull_request` to `main`:
 
-1. `verify` — Checks out full history, verifies `vendor/web-ml/web-ml-0.2.0.tgz.sha256`, installs Bun from `.bun-version`, installs frozen dependencies (`--ignore-scripts`), runs changed-file Prettier checks, runs `lint`, `check`, and `deploy:dry-run`, installs Playwright browsers, and runs `test:stories`.
+1. `verify` — Checks out full history, verifies `vendor/web-ml/web-ml-0.2.0.tgz.sha256`, installs Bun from `.bun-version`, installs frozen dependencies (`--ignore-scripts`), runs changed-file Prettier checks, runs `lint`, installs Playwright browsers, and runs `check`, `deploy:dry-run`, and `test:stories`.
 2. `e2e` (`needs: [verify]`) — Runs `SAMATA_SKIP_KNOWN_FAILURES=1 bun run test:e2e --project=<browser>` across Chromium, Firefox, and WebKit (`fail-fast: false`, `workers: 1` in CI).
 3. `deploy` (`needs: [verify, e2e]`) — Runs on `push` to `main` inside the `cloudflare-beta` GitHub environment with `BETA_TELEMETRY_ENABLED=true` and `SAMATA_CRAWLER_POLICY=closed`.
 

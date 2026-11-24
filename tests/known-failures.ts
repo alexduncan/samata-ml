@@ -88,20 +88,6 @@ export const KNOWN_FAILURES: readonly KnownFailure[] = [
 		human: 'Update stale dataset-count and mockup-count E2E expectations'
 	},
 	{
-		id: 'MOD-SETUP-2',
-		file: 'models-setup.e2e.ts',
-		title: 'MOD-SETUP-2: target excluded, at least one feature required, disabled unsupported rows, deliberate overrides',
-		projects: ['chromium'],
-		human: 'Repair Chromium Model Builder Setup failures'
-	},
-	{
-		id: 'MOD-SETUP-3',
-		file: 'models-setup.e2e.ts',
-		title: 'MOD-SETUP-3: reopening preserves choices and clears later completions only after confirmation; no later training controls',
-		projects: ['chromium'],
-		human: 'Repair Chromium Model Builder Setup failures'
-	},
-	{
 		id: 'PARITY-sidebar-steps',
 		file: 'visual-parity.e2e.ts',
 		title: 'PARITY-sidebar-steps',
