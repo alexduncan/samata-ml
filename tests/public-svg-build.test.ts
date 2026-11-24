@@ -18,6 +18,8 @@ const artwork = [
 	'support-vector-classifier.svg'
 ] as const;
 
+const SVG_NAMESPACE = 'http://www.w3.org/2000/svg';
+
 let temporary: string;
 
 beforeEach(async () => {
@@ -62,7 +64,7 @@ test('SVG-BUILD-2: transforms nested SVGs and preserves every other file byte', 
 	await mkdir(nested, { recursive: true });
 
 	const authored =
-		'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>Example</title><!-- removable --><circle cx="5" cy="5" r="3"/></svg>\n';
+		'<?xml version="1.0"?>\n<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><title>Example</title><!-- removable --><circle cx="5" cy="5" r="3"/></svg>\n';
 	const peer = Uint8Array.of(0, 255, 128, 10);
 	await writeFile(path.join(nested, 'example.svg'), authored);
 	await writeFile(path.join(nested, 'peer.bin'), peer);
@@ -82,15 +84,54 @@ test('SVG-BUILD-2: transforms nested SVGs and preserves every other file byte', 
 	expect(transformed).toContain('viewBox="0 0 10 10"');
 });
 
-test('SVG-BUILD-2: names the public-relative path and underlying malformed SVG error', async () => {
+test('SVG-BUILD-2: accepts SVG with an explicit namespace prefix', async () => {
 	const source = path.join(temporary, 'source');
-	await mkdir(path.join(source, 'nested'), { recursive: true });
-	await writeFile(path.join(source, 'nested/broken.svg'), '<svg><path></svg>');
-
-	const result = await copyOptimisedPublicFiles(source, path.join(temporary, 'production')).catch(
-		(error: unknown) => error
+	await mkdir(source);
+	await writeFile(
+		path.join(source, 'prefixed.svg'),
+		'<art:svg xmlns:art="' + SVG_NAMESPACE + '"><art:svg/></art:svg>'
 	);
-	expect(result).toBeInstanceOf(Error);
-	expect((result as Error).message).toContain('nested/broken.svg');
-	expect((result as Error).cause).toBeInstanceOf(Error);
+	const output = path.join(temporary, 'production');
+	await copyOptimisedPublicFiles(source, output);
+	expect(await readFile(path.join(output, 'prefixed.svg'), 'utf8')).toContain(
+		'<art:svg xmlns:art="' + SVG_NAMESPACE + '"'
+	);
 });
+
+const svgRoot = '<svg xmlns="' + SVG_NAMESPACE + '"';
+
+test.each([
+	['mismatched tags', svgRoot + '><path></svg>'],
+	['an empty file', ''],
+	['multiple roots', svgRoot + '/>' + svgRoot + '/>'],
+	['a non-SVG root', '<html/>'],
+	['an SVG name in another namespace', '<svg xmlns="urn:other"/>'],
+	['truncated trailing markup', svgRoot + '/><'],
+	['an unclosed trailing comment', svgRoot + '/><!-- unclosed'],
+	['duplicate attributes', svgRoot + ' id="first" id="second"/>'],
+	['an undeclared entity', svgRoot + '><title>&copy;</title></svg>'],
+	[
+		'invalid UTF-8',
+		Buffer.concat([
+			Buffer.from(svgRoot + '><title>'),
+			Buffer.of(255),
+			Buffer.from('</title></svg>')
+		])
+	]
+])(
+	'SVG-BUILD-2: names the public-relative path and underlying error for %s',
+	async (_, contents) => {
+		const source = path.join(temporary, 'source');
+		await mkdir(path.join(source, 'nested'), { recursive: true });
+		await writeFile(path.join(source, 'nested/broken.svg'), contents);
+
+		const output = path.join(temporary, 'production');
+		const result = await copyOptimisedPublicFiles(source, output).catch(
+			(error: unknown) => error
+		);
+		expect(result).toBeInstanceOf(Error);
+		expect((result as Error).message).toContain('nested/broken.svg');
+		expect((result as Error).cause).toBeInstanceOf(Error);
+		expect(await Bun.file(path.join(output, 'nested/broken.svg')).exists()).toBe(false);
+	}
+);
