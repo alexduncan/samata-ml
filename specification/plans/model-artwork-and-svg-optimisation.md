@@ -1,9 +1,9 @@
 # Model artwork and production SVG optimisation
 
-**Status:** ready | **Updated:** 2026-11-24T08:38:30Z
+**Status:** ready-for-review | **Updated:** 2026-11-24T08:45:39Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-24T08:25:54Z
-**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-24T08:38:30Z | **Verification:** approved
-**Verified hash:** sha256:28a417b5a974722aeb8e7d7247bdeee883e24d8ed12de87f19996a03dd5f6d84
+**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -40,11 +40,15 @@ shipped to browsers.
   Authored colours are part of the supplied image files.
 - Keep authored sources, development delivery, non-SVG public files, root-absolute URLs, deployment
   headers and the training asset graph intact. Optimisation consumes repository-owned build inputs.
+  The beta release keeps SVGs in revalidating `/assets/` and reserves immutable `/bundles/` for
+  generated bundles. Preserve the existing release ID and bundle hashing inputs.
 
 ## Required reading
 
 - `AGENTS.md` — repository boundary, verification commands and visual fidelity.
-- `specification/ARCHITECTURE.md` — directory structure and asset delivery.
+- `specification/ARCHITECTURE.md` — directory structure and asset delivery, including the release
+  metadata and cache rules when the beta build is present.
+- `specification/standards-and-documentation.md` — TSDoc for exported TypeScript and the beta lint gate.
 - `specification/COMPONENTS.md` §§3–10 and `specification/components/card.md` §§3–9, 11 — closed API, slots, styles, accessibility, tests, stories and non-goals.
 - `specification/workflow-steps.md` §3.1 — chooser eligibility, selection, description and Continue.
 - `specification/visual-design.md` §§1, 5.3 and 6 — approved mockup geometry, deviations and parity.
@@ -58,11 +62,19 @@ shipped to browsers.
   681–716, 808–1018 and 1106–1170 implement Section 1. `src/features/models/app-model-card.ts`
   lines 33–105 and `src/styles/card.styles.ts` lines 37–42 and 96–100 define the card and image slot.
   `scripts/build-assets.ts` lines 104–112 and 131–141 call `copyDirContents`
-  (`scripts/filesystem.ts` lines 16–33). The static server already recognises `.svg`.
+  (`scripts/filesystem.ts` lines 16–33). In beta tip `13b3b4b`, `scripts/build-assets.ts` lines
+  162–190 share that copy in `runBuild`, and lines 322–346 generate release outputs later.
+  `scripts/release-headers.ts` lines 116–123 and 163–171 give `/assets/` the default revalidation
+  policy and keep immutable caching for generated bundle and runtime paths. The static server
+  recognises `.svg` and applies the generated header rules only in production mode.
 - **Tests and commands:** `tests/models-setup.e2e.ts`, `tests/model-card.e2e.ts` and
   `tests/visual-parity/map.ts` cover chooser interactions, card behaviour and parity.
-  `tests/model-catalogue.test.ts` covers all five column types. Baseline `bun run check` passed
-  586 tests and `bun run build` passed. A scratch SVGO 4.1.0 run at precision 6 processed all nine
+  `tests/model-catalogue.test.ts` covers all five column types. On the pre-beta baseline,
+  `bun run check` passed 586 tests and `bun run build` passed. A temporary merge preview of
+  `main` at `fc42384` and `beta_release_cicd` at `13b3b4b` retained all nine SVGs and passed
+  `bun run build`, `bun run lint`, `bun run check` (629 tests) and all seven cases in
+  `tests/build-cache-invalidation.test.ts`. The emitted header resolver confirmed revalidation for
+  all nine paths. The beta branch on its own predates the eight classifier files. A scratch SVGO 4.1.0 run at precision 6 processed all nine
   SVGs, reducing the aggregate size from 43,915 to 31,646 bytes. The outputs retained their
   intrinsic dimensions and viewBox. Chromium decoded and compared all pairs at 360×216 and 720×432.
 - **Web guidance:** `accessibility` §6 and `html` §§1, 3 — use empty alternative text for
@@ -133,11 +145,12 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
   aspect ratios and internal references such as Linear Regression's `xlink:href`. Unchanged bytes
   are valid when SVGO yields the original bytes. An unreadable or malformed SVG fails the build
   with its public-relative path and underlying error. A later build follows the existing clean
-  output setup.
+  output setup. On the beta build, the same-origin SVG requests use the existing image CSP and
+  `Cache-Control: public, max-age=0, must-revalidate` from the production default rule.
 
 ## Specification changes
 
-- [ ] `specification/ARCHITECTURE.md` — Production public-file delivery includes build-time SVG optimisation for lowercase `.svg` files with stable URLs and authored sources. Status partial → partial.
+- [ ] `specification/ARCHITECTURE.md` — Production public-file delivery includes SVG optimisation for lowercase `.svg` files with stable URLs and authored sources. With beta release delivery, integrate this rule into the public-file layout and retain the release header and caching rules. Status partial → partial.
 - [ ] `specification/workflow-steps.md` §3.1 — Each of the eight classifiers has a mapped illustration, with the current selection conveyed visibly and programmatically. Status partial → partial.
 - [ ] `specification/components/card.md` §§2–9, 11 — Document both decorative slot forms, the selected property and marker, model-specific accessible button names, geometry, acceptance tests and model-card stories. Update §11 to allow the defined model selected state and required empty `alt` on the decorative `img`. Keep the dataset-card contract. Status implemented → implemented.
 - [ ] `specification/visual-design.md` §5.3 — MODELS-UI-03 records eight illustrated cards, the supplied art and current-selection marker with 03-2 as the per-card geometry reference. Status partial → partial.
@@ -162,13 +175,21 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
   `scripts/build-public-assets.ts` for the production build and temporary-directory tests. It
   calls the existing copier with the SVG transform. For each `.svg` read the original, pass the
   source path and precision 6 to SVGO, and write its returned `data` at the normal destination.
-  Report read or optimisation errors with the source path relative to `sourceDir`. Leave
-  development and other callers on the default copy.
+  Report read or optimisation errors with the source path relative to `sourceDir`. Add TSDoc
+  for the exported helper and describe the copier’s new callback. In the original separate build
+  functions, replace the public copy inside `buildProductionBundle` only. In the beta build,
+  replace the public copy in `runBuild` with `isProd` dispatch at the same stage after the output
+  reset and runtime copy and before content and dataset generation. Pass the active `outDir`
+  including overrides in both branches; the beta `assetOutDir` is for generated bundles. Keep
+  development and other callers on the ordinary copy. The copy helper preserves bytes for
+  non-SVG inputs, and the beta build continues generating `_headers`, `robots.txt` and
+  `release.json` in its existing later stages.
 - **Acceptance criteria:**
     - [ ] SVG-BUILD-1: All nine supplied SVGs, including Linear Regression, are emitted under unchanged paths. Inputs remain byte-for-byte identical. The SVG collection shrinks in aggregate, and no individual output grows.
     - [ ] SVG-BUILD-2: A scratch public tree with a nested SVG containing a removable comment and a non-SVG peer proves recursive optimisation and exact non-SVG copying. The default copy preserves SVG bytes; malformed SVG input makes the production transform reject with the source-relative path and cause.
     - [ ] SVG-BUILD-3: Both `APP_URL` and `DIST_URL` return the nine URLs successfully as `image/svg+xml`. In the Chromium project, fetch the response bytes from both servers with Playwright's request fixture. Pass the bytes into a blank page as base64 data URLs, decode with `Image.decode()` and check intrinsic dimensions of 360×216. Draw each pair onto separate transparent canvases at 360×216 and 720×432. Compare same-position RGBA values from `getImageData()` and count a pixel once if any channel differs by more than 24. Require the count divided by total pixels to be at most 0.002 at each size. Inspect the source and production images side by side for clipping, missing geometry or colour changes, including Linear Regression’s internal reference.
-- **Verification:** `bun test tests/public-svg-build.test.ts`, `bun run build`, `bun run test:e2e tests/public-svg-assets.e2e.ts`, manual browser inspection of original and production SVGs at both sizes.
+    - [ ] SVG-BUILD-4: With the beta build present, the configured production output directory contains the same root-relative public paths and keeps SVGs outside `bundles/`. Each SVG response from `DIST_URL` has the exact revalidation policy in Interfaces and behaviour. The beta build-cache suite still verifies the release ID, generated bundles and header rules.
+- **Verification:** `bun test tests/public-svg-build.test.ts`, `bun run build`, `bun run test:e2e tests/public-svg-assets.e2e.ts`, manual browser inspection of original and production SVGs at both sizes. With the beta build present, also run `bun test tests/build-cache-invalidation.test.ts` and the beta repository lint gate `bun run lint`.
 - **Progress:** [ ] Not started
 
 ### T2 — Render the supplied artwork on each classifier card
@@ -187,8 +208,10 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
   Update chooser stories for the illustrated list and selected and numeric unsupported examples
   using the existing builder seed. Extend the seed for a Boolean story with Boolean target metadata
   in both persisted summary and ready state. Use an empty completion list and a null model ID for
-  an unselected chooser. For the Boolean browser journey use the existing CSV upload flow with a
-  Boolean column containing both true and false values and a varying numeric feature. Add model-card stories for all three type variants, both image forms,
+  an unselected chooser. On the beta branch’s code, preserve `betaTelemetryAccepted: false` in the
+  chooser seed and the existing persistence wait in the browser flow. For the Boolean browser
+  journey use the existing CSV upload flow with a Boolean column containing both true and false
+  values and a varying numeric feature. Add model-card stories for all three type variants, both image forms,
   selected and unselected, long label, narrow, grid and RTL. Use one actual `public/assets` image,
   existing Storybook Vite public-file delivery and CEM controls. Put the slot usage rules in the
   Docs description.
@@ -207,7 +230,9 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
 - **Likely files:** `specification/ARCHITECTURE.md`, `specification/workflow-steps.md`, `specification/components/card.md`, `specification/visual-design.md`, `specification/HUMAN.md`, `specification/README.md`, `specification/COMPONENTS.md`, `specification/TODO.md`, `specification/FUTURE.md`, `specification/testing.md`
 - **Must not touch:** `src/`, `public/`, `specification/mockups/`
 - **Implementation:** Apply the lasting rules and queue changes in Specification changes. Preserve
-  the original reference mockups and update the existing deviation entry.
+  the original reference mockups and update the existing deviation entry. When the beta
+  architecture description is present, extend it with the SVG rule. Close only the illustration
+  and text-entry items in the human queue.
 - **Acceptance criteria:**
     - [ ] All listed specifications agree on the card slots, current selection, catalogue coverage and production SVG path rules. Statuses and the human queue agree with shipped behaviour.
 - **Verification:** `bun run plans:check specification/plans/model-artwork-and-svg-optimisation.md`, `bun run check`, `bun run build`, `bun run format:check <changed files>`
@@ -217,7 +242,8 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
 
 - [ ] All task acceptance criteria met.
 - [ ] Relevant verification commands from `AGENTS.md` pass with no new failures.
-- [ ] Type-check, formatting and build checks pass.
+- [ ] Type-check, formatting and build checks pass. If the beta release code is present, its
+      TSDoc lint and build-cache regression checks also pass under that checkout’s `AGENTS.md`.
 - [ ] Accessibility (WCAG 2.2 AA), privacy/security and contract-compatibility checks completed where applicable.
 - [ ] Every item under _Specification changes_ is ticked, and specifications match the implemented code.
 - [ ] No unintended changes outside the tasks' likely files.
@@ -225,7 +251,7 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
 ## Risks and open questions
 
 - **Blocking:** None
-- **Non-blocking:** Browser rasterisation can differ slightly after path optimisation. T1 compares source and output at two sizes and checks for perceptible regressions.
+- **Non-blocking:** Browser rasterisation can differ slightly after path optimisation. T1 compares source and output at two sizes and checks for perceptible regressions. The beta check is provisional against `13b3b4b`. Apply the build path and gates present in the implementation checkout and verify the release-specific criteria if the beta build lands first.
 
 ## Escalations
 
@@ -250,7 +276,9 @@ None.
 
 ## Change log
 
-| When (UTC)           | Change               | Reason                                                                                                                                                                      |
-| -------------------- | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-11-24T08:25:54Z | Initial draft        | Use the supplied model SVGs and add production SVG optimisation.                                                                                                            |
-| 2026-11-24T08:33:40Z | Address first review | Specify model-specific accessible names and keyboard focus restoration, test reachable target states, document the reproducible SVG comparison and reconcile related specs. |
+| When (UTC)           | Change                       | Reason                                                                                                                                                                      |
+| -------------------- | ---------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-24T08:25:54Z | Initial draft                | Use the supplied model SVGs and add production SVG optimisation.                                                                                                            |
+| 2026-11-24T08:33:40Z | Address first review         | Specify model-specific accessible names and keyboard focus restoration, test reachable target states, document the reproducible SVG comparison and reconcile related specs. |
+| 2026-11-24T08:43:58Z | Invalidated approval         | Specify compatibility with the pending beta release build, asset cache rules and CI verification gates.                                                                     |
+| 2026-11-24T08:45:19Z | Reconcile pending beta build | Define the production copy hook for both build layouts, existing cache rules, release regression checks and beta test fixture compatibility.                                |
