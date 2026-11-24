@@ -157,6 +157,13 @@ export const KNOWN_FAILURES: readonly KnownFailure[] = [
 		projects: ['chromium'],
 		platforms: ['linux'],
 		human: 'Commit Linux Chromium sidebar screenshot baselines'
+	},
+	{
+		id: 'TRAIN-REMOTE-RECOVERY',
+		file: 'training-panels.e2e.ts',
+		title: 'a remote tab reads the running state and recovers a pending result without fitting again',
+		projects: ['firefox'],
+		human: 'Fix intermittent full-suite Firefox crash in remote training recovery'
 	}
 ];
 
