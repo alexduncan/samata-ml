@@ -1,8 +1,8 @@
 # Model artwork and production SVG optimisation
 
-**Status:** draft | **Updated:** 2026-11-24T08:48:36Z
+**Status:** ready-for-review | **Updated:** 2026-11-24T08:50:59Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-24T08:25:54Z
-**Verified by:** — | **Verified:** — | **Verification:** changes-requested
+**Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -74,14 +74,21 @@ shipped to browsers.
   `main` at `fc42384` and `beta_release_cicd` at `13b3b4b` retained all nine SVGs and passed
   `bun run build`, `bun run lint`, `bun run check` (629 tests) and all seven cases in
   `tests/build-cache-invalidation.test.ts`. The emitted header resolver confirmed revalidation for
-  all nine paths. The beta branch on its own predates the eight classifier files. A scratch SVGO 4.1.0 run at precision 6 processed all nine
+  all nine paths. The preview’s `bun run test:stories` passed 600 tests and the Chromium
+  `PARITY-models-card` check passed. The beta branch on its own predates the eight classifier files.
+  The static `bun run storybook:build` fails on both the pre-beta baseline and the merge preview:
+  the sidebar story at `src/features/shell/app-sidebar.stories.ts` line 6 imports
+  `tests/visual-parity/fixtures.ts`, whose line 92 dynamically imports Node-only `scripts/ports.ts`.
+  The production Storybook bundler follows the import and rejects `lstatSync` in the browser bundle.
+  T2 removes this dependency from the shared fixture. A scratch SVGO 4.1.0 run at precision 6 processed all nine
   SVGs, reducing the aggregate size from 43,915 to 31,646 bytes. The outputs retained their
   intrinsic dimensions and viewBox. Chromium decoded and compared all pairs at 360×216 and 720×432.
 - **Web guidance:** `accessibility` §6 and `html` §§1, 3 — use empty alternative text for
   decorative images and declare dimensions to reserve space.
 - **Visual reference:** `specification/mockups/03-2_train-models-1-choose-model.html`,
-  `.cards-grid` and `.card.card-model`. Record the eight-card expansion, supplied artwork and
-  selected marker in MODELS-UI-03. Use the existing card layout and approved mockup.
+  `section.cards > article.card` with `svg.card-image`. In the app the builder uses
+  `.cards-grid` and each card uses `article.card` with a `.card-image` slot wrapper. Record the
+  eight-card expansion, supplied artwork and selected marker in MODELS-UI-03.
 - **Domain skills:** `lit-component-implementer` for T2.
 - **Assumptions requiring verification:** None.
 
@@ -148,6 +155,18 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
   output setup. On the beta build, the same-origin SVG requests use the existing image CSP and
   `Cache-Control: public, max-age=0, must-revalidate` from the production default rule.
 
+### Integration with the beta release
+
+- If beta lands first, implement T1 at the shared copy site and T2 with the existing TSDoc
+  configuration. Apply the beta-specific acceptance criteria as part of implementation.
+- If the SVG implementation lands first, resolve the beta integration against its shared
+  `runBuild`. Carry the existing SVG helper into its production copy path, retain the ordinary
+  development copy and confirm the optimised SVGs use the active `outDir`. Enable the production
+  cache assertion in the existing SVG browser test and add the `@slot` definition when
+  `tsdoc.json` arrives. Preserve both branches’ story fixture changes. Before landing the
+  combined code, rerun the SVG build, cache and browser checks from T1, plus beta lint, Storybook
+  build, story smoke and model-card parity from T2.
+
 ## Specification changes
 
 - [ ] `specification/ARCHITECTURE.md` — Production public-file delivery includes SVG optimisation for lowercase `.svg` files with stable URLs and authored sources. With beta release delivery, integrate this rule into the public-file layout and retain the release header and caching rules. Status partial → partial.
@@ -196,15 +215,23 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
 
 - **Depends on:** T1
 - **Risk:** needs care — selector collisions and lost selection feedback are possible when the chooser moves to eight card instances.
-- **Likely files:** `src/features/models/app-model-builder-view.ts`, `src/features/models/app-model-builder-view.stories.ts`, `src/features/models/app-model-card.ts`, `src/features/models/app-model-card.stories.ts`, `src/styles/card.styles.ts`, `tests/models-setup.e2e.ts`, `tests/model-card.e2e.ts`, `tests/model-configuration.e2e.ts`, `tests/a11y.e2e.ts`, `tests/visual-parity.e2e.ts`, `tests/visual-parity/map.ts`
+- **Likely files:** `src/features/models/app-model-builder-view.ts`, `src/features/models/app-model-builder-view.stories.ts`, `src/features/models/app-model-card.ts`, `src/features/models/app-model-card.stories.ts`, `src/styles/card.styles.ts`, `tests/models-setup.e2e.ts`, `tests/model-card.e2e.ts`, `tests/model-configuration.e2e.ts`, `tests/a11y.e2e.ts`, `tests/visual-parity.e2e.ts`, `tests/visual-parity/fixtures.ts`, `tests/visual-parity/map.ts`, `tsdoc.json`
 - **Must not touch:** `public/`, `src/features/models/model-catalogue.ts`, `src/stores/`, `src/workers/`, `vendor/`, `specification/mockups/`
 - **Implementation:** Replace the inline Logistic Regression template and text-entry branch with
   one illustrated list driven by the existing catalogue and exhaustive URL map. Wire the two
   existing card listeners to their existing handlers and retain ID-based selection. Implement
-  the defined slot and selected-state API, update the `@slot` TSDoc, and preserve the original
-  inline SVG form. Remove chooser-only text-entry styles and messages only where now unused.
+  the defined slot and selected-state API, add the `@slot image` TSDoc to `AppModelCard`, and
+  preserve the original inline SVG form. When the beta lint configuration is present, add
+  `{ "tagName": "@slot", "syntaxKind": "block", "allowMultiple": true }` to `tsdoc.json`
+  alongside `@fires` so the CEM annotation passes lint. Leave the pre-beta build free of a new
+  lint configuration. Remove chooser-only text-entry styles and messages only where now unused.
   Update chooser locators to scope by `model-id` in existing tests and move the existing parity
   card selector to Logistic Regression explicitly. Compare the same card shell properties.
+  Restore the static Storybook build by changing the shared fixture API to
+  `prepareSidebarReference(page: Page, fixture: 'empty' | 'models', mockupsUrl: string): Promise<void>`.
+  Pass the existing `MOCKUPS_URL` at all four calls in `tests/visual-parity.e2e.ts`. Remove the
+  dynamic port-module import from the shared fixture. Preserve its reduced-motion setup and
+  exact `?clean=1` navigation targets.
   Update chooser stories for the illustrated list and selected and numeric unsupported examples
   using the existing builder seed. Extend the seed for a Boolean story with Boolean target metadata
   in both persisted summary and ready state. Use an empty completion list and a null model ID for
@@ -219,8 +246,8 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
     - [ ] MODEL-ART-1: Categorical and Boolean chooser fixtures show exactly eight cards in catalogue order, with one correctly mapped decorative image each. The card images decode at 360×216. The numeric-target browser flow still reaches the no-candidate notice and shows zero cards. Use `tests/model-catalogue.test.ts` to verify the empty lists for text and datetime, which the target actions and hydration exclude before the builder. Keep both target-selection restrictions.
     - [ ] MODEL-ART-2: Assert the exact model-specific accessible name of each button and the original visible action labels. Open a non-Logistic description with the keyboard, dismiss it and verify focus returns to the invoking button. Verify that pointer activation opens the same description and preserves native focus behaviour. Selecting a model marks only that model with visible `Selected` and `aria-current="true"`, and keeps Section 1 active. Re-selecting the current model leaves the selection and existing setup data intact. Selecting a different model and using Continue follow the existing store rules. Reload restores the selected card.
     - [ ] MODEL-ART-3: The slot supports both image forms at the existing inner width and 60% height within 1px, including before load and after a forced failed image request. The accessibility tree exposes no artwork. In 320px, RTL and long-label cases, text and actions fit without horizontal overflow. At 200% zoom, in forced colours and with reduced motion, actions and the selected status remain legible and focus is visible. Keep the existing card geometry comparison and axe assertions.
-    - [ ] MODEL-ART-4: Stories show both image forms and the selected marker, retain the native controls and pass three-browser story smoke and axe.
-- **Verification:** `bun test tests/model-catalogue.test.ts`, `bun run test:e2e tests/models-setup.e2e.ts`, `bun run test:e2e tests/model-card.e2e.ts`, `bun run test:e2e tests/model-configuration.e2e.ts`, `bun run test:e2e tests/a11y.e2e.ts`, `bun run test:e2e tests/visual-parity.e2e.ts`, `bun test tests/style-tokens.test.ts`, `bun run storybook:build`, `bun run test:stories`, manual keyboard, zoom and screen-reader checks.
+    - [ ] MODEL-ART-4: Stories show both image forms and the selected marker, retain the native controls and pass three-browser story smoke and axe. The static Storybook build succeeds with the actual SVG in its output. The four affected parity calls still load the same references with the checkout-scoped URL. On the beta build, TSDoc lint accepts the card slot annotation.
+- **Verification:** `bun test tests/model-catalogue.test.ts`, `bun run test:e2e tests/models-setup.e2e.ts`, `bun run test:e2e tests/model-card.e2e.ts`, `bun run test:e2e tests/model-configuration.e2e.ts`, `bun run test:e2e tests/a11y.e2e.ts`, `bun run test:e2e tests/visual-parity.e2e.ts`, `bun test tests/style-tokens.test.ts`, `bun run storybook:build`, `bun run test:stories`, manual keyboard, zoom and screen-reader checks. Require the `PARITY-models-card` case to pass explicitly using `bun run test:e2e tests/visual-parity.e2e.ts --project=chromium --grep PARITY-models-card`. On pre-beta code, compare any unrelated failures in the full parity file with the pre-task baseline. On beta, run the full parity file with the existing `SAMATA_SKIP_KNOWN_FAILURES=1 bun run test:e2e tests/visual-parity.e2e.ts` and confirm the model-card case remains active. Run `bun run lint` with the beta lint configuration.
 - **Progress:** [ ] Not started
 
 ### T3 — Sync specification
@@ -251,7 +278,7 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
 ## Risks and open questions
 
 - **Blocking:** None
-- **Non-blocking:** Browser rasterisation can differ slightly after path optimisation. T1 compares source and output at two sizes and checks for perceptible regressions. The beta check is provisional against `13b3b4b`. Apply the build path and gates present in the implementation checkout and verify the release-specific criteria if the beta build lands first.
+- **Non-blocking:** Browser rasterisation can differ slightly after path optimisation. T1 compares source and output at two sizes and checks for perceptible regressions. The beta check is provisional against `13b3b4b`. Apply the appropriate integration procedure and verify the combined contract before landing both changes.
 
 ## Escalations
 
@@ -283,3 +310,4 @@ None.
 | 2026-11-24T08:33:40Z | Address first review         | Specify model-specific accessible names and keyboard focus restoration, test reachable target states, document the reproducible SVG comparison and reconcile related specs. |
 | 2026-11-24T08:43:58Z | Invalidated approval         | Specify compatibility with the pending beta release build, asset cache rules and CI verification gates.                                                                     |
 | 2026-11-24T08:45:19Z | Reconcile pending beta build | Define the production copy hook for both build layouts, existing cache rules, release regression checks and beta test fixture compatibility.                                |
+| 2026-11-24T08:50:09Z | Address beta review          | Include the inherited Storybook fixture repair, beta TSDoc slot registration, both integration orders and parity verification.                                              |
