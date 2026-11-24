@@ -6,6 +6,7 @@ import type { ContentDomain } from '../src/types/content';
 import { toDefine, type BuildConstants } from './build-constants';
 import { buildContent, type ContentBuildReport } from './build-content';
 import { buildModelAssets, WEB_ML_REVISION } from './build-model-assets';
+import { copyOptimisedPublicFiles } from './build-public-assets';
 import { CSS_DIR, DEV_DIR, DIST_DIR, PUBLIC_DIR, ROOT_DIR, SRC_DIR } from './config';
 import { copyDirContents, resetDir, writeRevvedFile } from './filesystem';
 import { generateSampleDatasets, type SampleDatasetBuildReport } from './generate-datasets';
@@ -185,7 +186,11 @@ async function runBuild(options: {
 	// Builds are recreated from scratch so stale revved assets do not linger.
 	await resetDir(outDir);
 	const modelRuntimeUrl = await buildModelAssets(outDir);
-	await copyDirContents(PUBLIC_DIR, outDir);
+	if (isProd) {
+		await copyOptimisedPublicFiles(PUBLIC_DIR, outDir);
+	} else {
+		await copyDirContents(PUBLIC_DIR, outDir);
+	}
 	logContentReport(await buildContent(outDir));
 	logSampleDatasetReport(await generateSampleDatasets(outDir));
 

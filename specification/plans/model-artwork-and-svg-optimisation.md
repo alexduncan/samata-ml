@@ -1,6 +1,6 @@
 # Model artwork and production SVG optimisation
 
-**Status:** ready | **Updated:** 2026-11-24T08:54:35Z
+**Status:** ready | **Updated:** 2026-11-24T13:29:02Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-24T08:25:54Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-24T08:54:35Z | **Verification:** approved
 **Verified hash:** sha256:a3c949f20e846b2f7f0f798ab6eee416f26bcc35ff2e9b9b1077426b245e7b75
@@ -204,12 +204,12 @@ References for the optimisation and current-item semantics are in the [SVGO 4.1.
   non-SVG inputs, and the beta build continues generating `_headers`, `robots.txt` and
   `release.json` in its existing later stages.
 - **Acceptance criteria:**
-    - [ ] SVG-BUILD-1: All nine supplied SVGs, including Linear Regression, are emitted under unchanged paths. Inputs remain byte-for-byte identical. The SVG collection shrinks in aggregate, and no individual output grows.
-    - [ ] SVG-BUILD-2: A scratch public tree with a nested SVG containing a removable comment and a non-SVG peer proves recursive optimisation and exact non-SVG copying. The default copy preserves SVG bytes; malformed SVG input makes the production transform reject with the source-relative path and cause.
-    - [ ] SVG-BUILD-3: Both `APP_URL` and `DIST_URL` return the nine URLs successfully as `image/svg+xml`. In the Chromium project, fetch the response bytes from both servers with Playwright's request fixture. Pass the bytes into a blank page as base64 data URLs, decode with `Image.decode()` and check intrinsic dimensions of 360×216. Draw each pair onto separate transparent canvases at 360×216 and 720×432. Compare same-position RGBA values from `getImageData()` and count a pixel once if any channel differs by more than 24. Require the count divided by total pixels to be at most 0.002 at each size. Inspect the source and production images side by side for clipping, missing geometry or colour changes, including Linear Regression’s internal reference.
-    - [ ] SVG-BUILD-4: With the beta build present, the configured production output directory contains the same root-relative public paths and keeps SVGs outside `bundles/`. Each SVG response from `DIST_URL` has the exact revalidation policy in Interfaces and behaviour. The beta build-cache suite still verifies the release ID, generated bundles and header rules.
+    - [x] SVG-BUILD-1: All nine supplied SVGs, including Linear Regression, are emitted under unchanged paths. Inputs remain byte-for-byte identical. The SVG collection shrinks in aggregate, and no individual output grows.
+    - [x] SVG-BUILD-2: A scratch public tree with a nested SVG containing a removable comment and a non-SVG peer proves recursive optimisation and exact non-SVG copying. The default copy preserves SVG bytes; malformed SVG input makes the production transform reject with the source-relative path and cause.
+    - [x] SVG-BUILD-3: Both `APP_URL` and `DIST_URL` return the nine URLs successfully as `image/svg+xml`. In the Chromium project, fetch the response bytes from both servers with Playwright's request fixture. Pass the bytes into a blank page as base64 data URLs, decode with `Image.decode()` and check intrinsic dimensions of 360×216. Draw each pair onto separate transparent canvases at 360×216 and 720×432. Compare same-position RGBA values from `getImageData()` and count a pixel once if any channel differs by more than 24. Require the count divided by total pixels to be at most 0.002 at each size. Inspect the source and production images side by side for clipping, missing geometry or colour changes, including Linear Regression’s internal reference.
+    - [x] SVG-BUILD-4: With the beta build present, the configured production output directory contains the same root-relative public paths and keeps SVGs outside `bundles/`. Each SVG response from `DIST_URL` has the exact revalidation policy in Interfaces and behaviour. The beta build-cache suite still verifies the release ID, generated bundles and header rules.
 - **Verification:** `bun test tests/public-svg-build.test.ts`, `bun run build`, `bun run test:e2e tests/public-svg-assets.e2e.ts`, manual browser inspection of original and production SVGs at both sizes. With the beta build present, also run `bun test tests/build-cache-invalidation.test.ts` and the beta repository lint gate `bun run lint`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-24T13:29:02Z)
 
 ### T2 — Render the supplied artwork on each classifier card
 
@@ -290,9 +290,10 @@ None.
 
 ## Implementation and verification log
 
-| When (UTC) | Task | Agent (model) | Outcome / commands / evidence |
-| ---------- | ---- | ------------- | ----------------------------- |
-| —          | —    | —             | Not started                   |
+| When (UTC)           | Task | Agent (model) | Outcome / commands / evidence                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| -------------------- | ---- | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| —                    | —    | —             | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 2026-11-24T13:29:02Z | T1   | Codex (GPT-6) | bun add --dev --exact svgo@4.1.0; bun run check (627 passed); bun test tests/public-svg-build.test.ts (3 passed); bun test tests/build-cache-invalidation.test.ts (7 passed); bun run build and bun run lint passed; bun run test:e2e tests/public-svg-assets.e2e.ts --workers=2 (4 passed, 2 Chromium-only skips). Visually compared all nine source and production pairs at 360×216 and 720×432, including Linear Regression. Total 43,915 → 31,646 bytes. |
 
 ## Plan review history
 
