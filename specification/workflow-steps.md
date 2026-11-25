@@ -49,7 +49,7 @@ The dataset preview view displays:
     - If numeric: min, median, mean, max, and precomputed histogram bins.
     - If categorical: distinct value count, frequencies sorted descending, and percentages over non-missing values (with Show all / Show fewer toggle).
     - If boolean: true/false frequencies.
-    - If datetime: earliest and latest UTC bounds.
+    - If date, time or datetime: earliest and latest values at the column's precision. UTC is stated only for datetime.
     - Identifier candidate hint when distinct count equals row count.
     - Pressing Escape or the Close button dismisses the overlay and returns focus to the column header.
 
@@ -73,10 +73,10 @@ The user chooses the target variable to predict from their loaded dataset. Help 
 - **Failure view:** If column information fails to load, an alert message displays: _"Column information could not be loaded."_ along with a "Retry" button.
 - **Ready view:** Displays a scrollable table (`table.table`) with a caption (`{Dataset Name} target candidates`) and four columns:
     - **Column Name:** The column name as a row header (`<th scope="row">`).
-    - **Type:** The data type formatted as code (`<code>Numeric</code>`, `<code>Categorical</code>`, `<code>Boolean</code>`, `<code>Text</code>`, `<code>Datetime</code>`).
+    - **Type:** The data type formatted as code (`<code>Numeric</code>`, `<code>Categorical</code>`, `<code>Boolean</code>`, `<code>Text</code>`, `<code>Date</code>`, `<code>Time</code>`, `<code>Datetime</code>`).
     - **Notes:** Explanatory reasons or advisory notices:
         - `INELIGIBLE_TEXT`: "Text columns cannot be targets."
-        - `INELIGIBLE_DATETIME`: "Date and time columns cannot be targets."
+        - `INELIGIBLE_DATETIME`: "Date and time columns cannot be targets." It applies to `date`, `time` and `datetime` columns.
         - `INELIGIBLE_ALL_MISSING`: "No usable values."
         - `INELIGIBLE_CONSTANT`: "Only one value is present."
         - `ADVISORY_IDENTIFIER`: "This column may identify individual records."
@@ -131,7 +131,7 @@ Each individual model builder view is routed at `/models/{num}`. Navigating to a
 The catalogue adapter (`model-catalogue.ts`) exposes supervised algorithms from `web-ml` suitable for predicting the active target:
 
 - Categorical or Boolean target. Eight classifiers are available in library index order.
-- A numeric target reaches Section 1 and shows `No classification model available` with a link to `/target`. Text and datetime have empty catalogue lists. Target selection and saved-state hydration exclude both before the builder. Regression, clustering and PCA are excluded.
+- A numeric target reaches Section 1 and shows `No classification model available` with a link to `/target`. Text, date, time and datetime have empty catalogue lists. Target selection and saved-state hydration exclude all of them before the builder. Regression, clustering and PCA are excluded.
 - A model whose `modelId` is no longer available is reset to Section 1 at startup.
 
 The UI renders candidate models:
@@ -148,7 +148,7 @@ The UI renders candidate models:
 Displays a tabular selection of all dataset columns in canonical dataset order:
 
 - **Target column:** Rendered with a "Target" chiclet badge and no checkbox cell. The target variable is never selectable as a feature.
-- **Ineligible columns:** Columns of type `text`, `datetime`, all-missing, or constant are disabled with visible note badges explaining why they cannot be included.
+- **Ineligible columns:** Columns of type `text`, `date`, `time`, `datetime`, all-missing, or constant are disabled with visible note badges explaining why they cannot be included.
 - **Advisory columns:** Identifier columns and target candidate leaky columns default unticked with an advisory note, but the user may deliberately override and check them.
 - **Selection rules:** At least one feature must be selected to proceed. Initial features default to all eligible columns once on completing Section 1; intentional empty or subset selections persist across page reload.
 - Clicking "Continue" completes Section 2 and records `completedSteps: ['choose-model', 'select-features']`.

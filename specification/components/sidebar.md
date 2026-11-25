@@ -40,7 +40,7 @@ Named Workflow nav with one ol containing four li. Brand is not a page heading; 
 
 ## 7. Internationalisation
 
-Owns brand/tagline, Project/New Project/Workflow, four workflow names, Dataset/Target/Models, row/column plurals, Model {num}, training/trained, Numeric/Categorical/Boolean/Date/time/Text and about/privacy/help. Messages and formatter are StoreControllers. `params(count(...))` receives formatted parameters then raw numeric count; no formatted string chooses a plural. Names are consumer data. Layout tolerates long labels and RTL.
+Owns brand/tagline, Project/New Project/Workflow, four workflow names, Dataset/Target/Models, row/column plurals, Model {num}, training/trained, Numeric/Categorical/Boolean/Date/Time/Date/time/Text and about/privacy/help. Messages and formatter are StoreControllers. `params(count(...))` receives formatted parameters then raw numeric count; no formatted string chooses a plural. Names are consumer data. Layout tolerates long labels and RTL.
 
 ## 8. Acceptance criteria
 

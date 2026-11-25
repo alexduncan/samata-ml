@@ -21,7 +21,7 @@ The TypeScript contract is [`AuthoredDatasetDescriptor`](../src/types/sample-dat
 - `provenance`, with homepage and source repository URLs, ISO `retrievedAt`, SPDX `license`, `licenseUrl`, attribution, publication year, creators and transformation descriptions; and `references` and optional `ethicsWarnings`.
 - Optional `buildSource` or `remoteSource` as described in §6. Build source fields pin both raw and prepared SHA-256 and byte length and select one fixed transform; runtime descriptors omit this authored-only field.
 
-`ColumnType` is the canonical lower-case type from `state-and-storage.md`: `numeric`, `categorical`, `boolean`, `datetime` or `text`. The author records each column exactly once in CSV order. Target selection and leakage are target-specific, so neither is stored as a column role. Identifier columns and columns ineligible for modelling are not selected as features; leakage reasons come from the selected target candidate.
+`ColumnType` is the canonical lower-case type from `state-and-storage.md`: `numeric`, `categorical`, `boolean`, `date`, `time`, `datetime` or `text`. The author records each column exactly once in CSV order. Target selection and leakage are target-specific, so neither is stored as a column role. Identifier columns and columns ineligible for modelling are not selected as features; leakage reasons come from the selected target candidate.
 
 The build adds computed `missingCount` to each column, `stats`, and `files` to make a `SampleDatasetDescriptor`. It generates `rowCount`, `columnCount`, original file byte length, SHA-256, missing-value presence and the categorical default-target distribution. Authors do not write statistics or counts.
 

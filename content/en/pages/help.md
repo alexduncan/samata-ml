@@ -17,7 +17,7 @@ Follow the standard 4-step workflow:
 
 - **Comma-separated values (CSV).** A plain-text file that stores a table, usually with commas between values.
 - **Categorical, category and class.** A categorical column groups rows by a value such as a species name. When a model predicts a category, each possible answer is called a class.
-- **Numeric, Boolean, Date and time, and Text.** A numeric column holds numbers. A Boolean column holds two values, true and false. A date and time column holds dates or times. A text column holds written values.
+- **Numeric, Boolean, Date and time, and Text.** A numeric column holds numbers. A Boolean column holds two values, true and false. A date column holds calendar dates. A time column holds times of day. A date and time column holds a moment, shown in UTC. A text column holds written values.
 - **Coordinated Universal Time (UTC).** A common time reference used to show dates and times consistently across time zones.
 
 ### Inspecting data

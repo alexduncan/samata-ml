@@ -297,8 +297,8 @@ Corresponds to workflow-steps §1.
 
 Corresponds to workflow-steps §2.
 
-- Table rows: Column Name (`<th scope="row">`), Type (`<code>Numeric</code>`, `<code>Categorical</code>`, `<code>Boolean</code>`, `<code>Text</code>`, `<code>Datetime</code>`), Notes, and Action.
-- Eligibility: Text, datetime, all-missing, and constant columns are disqualified and show disabling explanatory notes. Identifier hints, missing-value counts, high cardinality, and descriptor suggestions provide advisory guidance while remaining selectable.
+- Table rows: Column Name (`<th scope="row">`), Type (`<code>Numeric</code>`, `<code>Categorical</code>`, `<code>Boolean</code>`, `<code>Text</code>`, `<code>Date</code>`, `<code>Time</code>`, `<code>Datetime</code>`), Notes, and Action.
+- Eligibility: Text, date, time, datetime, all-missing, and constant columns are disqualified and show disabling explanatory notes. Identifier hints, missing-value counts, high cardinality, and descriptor suggestions provide advisory guidance while remaining selectable.
 - Action buttons:
     - Active target shows a disabled button reading "Current Target".
     - Eligible candidate columns show a primary button reading "Set as Target".

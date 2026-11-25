@@ -1,6 +1,6 @@
 # Temporal column types: date, time and datetime
 
-**Status:** ready | **Updated:** 2026-11-25T14:00:57Z
+**Status:** ready | **Updated:** 2026-11-25T14:01:40Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-25T10:49:58Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-25T12:38:45Z | **Verification:** approved
 **Verified hash:** sha256:170e52184c86cc170c93b0d486d248f334c2e7c038e22aabd36ec19133b41c68
@@ -271,7 +271,7 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
 
 ## Specification changes
 
-- [ ] `specification/data-ingestion.md` §3:
+- [x] `specification/data-ingestion.md` §3:
     - the temporal statistics are `date`, `time` and `datetime` with their stored units;
     - `precision` is computed for `time` and `datetime`;
     - legacy `datetime` metadata may lack `precision`.
@@ -284,16 +284,16 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
 
     The header-gate text is removed. Status stays `implemented`.
 
-- [ ] `specification/state-and-storage.md` §3 (`ColumnType` code block) and §10 #4: the canonical union includes `date`, `time` and `datetime`. Temporal subtype is a type, while date order, epoch unit and precision are statistics.
-- [ ] `specification/sample-datasets.md:24` and `specification/preview-dataset.md:24-26`: list the seven types. Preview statistics give earliest and latest values for each temporal type.
-- [ ] `specification/workflow-steps.md:52,76,79,134,151` and `specification/app-state-and-navigation.md:300-301`:
+- [x] `specification/state-and-storage.md` §3 (`ColumnType` code block) and §10 #4: the canonical union includes `date`, `time` and `datetime`. Temporal subtype is a type, while date order, epoch unit and precision are statistics.
+- [x] `specification/sample-datasets.md:24` and `specification/preview-dataset.md:24-26`: list the seven types. Preview statistics give earliest and latest values for each temporal type.
+- [x] `specification/workflow-steps.md:52,76,79,134,151` and `specification/app-state-and-navigation.md:300-301`:
     - Type codes include `Date` and `Time`;
     - `date`, `time` and `datetime` are ineligible as targets (`INELIGIBLE_DATETIME`, "Date and time columns cannot be targets.") and as features;
     - earliest and latest values show at the column's precision, with UTC stated only for datetime.
-- [ ] `specification/components/sidepanel.md` §2 `column` row, §3 temporal bullet and definition coverage: seven discriminants; date and time display without "UTC"; inspector stories cover all seven types.
-- [ ] `specification/components/sidebar.md:43`: the type-label list includes `Date` and `Time` beside `Date/time`.
-- [ ] `specification/TODO.md:20,28,30`: the resolved notes name `date`, `time` and `datetime` as unsupported or UTC-displayed types where they now name only `datetime`.
-- [ ] `specification/FUTURE.md:19`: datetime feature engineering covers `date`, `time` and `datetime` columns. Add two items: user control over a column's temporal type, and user control over epoch-timestamp detection (D10). Also add 12-hour clocks for time-only columns and nanosecond epochs as further formats.
+- [x] `specification/components/sidepanel.md` §2 `column` row, §3 temporal bullet and definition coverage: seven discriminants; date and time display without "UTC"; inspector stories cover all seven types.
+- [x] `specification/components/sidebar.md:43`: the type-label list includes `Date` and `Time` beside `Date/time`.
+- [x] `specification/TODO.md:20,28,30`: the resolved notes name `date`, `time` and `datetime` as unsupported or UTC-displayed types where they now name only `datetime`.
+- [x] `specification/FUTURE.md:19`: datetime feature engineering covers `date`, `time` and `datetime` columns. Add two items: user control over a column's temporal type, and user control over epoch-timestamp detection (D10). Also add 12-hour clocks for time-only columns and nanosecond epochs as further formats.
 
 ## Implementation tasks
 
@@ -408,9 +408,9 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
     - Apply every _Specification changes_ item in present tense, per the `specification/README.md` writing rules.
     - Rewrite the Help sentence at `content/en/pages/help.md:20` to define a date column (calendar dates), a time column (times of day) and a date and time column (a moment, shown in UTC). Keep the "Date and time" heading term.
 - **Acceptance criteria:**
-    - [ ] TEMP-AC-18: no specification still lists the five-type union or says epoch detection needs a time-like header. `bun run plans:check` passes.
+    - [x] TEMP-AC-18: no specification still lists the five-type union or says epoch detection needs a time-like header. `bun run plans:check` passes.
 - **Verification:** `bun run plans:check`, `bun run build`, `bun run format <changed files>`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-25T14:01:40Z)
 
 ## Verification and definition of done
 
@@ -450,6 +450,7 @@ None.
 | 2026-11-25T13:54:10Z | T2 | Claude Code (claude-sonnet-5-5) | bun test tests/cells.test.ts 15 pass; bun test: 626 pass, 2 fail (pre-existing missing saxe/svgo modules); lint OK; format applied. Changed src/common/storage/cells.ts, tests/cells.test.ts |
 | 2026-11-25T13:58:33Z | T3 | Claude Code (claude-sonnet-5-5) | bun run check: typecheck OK, 657 pass 0 fail (after bun install --frozen-lockfile restored missing saxe/svgo); bun run build OK, COMPAS descriptor 12 date + 2 datetime; bun run lint OK; format applied. Changed profiler.ts, cells.ts, pipeline.ts, generate-datasets.ts, COMPAS descriptor and datasheet, profiler/pipeline/cells/generate-datasets tests |
 | 2026-11-25T14:00:57Z | T4 | Claude Code (claude-sonnet-5-5) | bun run check 658 pass 0 fail; bun run lint OK; bun run test:stories 105 files 666 tests pass; bun run test:e2e tests/data-upload.e2e.ts: 9 pass (new TEMP-AC-14 in chromium, firefox, webkit), 3 fail = known DATA-UP-2 (11 vs 12 cards) per tests/known-failures.ts; format applied. Changed temporal-format.ts, app-data-view.ts, app-column-details.ts, stories, temporal-format test, data-upload e2e |
+| 2026-11-25T14:01:40Z | T5 | Claude Code (claude-sonnet-5-5) | bun run plans:check PASS; bun run build OK; format applied; grep finds no stale five-type or header-gate text outside plans. Changed 10 specification files and content/en/pages/help.md |
 
 ## Plan review history
 

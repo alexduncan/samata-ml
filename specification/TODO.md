@@ -17,7 +17,7 @@ Open questions and missing specification found by reviewing every Markdown and H
     - How the available multiclass strategies are discovered.
     - _Resolved for manual configuration (Phase 1):_ hyperparameter definitions come from the `web-ml` catalogue documents; the manual form is implemented ([components/model-configuration.md](components/model-configuration.md)); multiclass strategy is fixed per model and shown read-only. Still open: the hyperparameter-tuning UI (search method, range entry, tuning metric) and user-selectable multiclass strategies.
 - **TODO-06 — Select Features** ([workflow-steps §3.2](workflow-steps.md)):
-    - _Resolved for Step 3:_ Implemented in `feature-eligibility.ts` and `app-model-builder-view.ts`: target column displayed with Target badge and no checkbox (never selectable); unsupported (text, datetime), constant, and all-missing columns disabled with explanatory note codes; identifiers and target-candidate leaky columns default unticked with advisory notes and deliberate selection override; at least one feature required; initial features populated once on Choose Model completion via `initialiseFeatureSelection`.
+    - _Resolved for Step 3:_ Implemented in `feature-eligibility.ts` and `app-model-builder-view.ts`: target column displayed with Target badge and no checkbox (never selectable); unsupported (text, date, time, datetime), constant, and all-missing columns disabled with explanatory note codes; identifiers and target-candidate leaky columns default unticked with advisory notes and deliberate selection override; at least one feature required; initial features populated once on Choose Model completion via `initialiseFeatureSelection`.
 - **TODO-07 — Choose Model** ([workflow-steps §3.1](workflow-steps.md)):
     - _Resolved for Step 3:_ The [Choose Model workflow](workflow-steps.md#1-choose-model) renders the eight eligible classifiers as illustrated cards in library index order. The current choice is visible and programmatically identified. Descriptions use authored prose or fall back to the model catalogue.
 - **TODO-08 — Models table on `/models`** ([workflow-steps §3](workflow-steps.md)):
@@ -25,9 +25,9 @@ Open questions and missing specification found by reviewing every Markdown and H
 - **TODO-09 — Custom dataset upload** ([workflow-steps §1](workflow-steps.md)):
     - _Resolved for Step 1:_ Upload dialog (`app-upload-dataset-dialog`), progress phases, error mappings, cancellation lifecycle, and data-quality reporting implemented.
 - **TODO-10 — Column details panel** ([workflow-steps §1 Preview](workflow-steps.md)):
-    - _Resolved for Step 1:_ Delivered in `app-column-details` and [components/sidepanel.md](components/sidepanel.md) (stored statistics, discrete histogram bin table, categorical expansion, UTC datetimes, text identifier candidate, Escape/close focus return).
+    - _Resolved for Step 1:_ Delivered in `app-column-details` and [components/sidepanel.md](components/sidepanel.md) (stored statistics, discrete histogram bin table, categorical expansion, date, time and UTC datetime display, text identifier candidate, Escape/close focus return).
 - **TODO-11 — Set Target rules** ([workflow-steps §2](workflow-steps.md)):
-    - _Resolved for Step 2:_ Implemented in `src/features/target/target-eligibility.ts` and `app-target-view.ts`: unsupported (text, datetime), constant, and all-missing columns disabled with exact notes; identifier, missing values count, high cardinality, and descriptor candidate hints are advisory.
+    - _Resolved for Step 2:_ Implemented in `src/features/target/target-eligibility.ts` and `app-target-view.ts`: unsupported (text, date, time, datetime), constant, and all-missing columns disabled with exact notes; identifier, missing values count, high cardinality, and descriptor candidate hints are advisory.
 - **TODO-12 — Modal content:**
     - _Resolved:_ Datasheets rendered via `app-datasheet-dialog`; Model descriptions rendered via `app-model-description-dialog` using safe loader and missing-prose fallback.
 
