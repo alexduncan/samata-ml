@@ -1,9 +1,9 @@
 # Give The Dot one purpose in workflow navigation
 
-**Status:** ready | **Updated:** 2026-11-25T15:06:39Z
+**Status:** ready-for-review | **Updated:** 2026-11-25T17:03:32Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-25T10:57:56Z
-**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-25T15:06:39Z | **Verification:** approved
-**Verified hash:** sha256:c2ea29a30096468c2a71c9871848b9c537c940fb272e4009759113109c848a54
+**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -36,14 +36,14 @@
 
 **Implementation order across plans**
 
-Start after [Model Training Workflow](model-training-workflow.md) has landed, including its T4 sidebar and T8 journey and baseline checks. That plan owns the native train anchors, current training row, removal of its old status dot, wizard handoff and uncued parity fixture. This plan adds only cue state, link decoration and arrival motion. [Beta Console Errors and CSP Fixes](archive/beta-console-errors-and-csp-fixes.md) supplies the unchanged strict policy and the baseline production regression. Add the cue assertion separately using the same distribution-server setup.
+Start after [Model Training Workflow in the plan index](README.md) has landed, including its T4 sidebar and T8 journey and baseline checks. That plan owns the native train anchors, current training row, removal of its old status dot, wizard handoff and uncued parity fixture. This plan adds only cue state, link decoration and arrival motion. [Beta Console Errors and CSP Fixes](archive/beta-console-errors-and-csp-fixes.md) supplies the unchanged strict policy and the baseline production regression. Add the cue assertion separately using the same distribution-server setup.
 
 ## Required reading
 
 - `AGENTS.md` § Verification Commands and § Rules.
 - `specification/COMPONENTS.md` §§3–10 and `specification/components/sidebar.md` §§3–10 — closed API, scope, styling and acceptance.
 - `specification/workflow-steps.md` introduction and §§1–4, `specification/app-state-and-navigation.md` §§4.4 and 5, and `specification/visual-design.md` §§1, 3 and 5 — workflow, history and references.
-- `specification/notes/ui-fixes.md` § Rules for The Dot, and `specification/plans/model-training-workflow.md` § Router and new-wizard ownership and § Model navigation and results for the exact delivered links.
+- `specification/notes/ui-fixes.md` § Rules for The Dot, and the Model Training Workflow entry in [the plan index](README.md), § Router and new-wizard ownership and § Model navigation and results, for the exact delivered links.
 
 ## Codebase context
 
@@ -182,3 +182,4 @@ None.
 | 2026-11-25T14:50:36Z | Bind cues to the integrated model workflow | Fix anchor ownership, acknowledged milestone consumption and production CSP coverage.                                                                                         |
 | 2026-11-25T14:58:48Z | Address first independent review           | Keep synchronous cue tracking in the store layer, distinguish effective Help navigation and hydrate safely, and require visible static/production cues in their owning tasks. |
 | 2026-11-25T15:01:48Z | Address second independent review          | Reduce captured store updates in order and retire Train Another when its saved result disappears.                                                                             |
+| 2026-11-25T17:03:32Z | Invalidated approval                       | Beta closure relocated its dependency link. Route the forthcoming model archive lookup through the stable plan index without changing the cue contract.                       |
