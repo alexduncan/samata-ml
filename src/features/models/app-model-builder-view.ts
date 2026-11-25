@@ -481,7 +481,7 @@ export class AppModelBuilderView extends LitElement {
 	@state() private accessor activeDescribeModelId: string | null = null;
 
 	// Reopening state
-	@state() private accessor pendingReopenSection: ModelSectionId | null = null;
+	private pendingReopenSection: ModelSectionId | null = null;
 	@state() private accessor trainingNotice:
 		| {
 				key: string;
@@ -579,7 +579,14 @@ export class AppModelBuilderView extends LitElement {
 		}
 	}
 
+	override updated(changed: PropertyValues<this>): void {
+		if (changed.has('modelNum') && changed.get('modelNum') !== undefined) {
+			this.handleCancelReopen();
+		}
+	}
+
 	override disconnectedCallback(): void {
+		this.handleCancelReopen();
 		super.disconnectedCallback();
 		this.activeAttempt = null;
 		this.restoreSubmitFocus = null;
@@ -766,6 +773,13 @@ export class AppModelBuilderView extends LitElement {
 			this.confirmDialogEl.close();
 			this.confirmDialogEl.returnValue = '';
 		}
+	}
+
+	private handleNativeReopenClose(): void {
+		const dialog = this.confirmDialogEl;
+		if (dialog?.open) return;
+		this.pendingReopenSection = null;
+		if (dialog) dialog.returnValue = '';
 	}
 
 	// ==========================================
@@ -2017,7 +2031,8 @@ export class AppModelBuilderView extends LitElement {
 			<dialog
 				class="confirm-dialog"
 				data-confirm="reopen-section"
-				aria-labelledby="confirm-reopen-title">
+				aria-labelledby="confirm-reopen-title"
+				@close=${this.handleNativeReopenClose}>
 				<div class="confirm-header">
 					<h2 id="confirm-reopen-title">Confirm Reopening Section</h2>
 				</div>

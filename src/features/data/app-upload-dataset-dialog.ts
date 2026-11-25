@@ -2,6 +2,7 @@ import { LitElement, css, html, nothing, type PropertyValues, type TemplateResul
 import { customElement, property, state } from 'lit/decorators.js';
 import { buttonStyles } from '../../styles/button.styles';
 import { observeDialogHeader } from '../../common/dom/dialog-header';
+import { installBackdropDismiss } from '../../common/dom/dialog-backdrop';
 import { dialogStyles } from '../../styles/dialog.styles';
 import type { IngestionProgress } from './ingestion/pipeline';
 import { INGESTION_PHASE_LABELS } from './ingestion/errors';
@@ -130,9 +131,16 @@ export class AppUploadDatasetDialog extends LitElement {
 
 	private invokerElement: HTMLElement | null = null;
 	private stopHeaderObservation?: () => void;
+	private stopBackdropDismiss?: () => void;
+	private synchronisedCloses = 0;
 
 	override disconnectedCallback(): void {
 		this.stopHeaderObservation?.();
+		this.stopBackdropDismiss?.();
+		if (this.dialogElement?.open) {
+			this.synchronisedCloses++;
+			this.dialogElement.close();
+		}
 		super.disconnectedCallback();
 	}
 
@@ -184,8 +192,11 @@ export class AppUploadDatasetDialog extends LitElement {
 				if (this.dialogElement?.open) {
 					this.stopHeaderObservation?.();
 					this.stopHeaderObservation = observeDialogHeader(this.dialogElement);
+					this.stopBackdropDismiss?.();
+					this.stopBackdropDismiss = installBackdropDismiss(this.dialogElement);
 				}
 			} else if (!this.open && this.dialogElement?.open) {
+				this.synchronisedCloses++;
 				this.dialogElement.close();
 				this.dialogElement.returnValue = '';
 				this.invokerElement?.focus?.();
@@ -194,38 +205,24 @@ export class AppUploadDatasetDialog extends LitElement {
 	}
 
 	private handleNativeClose(): void {
-		if (this.dialogElement) {
-			this.dialogElement.returnValue = '';
+		const dialog = this.dialogElement;
+		if (!dialog) return;
+		if (this.synchronisedCloses > 0) {
+			this.synchronisedCloses--;
+			return;
 		}
-		if (this.busy) {
-			this.dispatchEvent(
-				new CustomEvent('app-upload-cancel', { bubbles: false, composed: false })
-			);
-		}
-		if (this.open) {
-			this.open = false;
-			this.invokerElement?.focus?.();
-			this.dispatchEvent(
-				new CustomEvent('app-upload-close', { bubbles: false, composed: false })
-			);
-		}
-	}
-
-	private handleCloseClick(): void {
+		if (dialog.open || !this.open || !this.isConnected) return;
+		dialog.returnValue = '';
 		this.open = false;
-		if (this.busy) {
-			this.dispatchEvent(
-				new CustomEvent('app-upload-cancel', { bubbles: false, composed: false })
-			);
-		}
-		if (this.dialogElement?.open) {
-			this.dialogElement.close();
-			this.dialogElement.returnValue = '';
-		}
-		this.invokerElement?.focus?.();
+		this.isDragging = false;
+		this.invokerElement?.focus({ preventScroll: true });
 		this.dispatchEvent(
 			new CustomEvent('app-upload-close', { bubbles: false, composed: false })
 		);
+	}
+
+	private handleCloseClick(): void {
+		this.dialogElement?.close();
 	}
 
 	private handleCancel(): void {
@@ -324,9 +321,9 @@ export class AppUploadDatasetDialog extends LitElement {
 		return html`
 			<dialog
 				class="modal"
+				closedby="any"
 				aria-labelledby="upload-dialog-title"
-				@close=${this.handleNativeClose}
-				@cancel=${this.handleNativeClose}>
+				@close=${this.handleNativeClose}>
 				<header class="modal-header">
 					<h2 id="upload-dialog-title">
 						${this.labels.heading || 'Upload Custom Dataset'}

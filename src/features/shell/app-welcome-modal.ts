@@ -2,6 +2,7 @@ import { StoreController } from '@nanostores/lit';
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { observeDialogHeader } from '../../common/dom/dialog-header';
+import { installBackdropDismiss } from '../../common/dom/dialog-backdrop';
 import {
 	$betaDeployment,
 	initBetaTelemetry,
@@ -34,6 +35,7 @@ export class AppWelcomeModal extends LitElement {
 	private readonly translations = new StoreController(this, messages);
 	private synchronisedCloses = 0;
 	private stopHeaderObservation?: () => void;
+	private stopBackdropDismiss?: () => void;
 
 	private get dialogElement(): HTMLDialogElement | null {
 		return this.renderRoot.querySelector('dialog');
@@ -112,6 +114,11 @@ export class AppWelcomeModal extends LitElement {
 			this.stopHeaderObservation?.();
 			dialog.showModal();
 			this.stopHeaderObservation = observeDialogHeader(dialog);
+			this.stopBackdropDismiss?.();
+			this.stopBackdropDismiss = installBackdropDismiss(
+				dialog,
+				() => !this.betaDeployment.value
+			);
 		} else if (!shouldOpen && dialog.open) {
 			this.synchronisedCloses++;
 			dialog.close();
@@ -120,6 +127,7 @@ export class AppWelcomeModal extends LitElement {
 
 	override disconnectedCallback(): void {
 		this.stopHeaderObservation?.();
+		this.stopBackdropDismiss?.();
 		if (this.dialogElement?.open) {
 			this.synchronisedCloses++;
 			this.dialogElement.close();
@@ -170,6 +178,7 @@ export class AppWelcomeModal extends LitElement {
 		return html`
 			<dialog
 				class="modal"
+				closedby=${isBeta ? 'none' : 'any'}
 				aria-labelledby="welcome-title"
 				aria-describedby=${isBeta ? 'welcome-beta' : nothing}
 				@cancel=${this.handleCancel}

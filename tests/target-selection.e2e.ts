@@ -215,6 +215,8 @@ test.describe('Target Selection & Confirmation (TARG-E2E-1 .. TARG-E2E-3)', () =
 		// Cancel button is autofocused
 		const cancelBtn = dialog.locator('button:has-text("Cancel")');
 		await expect(cancelBtn).toBeFocused();
+		await page.mouse.click(2, 2);
+		await expect(dialog).toBeVisible();
 
 		// Press Escape to dismiss
 		await page.keyboard.press('Escape');

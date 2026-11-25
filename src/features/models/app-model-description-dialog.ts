@@ -2,6 +2,7 @@ import { LitElement, css, html, nothing, type PropertyValues, type TemplateResul
 import { customElement, property } from 'lit/decorators.js';
 import { buttonStyles } from '../../styles/button.styles';
 import { observeDialogHeader } from '../../common/dom/dialog-header';
+import { installBackdropDismiss } from '../../common/dom/dialog-backdrop';
 import { dialogStyles } from '../../styles/dialog.styles';
 
 /**
@@ -102,9 +103,16 @@ export class AppModelDescriptionDialog extends LitElement {
 
 	private invokerElement: HTMLElement | null = null;
 	private stopHeaderObservation?: () => void;
+	private stopBackdropDismiss?: () => void;
+	private synchronisedCloses = 0;
 
 	override disconnectedCallback(): void {
 		this.stopHeaderObservation?.();
+		this.stopBackdropDismiss?.();
+		if (this.dialogElement?.open) {
+			this.synchronisedCloses++;
+			this.dialogElement.close();
+		}
 		super.disconnectedCallback();
 	}
 
@@ -150,8 +158,11 @@ export class AppModelDescriptionDialog extends LitElement {
 				if (this.dialogElement?.open) {
 					this.stopHeaderObservation?.();
 					this.stopHeaderObservation = observeDialogHeader(this.dialogElement);
+					this.stopBackdropDismiss?.();
+					this.stopBackdropDismiss = installBackdropDismiss(this.dialogElement);
 				}
 			} else if (!this.open && this.dialogElement?.open) {
+				this.synchronisedCloses++;
 				this.dialogElement.returnValue = '';
 				this.dialogElement.close();
 				this.invokerElement?.focus?.();
@@ -159,29 +170,28 @@ export class AppModelDescriptionDialog extends LitElement {
 		}
 	}
 
-	private handleCancel(e: Event): void {
-		e.preventDefault();
-		this.handleClose();
+	private handleNativeClose(): void {
+		const dialog = this.dialogElement;
+		if (!dialog) return;
+		if (this.synchronisedCloses > 0) {
+			this.synchronisedCloses--;
+			return;
+		}
+		if (dialog.open || !this.open || !this.isConnected) return;
+		dialog.returnValue = '';
+		this.open = false;
+		this.invokerElement?.focus({ preventScroll: true });
+		this.dispatchEvent(
+			new CustomEvent('app-model-description-close', {
+				detail: {},
+				bubbles: false,
+				composed: false
+			})
+		);
 	}
 
 	private handleClose(): void {
-		if (this.dialogElement) {
-			this.dialogElement.returnValue = '';
-			if (this.dialogElement.open) {
-				this.dialogElement.close();
-			}
-		}
-		if (this.open) {
-			this.open = false;
-			this.invokerElement?.focus?.();
-			this.dispatchEvent(
-				new CustomEvent('app-model-description-close', {
-					detail: {},
-					bubbles: false,
-					composed: false
-				})
-			);
-		}
+		this.dialogElement?.close();
 	}
 
 	private handleRetry(): void {
@@ -263,7 +273,11 @@ export class AppModelDescriptionDialog extends LitElement {
 
 	override render(): TemplateResult {
 		return html`
-			<dialog class="modal" aria-labelledby="model-dialog-title" @cancel=${this.handleCancel}>
+			<dialog
+				class="modal"
+				closedby="any"
+				aria-labelledby="model-dialog-title"
+				@close=${this.handleNativeClose}>
 				<header class="modal-header">
 					<div class="header-titles">
 						<span class="header-subtitle">Model Description</span>

@@ -1,5 +1,6 @@
 import { html } from 'lit';
 import type { Decorator, Meta, StoryObj } from '@storybook/web-components-vite';
+import { expect } from 'storybook/test';
 import { setBetaDeploymentForTests } from '../../common/telemetry/telemetry-client';
 import { parseRoute } from '../../router/route-parser';
 import { $route } from '../../router/router';
@@ -49,6 +50,17 @@ export const BetaNotice: Story = {
 	beforeEach: () => {
 		setBetaDeploymentForTests(true);
 		return () => setBetaDeploymentForTests(false);
+	},
+	play: async ({ canvasElement }) => {
+		const welcome = canvasElement.querySelector('app-welcome-modal')!;
+		await welcome.updateComplete;
+		const dialog = welcome.shadowRoot!.querySelector('dialog')!;
+		await expect(dialog).toHaveAttribute('closedby', 'none');
+		const cancel = new Event('cancel', { cancelable: true });
+		dialog.dispatchEvent(cancel);
+		await expect(cancel.defaultPrevented).toBe(true);
+		await expect(dialog).toHaveProperty('open', true);
+		await expect($appState.get().onboarding.betaTelemetryAccepted).toBe(false);
 	}
 };
 

@@ -17,7 +17,7 @@ function renderDialog(longContent = false, rtl = false) {
 			}}>
 			Open dialog
 		</button>
-		<dialog class="modal" ${ref(dialog)} aria-labelledby="dialog-story-title">
+		<dialog class="modal" closedby="any" ${ref(dialog)} aria-labelledby="dialog-story-title">
 			<header class="modal-header">
 				<h2 id="dialog-story-title">
 					${rtl ? 'معلومات مجموعة البيانات' : 'Dataset information'}
@@ -57,7 +57,7 @@ const meta = {
 			story: { inline: false },
 			description: {
 				component:
-					'Name each native dialog with its h2. Place the dismissal control in the sticky content header. Put the safe action first in a confirmation.'
+					'Name each native dialog with its h2. Place the dismissal control in the sticky content header and permit backdrop dismissal with closedby="any". Put the safe action first in a confirmation.'
 			}
 		}
 	},

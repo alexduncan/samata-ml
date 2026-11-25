@@ -40,9 +40,18 @@ test('BETA-DATA-1 / BETA-DATA-2: change dataset after preview reload fetches the
 	expect(before[1]).toBe('class');
 	expect(before[2]).toEqual([1]);
 	await change.click();
+	await page.mouse.click(2, 2);
+	await expect(dialog).toBeVisible();
 	await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
 	await expect(dialog).toBeHidden();
 	await expect(preview).toBeVisible();
+	expect(await project()).toEqual(before);
+
+	await change.focus();
+	await change.press('Enter');
+	await page.keyboard.press('Escape');
+	await expect(dialog).toBeHidden();
+	await expect(change).toBeFocused();
 	expect(await project()).toEqual(before);
 
 	await change.click();

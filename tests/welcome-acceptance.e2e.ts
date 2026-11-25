@@ -63,6 +63,13 @@ test('WEL-AC-2: native Esc persists once and unrelated state renders do not reop
 	await expect(page.locator('app-welcome-modal dialog')).not.toBeVisible();
 });
 
+test('DLG-BACKDROP-1: non-beta welcome backdrop dismissal persists once', async ({ page }) => {
+	await page.goto('/data');
+	await expect(page.locator('app-welcome-modal dialog.modal')).toBeVisible();
+	await page.mouse.click(2, 2);
+	await expectDismissedOnce(page);
+});
+
 test('WEL-AC-3: native welcome has reference geometry and semantic names', async ({
 	page,
 	context

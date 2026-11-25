@@ -142,6 +142,62 @@ test('DLG-HARM-1: welcome focuses Get Started without a browser autofocus diagno
 	expect(diagnostics).toEqual([]);
 });
 
+test('DLG-BACKDROP-1/2: datasheet and model description light-dismiss while Reopen Section requires a button or Escape', async ({
+	page
+}) => {
+	await page.goto('/data');
+	await dismissWelcomeModal(page);
+	const showDatasheet = page
+		.locator('app-dataset-card[dataset-id="iris"]')
+		.getByRole('button', { name: 'Datasheet' });
+	await showDatasheet.focus();
+	await showDatasheet.press('Enter');
+	const datasheet = page.locator('app-datasheet-dialog dialog.modal');
+	await expect(datasheet).toBeVisible();
+	await page.mouse.click(2, 2);
+	await expect(datasheet).toBeHidden();
+	await expect(showDatasheet).toBeFocused();
+
+	await createIrisModel(page);
+	const builder = page.locator('app-model-builder-view');
+	const choose = builder.locator('.train-step').nth(0);
+	const features = builder.locator('.train-step').nth(1);
+	const card = choose.locator('app-model-card[model-id="logistic-regression"]');
+	const about = card.getByRole('button', { name: 'Model Description: Logistic Regression' });
+	const description = builder.locator('app-model-description-dialog');
+	const modal = description.locator('dialog.modal');
+	await description.evaluate((element) => {
+		element.addEventListener('app-model-description-close', () => {
+			element.dataset.userCloses = String(Number(element.dataset.userCloses ?? 0) + 1);
+		});
+	});
+	await about.focus();
+	await about.press('Enter');
+	await expect(modal).toBeVisible();
+	await page.mouse.click(2, 2);
+	await expect(modal).toBeHidden();
+	await expect(about).toBeFocused();
+	await expect(description).toHaveAttribute('data-user-closes', '1');
+
+	await card.getByRole('button', { name: 'Select Model' }).click();
+	await choose.getByRole('button', { name: 'Continue', exact: true }).click();
+	await features.getByRole('button', { name: 'Continue', exact: true }).click();
+	const reopen = choose.getByRole('button', { name: 'Edit Choose Model' });
+	const confirmation = builder.locator('dialog[data-confirm="reopen-section"]');
+	await reopen.focus();
+	await reopen.press('Enter');
+	await page.mouse.click(2, 2);
+	await expect(confirmation).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(confirmation).toBeHidden();
+	await expect(reopen).toBeFocused();
+	await expect(features.getByRole('button', { name: 'Edit Select Features' })).toBeVisible();
+	await reopen.press('Enter');
+	await confirmation.getByRole('button', { name: 'Edit Section', exact: true }).click();
+	await expect(confirmation).toBeHidden();
+	await expect(choose).toHaveAttribute('aria-current', 'step');
+});
+
 test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 	test.beforeEach(async ({ page }) => {
 		// Start with clean state
@@ -321,9 +377,14 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		const modal = page.locator('app-content-modal dialog');
 		await expect(modal).toBeVisible();
 
-		await page.keyboard.press('Escape');
+		await page.mouse.click(2, 2);
 		await expect(modal).not.toBeVisible();
 		await expect(page.locator('#content h1')).not.toBeFocused();
+		await expect(page.locator('app-sidebar footer a[href="/about"]')).toBeFocused();
+		await keyboardNavigate(page, '/about');
+		await expect(modal).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(modal).not.toBeVisible();
 		await expect(page.locator('app-sidebar footer a[href="/about"]')).toBeFocused();
 	});
 

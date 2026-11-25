@@ -104,6 +104,50 @@ test.describe('Presentational content dialog', () => {
 		await expect(page.getByRole('button', { name: 'Open content', exact: true })).toBeFocused();
 	});
 
+	for (const fallback of [false, true]) {
+		test(`DLG-BACKDROP-1/2: ${fallback ? 'legacy fallback' : 'native backdrop'} distinguishes clicks, padding and drags, then emits one close intent`, async ({
+			page
+		}) => {
+			const invoker = page.getByRole('button', { name: 'Open content', exact: true });
+			const dialog = page.locator('app-content-dialog dialog.modal');
+			if (fallback) {
+				expect(
+					await dialog.evaluate((element) => {
+						element.removeAttribute('closedby');
+						return Reflect.deleteProperty(HTMLDialogElement.prototype, 'closedBy');
+					})
+				).toBe(true);
+			}
+			await invoker.press('Enter');
+			await expect(dialog).toBeVisible();
+			const bounds = (await dialog.boundingBox())!;
+			const paragraph = (await dialog.locator('.modal-content p').boundingBox())!;
+			await page.mouse.click(bounds.x + 5, bounds.y + bounds.height / 2);
+			await expect(dialog).toBeVisible();
+			await page.mouse.move(paragraph.x + 8, paragraph.y + paragraph.height / 2);
+			await page.mouse.down();
+			await page.mouse.move(2, 2, { steps: 12 });
+			await page.mouse.up();
+			await expect(dialog).toBeVisible();
+
+			await page.mouse.move(2, 2);
+			await page.mouse.down();
+			await page.mouse.move(bounds.x + 5, bounds.y + bounds.height / 2, { steps: 8 });
+			await page.mouse.up();
+			await expect(dialog).toBeVisible();
+			await page.mouse.click(2, 2);
+			await expect(dialog).toBeHidden();
+			await expect(invoker).toBeFocused();
+			await expect
+				.poll(() =>
+					page.evaluate(
+						() => (window as unknown as ContentTestWindow).__contentEvents.length
+					)
+				)
+				.toBe(1);
+		});
+	}
+
 	test('CDLG-AC-3: h2 names the native dialog and the named icon has decorative SVG, without public-attribute reflection', async ({
 		page
 	}) => {

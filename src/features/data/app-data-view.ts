@@ -200,6 +200,7 @@ export class AppDataView extends LitElement {
 	private activeDatasheetId: string | null = null;
 	private datasheetInvoker: HTMLElement | null = null;
 	private uploadInvoker: HTMLElement | null = null;
+	private ownedUpload: Promise<boolean> | null = null;
 	private changeDatasetInvoker: HTMLElement | null = null;
 	private datasheetSeq = 0;
 	private abortController = new AbortController();
@@ -396,22 +397,24 @@ export class AppDataView extends LitElement {
 	}
 
 	private async handleUploadFileSelect(e: CustomEvent<{ file: File }>): Promise<void> {
-		const ok = await startDatasetLoad({ kind: 'file', file: e.detail.file });
-		if (ok) {
-			this.uploadOpen = false;
-		}
+		if ($datasetLoad.get().busy) return;
+		const upload = startDatasetLoad({ kind: 'file', file: e.detail.file });
+		this.ownedUpload = upload;
+		const ok = await upload;
+		if (this.ownedUpload !== upload) return;
+		this.ownedUpload = null;
+		if (ok) this.uploadOpen = false;
 	}
 
 	private handleUploadCancel(): void {
+		if (!this.ownedUpload) return;
+		this.ownedUpload = null;
 		cancelDatasetLoad();
 	}
 
 	private handleUploadClose(): void {
 		this.uploadOpen = false;
-		const loadState = this.loadController.value;
-		if (loadState.busy) {
-			cancelDatasetLoad();
-		}
+		this.handleUploadCancel();
 	}
 
 	private handleCardSelect(e: CustomEvent<{ datasetId: string; name: string }>): void {

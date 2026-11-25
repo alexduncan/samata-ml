@@ -234,6 +234,9 @@ test('REL-UI-2 & REL-UI-4: legacy blobs, Escape reopen, privacy link/route, and 
 		await expect(dialog1).toBeVisible();
 		await expect(page1).toHaveURL(/\/target$/);
 
+		await page1.mouse.click(2, 2);
+		await expect(dialog1).toBeVisible();
+
 		// Pressing Escape (once and repeatedly) never accepts and keeps dialog open
 		await page1.keyboard.press('Escape');
 		await page1.keyboard.press('Escape');

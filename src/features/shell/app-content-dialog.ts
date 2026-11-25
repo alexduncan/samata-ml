@@ -1,6 +1,7 @@
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { observeDialogHeader } from '../../common/dom/dialog-header';
+import { installBackdropDismiss } from '../../common/dom/dialog-backdrop';
 import { buttonStyles } from '../../styles/button.styles';
 import { dialogStyles } from '../../styles/dialog.styles';
 
@@ -49,6 +50,8 @@ export class AppContentDialog extends LitElement {
 	/** @internal */
 	private stopHeaderObservation?: () => void;
 	/** @internal */
+	private stopBackdropDismiss?: () => void;
+	/** @internal */
 	private get dialogElement(): HTMLDialogElement | null {
 		return this.renderRoot?.querySelector('dialog') ?? null;
 	}
@@ -73,6 +76,7 @@ export class AppContentDialog extends LitElement {
 
 	override disconnectedCallback(): void {
 		this.stopHeaderObservation?.();
+		this.stopBackdropDismiss?.();
 		if (this.dialogElement?.open) {
 			this.synchronisedCloses++;
 			this.dialogElement.close();
@@ -104,6 +108,8 @@ export class AppContentDialog extends LitElement {
 			this.stopHeaderObservation?.();
 			dialog.showModal();
 			this.stopHeaderObservation = observeDialogHeader(dialog);
+			this.stopBackdropDismiss?.();
+			this.stopBackdropDismiss = installBackdropDismiss(dialog);
 		} else if (!this.open && dialog.open) {
 			this.synchronisedCloses++;
 			dialog.close();
@@ -137,6 +143,7 @@ export class AppContentDialog extends LitElement {
 		return html`
 			<dialog
 				class="modal"
+				closedby="any"
 				aria-labelledby="content-dialog-title"
 				@close=${this.handleNativeClose}>
 				<header class="modal-header">
