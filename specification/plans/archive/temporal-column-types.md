@@ -1,10 +1,10 @@
 # Temporal column types: date, time and datetime
 
-**Status:** implemented | **Updated:** 2026-11-25T14:02:17Z
+**Status:** archived | **Updated:** 2026-11-25T14:07:04Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-25T10:49:58Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-25T12:38:45Z | **Verification:** approved
 **Verified hash:** sha256:170e52184c86cc170c93b0d486d248f334c2e7c038e22aabd36ec19133b41c68
-**Implementation verified by:** — | **Implementation verified:** —
+**Implementation verified by:** Claude Code (claude-opus-5-5) | **Implementation verified:** 2026-11-25T14:07:04Z
 
 ## Goal
 
@@ -453,6 +453,7 @@ None.
 | 2026-11-25T14:01:40Z | T5        | Claude Code (claude-sonnet-5-5) | bun run plans:check PASS; bun run build OK; format applied; grep finds no stale five-type or header-gate text outside plans. Changed 10 specification files and content/en/pages/help.md                                                                                                                                                                                                                                                                                                                                                                                                    |
 | 2026-11-25T14:02:17Z | Implement | Claude Code (claude-sonnet-5-5) | Marked implemented                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | 2026-11-25T14:06:15Z | Review    | Claude Code (claude-opus-5-5)   | Closure audit direct fixes, no behaviour change: stale comment in `src/features/target/target-eligibility.ts` now names date, time and datetime; Prettier applied to this plan (log table was unformatted). Independent runs: `bun run check` 658 pass 0 fail; `bun run lint` OK; `bun run build` OK; `bun run test:stories` 105 files, 666 pass (column-details Date, Time, Datetime pass in chromium, firefox, webkit); `bun run test:e2e tests/data-upload.e2e.ts` 9 pass incl. TEMP-AC-14 ×3, 3 fail = known DATA-UP-2 (12 vs 11); `bun run test:e2e tests/data-preview.e2e.ts` 9 pass. |
+| 2026-11-25T14:07:04Z | Review    | Claude Code (claude-opus-5-5)   | Closed: Line-by-line audit of T1-T5 and TEMP-AC-1..18 against diff 6870d75..0acdd27; bun run check 658 pass 0 fail; lint OK; build OK; test:stories 666 pass (Date/Time/Datetime in chromium, firefox, webkit); test:e2e data-upload 9 pass incl. TEMP-AC-14 x3, 3 fail known DATA-UP-2; data-preview 9 pass; fingerprint matches                                                                                                                                                                                                                                                           |
 
 ## Plan review history
 
