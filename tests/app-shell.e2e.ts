@@ -179,6 +179,16 @@ test('DLG-BACKDROP-1/2: datasheet and model description light-dismiss while Reop
 	await expect(about).toBeFocused();
 	await expect(description).toHaveAttribute('data-user-closes', '1');
 
+	const modelsLink = page.locator('app-sidebar a[href="/models"]');
+	await modelsLink.focus();
+	await expect(modelsLink).toBeFocused();
+	await about.click();
+	await expect(modal).toBeVisible();
+	await page.mouse.click(2, 2);
+	await expect(modal).toBeHidden();
+	await expect(about).toBeFocused();
+	await expect(description).toHaveAttribute('data-user-closes', '2');
+
 	await card.getByRole('button', { name: 'Select Model' }).click();
 	await choose.getByRole('button', { name: 'Continue', exact: true }).click();
 	await features.getByRole('button', { name: 'Continue', exact: true }).click();

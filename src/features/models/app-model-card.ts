@@ -55,7 +55,11 @@ export class AppModelCard extends LitElement {
 	@property({ type: Boolean })
 	accessor selected = false;
 
-	private handleDescription(): void {
+	private handleDescription(event: MouseEvent): void {
+		if (event.detail > 0 && event.currentTarget instanceof HTMLButtonElement) {
+			// WebKit can activate the button without focusing it before the dialog opens.
+			event.currentTarget.focus({ preventScroll: true });
+		}
 		this.dispatchEvent(
 			new CustomEvent<{ modelId: string; name: string }>('app-model-description-open', {
 				detail: { modelId: this.modelId, name: this.name },
