@@ -3,13 +3,16 @@
 	--bar-fill: var(--neutral-100);
 	--bar-border-color: var(--blue-700);
 	--bar-outline: 0 0 0 3px var(--blue-200);
+	display: flex;
+	flex-direction: row;
+	align-items: center;
 
 	.progress-bar {
-		display: block;
+		flex: 1 1 auto;
 
 		appearance: none;
 		-webkit-appearance: none;
-		margin: 1rem 0;
+		margin: 0.5rem 0;
 		box-shadow: var(--bar-outline);
 		border: 1.5px solid var(--bar-border-color);
 		border-radius: 0;
@@ -32,6 +35,13 @@
 	/* Firefox */
 	.progress-bar::-moz-progress-bar {
 		background-color: var(--progress-fill);
+	}
+
+	.progress-percent {
+		margin-left: 0.5rem;
+		min-width: 4ch;
+		font-variant-numeric: tabular-nums;
+		text-align: right;
 	}
 }
 
@@ -56,6 +66,13 @@
 		background-image: var(--progress-gradient);
 		background-size: 2rem 100%;
 	}
+}
+
+.training-complete {
+	--progress-fill: var(--green-600);
+	--bar-fill: var(--green-100);
+	--bar-border-color: var(--green-800);
+	--bar-outline: 0 0 0 3px var(--green-200);
 }
 
 /* Stopped training */

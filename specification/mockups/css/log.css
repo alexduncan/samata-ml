@@ -1,0 +1,30 @@
+.log {
+	border: 1px solid var(--stone-300);
+	border-radius: 0.5rem;
+	background-color: var(--stone-50);
+	padding: 0.75rem;
+
+	.log-status {
+		color: var(--stone-800);
+		font-weight: bold;
+	}
+
+	.log[open] .log-status {
+		margin-bottom: 0.5rem;
+	}
+
+	.log-status-complete {
+		display: flex;
+		align-items: center;
+		gap: 0.5rem;
+		color: var(--green-700);
+	}
+
+	.log-history {
+		padding: 0.5rem 0 0 0;
+		font-size: 0.75rem;
+		line-height: 1.5;
+		font-family: var(--font-mono);
+		list-style-type: none;
+	}
+}

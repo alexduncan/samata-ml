@@ -112,4 +112,9 @@
 
 	/* Deep Shadow */
 	--shadow-deep: 0 0 0.25rem rgb(30 25 22 / 0.25), 0 1rem 2rem rgb(30 25 22 / 0.3);
+
+	/* Additional colours for swatches */
+	--pink-700: #be185d;
+	--sky-600: #0284c7;
+	--olive-700: #717a16;
 }

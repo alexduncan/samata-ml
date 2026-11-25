@@ -10,6 +10,11 @@ main {
 	min-height: calc(100dvh - 4rem);
 }
 
+main:has(.ui-virtual-table) {
+	width: max-content;
+	min-width: calc(100% - var(--sidebar-width));
+}
+
 h3 {
 	margin: 0;
 	color: var(--stone-800);
