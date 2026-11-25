@@ -184,6 +184,24 @@ export const ConfigureModelComplete: Story = {
 			completedSteps: ['choose-model', 'select-features', 'configure-model']
 		})
 };
+/** Editing an earlier completed section starts at the safe Cancel action. */
+export const ReopenSectionConfirmation: Story = {
+	beforeEach: ConfigureModelComplete.beforeEach,
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const root = builder.shadowRoot!;
+		await userEvent.click(
+			root.querySelector<HTMLButtonElement>('[aria-label="Edit Choose Model"]')!
+		);
+		const dialog = root.querySelector<HTMLDialogElement>(
+			'dialog[data-confirm="reopen-section"]'
+		)!;
+		await expect(dialog).toBeVisible();
+		await expect(dialog.querySelector('.confirm-body .notification-alert')).toBeNull();
+		expect(root.activeElement).toBe(dialog.querySelector('.confirm-footer button'));
+	}
+};
 /** WML-P2-UI-8: Section 4 ready for an eligible target. */
 export const ConfigureTraining: Story = {
 	name: 'WML-P2-UI-8: ConfigureTraining',

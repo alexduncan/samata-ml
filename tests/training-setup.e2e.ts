@@ -648,7 +648,7 @@ test.describe('Connected Training Setup', () => {
 		await setupStep(page).getByRole('link', { name: 'What is this?' }).click();
 		const modal = page.getByRole('dialog', { name: 'Training Setup' });
 		await expect(page).toHaveURL('/help/training-setup');
-		const article = modal.locator('.modal-body');
+		const article = modal.locator('.modal-content');
 		for (const text of [
 			'Rows left out of training for the model that made those predictions',
 			'The test rows are set aside to check how it performs on other rows',

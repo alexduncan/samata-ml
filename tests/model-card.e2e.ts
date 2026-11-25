@@ -14,17 +14,9 @@ const LOGISTIC_REGRESSION_SVG = `
 test.describe('Model Card and Description Dialog (MOD-CARD-1, MOD-DESC-1)', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/data');
-		// Dismiss welcome modal if open
-		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
-		try {
-			await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
-			await getStartedBtn.click();
-			await page
-				.locator('app-welcome-modal dialog')
-				.waitFor({ state: 'hidden', timeout: 2000 });
-		} catch {
-			// Already dismissed
-		}
+		const welcome = page.locator('app-welcome-modal dialog.modal');
+		await welcome.getByRole('button', { name: 'Get Started' }).click();
+		await expect(welcome).toBeHidden();
 	});
 
 	test('MOD-CARD-1: typed identity, image slot, native actions, chiclet types, RTL and a11y', async ({
@@ -397,7 +389,7 @@ test.describe('Model Card and Description Dialog (MOD-CARD-1, MOD-DESC-1)', () =
 			await dialog.updateComplete;
 		});
 
-		const contentSection = dialogEl.locator('.modal-content');
+		const contentSection = dialogEl.locator('.modal-content .description-article');
 		await expect(contentSection).toBeVisible();
 		await expect(contentSection.locator('.test-article-p')).toContainText(
 			'Authored article content'
@@ -416,7 +408,7 @@ test.describe('Model Card and Description Dialog (MOD-CARD-1, MOD-DESC-1)', () =
 		expect(unexpectedModalViolations).toEqual([]);
 
 		// Close via close button and check focus returns to invoker button
-		const closeBtn = dialogEl.locator('button.close-btn');
+		const closeBtn = dialogEl.locator('button.btn-icon');
 		await closeBtn.click();
 		await expect(nativeDialog).not.toBeVisible();
 		await expect(invokerBtn).toBeFocused();

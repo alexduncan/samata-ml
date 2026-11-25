@@ -1,6 +1,7 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { buttonStyles } from '../../styles/button.styles';
+import { observeDialogHeader } from '../../common/dom/dialog-header';
 import { dialogStyles } from '../../styles/dialog.styles';
 import type { IngestionProgress } from './ingestion/pipeline';
 import { INGESTION_PHASE_LABELS } from './ingestion/errors';
@@ -27,62 +28,6 @@ export class AppUploadDatasetDialog extends LitElement {
 		dialogStyles,
 		buttonStyles,
 		css`
-			dialog.modal {
-				box-shadow: var(--shadow-deep);
-				border: 1.5px solid var(--stone-200);
-				border-radius: 1rem;
-				background-color: var(--surface);
-				padding: 1.5rem;
-				inline-size: min(40rem, calc(100% - 2rem));
-				max-inline-size: none;
-				max-block-size: calc(100dvh - 2rem);
-				overflow: auto;
-				color: var(--stone-800);
-			}
-
-			.modal-header {
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				padding-block-end: 1rem;
-			}
-
-			.modal-header h1,
-			.modal-header h2 {
-				margin: 0;
-				color: var(--stone-800);
-				font-weight: 500;
-				font-size: 1.5rem;
-			}
-
-			.btn-icon {
-				display: inline-flex;
-				justify-content: center;
-				align-items: center;
-				cursor: pointer;
-				border: none;
-				border-radius: 0.5rem;
-				background: transparent;
-				padding: 0.5rem;
-				color: var(--stone-600);
-			}
-
-			.btn-icon:hover {
-				background-color: var(--stone-150);
-				color: var(--stone-900);
-			}
-
-			.btn-icon:focus-visible {
-				outline: 3px solid;
-				outline-color: var(--blue-700);
-				outline-offset: 2px;
-			}
-
-			.icon {
-				width: 1.25rem;
-				height: 1.25rem;
-			}
-
 			.dropzone {
 				cursor: pointer;
 				border: 2px dashed;
@@ -121,7 +66,7 @@ export class AppUploadDatasetDialog extends LitElement {
 				background: var(--stone-150);
 				padding: 0.5rem 1rem;
 				min-height: 2.75rem;
-				color: var(--stone-600);
+				color: var(--stone-700);
 				font: inherit;
 				font-weight: 500;
 			}
@@ -147,7 +92,7 @@ export class AppUploadDatasetDialog extends LitElement {
 
 			.requirements {
 				margin: 0;
-				color: var(--stone-600);
+				color: var(--stone-700);
 			}
 
 			.requirements small {
@@ -184,6 +129,12 @@ export class AppUploadDatasetDialog extends LitElement {
 	}
 
 	private invokerElement: HTMLElement | null = null;
+	private stopHeaderObservation?: () => void;
+
+	override disconnectedCallback(): void {
+		this.stopHeaderObservation?.();
+		super.disconnectedCallback();
+	}
 
 	@state() private accessor isDragging = false;
 
@@ -229,6 +180,10 @@ export class AppUploadDatasetDialog extends LitElement {
 					this.dialogElement?.showModal();
 				} catch {
 					if (this.dialogElement) this.dialogElement.open = true;
+				}
+				if (this.dialogElement?.open) {
+					this.stopHeaderObservation?.();
+					this.stopHeaderObservation = observeDialogHeader(this.dialogElement);
 				}
 			} else if (!this.open && this.dialogElement?.open) {
 				this.dialogElement.close();
@@ -369,7 +324,6 @@ export class AppUploadDatasetDialog extends LitElement {
 		return html`
 			<dialog
 				class="modal"
-				aria-modal="true"
 				aria-labelledby="upload-dialog-title"
 				@close=${this.handleNativeClose}
 				@cancel=${this.handleNativeClose}>
@@ -383,7 +337,6 @@ export class AppUploadDatasetDialog extends LitElement {
 						aria-label=${this.labels.close || 'Close modal'}
 						@click=${this.handleCloseClick}>
 						<svg
-							class="icon"
 							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
@@ -396,31 +349,34 @@ export class AppUploadDatasetDialog extends LitElement {
 					</button>
 				</header>
 
-				${this.error ? html`<p role="alert">${this.error}</p>` : nothing}
-				${this.busy ? this.renderProgress() : nothing}
+				<div class="modal-content">
+					${this.error ? html`<p role="alert">${this.error}</p>` : nothing}
+					${this.busy ? this.renderProgress() : nothing}
 
-				<section
-					class="dropzone ${this.isDragging ? 'dragging' : ''}"
-					@dragover=${this.handleDragOver}
-					@dragleave=${this.handleDragLeave}
-					@drop=${this.handleDrop}>
-					<label for="dataset-file">
-						${this.labels.file || 'Click to upload or drag and drop your dataset here.'}
-					</label>
-					<label class="file-picker">
-						<span class="file-picker-button">Select file</span>
-						<input
-							type="file"
-							id="dataset-file"
-							name="dataset"
-							accept=".csv,text/csv"
-							?disabled=${this.busy}
-							@change=${this.handleFileChange} />
-					</label>
-					<p class="requirements">
-						<small>${this.labels.requirements || 'Must be .csv format.'}</small>
-					</p>
-				</section>
+					<section
+						class="dropzone ${this.isDragging ? 'dragging' : ''}"
+						@dragover=${this.handleDragOver}
+						@dragleave=${this.handleDragLeave}
+						@drop=${this.handleDrop}>
+						<label for="dataset-file">
+							${this.labels.file ||
+							'Click to upload or drag and drop your dataset here.'}
+						</label>
+						<label class="file-picker">
+							<span class="file-picker-button">Select file</span>
+							<input
+								type="file"
+								id="dataset-file"
+								name="dataset"
+								accept=".csv,text/csv"
+								?disabled=${this.busy}
+								@change=${this.handleFileChange} />
+						</label>
+						<p class="requirements">
+							<small>${this.labels.requirements || 'Must be .csv format.'}</small>
+						</p>
+					</section>
+				</div>
 			</dialog>
 		`;
 	}

@@ -573,7 +573,8 @@ export const parityMap: ParityEntry[] = [
 		mockupSelector: '.file-picker-button',
 		appRoute: '/data',
 		appSelector: 'app-upload-dataset-dialog .file-picker-button',
-		properties: ['display', 'border-radius', 'background-color', 'color', 'font-weight']
+		properties: ['display', 'border-radius', 'background-color', 'color', 'font-weight'],
+		deviations: { color: { value: 'rgb(109, 96, 86)', register: 'A11Y-03' } }
 	},
 	{
 		id: 'preview-header',

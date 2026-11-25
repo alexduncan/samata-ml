@@ -168,43 +168,6 @@ export class AppDataView extends LitElement {
 				padding-block: 1rem;
 				color: var(--stone-700);
 			}
-
-			dialog.change-dataset-modal {
-				box-shadow: var(--shadow-deep);
-				border: 1.5px solid var(--stone-200);
-				border-radius: 1rem;
-				background-color: var(--surface);
-				padding: 1.5rem;
-				inline-size: min(32rem, calc(100% - 2rem));
-				max-inline-size: none;
-				max-block-size: calc(100dvh - 2rem);
-				overflow: auto;
-				color: var(--stone-800);
-			}
-
-			.modal-header h2 {
-				margin: 0;
-				color: var(--stone-900);
-				font-weight: 600;
-				font-size: 1.25rem;
-			}
-
-			.modal-body {
-				margin-block: 1rem;
-				color: var(--stone-700);
-				line-height: 1.5;
-			}
-
-			.modal-footer {
-				display: flex;
-				justify-content: flex-end;
-				gap: 0.75rem;
-			}
-
-			.error-notice {
-				margin-block-start: 0.5rem;
-				color: var(--red-700);
-			}
 		`
 	];
 
@@ -714,23 +677,26 @@ export class AppDataView extends LitElement {
 				@app-column-details-close=${this.handleColumnDetailsClose}></app-column-details>
 
 			<dialog
-				class="modal change-dataset-modal"
+				class="confirm-dialog change-dataset-modal"
 				aria-labelledby="change-dataset-title"
+				closedby=${this.changeDatasetBusy || this.changeDatasetPending
+					? 'none'
+					: 'closerequest'}
 				@cancel=${this.handleChangeDatasetDialogNativeClose}
 				@close=${this.handleChangeDatasetDialogNativeClose}>
-				<div class="modal-header">
+				<div class="confirm-header">
 					<h2 id="change-dataset-title">Change Dataset</h2>
 				</div>
-				<div class="modal-body">
+				<div class="confirm-body">
 					<p>
 						Are you sure you want to change the dataset? Any configured target or models
 						will be discarded.
 					</p>
 					${this.changeDatasetError
-						? html`<p role="alert" class="error-notice">${this.changeDatasetError}</p>`
+						? html`<p role="alert">${this.changeDatasetError}</p>`
 						: nothing}
 				</div>
-				<div class="modal-footer">
+				<div class="confirm-footer">
 					<button
 						type="button"
 						class="btn"

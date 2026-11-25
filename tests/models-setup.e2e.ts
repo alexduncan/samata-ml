@@ -494,7 +494,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		});
 		await bnbDesc.click();
 		await expect(descDialog).toBeVisible();
-		await descDialog.locator('button.close-btn').click();
+		await descDialog.locator('button.btn-icon').click();
 		await expect(descDialog).not.toBeVisible();
 		await expect.poll(() => focusRestored.evaluate((restored) => restored())).toBe(true);
 		await focusRestored.dispose();

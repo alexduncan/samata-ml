@@ -123,6 +123,25 @@ async function outline(heading: Locator) {
 	});
 }
 
+test('DLG-HARM-1: welcome focuses Get Started without a browser autofocus diagnostic', async ({
+	page
+}) => {
+	const diagnostics: string[] = [];
+	page.on('console', (message) => {
+		if (message.text().includes('Autofocus processing was blocked')) {
+			diagnostics.push(message.text());
+		}
+	});
+	await page.goto('/data');
+	const dialog = page.locator('app-welcome-modal dialog.modal');
+	await expect(dialog).toBeVisible();
+	await expect(
+		dialog.locator('.modal-content').getByRole('button', { name: 'Get Started' })
+	).toBeFocused();
+	await dismissWelcomeModal(page);
+	expect(diagnostics).toEqual([]);
+});
+
 test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 	test.beforeEach(async ({ page }) => {
 		// Start with clean state

@@ -13,7 +13,7 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 				.locator('app-sidebar')
 				.getByRole('link', { name: 'help', exact: true });
 			const dialog = page.getByRole('dialog', { name: 'Help & Guide' });
-			const article = dialog.locator('.modal-body');
+			const article = dialog.locator('.modal-content');
 
 			await help.focus();
 			await page.keyboard.press('Enter');
@@ -52,7 +52,7 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		await expect(heading).toHaveAttribute('dir', 'ltr');
 		await expect(modal).toHaveAccessibleName('Privacy Policy');
 
-		const body = modal.locator('.modal-body');
+		const body = modal.locator('.modal-content');
 		await expect(body).toHaveAttribute('lang', 'en');
 		await expect(body).toHaveAttribute('dir', 'ltr');
 		await expect(body).toContainText('Complete privacy is the only option.');
@@ -70,7 +70,7 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 			modal.getByRole('heading', { name: 'Help & Guide', exact: true })
 		).toBeVisible();
 
-		const items = modal.locator('.modal-body ol > li');
+		const items = modal.locator('.modal-content ol > li');
 		await expect(items).toHaveCount(4);
 		await expect(items.nth(0)).toContainText('Load Data:');
 		await expect(items.nth(1)).toContainText('Set Target:');
@@ -97,7 +97,7 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 
 		await page.locator('app-sidebar footer a[href="/about"]').click();
 		await expect(modal).toBeVisible();
-		const externalLink = modal.locator('.modal-body a[href="https://example.org"]');
+		const externalLink = modal.locator('.modal-content a[href="https://example.org"]');
 		await expect(externalLink).toHaveAttribute('target', '_blank');
 		await expect(externalLink).toHaveAttribute('rel', 'noopener noreferrer');
 	});
@@ -208,7 +208,7 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		await expect(
 			modal.getByRole('heading', { name: 'Cross-Validation', exact: true })
 		).toBeVisible();
-		const article = modal.locator('.modal-body');
+		const article = modal.locator('.modal-content');
 		for (const text of [
 			'80% for training and 20% for testing',
 			'stratified',
@@ -254,14 +254,14 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		const modal = page.locator('app-content-modal dialog');
 		await expect(modal).toBeVisible();
 		await expect(modal.locator('h2')).toHaveText('Privacy Policy');
-		await expect(modal.locator('.modal-body')).toContainText(
+		await expect(modal.locator('.modal-content')).toContainText(
 			'Complete privacy is the only option.'
 		);
 
 		// Wait past the delayed /about response to confirm it does not overwrite /privacy
 		await page.waitForTimeout(450);
 		await expect(modal.locator('h2')).toHaveText('Privacy Policy');
-		await expect(modal.locator('.modal-body')).not.toContainText(
+		await expect(modal.locator('.modal-content')).not.toContainText(
 			'browser-first machine learning pipeline'
 		);
 
@@ -277,10 +277,10 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		await page.waitForTimeout(450);
 		await expect(modal).toBeVisible();
 		await expect(modal.locator('h2')).toHaveText('Privacy Policy');
-		await expect(modal.locator('.modal-body')).toContainText(
+		await expect(modal.locator('.modal-content')).toContainText(
 			'Complete privacy is the only option.'
 		);
-		await expect(modal.locator('.modal-body')).not.toContainText(
+		await expect(modal.locator('.modal-content')).not.toContainText(
 			'browser-first machine learning pipeline'
 		);
 
@@ -288,7 +288,7 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		await page.goBack(); // back to /about settles cleanly
 		await expect(modal).toBeVisible();
 		await expect(modal.locator('h2')).toHaveText('About samatā.ml');
-		await expect(modal.locator('.modal-body')).toContainText(
+		await expect(modal.locator('.modal-content')).toContainText(
 			'browser-first machine learning pipeline'
 		);
 	});

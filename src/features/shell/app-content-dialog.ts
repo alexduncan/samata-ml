@@ -1,5 +1,6 @@
 import { css, html, LitElement, nothing, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { observeDialogHeader } from '../../common/dom/dialog-header';
 import { buttonStyles } from '../../styles/button.styles';
 import { dialogStyles } from '../../styles/dialog.styles';
 
@@ -46,6 +47,8 @@ export class AppContentDialog extends LitElement {
 	/** @internal */
 	private hasSynchronisedOpen = false;
 	/** @internal */
+	private stopHeaderObservation?: () => void;
+	/** @internal */
 	private get dialogElement(): HTMLDialogElement | null {
 		return this.renderRoot?.querySelector('dialog') ?? null;
 	}
@@ -60,13 +63,6 @@ export class AppContentDialog extends LitElement {
 			:host([hidden]) {
 				display: none;
 			}
-			.modal-header h2 {
-				min-inline-size: 0;
-				overflow-wrap: anywhere;
-			}
-			.modal-header button {
-				flex-shrink: 0;
-			}
 		`
 	];
 
@@ -76,6 +72,7 @@ export class AppContentDialog extends LitElement {
 	}
 
 	override disconnectedCallback(): void {
+		this.stopHeaderObservation?.();
 		if (this.dialogElement?.open) {
 			this.synchronisedCloses++;
 			this.dialogElement.close();
@@ -103,8 +100,11 @@ export class AppContentDialog extends LitElement {
 	private synchroniseOpen(): void {
 		const dialog = this.dialogElement;
 		if (!this.isConnected || !dialog) return;
-		if (this.open && !dialog.open) dialog.showModal();
-		else if (!this.open && dialog.open) {
+		if (this.open && !dialog.open) {
+			this.stopHeaderObservation?.();
+			dialog.showModal();
+			this.stopHeaderObservation = observeDialogHeader(dialog);
+		} else if (!this.open && dialog.open) {
 			this.synchronisedCloses++;
 			dialog.close();
 		}
@@ -135,7 +135,10 @@ export class AppContentDialog extends LitElement {
 		const lang = this.status === 'ready' ? this.contentLang || nothing : nothing;
 		const dir = this.status === 'ready' ? this.contentDir || nothing : nothing;
 		return html`
-			<dialog aria-labelledby="content-dialog-title" @close=${this.handleNativeClose}>
+			<dialog
+				class="modal"
+				aria-labelledby="content-dialog-title"
+				@close=${this.handleNativeClose}>
 				<header class="modal-header">
 					<h2 id="content-dialog-title" lang=${lang} dir=${dir}>${this.heading}</h2>
 					<button
@@ -158,7 +161,7 @@ export class AppContentDialog extends LitElement {
 					</button>
 				</header>
 				<div
-					class="modal-body"
+					class="modal-content"
 					lang=${lang}
 					dir=${dir}
 					aria-busy=${this.status === 'loading' ? 'true' : 'false'}>

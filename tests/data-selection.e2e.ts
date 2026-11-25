@@ -169,7 +169,7 @@ test.describe('Dataset Selection & Datasheets (DATA-SEL-1 .. DATA-SEL-3)', () =>
 		await expect(content).toBeVisible();
 
 		// Close via close button and check focus returned to datasheetBtn
-		const closeBtn = dialog.locator('button.close-btn');
+		const closeBtn = dialog.locator('button.btn-icon');
 		await closeBtn.click();
 
 		await expect(dialog).not.toBeVisible();
@@ -197,7 +197,7 @@ test.describe('Dataset Selection & Datasheets (DATA-SEL-1 .. DATA-SEL-3)', () =>
 		await expect(dialog.locator('.modal-content')).toBeVisible();
 
 		// Close modal
-		await dialog.locator('button.close-btn').click();
+		await dialog.locator('button.btn-icon').click();
 		await expect(dialog).not.toBeVisible();
 	});
 

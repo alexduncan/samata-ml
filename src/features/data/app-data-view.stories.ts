@@ -44,6 +44,11 @@ export const PublicationPending: Story = {
 		const dialog = view.shadowRoot!.querySelector<HTMLDialogElement>(
 			'dialog.change-dataset-modal'
 		)!;
+		await expect(dialog).toHaveClass('confirm-dialog');
+		expect(view.shadowRoot!.activeElement).toBe(
+			within(dialog).getByRole('button', { name: 'Cancel' })
+		);
+		await expect(dialog.querySelector('.confirm-body')).toBeVisible();
 		await userEvent.click(within(dialog).getByRole('button', { name: 'Change Dataset' }));
 		await expect(
 			await within(dialog).findByRole('button', { name: 'Retry saving' })

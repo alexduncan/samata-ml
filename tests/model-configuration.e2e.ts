@@ -502,7 +502,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 			await openConfigure(page);
 			const help = page.locator('app-model-builder-view a[href="/help/configure-model"]');
 			const dialog = page.getByRole('dialog', { name: 'What do these settings mean?' });
-			const article = dialog.locator('.modal-body');
+			const article = dialog.locator('.modal-content');
 			await help.focus();
 			await page.keyboard.press('Enter');
 			await expect(article).toContainText('The exact stopping check depends on the solver.');

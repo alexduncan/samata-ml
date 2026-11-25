@@ -109,6 +109,8 @@ test.describe('Presentational content dialog', () => {
 	}) => {
 		await page.getByRole('button', { name: 'Open content', exact: true }).click();
 		const dialog = page.getByRole('dialog', { name: 'Privacy information', exact: true });
+		await expect(dialog).toHaveClass('modal');
+		await expect(dialog.locator(':scope > .modal-content')).toBeVisible();
 		await expect(dialog.getByRole('heading', { level: 2 })).toHaveText('Privacy information');
 		await expect(dialog.locator('h1')).toHaveCount(0);
 		await expect(dialog).not.toHaveAttribute('role');
@@ -123,6 +125,102 @@ test.describe('Presentational content dialog', () => {
 		expect(result.violations).toEqual([]);
 	});
 
+	test('DLG-STICKY-1: a wrapped RTL title stays pinned without covering forward or reverse keyboard focus', async ({
+		page,
+		browserName
+	}) => {
+		const tab = browserName === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab';
+		await page.setViewportSize({ width: 320, height: 540 });
+		const content = page.locator('app-content-dialog');
+		await content.evaluate(async (element: AppContentDialog) => {
+			document.documentElement.dir = 'rtl';
+			element.heading = 'معلومات مهمة جداً عن مجموعة البيانات ونتائج التحليل';
+			element.contentLang = 'ar';
+			element.contentDir = 'rtl';
+			const fragment = document.createDocumentFragment();
+			for (const label of ['الأول', 'الثاني', 'الثالث']) {
+				const paragraph = document.createElement('p');
+				paragraph.textContent = 'مراجعة النتائج ومعلومات مجموعة البيانات. '.repeat(14);
+				const button = document.createElement('button');
+				button.type = 'button';
+				button.textContent = label;
+				fragment.append(paragraph, button);
+			}
+			element.content = fragment;
+			await element.updateComplete;
+		});
+		await page.getByRole('button', { name: 'Open content', exact: true }).click();
+		const dialog = page.locator('app-content-dialog dialog.modal');
+		const header = dialog.locator('.modal-header');
+		const second = dialog.getByRole('button', { name: 'الثاني', exact: true });
+		await expect(header).toHaveCSS('position', 'sticky');
+		await expect(header).toHaveCSS(
+			'background-color',
+			await dialog.evaluate((element) => getComputedStyle(element).backgroundColor)
+		);
+		await expect(dialog).not.toHaveAttribute('data-header-unpinned');
+		await expect(dialog.getByRole('heading', { level: 2 })).toHaveAttribute('dir', 'rtl');
+		const pinnedOffsets = await dialog.evaluate((element) => {
+			const title = element.querySelector('.modal-header')!;
+			return [150, 300].map((offset) => {
+				element.scrollTop = offset;
+				return title.getBoundingClientRect().top - element.getBoundingClientRect().top;
+			});
+		});
+		expect(pinnedOffsets[0]).toBeCloseTo(pinnedOffsets[1]!, 0);
+		const border = await dialog.evaluate((element) =>
+			Number.parseFloat(getComputedStyle(element).borderBlockStartWidth)
+		);
+		expect(pinnedOffsets[0]).toBeCloseTo(border, 0);
+
+		const expectVisibleFocus = async () => {
+			await expect(second).toBeFocused();
+			await expect
+				.poll(() =>
+					dialog.evaluate((element) => {
+						const bounds = element.getBoundingClientRect();
+						const title = element
+							.querySelector('.modal-header')!
+							.getBoundingClientRect();
+						const active = element.getRootNode() as ShadowRoot;
+						const button = active.activeElement!.getBoundingClientRect();
+						return {
+							scrolled: element.scrollTop > 0,
+							clearOfHeader: button.top >= title.bottom,
+							withinScrollport: button.bottom <= bounds.bottom
+						};
+					})
+				)
+				.toEqual({
+					scrolled: true,
+					clearOfHeader: true,
+					withinScrollport: true
+				});
+		};
+		await dialog.getByRole('button', { name: 'الأول', exact: true }).focus();
+		await page.keyboard.press(tab);
+		await expectVisibleFocus();
+		await dialog.getByRole('button', { name: 'الثالث', exact: true }).focus();
+		await page.keyboard.press(`Shift+${tab}`);
+		await expectVisibleFocus();
+
+		await page.setViewportSize({ width: 320, height: 240 });
+		await content.evaluate(async (element: AppContentDialog) => {
+			element.heading = element.heading.repeat(5);
+			await element.updateComplete;
+		});
+		await expect(dialog).toHaveAttribute('data-header-unpinned', '');
+		await expect(header).toHaveCSS('position', 'static');
+		await expect(dialog).toHaveCSS('scroll-padding-block-start', '0px');
+		await dialog.getByRole('button', { name: 'الثالث', exact: true }).focus();
+		await expect(dialog.getByRole('button', { name: 'الثالث', exact: true })).toBeInViewport();
+		await dialog.getByRole('button', { name: 'Close', exact: true }).focus();
+		await expect(dialog.getByRole('button', { name: 'Close', exact: true })).toBeInViewport();
+		await page.keyboard.press('Escape');
+		await expect(dialog).not.toHaveAttribute('data-header-unpinned');
+		await expect(dialog).toHaveCSS('scroll-padding-block-start', '0px');
+	});
+
 	test('CDLG-AC-4: language and direction apply to heading and body only while ready', async ({
 		page
 	}) => {
@@ -134,25 +232,25 @@ test.describe('Presentational content dialog', () => {
 			element.contentDir = 'rtl';
 			await element.updateComplete;
 		});
-		for (const selector of ['h2', '.modal-body']) {
+		for (const selector of ['h2', '.modal-content']) {
 			await expect(content.locator(selector)).not.toHaveAttribute('lang');
 			await expect(content.locator(selector)).not.toHaveAttribute('dir');
 		}
-		await expect(content.locator('.modal-body')).toHaveAttribute('aria-busy', 'true');
+		await expect(content.locator('.modal-content')).toHaveAttribute('aria-busy', 'true');
 		await content.evaluate(async (element: AppContentDialog) => {
 			element.status = 'ready';
 			await element.updateComplete;
 		});
-		for (const selector of ['h2', '.modal-body']) {
+		for (const selector of ['h2', '.modal-content']) {
 			await expect(content.locator(selector)).toHaveAttribute('lang', 'ar');
 			await expect(content.locator(selector)).toHaveAttribute('dir', 'rtl');
 		}
-		await expect(content.locator('.modal-body')).toHaveAttribute('aria-busy', 'false');
+		await expect(content.locator('.modal-content')).toHaveAttribute('aria-busy', 'false');
 		await content.evaluate(async (element: AppContentDialog) => {
 			element.status = 'error';
 			await element.updateComplete;
 		});
-		for (const selector of ['h2', '.modal-body']) {
+		for (const selector of ['h2', '.modal-content']) {
 			await expect(content.locator(selector)).not.toHaveAttribute('lang');
 			await expect(content.locator(selector)).not.toHaveAttribute('dir');
 		}
@@ -175,16 +273,18 @@ test.describe('Presentational content dialog', () => {
 				)
 			).toBe(2);
 			if (status === 'ready') {
-				await expect(content.locator('.modal-body p')).toHaveText('Safe content retained.');
-				await expect(content.locator('.modal-body a')).toHaveAttribute('href', '/data');
+				await expect(content.locator('.modal-content p')).toHaveText(
+					'Safe content retained.'
+				);
+				await expect(content.locator('.modal-content a')).toHaveAttribute('href', '/data');
 				expect(
 					await content.evaluate(
 						(element) =>
-							element.shadowRoot!.querySelector('.modal-body p') !==
+							element.shadowRoot!.querySelector('.modal-content p') !==
 							(window as unknown as ContentTestWindow).__contentSource.firstChild
 					)
 				).toBe(true);
-			} else await expect(content.locator('.modal-body p')).toHaveCount(0);
+			} else await expect(content.locator('.modal-content p')).toHaveCount(0);
 		}
 	});
 
@@ -260,7 +360,7 @@ test('CDLG-AC-8: a new reserved route survives the queued close from a Back tran
 	);
 	await expect(page).toHaveURL(/\/privacy$/);
 	await expect(page.locator('app-content-modal h2')).toHaveText('Privacy Policy');
-	await expect(page.locator('app-content-modal .modal-body')).toContainText(
+	await expect(page.locator('app-content-modal .modal-content')).toContainText(
 		'Complete privacy is the only option.'
 	);
 	await page.locator('app-content-modal .btn-icon').click();
@@ -274,7 +374,7 @@ test('CDLG-AC-3: loaded content uses the existing draft structure', async ({
 }, testInfo) => {
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await page.goto('/privacy');
-	await expect(page.locator('app-content-modal .modal-body')).toContainText(
+	await expect(page.locator('app-content-modal .modal-content')).toContainText(
 		'Complete privacy is the only option.'
 	);
 	const reference = await context.newPage();

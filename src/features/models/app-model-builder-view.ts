@@ -458,39 +458,6 @@ export class AppModelBuilderView extends LitElement {
 				color: var(--neutral-700);
 				font-style: italic;
 			}
-
-			/* Reopen confirmation modal */
-			dialog.confirm-dialog {
-				box-shadow: var(--shadow-deep);
-				border: 1.5px solid var(--stone-200);
-				border-radius: 1rem;
-				background-color: var(--surface);
-				padding: 1.5rem;
-				inline-size: min(32rem, calc(100% - 2rem));
-				max-inline-size: none;
-				max-block-size: calc(100dvh - 2rem);
-				overflow: auto;
-				color: var(--stone-800);
-			}
-
-			.confirm-header h2 {
-				margin: 0;
-				color: var(--stone-900);
-				font-weight: 600;
-				font-size: 1.25rem;
-			}
-
-			.confirm-body {
-				margin-block: 1rem;
-				color: var(--stone-700);
-				line-height: 1.5;
-			}
-
-			.confirm-footer {
-				display: flex;
-				justify-content: flex-end;
-				gap: 0.75rem;
-			}
 		`
 	];
 
@@ -540,7 +507,7 @@ export class AppModelBuilderView extends LitElement {
 	}
 
 	private get confirmDialogEl(): HTMLDialogElement | null {
-		return this.renderRoot?.querySelector('dialog.confirm-dialog') ?? null;
+		return this.renderRoot?.querySelector('dialog[data-confirm="reopen-section"]') ?? null;
 	}
 
 	override willUpdate(_changed: PropertyValues<this>): void {
@@ -2047,12 +2014,15 @@ export class AppModelBuilderView extends LitElement {
 			</app-model-description-dialog>
 
 			<!-- Reopen Confirmation Dialog -->
-			<dialog class="confirm-dialog" aria-labelledby="confirm-reopen-title">
+			<dialog
+				class="confirm-dialog"
+				data-confirm="reopen-section"
+				aria-labelledby="confirm-reopen-title">
 				<div class="confirm-header">
 					<h2 id="confirm-reopen-title">Confirm Reopening Section</h2>
 				</div>
 				<div class="confirm-body">
-					<p class="notification notification-alert">
+					<p>
 						Reopening this section will clear downstream completed steps. Your
 						selections will be kept.
 					</p>

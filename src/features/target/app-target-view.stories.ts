@@ -38,6 +38,10 @@ export const RemoteTraining: Story = {
 			)!
 		);
 		const dialog = view.shadowRoot!.querySelector<HTMLDialogElement>('dialog.confirm-dialog')!;
+		expect(view.shadowRoot!.activeElement).toBe(
+			within(dialog).getByRole('button', { name: 'Cancel' })
+		);
+		await expect(dialog.querySelector('.confirm-body .notification-alert')).toBeNull();
 		await userEvent.click(within(dialog).getByRole('button', { name: 'Change Target' }));
 		await expect(await within(dialog).findByText('Training in another tab')).toBeVisible();
 	}

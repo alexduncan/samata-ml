@@ -1,6 +1,7 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { buttonStyles } from '../../styles/button.styles';
+import { observeDialogHeader } from '../../common/dom/dialog-header';
 import { dialogStyles } from '../../styles/dialog.styles';
 
 /**
@@ -13,69 +14,7 @@ export class AppDatasheetDialog extends LitElement {
 		dialogStyles,
 		buttonStyles,
 		css`
-			dialog.modal {
-				box-shadow: var(--shadow-deep);
-				border: 1.5px solid var(--stone-200);
-				border-radius: 1rem;
-				background-color: var(--surface);
-				padding: 1.5rem;
-				inline-size: min(40rem, calc(100% - 2rem));
-				max-inline-size: none;
-				max-block-size: calc(100dvh - 2rem);
-				overflow: auto;
-				color: var(--stone-800);
-			}
-
-			.modal-header {
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				margin-block-end: 1rem;
-				border-block-end: 1px solid var(--stone-200);
-				padding-block-end: 1rem;
-
-				.header-titles {
-					display: flex;
-					flex-direction: column;
-					gap: 0.25rem;
-				}
-
-				.header-subtitle {
-					color: var(--stone-600);
-					font-weight: 500;
-					font-size: 0.875rem;
-				}
-
-				h2 {
-					margin: 0;
-					color: var(--stone-900);
-					font-weight: 600;
-					font-size: 1.5rem;
-				}
-			}
-
-			.close-btn {
-				cursor: pointer;
-				border: none;
-				border-radius: 0.375rem;
-				background: none;
-				padding: 0.5rem;
-				color: var(--stone-600);
-				font-size: 1.25rem;
-				line-height: 1;
-
-				&:hover {
-					background-color: var(--stone-100);
-					color: var(--stone-900);
-				}
-
-				&:focus-visible {
-					outline: 2px solid var(--focus-ring);
-					outline-offset: 2px;
-				}
-			}
-
-			.modal-content {
+			.datasheet-article {
 				color: var(--stone-900);
 				line-height: 1.6;
 
@@ -131,6 +70,12 @@ export class AppDatasheetDialog extends LitElement {
 	}
 
 	private invokerElement: HTMLElement | null = null;
+	private stopHeaderObservation?: () => void;
+
+	override disconnectedCallback(): void {
+		this.stopHeaderObservation?.();
+		super.disconnectedCallback();
+	}
 
 	/** Whether the modal dialog is open. */
 	@property({ type: Boolean })
@@ -171,6 +116,10 @@ export class AppDatasheetDialog extends LitElement {
 					this.dialogElement?.showModal();
 				} catch {
 					if (this.dialogElement) this.dialogElement.open = true;
+				}
+				if (this.dialogElement?.open) {
+					this.stopHeaderObservation?.();
+					this.stopHeaderObservation = observeDialogHeader(this.dialogElement);
 				}
 			} else if (!this.open && this.dialogElement?.open) {
 				this.dialogElement.close();
@@ -241,7 +190,7 @@ export class AppDatasheetDialog extends LitElement {
 		}
 
 		if (this.status === 'ready' && this.content) {
-			return html`<section class="modal-content">${this.content}</section>`;
+			return html`<section class="datasheet-article">${this.content}</section>`;
 		}
 
 		return html`<div class="status-box"><p>No datasheet available.</p></div>`;
@@ -251,7 +200,6 @@ export class AppDatasheetDialog extends LitElement {
 		return html`
 			<dialog
 				class="modal"
-				aria-modal="true"
 				aria-labelledby="datasheet-title"
 				@close=${this.handleNativeClose}
 				@cancel=${this.handleNativeClose}>
@@ -262,13 +210,24 @@ export class AppDatasheetDialog extends LitElement {
 					</div>
 					<button
 						type="button"
-						class="close-btn"
+						class="btn-icon"
 						aria-label=${this.closeLabel || 'Close modal'}
 						@click=${this.handleCloseClick}>
-						✕
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="1.5"
+							aria-hidden="true"
+							focusable="false">
+							<line x1="18" y1="6" x2="6" y2="18"></line>
+							<line x1="6" y1="6" x2="18" y2="18"></line>
+						</svg>
 					</button>
 				</header>
-				${this.renderContent()}
+				<div class="modal-content">${this.renderContent()}</div>
 			</dialog>
 		`;
 	}

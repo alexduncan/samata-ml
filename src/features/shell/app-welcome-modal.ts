@@ -1,6 +1,7 @@
 import { StoreController } from '@nanostores/lit';
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement } from 'lit/decorators.js';
+import { observeDialogHeader } from '../../common/dom/dialog-header';
 import {
 	$betaDeployment,
 	initBetaTelemetry,
@@ -32,6 +33,7 @@ export class AppWelcomeModal extends LitElement {
 	private readonly route = new StoreController(this, $route);
 	private readonly translations = new StoreController(this, messages);
 	private synchronisedCloses = 0;
+	private stopHeaderObservation?: () => void;
 
 	private get dialogElement(): HTMLDialogElement | null {
 		return this.renderRoot.querySelector('dialog');
@@ -106,14 +108,18 @@ export class AppWelcomeModal extends LitElement {
 			!dismissedOrAccepted && (route.kind === 'workflow' || route.kind === 'root');
 		const dialog = this.dialogElement;
 		if (!dialog) return;
-		if (shouldOpen && !dialog.open) dialog.showModal();
-		else if (!shouldOpen && dialog.open) {
+		if (shouldOpen && !dialog.open) {
+			this.stopHeaderObservation?.();
+			dialog.showModal();
+			this.stopHeaderObservation = observeDialogHeader(dialog);
+		} else if (!shouldOpen && dialog.open) {
 			this.synchronisedCloses++;
 			dialog.close();
 		}
 	}
 
 	override disconnectedCallback(): void {
+		this.stopHeaderObservation?.();
 		if (this.dialogElement?.open) {
 			this.synchronisedCloses++;
 			this.dialogElement.close();
@@ -163,6 +169,7 @@ export class AppWelcomeModal extends LitElement {
 		const isBeta = this.betaDeployment.value;
 		return html`
 			<dialog
+				class="modal"
 				aria-labelledby="welcome-title"
 				aria-describedby=${isBeta ? 'welcome-beta' : nothing}
 				@cancel=${this.handleCancel}
@@ -172,22 +179,24 @@ export class AppWelcomeModal extends LitElement {
 						${t.brand} <span class="chiclet chiclet-amber beta">${t.beta}</span>
 					</h2>
 				</header>
-				<p class="lead">${t.lead}</p>
-				<p class="body">${t.body}</p>
-				${isBeta
-					? html`<p id="welcome-beta" class="beta-notice">
-							${t.betaNotice}
-							<a href="/privacy">${t.privacyLink}</a>
-						</p>`
-					: nothing}
-				<div class="modal-actions">
-					<button
-						class="btn btn-primary"
-						type="button"
-						autofocus
-						@click=${this.handleGetStarted}>
-						${t.getStarted}
-					</button>
+				<div class="modal-content">
+					<p class="lead">${t.lead}</p>
+					<p class="body">${t.body}</p>
+					${isBeta
+						? html`<p id="welcome-beta" class="beta-notice">
+								${t.betaNotice}
+								<a href="/privacy">${t.privacyLink}</a>
+							</p>`
+						: nothing}
+					<div class="modal-actions">
+						<button
+							class="btn btn-primary"
+							type="button"
+							autofocus
+							@click=${this.handleGetStarted}>
+							${t.getStarted}
+						</button>
+					</div>
 				</div>
 			</dialog>
 		`;
