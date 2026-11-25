@@ -338,3 +338,25 @@ Warn a user when trainibg a later model that it isn't good to compare a model tr
 ### Move Remote Dataset Notices
 
 Move all `<p class="remote-notice">Downloaded from the source when loaded. Internet connection required.</p>` to a `<div class="notification notification-info">When loaded, this dataset will be downloaded from {link}.</div>` inside the modal displaying dataset card.
+
+### Sidebar Improvements
+
+- Update `.step-value` to `text-overflow: ellipsis;overflow: hidden;white-space: nowrap;` to prevent it from wrapping.
+- For pre-configured datasets in `/content/datasets/` the `displayName`.
+
+
+- Why does "Cancel Training" take so long?
+
+### Add Delete Button to Project
+
+```
+<section class="project">
+	<h4>Project</h4>
+	<span class="project-name">New Project</span>
+	<button class="btn-icon project-settings" aria-label="Project settings">
+		<svg class="icon" aria-hidden="true" focusable="false">
+			<use href="#delete"></use>
+		</svg>
+	</button>
+</section>
+```
