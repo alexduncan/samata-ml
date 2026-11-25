@@ -96,6 +96,8 @@ Mockup CSS files map to application locations as follows:
 
 A rule used across roots lives in a shared module ([COMPONENTS.md §6.2](COMPONENTS.md#62-shared-style-modules)); a feature-private rule remains with its owner. `css/style.css` imports only root/base. Obsolete document copies of badges/button/card/dot/dropzone/loading/modal/notifications/sidebar/steps/table/train-model are absent. Table, notification and train-model sheets retain document adoption and feature consumers. Page Header owns the shared header grid and composes `headingFocusStyles`; existing feature-private headers retain their appearance and adopt only the heading outline. Sidebar rules live in `src/features/shell/app-sidebar.ts`; its local static dot has no general dot-primitive API. Upload/dropzone rules remain feature-owned.
 
+The [dialog sheet](../src/styles/dialog.styles.ts) supplies the content-modal and confirmation geometry. Draft-only content surfaces use those shared layouts and retain existing prose and controls until styling is approved.
+
 Below 50rem the sidebar becomes static above main, with auto inline/min-block sizes and reset fixed insets; main has zero sidebar margin. There is one navigation tree. At desktop, main retains content-box sizing, 2rem padding, sidebar-width margin and viewport-minus-4rem minimum block size; document scrolling remains the restoration owner.
 
 ## 4. Translation rules (allowed without a register entry)
@@ -117,23 +119,24 @@ Every plan or component spec that ports mockup CSS lists its "Changes from the m
 
 ### 5.1 A11Y register: mockup contrast failures
 
-Measured from token hex values. The user approved the A11Y values on 2026-11-12 (Q1).
+Ratios use the design token hex values. The user approved the original contrast decisions on 2026-11-12 (Q1). Later entries record contrast corrections using the same tokens.
 
-| ID      | Where (mockup)                                           | Mockup pair (ratio)                                                  | Approved app value (ratio)                                            | WCAG          |
-| :------ | :------------------------------------------------------- | :------------------------------------------------------------------- | :-------------------------------------------------------------------- | :------------ |
-| A11Y-01 | `.btn` text (00, 01-1, 01-2, 01-3, 03-2)                 | stone-600 on stone-50 (3.97)                                         | stone-700 (5.88)                                                      | 1.4.3         |
-| A11Y-02 | `.sidebar footer` text and separators (all pages)        | stone-600 on stone-150 (3.66)                                        | stone-700 (5.42); links stay stone-800 (8.79)                         | 1.4.3         |
-| A11Y-03 | `.file-picker-button` (01-3)                             | stone-600 on stone-150 (3.66)                                        | stone-700 (5.42)                                                      | 1.4.3         |
-| A11Y-04 | `.badge-amber` "beta" (00, 03-3)                         | white on amber-500 (2.15)                                            | stone-900 on amber-500 (6.60), as `card.md` chiclet-amber             | 1.4.3         |
-| A11Y-05 | `.card-text` (00, 01-x, 03-2)                            | stone-600 on white (4.10)                                            | Already decided in `card.md`: stone-900 (14.17). Not reopened.        | 1.4.3         |
-| A11Y-06 | `.train-step-pending` text (03-2, 03-3)                  | stone-500 on stone-100 (2.61)                                        | stone-700 (5.67)                                                      | 1.4.3         |
-| A11Y-07 | `input` and `select` boundary (base.css)                 | stone-300 border on stone-100 (1.30), field on stone-50 page         | stone-600 border (3.83 on stone-100, 3.97 on stone-50)                | 1.4.11        |
-| A11Y-08 | `select:focus-visible` outline and `input:focus-visible` | 3px blue-300 on stone-50 (1.74); input focus is a border change only | 2px `outline` in `--focus-ring` (blue-700, 6.48), offset 2px          | 1.4.11, 2.4.7 |
-| A11Y-09 | Current sidebar step (`steps.css` `[aria-current]`)      | colour change only (border, background, text)                        | also `font-weight: 600` on `.step-label`                              | 1.4.1         |
-| A11Y-10 | `.btn` and step links have no focus style                | none                                                                 | translation rule (§4) focus outline                                   | 2.4.7         |
-| A11Y-11 | Fold matrix wrapper and Section 4 links (03-5 draft)     | Browser-default focus indicator                                      | 2px `--focus-ring` outline with 2px offset, visible in forced colours | 2.4.7         |
-| A11Y-12 | Builder Section 5 `.pending-notice`                      | Previous app token `--stone-600` on white (4.10:1)                   | `--neutral-700` on white (10.35:1)                                    | 1.4.3         |
-| A11Y-13 | Sample download notice                                   | stone-600 on stone-50 (3.96)                                         | stone-700 (5.88 on stone-50; 6.07 on white)                           | 1.4.3         |
+| ID      | Where (mockup)                                                                | Mockup pair (ratio)                                                  | Approved app value (ratio)                                            | WCAG          |
+| :------ | :---------------------------------------------------------------------------- | :------------------------------------------------------------------- | :-------------------------------------------------------------------- | :------------ |
+| A11Y-01 | `.btn` text (00, 01-1, 01-2, 01-3, 03-2)                                      | stone-600 on stone-50 (3.97)                                         | stone-700 (5.88)                                                      | 1.4.3         |
+| A11Y-02 | `.sidebar footer` text and separators (all pages)                             | stone-600 on stone-150 (3.66)                                        | stone-700 (5.42); links stay stone-800 (8.79)                         | 1.4.3         |
+| A11Y-03 | `.file-picker-button` (01-3)                                                  | stone-600 on stone-150 (3.66)                                        | stone-700 (5.42)                                                      | 1.4.3         |
+| A11Y-04 | `.badge-amber` "beta" (00, 03-3)                                              | white on amber-500 (2.15)                                            | stone-900 on amber-500 (6.60), as `card.md` chiclet-amber             | 1.4.3         |
+| A11Y-05 | `.card-text` (00, 01-x, 03-2)                                                 | stone-600 on white (4.10)                                            | Already decided in `card.md`: stone-900 (14.17). Not reopened.        | 1.4.3         |
+| A11Y-06 | `.train-step-pending` text (03-2, 03-3)                                       | stone-500 on stone-100 (2.61)                                        | stone-700 (5.67)                                                      | 1.4.3         |
+| A11Y-07 | `input` and `select` boundary (base.css)                                      | stone-300 border on stone-100 (1.30), field on stone-50 page         | stone-600 border (3.83 on stone-100, 3.97 on stone-50)                | 1.4.11        |
+| A11Y-08 | `select:focus-visible` outline and `input:focus-visible`                      | 3px blue-300 on stone-50 (1.74); input focus is a border change only | 2px `outline` in `--focus-ring` (blue-700, 6.48), offset 2px          | 1.4.11, 2.4.7 |
+| A11Y-09 | Current sidebar step (`steps.css` `[aria-current]`)                           | colour change only (border, background, text)                        | also `font-weight: 600` on `.step-label`                              | 1.4.1         |
+| A11Y-10 | `.btn` and step links have no focus style                                     | none                                                                 | translation rule (§4) focus outline                                   | 2.4.7         |
+| A11Y-11 | Fold matrix wrapper and Section 4 links (03-5 draft)                          | Browser-default focus indicator                                      | 2px `--focus-ring` outline with 2px offset, visible in forced colours | 2.4.7         |
+| A11Y-12 | Builder Section 5 `.pending-notice`                                           | Previous app token `--stone-600` on white (4.10:1)                   | `--neutral-700` on white (10.35:1)                                    | 1.4.3         |
+| A11Y-13 | Sample download notice                                                        | stone-600 on stone-50 (3.96)                                         | stone-700 (5.88 on stone-50; 6.07 on white)                           | 1.4.3         |
+| A11Y-14 | Datasheet subtitle, model description fallback notice and upload requirements | stone-600 on white (4.10) and blue-100 (3.36)                        | stone-700 (6.07 on white and 4.98 on blue-100)                        | 1.4.3         |
 
 Disabled controls are exempt from 1.4.3, but they must stay legible ([button.md Q3](components/button.md#q3)). The "Training progress" label hit on `03-2` and `03-3` is a false positive: it sits in a `hidden` container.
 
@@ -161,6 +164,8 @@ Measured by DOM audit of the mockups.
 Shell brand/project/current-link/dialog/status/decorative-icon rules apply as SEM-01/02/03/04/08/09. Shared buttons, footer/current labels and amber badge apply A11Y-01/02/04/09/10. These completed shell translations do not claim all feature/mockup defects are repaired.
 
 ### 5.3 Behaviour-driven UI deviations
+
+The mapped welcome dialog retains its reference box, padding and unscrolled layout. When a content modal scrolls, its opaque header aligns to the inner block-start border and measured scroll padding keeps focused content visible. A header larger than half the scrollport scrolls with the content. The three draft-only confirmation surfaces share a 32rem maximum width and a plain body with the safe action first.
 
 | ID           | Where (mockup)                     | Mockup behaviour                                                           | Approved app behaviour                                                                                                         | Reason                                                                                                                    |
 | :----------- | :--------------------------------- | :------------------------------------------------------------------------- | :----------------------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------ |

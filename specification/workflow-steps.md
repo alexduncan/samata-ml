@@ -41,7 +41,7 @@ Dataset preview displays after successful loading of a dataset by:
 
 The dataset preview view displays:
 
-- A page header with the dataset name, row/column counts, and a "Change Dataset" button. Clicking "Change Dataset" opens a confirmation modal requiring explicit confirmation before discarding the active dataset. The confirmation cancels local training before the deletion and waits for its acknowledgement. If another tab is training, the confirmation stays open with an explanation. After a committed deletion that could not be published, Retry saving finishes the same change. New data enters preview after the staged dataset pointer is acknowledged.
+- A page header with the dataset name, row and column counts, and a "Change Dataset" button. The button opens the plain-text `dialog.confirm-dialog`, with Cancel first. Confirmation cancels local training before the deletion and waits for its acknowledgement. If another tab is training, the confirmation stays open with an explanation. After a committed deletion that could not be published, Retry saving finishes the same change. The selection view loads the catalogue when entered from a reloaded preview and offers Retry if the request fails. New data enters preview after acknowledgement of the staged dataset pointer.
 - A virtual table (`ui-virtual-table`) rendering a 10,000-row active segment with segment navigation controls and "Go to row" input. Up to 10,000,000 rows can be browsed without unbounded DOM expansion.
 - An inspector overlay panel (`app-column-details`) on the right when clicking a column header. The existing Help & Guide explains CSV, column types and the statistics shown here.
     - Column name, data type, and description.
@@ -93,7 +93,7 @@ The user chooses the target variable to predict from their loaded dataset. Help 
 ### Model Discard Warning and Confirmation
 
 - If any models exist (`models.length > 0`), an alert notification displays above the table: _"Changing the target will reset all existing models."_
-- Clicking "Set as Target" for a different column opens a native `<dialog class="confirm-dialog">` requiring explicit confirmation before the protected target change discards existing models and results. The dialog stays usable when another tab is training. A committed change awaiting publication keeps the dialog open with Retry saving and disables duplicate deletion.
+- Clicking "Set as Target" for a different column opens a plain-text native `dialog.confirm-dialog` with Cancel first. The protected target change discards existing models and results after explicit confirmation. The dialog stays usable when another tab is training. A committed change awaiting publication keeps the dialog open with Retry saving and disables duplicate deletion.
 - Dismissing the modal (via Cancel or Escape) retains all existing models and restores focus to the invoking button.
 - If the dataset is changed while the modal is open, the modal closes safely without applying pending mutations.
 - Clicking the button for the column that is already the current target is a no-op that never displays confirmation or alters models.
@@ -141,7 +141,7 @@ The UI renders candidate models:
 - Selection updates `model.modelId` and leaves Section 1 active. Choosing the current ID preserves setup data. Reload restores the choice from the saved ID.
 - A primary "Continue" button in `.section-actions` completes Section 1, initialises candidate features once via `initialiseFeatureSelection`, and activates Section 2.
 - The "Model Description" button opens an `<app-model-description-dialog>` presenting authored Markdown content or falling back to library JSON metadata if unauthored.
-- Once completed, the section header displays an "Edit" button (`reopen-btn`). Clicking "Edit" prompts a native modal confirmation; confirming clears downstream completions while preserving selections.
+- Once completed, the section header displays an "Edit" button (`reopen-btn`). Reopening with downstream completions prompts a plain-text `dialog.confirm-dialog` with Cancel first. Confirming clears downstream completions while preserving selections.
 
 ### 2. Select Features
 
@@ -152,7 +152,7 @@ Displays a tabular selection of all dataset columns in canonical dataset order:
 - **Advisory columns:** Identifier columns and target candidate leaky columns default unticked with an advisory note, but the user may deliberately override and check them.
 - **Selection rules:** At least one feature must be selected to proceed. Initial features default to all eligible columns once on completing Section 1; intentional empty or subset selections persist across page reload.
 - Clicking "Continue" completes Section 2 and records `completedSteps: ['choose-model', 'select-features']`.
-- Once completed, an "Edit" button allows reopening Section 2 after native modal confirmation.
+- Once completed, an "Edit" button allows reopening Section 2. If a later section is complete, it uses the same Reopen Section confirmation.
 
 ### 3. Configure Model
 

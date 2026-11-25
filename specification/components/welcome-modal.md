@@ -8,7 +8,7 @@ First-visit onboarding in a native dialog, shown on root/workflow routes until t
 
 ## 2. Decision and rationale
 
-The connected owner reads onboarding, route and beta deployment (`$betaDeployment`) stores and calls `dismissWelcome` (non-beta) or `acceptBetaTelemetry` (beta). In non-beta mode, native dialog semantics preserve focus and scroll behaviour without custom `Esc` or focus handling. In beta mode (`$betaDeployment` true), accepting cookieless beta analytics is a condition of use, so non-consent `cancel` and backdrop/close events are prevented or immediately reopened until the user clicks **Get Started**. Route-driven hiding is distinct from dismissal.
+The connected owner reads onboarding, route and beta deployment (`$betaDeployment`) stores. Non-beta welcome uses native Escape and backdrop dismissal and calls `dismissWelcome`. Beta welcome requires explicit **Get Started** acceptance before `acceptBetaTelemetry` runs. It stays open on Escape or a backdrop click. Visiting a reserved route may hide the dialog while preserving the onboarding state.
 
 ## 3. Public API (closed)
 
@@ -24,7 +24,7 @@ Mount once in the shell. It opens with `showModal` while undismissed (`!welcomeD
 
 ## 5. Visual specification
 
-`00_first-load.html`: `.modal`, `.modal-header h1`, beta badge, lead, body and action map to shared dialog/button/chiclet sheets and owner-local copy typography. Modal width is 40rem subject to viewport bounds, minimum block size 50dvh. H2 title reads “samatā.ml beta”. The paragraph lead preserves the original h2's 1.5rem/700, normal line-height and 0.83em block margins; body is 1rem/400, 2rem line-height and 0 0 1rem margin. The primary action is full width and autofocus.
+`00_first-load.html` maps to the shared `dialog.modal`, sticky `.modal-header`, shared button and chiclet sheets, and owner-local typography inside `.modal-content`. The modal is 40rem wide subject to viewport bounds and has a minimum block size of 50dvh. The h2 reads “samatā.ml beta”. The lead preserves the reference 1.5rem size, 700 weight, normal line-height and 0.83em block margins. The body is 1rem at weight 400 with 2rem line-height and 1rem end margin. The full-width primary action takes initial focus.
 
 Changes from mockup CSS: SEM-04 named h2, SEM-11 solid chiclet treatment, SEM-12 semantic paragraph lead, SEM-13 button name from visible Get Started text, A11Y-04 dark amber text. The shared solid badge retains a border, allowing the recorded one-pixel title-flow difference. Native action focus may display the authorised outline in screenshots; normal modal bounds/type remain mapped with no drift exemption.
 
@@ -32,7 +32,7 @@ Beta disclosure deviation: `specification/mockups/00-1_beta-welcome.html` is a `
 
 ## 6. Accessibility
 
-`aria-labelledby` references the visible h2 and `aria-describedby` references the beta notice paragraph (`#welcome-beta`) when `$betaDeployment` is true; native button text supplies the primary action name. No open-attribute fallback, redundant role/aria-modal or focus trap; custom `Esc`/close suppression applies strictly to beta-disclosure mode (non-beta retains pure native `Esc` dismissal). Manual review covers dialog/action announcements, keyboard dismissal/return, real zoom, narrow/RTL layouts and display settings.
+`aria-labelledby` references the visible h2. In beta mode `aria-describedby` references the beta notice paragraph (`#welcome-beta`). Native button text supplies the primary action name. The non-beta welcome allows Escape and backdrop dismissal. The beta consent lock uses `closedby="none"`, prevents the native `cancel` event and guards the fallback until **Get Started** records consent. Manual review covers dialog and action announcements, keyboard dismissal and return, native zoom, narrow and RTL layouts, and display settings.
 
 ## 7. Internationalisation
 

@@ -20,6 +20,7 @@ Samatā's input rule requires at least two observed classes, each with two or mo
 | `maxFolds`      | `number`                        | `10`                                               |
 | `blockedReason` | `string`                        | Empty string                                       |
 | `disabled`      | `boolean`                       | `false`                                            |
+| `restoreFocus`  | `boolean`                       | `false`                                            |
 | `labels`        | `TrainingSetupLabels`           | English strings and formatters                     |
 
 Every property uses `attribute: false` and is unreflected. There are no custom slots, parts, styling hooks or methods.
@@ -38,6 +39,7 @@ The model builder binds the saved value and current fold limit with Lit property
 	.value="${model.trainingSetup}"
 	.maxFolds="${bounds.maxFolds}"
 	.blockedReason="${blockedReason}"
+	.restoreFocus="${restoreFocus}"
 	.labels="${translatedLabels}"
 	@app-training-setup-change="${handleChange}"
 	@app-training-setup-submit="${handleSubmit}">
@@ -63,7 +65,7 @@ Changes from mockup CSS follow [the deviation registers](../visual-design.md#5-d
 - A table caption names both the table and its focusable scroll region. The table uses scoped row and column headers and a visually hidden “Training” or “Validation” label per cell. Visible en dashes and check marks, dashed and solid borders, and matching legend swatches distinguish roles in forced colours. Keyboard focus is visible on the wrapper and Learn more.
 - Safari's accessibility tree exposed the Strategy select, both fold inputs, matrix headers, cell labels and the named Help dialog. The maintainer verified the corresponding spoken announcements with VoiceOver in Safari. NVDA and Orca were unavailable on the test host.
 
-- After an explicit accepted submit, the builder focuses the Section 5 heading. When failure or cancellation removes a focused local training control, Section 4 restores focus to Train Model and presents the reason beside the form. Background runs and cross-tab updates preserve the current focus.
+- After an explicit accepted submit, the builder focuses the Section 5 heading. When failure or cancellation removes a focused local training control, the builder requests `restoreFocus` for the matching run. Section 4 presents the reason beside the form and consumes the request once the Train Model button is actionable. Leaving the step or superseding the run clears the request. Background runs and cross-tab updates preserve the current focus.
 
 ## 7. Internationalisation
 

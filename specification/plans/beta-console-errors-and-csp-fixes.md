@@ -1,6 +1,6 @@
 # Beta console errors, CSP, dataset switching and modal harmonisation
 
-**Status:** ready | **Updated:** 2026-11-25T16:34:28Z
+**Status:** ready | **Updated:** 2026-11-25T16:40:17Z
 **Authors:** Google Antigravity (Gemini 4 Hydrogen High), Codex (GPT-6) | **Created:** 2026-11-24T13:46:55Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-25T15:07:42Z | **Verification:** approved
 **Verified hash:** sha256:02527d117a4fa3b0b6fd9717c8d285dccee3c2c33c52e822040eac82d24dc505
@@ -132,15 +132,15 @@ Facts verified by `codebase-scout` on 2026-11-24 and 2026-11-25:
 
 ## Specification changes
 
-- [ ] `specification/COMPONENTS.md` §4 (`Rendering`), §5 (Modal overlays) — Replace `styleMap()` guidance for runtime styles with CSP-safe CSSOM (`element.style.*`) or native elements (`<progress>`, SVG) under `style-src-attr 'none'`; document the two modal patterns (`dialog.modal` vs `dialog.confirm-dialog`), sticky `.modal-header`, and `closedby="any"` + fallback allowance; status stays `partial`.
-- [ ] `specification/components/training-setup.md` §3 (`Public API`) — Add `restoreFocus` (`boolean`, default `false`, `attribute: false`) to the closed property table; status stays `implemented`.
-- [ ] `specification/components/dialog.md` §§1–11 — Document the two shared patterns (`dialog.modal` and `dialog.confirm-dialog`), sticky `.modal-header`, `scroll-padding-block-start`, `dialog.modal` backdrop light-dismiss + WebKit fallback, and `.confirm-dialog` button-or-Esc-only rule; authorise the two shared helpers for the named consumers and retain the existing parity mapping; status stays `implemented`.
-- [ ] `specification/components/content-modal.md` §§3, 4, 5, 6 — Document `.modal` / `.modal-content` alignment and that backdrop click emits `app-content-dialog-close` once via native close; status stays `implemented`.
-- [ ] `specification/components/welcome-modal.md` §§5, 6 — Note `class="modal"` alignment and non-beta backdrop dismissal vs beta consent lock; status stays `implemented`.
-- [ ] `specification/workflow-steps.md` §§1–3 — Note plain-text `.confirm-dialog` presentation across Change Dataset, Change Target, and Reopen Section; status stays `partial`.
-- [ ] `specification/ARCHITECTURE.md` §Delivery and Caching — Document that production builds define `process.env.NODE_ENV` in the Bun options so Lit resolves production exports; status stays `partial`.
+- [x] `specification/COMPONENTS.md` §4 (`Rendering`), §5 (Modal overlays) — Replace `styleMap()` guidance for runtime styles with CSP-safe CSSOM (`element.style.*`) or native elements (`<progress>`, SVG) under `style-src-attr 'none'`; document the two modal patterns (`dialog.modal` vs `dialog.confirm-dialog`), sticky `.modal-header`, and `closedby="any"` + fallback allowance; status stays `partial`.
+- [x] `specification/components/training-setup.md` §3 (`Public API`) — Add `restoreFocus` (`boolean`, default `false`, `attribute: false`) to the closed property table; status stays `implemented`.
+- [x] `specification/components/dialog.md` §§1–11 — Document the two shared patterns (`dialog.modal` and `dialog.confirm-dialog`), sticky `.modal-header`, `scroll-padding-block-start`, `dialog.modal` backdrop light-dismiss + WebKit fallback, and `.confirm-dialog` button-or-Esc-only rule; authorise the two shared helpers for the named consumers and retain the existing parity mapping; status stays `implemented`.
+- [x] `specification/components/content-modal.md` §§3, 4, 5, 6 — Document `.modal` / `.modal-content` alignment and that backdrop click emits `app-content-dialog-close` once via native close; status stays `implemented`.
+- [x] `specification/components/welcome-modal.md` §§5, 6 — Note `class="modal"` alignment and non-beta backdrop dismissal vs beta consent lock; status stays `implemented`.
+- [x] `specification/workflow-steps.md` §§1–3 — Note plain-text `.confirm-dialog` presentation across Change Dataset, Change Target, and Reopen Section; status stays `partial`.
+- [x] `specification/ARCHITECTURE.md` §Delivery and Caching — Document that production builds define `process.env.NODE_ENV` in the Bun options so Lit resolves production exports; status stays `partial`.
 
-- [ ] `specification/visual-design.md` §§3 and 5 — record intentional differences in mapped modal geometry and the shared styles used for draft-only surfaces. Status stays partial.
+- [x] `specification/visual-design.md` §§3 and 5 — record intentional differences in mapped modal geometry and the shared styles used for draft-only surfaces. Status stays partial.
 
 ## Implementation tasks
 
@@ -266,19 +266,19 @@ Facts verified by `codebase-scout` on 2026-11-24 and 2026-11-25:
 - **Must not touch:** `src/`, `css/`, `scripts/`, `tests/`
 - **Implementation:** Update all specs listed under `## Specification changes` to reflect the implemented changes, verify `specification/README.md` status alignment, and run all verification gates.
 - **Acceptance criteria:**
-    - [ ] Every item under `## Specification changes` is complete and accurate.
-    - [ ] `bun run check`, `bun run lint`, `bun run deploy:dry-run`, `bun run test:stories`, `bun run format:check` with the changed paths, and the focused E2E suites pass.
+    - [x] Every item under `## Specification changes` is complete and accurate.
+    - [x] `bun run check`, `bun run lint`, `bun run deploy:dry-run`, `bun run test:stories`, `bun run format:check` with the changed paths, and the focused E2E suites pass.
 - **Verification:** `bun run check`, `bun run lint`, `bun run deploy:dry-run`, `bun run test:stories`, `bun run format:check` with the changed paths, `bun run test:e2e tests/csp-and-console.e2e.ts`, `bun run test:e2e tests/visual-parity.e2e.ts`, `bun run plans:check specification/plans/beta-console-errors-and-csp-fixes.md`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-25T16:40:17Z)
 
 ## Verification and definition of done
 
-- [ ] All task acceptance criteria met.
-- [ ] Relevant verification commands from `AGENTS.md` pass with no new failures.
-- [ ] Type-check, lint, formatting, and build checks pass.
-- [ ] Accessibility (WCAG 2.2 AA), privacy/security, and contract-compatibility checks completed where applicable.
-- [ ] Every item under _Specification changes_ is ticked, and specifications match the implemented code.
-- [ ] No unintended changes outside the tasks' likely files.
+- [x] All task acceptance criteria met.
+- [x] Relevant verification commands from `AGENTS.md` pass with no new failures.
+- [x] Type-check, lint, formatting, and build checks pass.
+- [x] Accessibility (WCAG 2.2 AA), privacy/security, and contract-compatibility checks completed where applicable.
+- [x] Every item under _Specification changes_ is ticked, and specifications match the implemented code.
+- [x] No unintended changes outside the tasks' likely files.
 
 ## Risks and open questions
 
@@ -306,6 +306,7 @@ None.
 | 2026-11-25T16:23:45Z | T6   | Codex (GPT-6) | bun run check: 663 passed including the generated closed CEM API. bun run test:stories: 704/705 passed including every changed story. The untouched Firefox Binary results story hit a host timeout and its serial app-model-results.stories.ts rerun passed all 33 cases. The combined ten functional Playwright files using SAMATA_SKIP_KNOWN_FAILURES=1 passed 361 cases with 4 planned skips; the three stale MOD-DESC-1 locators were updated to preserve lang/dir checks on the article and passed on rerun. The targeted contrast run passed 24 cases with 6 planned skips and three transient host/setup failures; serial parity and Firefox reruns both passed 2/2. DLG-STICKY-1 checked 320px RTL, opaque header at the dialog border, forward/reverse focus and oversized-header fallback in all three engines. Independent native Safari at 200% with a wrapped Arabic title verified Close and the three controls in forward navigation, reverse focus below the header and no content above it. Welcome/target focus passed in three engines without autofocus diagnostics in the tested paths. Chromium unfiltered parity matched approved main a003f51 at 58 passed, 138 expected skips and the same 11 inherited failures (logs /private/tmp/samata-beta-t6-parity.log and /private/tmp/samata-approved-main-visual-parity.log). Unscrolled PARITY-modal-dialog and the pre-approved A11Y-03 upload picker text colour both passed. |
 | 2026-11-25T16:32:14Z | T7   | Codex (GPT-6) | bun run check: 663 passed. bun run test:stories --testTimeout=60000: 705 passed across Chromium, Firefox and WebKit, including BetaNotice in each engine. SAMATA_SKIP_KNOWN_FAILURES=1 bun run test:e2e tests/content-dialog.e2e.ts tests/app-shell.e2e.ts tests/welcome-acceptance.e2e.ts tests/telemetry-acceptance.e2e.ts tests/target-selection.e2e.ts tests/data-selection.e2e.ts tests/data-upload.e2e.ts tests/data-preview.e2e.ts --timeout=60000 --workers=2: 246 passed, 8 expected project skips. All engines exercised native and fallback content dismissal, pointer drags and padding, datasheet/description invoker focus, one user intent per upload close, progress-only Cancel, no user intent on programme close/teardown, and protected confirmation buttons/Escape. The enabled-beta Chromium run passed all three telemetry cases and kept unaccepted beta onboarding open after backdrop and Escape.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | 2026-11-25T16:34:28Z | T8   | Codex (GPT-6) | bun run test:e2e tests/csp-and-console.e2e.ts --workers=1: 3 passed, one on each pinned Chromium, Firefox and WebKit project. Each browser trained two real classifiers, followed saved result and comparison links, checked flowchart bars, comparison geometry and virtual-table spacers, and exercised content and confirmation backdrop policies. All recorded responses retained the strict CSP and no page errors, console errors, Lit diagnostics or CSP violations were captured across reload. bun run check: all 663 passed; scope contains only the regression and shared browser fixture.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| 2026-11-25T16:40:17Z | T9   | Codex (GPT-6) | Eight specification updates match the implementation and retain the statuses listed in specification/README.md. bun run check: 663 passed; bun run lint: passed; bun run deploy:dry-run: production build and Cloudflare dry-run passed; bun run test:stories --testTimeout=60000: 705 passed; bun run format:check across all 61 implementation paths and targeted bun run plans:check: passed. bun run test:e2e tests/csp-and-console.e2e.ts --workers=1: 3 passed, zero CSP violations, page errors, console errors or Lit warnings. Unfiltered bun run test:e2e tests/visual-parity.e2e.ts --workers=2 --timeout=60000 reported 58 passed, 138 project skips and the exact same 11 inherited Chromium cases as unchanged approved main a003f51. The two unregistered alert-colour cases reproduce the same RGB values as the baseline; the nine registered cases were preserved. Focused Chromium PARITY-modal-dialog and PARITY-upload-file-picker-button passed 2/2. Raw comparison is in /private/tmp/samata-beta-t9-parity.log and /private/tmp/samata-approved-main-visual-parity.log.                                                                                                                                                                                                                                                                                                                                                      |
 
 ## Plan review history
 
