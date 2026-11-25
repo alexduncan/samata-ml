@@ -1,9 +1,9 @@
 # Remediate charts and establish chart design specification
 
-**Status:** ready-for-review | **Updated:** 2026-11-25T16:42:34Z
+**Status:** ready | **Updated:** 2026-11-25T16:53:32Z
 **Authors:** Google Antigravity (Gemini 4 Neon High) | **Created:** 2026-11-25T16:05:29Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
-**Verified hash:** —
+**Verified by:** Google Antigravity (Gemini 4 Neon High) | **Verified:** 2026-11-25T16:53:32Z | **Verification:** approved
+**Verified hash:** sha256:e61d5a40116db6ee228df2cbd0417bc91a9d9c72448a14ac3b2475a78e096b3f
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -364,6 +364,7 @@ None.
 | Reviewed (UTC) | Agent (model) | Decision | Findings |
 | -------------- | ------------- | -------- | -------- |
 | 2026-11-25T16:32:57Z | Google Antigravity (Gemini 4 Neon High) | changes-requested | BLOCKER: Non-existent paths in context/Likely files/Must not touch/Verification (tests/comparison-ui.e2e.ts, tests/comparison-view.e2e.ts, tests/comparison-store.test.ts, analysis-worker.ts vs analysis.worker.ts and comparison-{controls,charts}.e2e.ts, comparison.e2e.ts); missing breaking test fixtures/E2E from T2-T5 Likely files (tests/fixtures/results/{comparison.ts,labels.ts,comparison-charts.browser.ts,comparison-rope.browser.ts,comparison-controls.browser.ts}, comparison-charts.e2e.ts, comparison-controls.e2e.ts, comparison.e2e.ts). MAJOR: T1 PlotController ResizeObserver on .chart will not fire on root font-size zoom, chart-encoding integerTicks lacks signed range for app-classee-strips, and style-tokens.test.ts TOK-2 rejects shorthand var(--blue-700/--sky-600); T2 cites non-existent normaliseRopeWidth and omits catalogue lookup plus removing app-results-view Model {n} override; T4 misses multiclass top-label calibration wording, undocumented app-threshold-explorer --chart-2 change, and reversing zero-live-region rule + debouncing; T5 contradicts 6 vs 5 h2 headings (CHT-COMP-1), native select swatches in app-model-pair-picker, and app-rope-bar [0,1] rescaling plus amber-to-dark separator contrast. |
+| 2026-11-25T16:53:32Z | Google Antigravity (Gemini 4 Neon High) | approved | Cycle 2 independent scout audit verified all file paths, Plot 0.6.17 symbols/options, WCAG contrast ratios, TOK-2 fix, 1rem zoom probe, signed integerTicks, model-training-workflow compatibility, Lit APIs, and T1-T7 verification; all Cycle 1 findings resolved with zero blockers or majors. |
 
 ## Change log
 
