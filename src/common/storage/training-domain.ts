@@ -29,6 +29,8 @@ const VALID_COLUMN_TYPES = new Set<string>([
 	'numeric',
 	'categorical',
 	'boolean',
+	'date',
+	'time',
 	'datetime',
 	'text'
 ]);

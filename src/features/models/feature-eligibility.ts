@@ -1,6 +1,6 @@
 import type { DatasetMetadata } from '../../types/dataset';
 import type { SampleDatasetGuidance } from '../../types/sample-dataset';
-import type { ColumnType } from '../../types/state';
+import { isTemporalColumnType, type ColumnType } from '../../types/state';
 
 /**
  * Standard reason and advisory codes for feature eligibility.
@@ -95,8 +95,8 @@ export function buildFeatureRows(
 			};
 		}
 
-		// 2. Unsupported column types (text, datetime)
-		if (col.type === 'text' || col.type === 'datetime') {
+		// 2. Unsupported column types (text, date, time, datetime)
+		if (col.type === 'text' || isTemporalColumnType(col.type)) {
 			return {
 				name: col.name,
 				type: col.type,

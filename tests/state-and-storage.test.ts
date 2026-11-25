@@ -939,7 +939,7 @@ describe('State & Persistence (NAV-AC-3 through NAV-AC-10)', () => {
 			const storage = new MemoryStorage();
 			const invalidDataset = {
 				...sampleDataset,
-				columns: [{ name: 'col1', type: 'date', missingCount: 0 }]
+				columns: [{ name: 'col1', type: 'duration', missingCount: 0 }]
 			};
 			storage.setItem(
 				STATE_STORAGE_KEY,

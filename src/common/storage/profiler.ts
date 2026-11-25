@@ -362,8 +362,7 @@ function electColumn(
 			format = {
 				kind: 'date',
 				order: dateOrder.order,
-				orderAssumed: dateOrder.orderAssumed,
-				hasTime: profile.dateHasTime
+				orderAssumed: dateOrder.orderAssumed
 			};
 			invalidCount = profile.values - profile.dateOrderCounts.get(dateOrder.order)!;
 			invalidExamples = getExamples(profile, `date:${dateOrder.order}`);
@@ -433,8 +432,7 @@ function electColumn(
 				format = {
 					kind: 'date',
 					order: dateOrder.order,
-					orderAssumed: dateOrder.orderAssumed,
-					hasTime: profile.dateHasTime
+					orderAssumed: dateOrder.orderAssumed
 				};
 				invalidCount = profile.values - profile.dateOrderCounts.get(dateOrder.order)!;
 				invalidExamples = getExamples(profile, `date:${dateOrder.order}`);

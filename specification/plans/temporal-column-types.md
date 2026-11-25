@@ -1,6 +1,6 @@
 # Temporal column types: date, time and datetime
 
-**Status:** ready | **Updated:** 2026-11-25T12:38:45Z
+**Status:** ready | **Updated:** 2026-11-25T13:53:17Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-25T10:49:58Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-25T12:38:45Z | **Verification:** approved
 **Verified hash:** sha256:170e52184c86cc170c93b0d486d248f334c2e7c038e22aabd36ec19133b41c68
@@ -312,11 +312,11 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
     - Keep the profiler and cells compiling: stop writing `hasTime` and leave `precision` unset, since it is optional until T3 computes it. The profiler does not yet elect `date` or `time`.
     - Update the `DateAndTime` story's `format` literal so it type-checks without `hasTime`.
 - **Acceptance criteria:**
-    - [ ] TEMP-AC-1: `isTemporalColumnType` is true for `date`, `time` and `datetime`, and false for the other four types (unit test).
-    - [ ] TEMP-AC-2: feature and target eligibility mark `date` and `time` columns ineligible with the same codes as `datetime` (`UNSUPPORTED`; `INELIGIBLE_DATETIME`). The provider throws `UNSUPPORTED_COLUMN` for a `date` feature and a `time` target.
-    - [ ] TEMP-AC-3: persisted state whose `dataset.columns` contains `date`, `time` and legacy `datetime` types validates. An unknown type still invalidates it.
+    - [x] TEMP-AC-1: `isTemporalColumnType` is true for `date`, `time` and `datetime`, and false for the other four types (unit test).
+    - [x] TEMP-AC-2: feature and target eligibility mark `date` and `time` columns ineligible with the same codes as `datetime` (`UNSUPPORTED`; `INELIGIBLE_DATETIME`). The provider throws `UNSUPPORTED_COLUMN` for a `date` feature and a `time` target.
+    - [x] TEMP-AC-3: persisted state whose `dataset.columns` contains `date`, `time` and legacy `datetime` types validates. An unknown type still invalidates it.
 - **Verification:** `bun run check`, `bun run lint`, `bun run format <changed files>`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-25T13:53:17Z)
 
 ### T2 — Cell detectors: epoch magnitudes, time of day, date-only
 
@@ -446,6 +446,7 @@ None.
 | When (UTC) | Task | Agent (model) | Outcome / commands / evidence |
 | ---------- | ---- | ------------- | ----------------------------- |
 | —          | —    | —             | Not started                   |
+| 2026-11-25T13:53:17Z | T1 | Claude Code (claude-sonnet-5-5) | bun test: 622 pass, 2 fail (pre-existing: scripts/build-public-assets.ts cannot resolve @federicocarboni/saxe and svgo, not installed in worktree; same typecheck errors). bun run lint OK. bun run format applied. New tests/temporal-column-types.test.ts plus eligibility, provider tests. Changed src/types, training-domain, eligibility, provider, sidebar, pipeline, cells, profiler, story. |
 
 ## Plan review history
 

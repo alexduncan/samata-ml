@@ -1,4 +1,9 @@
-import type { CellValue, DatetimeColumnStats, NumericColumnStats } from '../../types/dataset';
+import type {
+	CellValue,
+	DateColumnStats,
+	DatetimeColumnStats,
+	NumericColumnStats
+} from '../../types/dataset';
 import type { ColumnType } from '../../types/state';
 
 /** Default case-insensitive missing-value tokens. */
@@ -86,6 +91,7 @@ export type DateOrder = 'ISO' | 'DMY' | 'MDY';
 export type CellFormat =
 	| NumericColumnStats['format']
 	| DatetimeColumnStats['format']
+	| DateColumnStats['format']
 	| readonly [string, string]
 	| undefined;
 

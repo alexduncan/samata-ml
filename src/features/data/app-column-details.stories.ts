@@ -100,7 +100,7 @@ export const DateAndTime: Story = {
 			count: 5,
 			min: Date.UTC(2026, 0, 1),
 			max: Date.UTC(2026, 4, 1),
-			format: { kind: 'date', order: 'ISO', orderAssumed: false, hasTime: true }
+			format: { kind: 'date', order: 'ISO', orderAssumed: false }
 		})
 };
 

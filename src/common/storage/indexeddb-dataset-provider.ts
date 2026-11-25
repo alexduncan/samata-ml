@@ -1,5 +1,6 @@
 import type { DatasetProvider } from 'web-ml';
 import type { IDBPDatabase } from 'idb';
+import { isTemporalColumnType } from '../../types/state';
 import { getMetadata, getRows, type SamataDBSchema } from './db';
 import type {
 	ColumnStats,
@@ -220,7 +221,7 @@ export class IndexedDBDatasetProvider implements DatasetProvider {
 			if (!entry)
 				throw new DatasetProviderError('UNKNOWN_COLUMN', `Unknown feature column: ${name}`);
 			const { column, index: metadataIndex } = entry;
-			if (column.type === 'text' || column.type === 'datetime') {
+			if (column.type === 'text' || isTemporalColumnType(column.type)) {
 				throw new DatasetProviderError(
 					'UNSUPPORTED_COLUMN',
 					`Unsupported feature column ${name}: ${column.type}`
@@ -285,7 +286,7 @@ export class IndexedDBDatasetProvider implements DatasetProvider {
 			if (!entry)
 				throw new DatasetProviderError('UNKNOWN_COLUMN', `Unknown target column: ${name}`);
 			const { column, index: metadataIndex } = entry;
-			if (column.type === 'text' || column.type === 'datetime') {
+			if (column.type === 'text' || isTemporalColumnType(column.type)) {
 				throw new DatasetProviderError(
 					'UNSUPPORTED_COLUMN',
 					`Unsupported target column ${name}: ${column.type}`

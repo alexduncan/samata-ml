@@ -13,7 +13,34 @@ export const SCROLL_STORAGE_KEY = 'samata-ml:scroll';
 export const STORAGE_VERSION = 1;
 
 /** Canonical column type vocabulary across UI, worker, and state. */
-export type ColumnType = 'numeric' | 'categorical' | 'boolean' | 'datetime' | 'text';
+export type ColumnType =
+	| 'numeric'
+	| 'categorical'
+	| 'boolean'
+	| 'date'
+	| 'time'
+	| 'datetime'
+	| 'text';
+
+/** Column types that hold calendar dates, times of day or instants. */
+export const TEMPORAL_COLUMN_TYPES = [
+	'date',
+	'time',
+	'datetime'
+] as const satisfies readonly ColumnType[];
+
+/** Temporal subset of {@link ColumnType}. */
+export type TemporalColumnType = (typeof TEMPORAL_COLUMN_TYPES)[number];
+
+/**
+ * Checks whether a column type is one of the temporal types.
+ *
+ * @param type - Canonical column type to check.
+ * @returns Whether the type is `date`, `time` or `datetime`.
+ */
+export function isTemporalColumnType(type: ColumnType): type is TemporalColumnType {
+	return (TEMPORAL_COLUMN_TYPES as readonly ColumnType[]).includes(type);
+}
 
 /** Column types that can be used as a model target or feature. */
 export const MODEL_ELIGIBLE_COLUMN_TYPES = ['numeric', 'categorical', 'boolean'] as const;

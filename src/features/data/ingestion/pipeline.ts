@@ -17,12 +17,14 @@ import type {
 	CategoricalColumnStats,
 	ColumnStats,
 	DatasetMetadata,
+	DateColumnStats,
 	DatetimeColumnStats,
 	NumericColumnStats,
 	RawRecord,
-	TextColumnStats
+	TextColumnStats,
+	TimeColumnStats
 } from '../../../types/dataset';
-import type { ColumnType } from '../../../types/state';
+import { isTemporalColumnType, type ColumnType } from '../../../types/state';
 import { checkFileSize, checkStorageQuota, fetchWithRetry } from './fetch-source';
 import { streamCsv } from './csv-stream';
 import { IngestionError } from './errors';
@@ -271,10 +273,24 @@ function makeColumnStats(elected: ElectedColumn): ColumnStats {
 				format: (elected.format as DatetimeColumnStats['format'] | null) ?? {
 					kind: 'date',
 					order: 'ISO',
-					orderAssumed: false,
-					hasTime: false
+					orderAssumed: false
 				}
 			};
+		case 'date':
+			return {
+				...shared,
+				type: 'date',
+				count: 0,
+				min: 0,
+				max: 0,
+				format: (elected.format as DateColumnStats['format'] | null) ?? {
+					kind: 'date',
+					order: 'ISO',
+					orderAssumed: false
+				}
+			};
+		case 'time':
+			return { ...shared, type: 'time', count: 0, min: 0, max: 0, precision: 'minute' };
 		case 'text':
 			return {
 				...shared,
@@ -497,10 +513,16 @@ export async function runIngestion(
 						} else if (stats.type === 'boolean' && typeof value === 'boolean') {
 							if (value) stats.trueCount++;
 							else stats.falseCount++;
-						} else if (stats.type === 'datetime' && typeof value === 'number') {
-							stats.count++;
-							stats.min = stats.count === 1 ? value : Math.min(stats.min, value);
-							stats.max = stats.count === 1 ? value : Math.max(stats.max, value);
+						} else if (isTemporalColumnType(stats.type) && typeof value === 'number') {
+							const temporal = stats as
+								| DateColumnStats
+								| TimeColumnStats
+								| DatetimeColumnStats;
+							temporal.count++;
+							temporal.min =
+								temporal.count === 1 ? value : Math.min(temporal.min, value);
+							temporal.max =
+								temporal.count === 1 ? value : Math.max(temporal.max, value);
 						} else if (stats.type === 'categorical' && typeof value === 'string') {
 							stats.categoryCounts[value] = (stats.categoryCounts[value] ?? 0) + 1;
 						}

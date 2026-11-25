@@ -199,4 +199,21 @@ describe('Feature Eligibility Logic (MOD-FEAT-1)', () => {
 		expect(formatFeatureNote('LEAKY')).toBe('May cause target leakage');
 		expect(formatFeatureNote('MISSING_VALUES')).toBe('Contains missing values');
 	});
+
+	it('TEMP-AC-2: marks date and time columns unsupported like datetime', () => {
+		const metadata = {
+			id: 'temporal',
+			name: 'Temporal',
+			rowCount: 10,
+			columns: [
+				{ name: 'day', type: 'date', count: 10, missingCount: 0, invalidCount: 0 },
+				{ name: 'clock', type: 'time', count: 10, missingCount: 0, invalidCount: 0 }
+			]
+		} as unknown as DatasetMetadata;
+		const rows = buildFeatureRows(metadata, '', null);
+		expect(rows.map((row) => [row.type, row.eligible, row.reasonCodes])).toEqual([
+			['date', false, ['UNSUPPORTED']],
+			['time', false, ['UNSUPPORTED']]
+		]);
+	});
 });

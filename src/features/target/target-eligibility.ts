@@ -1,6 +1,6 @@
 import type { ColumnStats, DatasetMetadata } from '../../types/dataset';
 import type { SampleDatasetGuidance } from '../../types/sample-dataset';
-import type { ColumnType, DatasetSummary } from '../../types/state';
+import { isTemporalColumnType, type ColumnType, type DatasetSummary } from '../../types/state';
 
 /**
  * Standard note codes for column eligibility and advisory notices.
@@ -118,7 +118,7 @@ export function buildTargetRows(
 			};
 		}
 
-		if (stats.type === 'datetime') {
+		if (isTemporalColumnType(stats.type)) {
 			return {
 				name: summaryCol.name,
 				type: summaryCol.type,

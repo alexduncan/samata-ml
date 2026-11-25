@@ -53,15 +53,52 @@ export interface BooleanColumnStats extends BaseColumnStats {
 	lexicon: [string, string];
 }
 
+/** Finest non-zero unit in a column's stored values. */
+export type TimePrecision = 'minute' | 'second' | 'millisecond';
+
+/** Date-string format shared by date and datetime columns. */
+export interface DateStringFormat {
+	kind: 'date';
+	order: 'ISO' | 'DMY' | 'MDY';
+	orderAssumed: boolean;
+}
+
+/** Statistics and the detected format of a calendar-date column. */
+export interface DateColumnStats extends BaseColumnStats {
+	type: 'date';
+	count: number;
+	/** Earliest value, as epoch milliseconds at UTC midnight. */
+	min: number;
+	/** Latest value, as epoch milliseconds at UTC midnight. */
+	max: number;
+	format: DateStringFormat;
+}
+
+/** Statistics for a time-of-day column. */
+export interface TimeColumnStats extends BaseColumnStats {
+	type: 'time';
+	count: number;
+	/** Earliest value, as milliseconds since midnight. */
+	min: number;
+	/** Latest value, as milliseconds since midnight. */
+	max: number;
+	precision: TimePrecision;
+}
+
 /** Statistics and the detected representation of a datetime column. */
 export interface DatetimeColumnStats extends BaseColumnStats {
 	type: 'datetime';
 	count: number;
 	min: number;
 	max: number;
+	/** Absent only on metadata stored before the date and time types existed. */
+	precision?: TimePrecision;
 	format:
 		| { kind: 'epoch'; unit: 's' | 'ms' | 'us' }
-		| { kind: 'date'; order: 'ISO' | 'DMY' | 'MDY'; orderAssumed: boolean; hasTime: boolean };
+		| (DateStringFormat & {
+				/** @deprecated Legacy stored metadata only; never written. */
+				hasTime?: boolean;
+		  });
 }
 
 /** Statistics and an optional identifier hint for a text column. */
@@ -76,6 +113,8 @@ export type ColumnStats =
 	| NumericColumnStats
 	| CategoricalColumnStats
 	| BooleanColumnStats
+	| DateColumnStats
+	| TimeColumnStats
 	| DatetimeColumnStats
 	| TextColumnStats;
 

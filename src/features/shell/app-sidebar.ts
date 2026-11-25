@@ -33,6 +33,8 @@ const messages = i18n('app-sidebar', {
 	numeric: 'Numeric',
 	categorical: 'Categorical',
 	boolean: 'Boolean',
+	date: 'Date',
+	time: 'Time',
 	datetime: 'Date/time',
 	text: 'Text',
 	about: 'about',
