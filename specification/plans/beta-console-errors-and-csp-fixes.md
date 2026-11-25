@@ -1,8 +1,8 @@
 # Beta console errors, CSP, dataset switching and modal harmonisation
 
-**Status:** draft | **Updated:** 2026-11-25T15:04:16Z
+**Status:** ready-for-review | **Updated:** 2026-11-25T15:04:51Z
 **Authors:** Google Antigravity (Gemini 4 Hydrogen High), Codex (GPT-6) | **Created:** 2026-11-24T13:46:55Z
-**Verified by:** — | **Verified:** — | **Verification:** changes-requested
+**Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -191,9 +191,9 @@ Facts verified by `codebase-scout` on 2026-11-24 and 2026-11-25:
 - **Risk:** routine
 - **Likely files:** `src/features/models/app-model-builder-view.ts`, `src/features/models/app-training-setup.ts`, `src/features/models/app-training-setup.stories.ts`, `tests/training-panels.e2e.ts`
 - **Must not touch:** `src/router/`, `public/_headers`
-- **Implementation:** Add the closed `restoreFocus` property and bind it in the builder. Latch `restoreSubmitFocus` against the exact matched failed/cancelled attempt through Section 4’s render and until its submit control is actionable. Consume it only after that post-render focus, including a transition from disabled to enabled. The first render alone cannot clear the request. Cancel it when leaving or disconnecting. Verify the existing native dialog safe-action autofocus in T6. Where those tests reproduce a warning, T6 focuses the same safe button immediately after `showModal()` with `preventScroll` instead.
+- **Implementation:** Add the closed `restoreFocus` property and bind it in the builder. Latch `restoreSubmitFocus` against the exact matched failed/cancelled attempt (including `TrainingSession.identity.runId`) through Section 4’s render and until its submit control is actionable. Consume it only after that post-render focus, including a transition from disabled to enabled. The first render alone cannot clear the request. Cancel it when leaving or disconnecting. Verify the existing native dialog safe-action autofocus in T6. Where those tests reproduce a warning, T6 focuses the same safe button immediately after `showModal()` with `preventScroll` instead.
 - **Acceptance criteria:**
-    - [ ] `BETA-ERR-4`: Cancelling or failing training on `/models/2` restores focus to `Train Model` without emitting `Autofocus processing was blocked because a document already has a focused element.`
+    - [ ] `BETA-ERR-4`: Cancelling or failing training on the allocated numeric model route restores focus to `Train Model` without emitting `Autofocus processing was blocked because a document already has a focused element.`
     - [ ] `BETA-ERR-4b`: Normal numeric-model navigation leaves the normal page focus and emits no native autofocus warning. A stale request cannot steal focus.
 - **Verification:** `bun run check`, `bun run test:stories`, `bun run test:e2e tests/training-panels.e2e.ts`
 - **Progress:** [ ] Not started
@@ -234,7 +234,7 @@ Facts verified by `codebase-scout` on 2026-11-24 and 2026-11-25:
 
 - **Depends on:** T6
 - **Risk:** needs care — must preserve beta onboarding enforcement, Confirm Dialog safety, Safari/WebKit compatibility, and invoker focus return.
-- **Likely files:** `src/common/dom/dialog-backdrop.ts`, `src/features/data/app-data-view.ts`, `src/features/shell/app-content-dialog.ts`, `src/features/shell/app-welcome-modal.ts`, `src/features/data/app-datasheet-dialog.ts`, `src/features/data/app-upload-dataset-dialog.ts`, `src/features/models/app-model-description-dialog.ts`, `src/features/models/app-model-builder-view.ts`, `src/styles/dialog.stories.ts`, `tests/content-dialog.e2e.ts`, `tests/app-shell.e2e.ts`, `tests/welcome-acceptance.e2e.ts`, `tests/telemetry-acceptance.e2e.ts`, `tests/target-selection.e2e.ts`, `tests/data-preview.e2e.ts`, `tests/data-upload.e2e.ts`
+- **Likely files:** `src/common/dom/dialog-backdrop.ts`, `src/features/data/app-data-view.ts`, `src/features/shell/app-content-dialog.ts`, `src/features/shell/app-welcome-modal.ts`, `src/features/data/app-datasheet-dialog.ts`, `src/features/data/app-upload-dataset-dialog.ts`, `src/features/models/app-model-description-dialog.ts`, `src/features/models/app-model-builder-view.ts`, `src/styles/dialog.stories.ts`, `src/features/shell/app-welcome-modal.stories.ts`, `tests/content-dialog.e2e.ts`, `tests/app-shell.e2e.ts`, `tests/welcome-acceptance.e2e.ts`, `tests/telemetry-acceptance.e2e.ts`, `tests/target-selection.e2e.ts`, `tests/data-preview.e2e.ts`, `tests/data-upload.e2e.ts`
 - **Must not touch:** `src/router/`, `src/stores/persister.ts`
 - **Implementation:**
     1. Enable `closedby="any"` when the content dialog’s existing Escape rules permit dismissal. In the fallback, pair outside primary down/up by pointer ID and clear tracking on up, cancel, close or disconnect. Require an open modal, backdrop coordinates and the current can-close guard. Keep the beta welcome lock and idle/busy confirmation contract on all engines.
@@ -317,3 +317,4 @@ None.
 | 2026-11-25T14:48:08Z | Confirm beta scope and reconcile companion plans                       | Record the maintainer decision and settle shared dialog, focus, CSP and results ownership.                                                                                |
 | 2026-11-25T14:55:08Z | Address first independent review                                       | Assign production geometry evidence to T8, make focus and zoom behaviour explicit, and define exactly-once upload cancellation and browser coverage.                      |
 | 2026-11-25T15:00:00Z | Address second independent review                                      | Make the training fixture follow real allocation and match browser acceptance to the short-scrollport and focus behaviour.                                                |
+| 2026-11-25T15:04:51Z | Address third independent review                                       | Scope the Welcome story interaction to T7 and identify the focus request by its exact run.                                                                                |
