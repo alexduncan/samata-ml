@@ -5,6 +5,7 @@ import { $route, initRouter, navigate, stopRouter } from '../../router/router';
 import { $appState, reduceWizardStep } from '../../stores/app.store';
 import { $modelResults, currentResultIdentity } from '../../stores/model-results.store';
 import { irisCrossValidation } from '../../../tests/fixtures/results/evaluations';
+import { fixtureTrainingResult } from '../../../tests/fixtures/training/results-v2';
 import { $datasetResources, type ResourceStatus } from '../../stores/dataset.store';
 import {
 	$trainingSession,
@@ -227,7 +228,7 @@ export const ReopenSectionConfirmation: Story = {
 	}
 };
 
-const leaveFixtureBinding: ProvisionalModelIdentity = {
+const provisionalIdentity: ProvisionalModelIdentity = {
 	datasetId: 'iris',
 	target: 'class',
 	comparisonContextEpoch: INITIAL_APP_STATE.comparisonContextEpoch,
@@ -247,7 +248,7 @@ function seedLeaveFixture(
 	const state = {
 		v: 1,
 		entryId: 'leave-story-source',
-		provisional: { kind: 'bound', identity: leaveFixtureBinding },
+		provisional: { kind: 'bound', identity: provisionalIdentity },
 		...(covered ? { underlayPath: '/models/new' } : {})
 	};
 	window.history.replaceState(state, '', covered ? '/help' : '/models/new');
@@ -264,16 +265,9 @@ function seedLeaveFixture(
 	};
 }
 
-const renderLeaveFixture = () => html`
-	<app-model-builder-view
-		model-num="1"
-		.provisionalBinding=${leaveFixtureBinding}></app-model-builder-view>
-`;
-
 /** Leaving an unfinished provisional wizard initially focuses the safe Stay action. */
 export const LeaveConfirmation: Story = {
 	beforeEach: () => seedLeaveFixture(),
-	render: renderLeaveFixture,
 	play: async ({ canvasElement }) => {
 		const root = canvasElement.querySelector('app-model-builder-view')!.shadowRoot!;
 		await waitFor(() =>
@@ -293,7 +287,6 @@ export const LeavePending: Story = {
 			operation.resolve({ ok: false, code: 'busy' });
 		};
 	},
-	render: renderLeaveFixture,
 	play: async ({ canvasElement }) => {
 		const root = canvasElement.querySelector('app-model-builder-view')!.shadowRoot!;
 		await waitFor(() =>
@@ -314,7 +307,6 @@ export const LeavePending: Story = {
 /** A protected leave failure keeps the draft and offers another attempt. */
 export const LeaveError: Story = {
 	beforeEach: () => seedLeaveFixture(async () => ({ ok: false, code: 'remote-training' })),
-	render: renderLeaveFixture,
 	play: async ({ canvasElement }) => {
 		const root = canvasElement.querySelector('app-model-builder-view')!.shadowRoot!;
 		await waitFor(() =>
@@ -335,7 +327,7 @@ export const LeaveError: Story = {
 /** The same provisional model remains mounted underneath Help without opening a leave confirmation. */
 export const LeaveCoveredByHelp: Story = {
 	beforeEach: () => seedLeaveFixture(undefined, true),
-	render: () => html`${renderLeaveFixture()}<app-content-modal></app-content-modal>`,
+	render: () => html`${meta.render()}<app-content-modal></app-content-modal>`,
 	play: async ({ canvasElement }) => {
 		const builder = canvasElement.querySelector('app-model-builder-view')!;
 		await builder.updateComplete;
@@ -400,7 +392,7 @@ const identity: TrainingRunIdentity = {
 	runId: 'story-run'
 };
 
-function seedRun(status: 'training' | 'trained', completed: boolean) {
+function seedRun(status: 'training' | 'trained', completed: boolean, provisional = false) {
 	const restore = seedTraining('ready', true);
 	const state = $appState.get();
 	const previousSessions = $trainingSession.get();
@@ -408,11 +400,14 @@ function seedRun(status: 'training' | 'trained', completed: boolean) {
 	const record = state.models[0]!;
 	$appState.set({
 		...state,
+		newModelNum: provisional && status === 'training' ? identity.modelNum : null,
 		models: [
 			{
 				...record,
 				status,
 				resultRevision: identity.runId,
+				provisionalCompletedRunId:
+					provisional && status === 'trained' ? identity.runId : null,
 				durationMs: status === 'trained' ? 2100 : null,
 				completedSteps: completed
 					? [...record.completedSteps, 'training']
@@ -420,6 +415,14 @@ function seedRun(status: 'training' | 'trained', completed: boolean) {
 			}
 		]
 	});
+	if (provisional) {
+		$route.set({
+			kind: 'workflow',
+			path: '/models/new',
+			section: 3,
+			provisional: { kind: 'bound', identity: provisionalIdentity }
+		});
+	}
 	$trainingSession.set(new Map());
 	createTrainingSession(identity);
 	return () => {
@@ -466,9 +469,11 @@ const retryPublication = fn(async () => {
 	const state = $appState.get();
 	$appState.set({
 		...state,
+		newModelNum: null,
 		models: state.models.map((entry) => ({
 			...entry,
 			status: 'trained',
+			provisionalCompletedRunId: identity.runId,
 			durationMs: 2100,
 			completedSteps: [...entry.completedSteps, 'training']
 		}))
@@ -478,15 +483,24 @@ const retryPublication = fn(async () => {
 	return { ok: true, value: undefined } as const;
 });
 
+const loadProvisionalResult = (async (_num, expected) =>
+	expected ? { ...fixtureTrainingResult(), ...expected } : null) satisfies ReturnType<
+	typeof createTrainingService
+>['loadCompletedResult'];
+
 /** Committed result recovery retries saving through the service and enables View Results. */
 export const ResultPublicationPending: Story = {
 	beforeEach: () => {
-		const restore = seedRun('training', false);
+		const restore = seedRun('training', false, true);
 		setTrainingSessionStatus(identity, 'saving');
 		setTrainingSessionStatus(identity, 'publication-pending');
 		$publicationPending.set({ operationId: 'story-save', kind: 'finish', identity });
 		retryPublication.mockClear();
-		setTrainingServiceForTesting({ ...createTrainingService(), retry: retryPublication });
+		setTrainingServiceForTesting({
+			...createTrainingService(),
+			retry: retryPublication,
+			loadCompletedResult: loadProvisionalResult
+		});
 		return restore;
 	},
 	play: async ({ canvasElement }) => {
@@ -567,13 +581,23 @@ export const TrainingStopped: Story = {
 /** A completed result is available for acknowledgement, with history still inspectable. */
 export const TrainingComplete: Story = {
 	beforeEach: () => {
-		const restore = seedRun('trained', true);
+		const restore = seedRun('trained', true, true);
+		setTrainingServiceForTesting({
+			...createTrainingService(),
+			loadCompletedResult: loadProvisionalResult
+		});
 		setTrainingSessionStatus(
 			identity,
 			'complete',
 			appendTrainingLog([], { key: 'completed' }, 1)
 		);
 		return restore;
+	},
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const panel = builder.shadowRoot!.querySelector('[data-testid=training-step]')!;
+		await waitFor(() => expect(panel.querySelector('header button:last-child')).toBeEnabled());
 	}
 };
 function seedShownResult(label?: string) {
@@ -620,10 +644,6 @@ export const ModelResultsShown: Story = {
 /** A trained numeric route starts at a heading and shows the saved evaluation. */
 export const NumberedModelResults: Story = {
 	beforeEach: () => seedShownResult(),
-	render: () =>
-		html`<app-model-builder-view
-			model-num="1"
-			.numberedRoute=${true}></app-model-builder-view>`,
 	play: async ({ canvasElement }) => {
 		const builder = canvasElement.querySelector('app-model-builder-view')!;
 		await builder.whenSettled();
@@ -649,8 +669,7 @@ export const NumberedResultsLongLabelRTL: Story = {
 			document.documentElement.dir = direction;
 			restore();
 		};
-	},
-	render: NumberedModelResults.render
+	}
 };
 /** All illustrated classifiers are available for a categorical target. */
 export const ChooseCategoricalModel: Story = {

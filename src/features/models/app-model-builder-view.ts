@@ -10,6 +10,7 @@ import {
 	$leaveConfirmation,
 	$route,
 	getEffectiveModelNum,
+	getEffectiveWorkflowRoute,
 	getWorkflowEntryId,
 	ownsWizardLeave,
 	provisionalResultIdentity,
@@ -548,13 +549,10 @@ export class AppModelBuilderView extends LitElement {
 	@property({ type: Number, attribute: 'model-num' })
 	accessor modelNum = 0;
 
-	/** History-bound identity when mounted by the provisional workflow route. */
-	@property({ attribute: false })
-	accessor provisionalBinding: ProvisionalModelIdentity | undefined;
-
-	/** When the shell mounts a numbered route, a saved model opens its results directly. */
-	@property({ attribute: false })
-	accessor numberedRoute = false;
+	/** Last rendered provisional binding, retained until this wizard releases ownership. */
+	private provisionalBinding: ProvisionalModelIdentity | undefined;
+	/** A saved model opens its results directly on the corresponding numbered route. */
+	private numberedRoute = false;
 
 	// Description dialog state
 	@state() private accessor dialogOpen = false;
@@ -630,6 +628,14 @@ export class AppModelBuilderView extends LitElement {
 	}
 
 	override willUpdate(_changed: PropertyValues<this>): void {
+		const workflow = getEffectiveWorkflowRoute(this.routeController.value);
+		const provisional = workflow.kind === 'workflow' ? workflow.provisional : undefined;
+		this.provisionalBinding =
+			provisional?.kind === 'bound' && provisional.identity.modelNum === this.modelNum
+				? provisional.identity
+				: undefined;
+		this.numberedRoute = workflow.kind === 'workflow' && workflow.modelNum === this.modelNum;
+
 		const appState = this.appStateController.value;
 		const datasetId = appState.dataset?.id ?? null;
 
@@ -803,6 +809,7 @@ export class AppModelBuilderView extends LitElement {
 	override disconnectedCallback(): void {
 		this.handleCancelReopen();
 		if (this.provisionalBinding) retireWizardOwner(this.provisionalBinding);
+		this.provisionalBinding = undefined;
 		this.openLeaveToken = undefined;
 		this.leaveDialog?.close();
 		super.disconnectedCallback();

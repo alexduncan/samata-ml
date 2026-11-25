@@ -134,8 +134,7 @@ function renderWorkflowView(route: ParsedRoute) {
 			) {
 				return html`
 					<app-model-builder-view
-						model-num=${provisional.identity.modelNum}
-						.provisionalBinding=${provisional.identity}></app-model-builder-view>
+						model-num=${provisional.identity.modelNum}></app-model-builder-view>
 				`;
 			}
 			return renderProvisionalPlaceholder(provisional);
@@ -145,9 +144,7 @@ function renderWorkflowView(route: ParsedRoute) {
 		default:
 			if (route.modelNum !== undefined) {
 				return html`
-					<app-model-builder-view
-						model-num=${route.modelNum}
-						.numberedRoute=${true}></app-model-builder-view>
+					<app-model-builder-view model-num=${route.modelNum}></app-model-builder-view>
 				`;
 			}
 			return html``;
