@@ -178,8 +178,28 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Section 3 active with the Logistic Regression form. */
-export const ConfigureModel: Story = { beforeEach: () => seed('categorical') };
+/** Section 2 has an inline link to the feature selection article. */
+export const SelectFeaturesHelp: Story = {
+	beforeEach: () => seed('categorical', { completedSteps: ['choose-model'] }),
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const link = builder.shadowRoot!.querySelector('h2#step-2-title .help-link');
+		expect(link).toHaveTextContent('What are features?');
+		expect(link).toHaveAttribute('href', '/help/select-features');
+	}
+};
+/** Section 3 active with the Logistic Regression form and its inline Help link. */
+export const ConfigureModel: Story = {
+	beforeEach: () => seed('categorical'),
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const link = builder.shadowRoot!.querySelector('h2#step-3-title .help-link');
+		expect(link).toHaveTextContent('What do these settings mean?');
+		expect(link).toHaveAttribute('href', '/help/configure-model');
+	}
+};
 /** Sections 1 to 3 complete, so axe checks the Section 3 Edit button name. */
 export const ConfigureModelComplete: Story = {
 	beforeEach: () =>
@@ -339,6 +359,9 @@ export const ConfigureTraining: Story = {
 	play: async ({ canvasElement }) => {
 		const builder = canvasElement.querySelector('app-model-builder-view')!;
 		await builder.updateComplete;
+		const link = builder.shadowRoot!.querySelector('h2#step-4-title .help-link');
+		expect(link).toHaveTextContent('What is this?');
+		expect(link).toHaveAttribute('href', '/help/training-setup');
 		const setup = builder.shadowRoot!.querySelector('app-training-setup')!;
 		await setup.updateComplete;
 		const root = setup.shadowRoot!;

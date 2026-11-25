@@ -42,7 +42,7 @@ describe('Content build pipeline', () => {
 
 		const report = await buildContent(outDir1, { contentDir: fixture, locales: ['en'] });
 		expect(report.locales.en).toEqual({
-			pages: { total: 5, fallbacks: 0 },
+			pages: { total: 6, fallbacks: 0 },
 			models: { total: 2, fallbacks: 0 },
 			glossary: { total: 0, fallbacks: 0 }
 		});
@@ -72,6 +72,7 @@ describe('Content build pipeline', () => {
 			'help',
 			'privacy-policy',
 			'training-setup',
+			'select-features',
 			'configure-model'
 		]);
 
@@ -134,6 +135,7 @@ describe('Content build pipeline', () => {
 		expect(combined).toContain('invalid content filename "UpperCase.md"');
 		expect(combined).toContain('subdirectories are not allowed');
 		expect(combined).toContain("missing base-locale (en) page 'privacy-policy'");
+		expect(combined).toContain("missing base-locale (en) page 'select-features'");
 		expect(combined).toContain("missing base-locale (en) page 'configure-model'");
 		expect(combined).toContain("missing base-locale (en) page 'training-setup'");
 		expect(combined).toContain('unexpected entry under content root');
@@ -150,8 +152,8 @@ describe('Content build pipeline', () => {
 		const fixture = path.join(FIXTURES_DIR, 'valid-multi');
 
 		const report = await buildContent(outDir, { contentDir: fixture, locales: ['en', 'fr'] });
-		expect(report.locales.en?.pages).toEqual({ total: 5, fallbacks: 0 });
-		expect(report.locales.fr?.pages).toEqual({ total: 5, fallbacks: 4 });
+		expect(report.locales.en?.pages).toEqual({ total: 6, fallbacks: 0 });
+		expect(report.locales.fr?.pages).toEqual({ total: 6, fallbacks: 5 });
 
 		const enPages = JSON.parse(
 			readFileSync(path.join(outDir, 'content', 'en', 'pages', 'index.json'), 'utf8')
@@ -182,7 +184,7 @@ describe('Content build pipeline', () => {
 			contentDir: noFrContentDir,
 			locales: ['en', 'fr']
 		});
-		expect(noFrReport.locales.fr?.pages).toEqual({ total: 5, fallbacks: 5 });
+		expect(noFrReport.locales.fr?.pages).toEqual({ total: 6, fallbacks: 6 });
 
 		// fr/pages/extra.md with no en file, and order in fr/models/*.md both fail
 		const invalidFrDir = makeTempDir('samata-bad-fr-');
@@ -212,7 +214,8 @@ describe('Content build pipeline', () => {
 
 	for (const [id, page] of [
 		['WML-P1-ROUTE-1', 'configure-model'],
-		['WML-P2-ROUTE-1', 'training-setup']
+		['WML-P2-ROUTE-1', 'training-setup'],
+		['MW-HELP-1', 'select-features']
 	]) {
 		it(`${id}: fails when the ${page} reserved page is missing`, async () => {
 			const contentDir = makeTempDir(`samata-no-${page}-`);

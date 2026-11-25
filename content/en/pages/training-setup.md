@@ -18,6 +18,13 @@ The matrix shows which folds are used for training and validation in each round.
 
 To **refit**, train the final model again using all the eligible rows after cross-validation has checked performance. The displayed held-out scores come from the validation folds used before refitting.
 
+## Choosing a training strategy
+
+| Strategy         | Benefits                                                                           | Drawbacks                                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| One-Shot         | Trains once, so it is quicker and simpler to follow.                               | The score depends on which rows land in the single test group.                               |
+| Cross-Validation | Checks every row in a held-out group once, so the score depends less on one split. | Trains several times, so it takes longer. Small classes limit how many folds you can choose. |
+
 ## How many folds can I choose?
 
 Training setup requires at least two observed classes with at least two labelled rows each. The smallest class limits the number of folds you can select, up to a maximum of ten. This is a rule for choosing settings. Training may still reject a setup when a class is very small.

@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator } from '@playwright/test';
+import { DIST_URL } from '../scripts/ports';
 import { interceptSampleDownload } from './fixtures/sample-dataset-downloads';
 import { controlTraining, openSetup } from './fixtures/training/browser';
 
@@ -15,6 +16,155 @@ const CLASSIFIER_ARTWORK = [
 	['support-vector-classifier', 'support-vector-classifier'],
 	['decision-tree-classifier', 'decision-tree-classifier']
 ] as const;
+
+test.describe('Contextual wizard Help', () => {
+	test.use({ hasTouch: true, baseURL: DIST_URL });
+
+	test('MW-HELP-2 / MW-HELP-1: each Help link opens its article and preserves the current step', async ({
+		page
+	}) => {
+		test.setTimeout(60_000);
+		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await page.goto('/data');
+		const welcome = page.locator('app-welcome-modal').getByRole('dialog');
+		await welcome.getByRole('button', { name: 'Get Started' }).click();
+		await expect(welcome).toBeHidden();
+		await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
+		await expect(page.locator('app-dataset-preview')).toBeAttached();
+		await page.goto('/target');
+		const target = page.locator('app-target-view');
+		await expect(target.getByTestId('target-ready')).toBeVisible();
+		const classTarget = target.locator('tbody tr:has(th:has-text("class")) button');
+		await classTarget.click();
+		await expect(classTarget).toHaveText('Current Target');
+		await page.goto('/models');
+		await page
+			.locator('app-models-view')
+			.getByRole('link', { name: 'Train New Model' })
+			.click();
+
+		const builder = page.locator('app-model-builder-view');
+		await builder
+			.locator('app-model-card[model-id="logistic-regression"]')
+			.getByRole('button', { name: 'Select Model' })
+			.click();
+		const source = await page.evaluate(() => history.state.entryId);
+		const modal = page.locator('app-content-modal').getByRole('dialog');
+		const article = modal.locator('.modal-content');
+		const readDraft = () =>
+			page.evaluate(() => {
+				const state = window.__appState!.get();
+				return state.models.find((model) => model.num === state.newModelNum);
+			});
+
+		async function exerciseHelp(
+			stepTitle: string,
+			topic: string,
+			title: string,
+			verifyArticle: () => Promise<void>,
+			verifyForm: () => Promise<void>
+		): Promise<void> {
+			const link = builder.locator(`h2#${stepTitle} .help-link`);
+			await expect(link).toHaveAttribute('href', topic);
+			const draft = await readDraft();
+			expect(draft).toBeDefined();
+
+			for (const mode of ['mouse', 'keyboard', 'touch'] as const) {
+				if (mode === 'mouse') await link.click();
+				else if (mode === 'keyboard') await link.press('Enter');
+				else await link.tap();
+				await expect(page).toHaveURL(topic);
+				await expect(modal).toHaveAccessibleName(title);
+				expect(await page.evaluate(() => history.state.underlayEntryId)).toBe(source);
+				expect(await page.evaluate(() => history.state.underlayPath)).toBe('/models/new');
+				await verifyArticle();
+
+				if (mode === 'mouse') await modal.getByRole('button', { name: 'Close' }).click();
+				else if (mode === 'keyboard') await page.keyboard.press('Escape');
+				else await page.goBack();
+				await expect(page).toHaveURL('/models/new');
+				await expect(modal).toBeHidden();
+				await expect(link).toBeFocused();
+				await expect(builder.locator('[aria-current="step"] h2')).toHaveAttribute(
+					'id',
+					stepTitle
+				);
+				expect(await page.evaluate(() => history.state.entryId)).toBe(source);
+				expect(await readDraft()).toEqual(draft);
+				await verifyForm();
+			}
+		}
+
+		const feature = builder.getByRole('checkbox', { name: 'Include sepal length' });
+		await feature.uncheck();
+		await exerciseHelp(
+			'step-2-title',
+			'/help/select-features',
+			'What are features?',
+			async () => {
+				await expect(article).toContainText('the column you want the model to predict');
+				await expect(article).toContainText('petal length and petal width');
+				await expect(
+					article.getByRole('heading', { name: 'Watch out for data leakage' })
+				).toBeVisible();
+			},
+			async () => {
+				await expect(feature).not.toBeChecked();
+			}
+		);
+		await builder.getByRole('button', { name: 'Continue', exact: true }).click();
+
+		const configuration = builder.locator('app-model-configuration');
+		await configuration.locator('select#penalty').selectOption('l2');
+		const regularisation = configuration.locator('#C-number');
+		await regularisation.fill('0.00');
+		await exerciseHelp(
+			'step-3-title',
+			'/help/configure-model',
+			'What do these settings mean?',
+			async () => {
+				await expect(article).toContainText(
+					'The exact stopping check depends on the solver.'
+				);
+			},
+			async () => {
+				await expect(regularisation).toHaveValue('0.00');
+				await expect(regularisation).toHaveAttribute('aria-invalid', 'true');
+			}
+		);
+		await regularisation.fill('1');
+		await configuration.getByRole('button', { name: 'Save & Continue' }).click();
+
+		const setup = builder.locator('app-training-setup');
+		await setup.getByRole('combobox').selectOption('nested_cv');
+		const folds = setup.getByRole('spinbutton');
+		await folds.fill('11');
+		await exerciseHelp(
+			'step-4-title',
+			'/help/training-setup',
+			'Training Setup',
+			async () => {
+				const tradeOffs = article.getByRole('table');
+				await expect(
+					tradeOffs.getByRole('columnheader', { name: 'Benefits' })
+				).toBeVisible();
+				await expect(
+					tradeOffs.getByRole('columnheader', { name: 'Drawbacks' })
+				).toBeVisible();
+				await expect(tradeOffs.getByRole('row', { name: /^One-Shot/ })).toContainText(
+					'depends on which rows land in the single test group'
+				);
+				await expect(
+					tradeOffs.getByRole('row', { name: /^Cross-Validation/ })
+				).toContainText('Trains several times');
+			},
+			async () => {
+				await expect(folds).toHaveValue('11');
+				await expect(folds).toHaveAttribute('aria-invalid', 'true');
+			}
+		);
+	});
+});
 
 test('MW-STEP-2: a failed save keeps the form and the exact committed candidate replays once', async ({
 	page

@@ -7,6 +7,7 @@ export type ReservedPath =
 	| '/about'
 	| '/privacy'
 	| '/help'
+	| '/help/select-features'
 	| '/help/configure-model'
 	| '/help/training-setup';
 

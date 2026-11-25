@@ -15,6 +15,7 @@ const messages = i18n('app-content-modal', {
 	about: 'About',
 	privacy: 'Privacy',
 	help: 'Help',
+	selectFeaturesHelp: 'What are features?',
 	configureModelHelp: 'What do these settings mean?',
 	trainingSetupHelp: 'Training Setup',
 	close: 'Close',
@@ -133,17 +134,16 @@ export class AppContentModal extends LitElement {
 			this.body !== undefined;
 		const heading = ready
 			? this.entry!.title
-			: path === '/about'
-				? t.about
-				: path === '/privacy'
-					? t.privacy
-					: path === '/help'
-						? t.help
-						: path === '/help/configure-model'
-							? t.configureModelHelp
-							: path === '/help/training-setup'
-								? t.trainingSetupHelp
-								: '';
+			: path
+				? {
+						'/about': t.about,
+						'/privacy': t.privacy,
+						'/help': t.help,
+						'/help/select-features': t.selectFeaturesHelp,
+						'/help/configure-model': t.configureModelHelp,
+						'/help/training-setup': t.trainingSetupHelp
+					}[path]
+				: '';
 		// Each reserved-route opening owns its native dialog instance. A queued event from
 		// an old route cannot dismiss a newer route after its instance is disconnected.
 		return keyed(

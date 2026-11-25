@@ -52,6 +52,7 @@ import { notificationStyles } from '../../styles/notification.styles';
 import { tableStyles } from '../../styles/table.styles';
 import { trainModelStyles } from '../../styles/train-model.styles';
 import { headingFocusStyles } from '../../styles/heading-focus.styles';
+import { helpLinkStyles } from '../../styles/help-link.styles';
 import { modelSwatchStyles } from '../../styles/model-swatch.styles';
 import type { ColumnStats } from '../../types/dataset';
 import type { TrainingLogEntry, TrainingRunIdentity } from '../../types/model-result';
@@ -135,6 +136,7 @@ const messages = i18n('app-model-builder-view', {
 	chooseHeading: '1. Choose Model',
 	chosenHeading: params<{ name: string }>('1. {name}'),
 	featuresHeading: '2. Select Features',
+	featuresHelp: 'What are features?',
 	oneFeatureHeading: '2. 1 Feature Selected',
 	featuresSelectedHeading: params<{ count: string }>('2. {count} Features Selected'),
 	reopenChoose: 'Edit Choose Model',
@@ -393,6 +395,7 @@ export class AppModelBuilderView extends LitElement {
 		tableStyles,
 		notificationStyles,
 		trainModelStyles,
+		helpLinkStyles,
 		modelSwatchStyles,
 		css`
 			:host {
@@ -1388,6 +1391,11 @@ export class AppModelBuilderView extends LitElement {
 									: t.featuresSelectedHeading({
 											count: $format.get().number(model.features.length)
 										})}
+							${isActive
+								? html`<a href="/help/select-features" class="help-link"
+										>${t.featuresHelp}</a
+									>`
+								: nothing}
 						</h2>
 						${isCompleted
 							? html`

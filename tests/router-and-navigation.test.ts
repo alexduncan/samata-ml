@@ -145,6 +145,17 @@ describe('Router & Navigation (NAV-AC-1, NAV-AC-2, NAV-AC-4)', () => {
 			expect(RESERVED_CONTENT['/help/training-setup']).toBe('training-setup');
 		});
 
+		it('MW-HELP-1: reserves Select Features without accepting arbitrary Help paths', () => {
+			const route = { kind: 'reserved', path: '/help/select-features' } as const;
+			expect(parseRoute('/help/select-features')).toEqual(route);
+			expect(parseRoute('/help/select-features/')).toEqual(route);
+			expect(RESERVED_CONTENT[route.path]).toBe('select-features');
+			expect(getDocumentTitle(route)).toBe('samatā.ml | What are features?');
+			expect(parseRoute('/help/select-features/extra').kind).toBe('unknown');
+			expect(parseRoute('/help/unlisted-topic').kind).toBe('unknown');
+			expect(parseRoute('constructor').kind).toBe('unknown');
+		});
+
 		it('normalises trailing slashes without breaking', () => {
 			expect(parseRoute('/data/')).toEqual({ kind: 'workflow', path: '/data', section: 1 });
 			expect(parseRoute('/target/')).toEqual({
