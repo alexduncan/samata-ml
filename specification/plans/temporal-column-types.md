@@ -1,6 +1,6 @@
 # Temporal column types: date, time and datetime
 
-**Status:** ready | **Updated:** 2026-11-25T13:58:33Z
+**Status:** ready | **Updated:** 2026-11-25T14:00:57Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-25T10:49:58Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-25T12:38:45Z | **Verification:** approved
 **Verified hash:** sha256:170e52184c86cc170c93b0d486d248f334c2e7c038e22aabd36ec19133b41c68
@@ -389,14 +389,14 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
     - Replace the `DateAndTime` story with a `Datetime` story (`precision: 'second'`, ISO date format), and add `Date` and `Time` stories. The existing Long-label and RTL stories use categorical columns and stay unchanged.
     - Follow `lit-component-implementer`.
 - **Acceptance criteria:**
-    - [ ] TEMP-AC-13: `formatTemporalValue` returns the four _Interfaces_ examples. It also gives `'millisecond'` time `86_399_999` → `23:59:59.999` and a `'minute'` datetime → `2013-08-13T06:03Z`. The module uses only `toISOString()` and integer arithmetic, never local-time `Date` getters or `Intl`, so its output does not depend on the zone (checked by code review against this criterion).
-    - [ ] TEMP-AC-14 (Playwright, new test in `tests/data-upload.e2e.ts`): upload an inline CSV through the existing `setInputFiles({ name, mimeType: 'text/csv', buffer })` pattern (`tests/data-upload.e2e.ts:117-137`). The CSV has 10 rows of `date`, `time` and `datetime` columns plus a categorical label. After the upload:
+    - [x] TEMP-AC-13: `formatTemporalValue` returns the four _Interfaces_ examples. It also gives `'millisecond'` time `86_399_999` → `23:59:59.999` and a `'minute'` datetime → `2013-08-13T06:03Z`. The module uses only `toISOString()` and integer arithmetic, never local-time `Date` getters or `Intl`, so its output does not depend on the zone (checked by code review against this criterion).
+    - [x] TEMP-AC-14 (Playwright, new test in `tests/data-upload.e2e.ts`): upload an inline CSV through the existing `setInputFiles({ name, mimeType: 'text/csv', buffer })` pattern (`tests/data-upload.e2e.ts:117-137`). The CSV has 10 rows of `date`, `time` and `datetime` columns plus a categorical label. After the upload:
         - the preview shows `2013-08-14`, `09:30` and `2013-08-13T06:03:42Z`;
         - the inspector for the date column shows "Earliest" and "Latest" (no "UTC") with `YYYY-MM-DD` values;
         - the datetime column keeps "Earliest (UTC)".
-    - [ ] TEMP-AC-15: `bun run test:stories` passes smoke and axe checks for the `Date`, `Time` and `Datetime` stories in Chromium, Firefox and WebKit.
+    - [x] TEMP-AC-15: `bun run test:stories` passes smoke and axe checks for the `Date`, `Time` and `Datetime` stories in Chromium, Firefox and WebKit.
 - **Verification:** `bun test tests/temporal-format.test.ts`, `bun run check`, `bun run test:stories`, `bun run test:e2e tests/data-upload.e2e.ts`, `bun run lint`, `bun run format <changed files>`. The existing `DATA-UP-2` failure is listed in `tests/known-failures.ts` and is not a regression.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-25T14:00:57Z)
 
 ### T5 — Sync specification and Help text
 
@@ -449,6 +449,7 @@ None.
 | 2026-11-25T13:53:17Z | T1 | Claude Code (claude-sonnet-5-5) | bun test: 622 pass, 2 fail (pre-existing: scripts/build-public-assets.ts cannot resolve @federicocarboni/saxe and svgo, not installed in worktree; same typecheck errors). bun run lint OK. bun run format applied. New tests/temporal-column-types.test.ts plus eligibility, provider tests. Changed src/types, training-domain, eligibility, provider, sidebar, pipeline, cells, profiler, story. |
 | 2026-11-25T13:54:10Z | T2 | Claude Code (claude-sonnet-5-5) | bun test tests/cells.test.ts 15 pass; bun test: 626 pass, 2 fail (pre-existing missing saxe/svgo modules); lint OK; format applied. Changed src/common/storage/cells.ts, tests/cells.test.ts |
 | 2026-11-25T13:58:33Z | T3 | Claude Code (claude-sonnet-5-5) | bun run check: typecheck OK, 657 pass 0 fail (after bun install --frozen-lockfile restored missing saxe/svgo); bun run build OK, COMPAS descriptor 12 date + 2 datetime; bun run lint OK; format applied. Changed profiler.ts, cells.ts, pipeline.ts, generate-datasets.ts, COMPAS descriptor and datasheet, profiler/pipeline/cells/generate-datasets tests |
+| 2026-11-25T14:00:57Z | T4 | Claude Code (claude-sonnet-5-5) | bun run check 658 pass 0 fail; bun run lint OK; bun run test:stories 105 files 666 tests pass; bun run test:e2e tests/data-upload.e2e.ts: 9 pass (new TEMP-AC-14 in chromium, firefox, webkit), 3 fail = known DATA-UP-2 (11 vs 12 cards) per tests/known-failures.ts; format applied. Changed temporal-format.ts, app-data-view.ts, app-column-details.ts, stories, temporal-format test, data-upload e2e |
 
 ## Plan review history
 

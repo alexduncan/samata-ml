@@ -90,17 +90,48 @@ export const Numeric: Story = {
 		})
 };
 
-/** Earliest and latest dates, with UTC shown in the existing labels. */
-export const DateAndTime: Story = {
+/** Earliest and latest instants, with UTC shown in the labels. */
+export const Datetime: Story = {
 	render: () =>
 		inspector({
 			...base,
 			name: 'Recorded at',
 			type: 'datetime',
 			count: 5,
+			min: Date.UTC(2026, 0, 1, 9, 30, 15),
+			max: Date.UTC(2026, 4, 1, 17, 45, 0),
+			precision: 'second',
+			format: { kind: 'date', order: 'ISO', orderAssumed: false }
+		})
+};
+
+/** Earliest and latest calendar dates, with no time and no UTC label. */
+export const DateOnly: Story = {
+	name: 'Date',
+	render: () =>
+		inspector({
+			...base,
+			name: 'Visit date',
+			type: 'date',
+			count: 5,
 			min: Date.UTC(2026, 0, 1),
 			max: Date.UTC(2026, 4, 1),
 			format: { kind: 'date', order: 'ISO', orderAssumed: false }
+		})
+};
+
+/** Earliest and latest times of day, with no date and no UTC label. */
+export const TimeOfDay: Story = {
+	name: 'Time',
+	render: () =>
+		inspector({
+			...base,
+			name: 'Opening time',
+			type: 'time',
+			count: 5,
+			min: 32_400_000,
+			max: 63_000_000,
+			precision: 'minute'
 		})
 };
 

@@ -13,6 +13,8 @@ import {
 	loadPreviewRows,
 	startDatasetLoad
 } from '../../stores/dataset.store';
+import { isTemporalColumnType } from '../../types/state';
+import { formatTemporalValue, type TemporalColumnStats } from './temporal-format';
 import { loadSampleCatalogue, loadSampleDatasheet } from './sample-datasets';
 import { getTrainingService } from '../models/training/training-service';
 import type { SampleDatasetIndex } from '../../types/sample-dataset';
@@ -62,8 +64,8 @@ function formatPreviewRows(
 				return '—';
 			}
 			const col = columns[idx];
-			if (col?.type === 'datetime' && typeof val === 'number') {
-				return new Date(val).toISOString();
+			if (col && isTemporalColumnType(col.type) && typeof val === 'number') {
+				return formatTemporalValue(val, col as TemporalColumnStats);
 			}
 			if (typeof val === 'number') {
 				return format.number(val, { useGrouping: true, maximumFractionDigits: 20 });

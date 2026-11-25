@@ -6,10 +6,11 @@ import type {
 	NumericColumnStats,
 	CategoricalColumnStats,
 	BooleanColumnStats,
-	DatetimeColumnStats,
 	TextColumnStats
 } from '../../types/dataset';
 import { $format } from '../../i18n';
+import { isTemporalColumnType } from '../../types/state';
+import { formatTemporalValue, type TemporalColumnStats } from './temporal-format';
 
 /** Labels for column details text. */
 export interface ColumnDetailsLabels {
@@ -447,19 +448,20 @@ export class AppColumnDetails extends LitElement {
 		`;
 	}
 
-	private renderDatetimeStats(col: DatetimeColumnStats): TemplateResult {
-		const earliestStr = new Date(col.min).toISOString();
-		const latestStr = new Date(col.max).toISOString();
+	private renderTemporalStats(col: TemporalColumnStats): TemplateResult {
+		const earliestStr = formatTemporalValue(col.min, col);
+		const latestStr = formatTemporalValue(col.max, col);
+		const utc = col.type === 'datetime' ? ' (UTC)' : '';
 
 		return html`
 			<table class="table">
 				<tbody>
 					<tr>
-						<th scope="row">${this.labels.earliest || 'Earliest (UTC)'}</th>
+						<th scope="row">${this.labels.earliest || `Earliest${utc}`}</th>
 						<td>${earliestStr}</td>
 					</tr>
 					<tr>
-						<th scope="row">${this.labels.latest || 'Latest (UTC)'}</th>
+						<th scope="row">${this.labels.latest || `Latest${utc}`}</th>
 						<td>${latestStr}</td>
 					</tr>
 				</tbody>
@@ -526,7 +528,9 @@ export class AppColumnDetails extends LitElement {
 				${col.type === 'numeric' ? this.renderNumericStats(col) : nothing}
 				${col.type === 'categorical' ? this.renderCategoricalStats(col) : nothing}
 				${col.type === 'boolean' ? this.renderBooleanStats(col) : nothing}
-				${col.type === 'datetime' ? this.renderDatetimeStats(col) : nothing}
+				${isTemporalColumnType(col.type)
+					? this.renderTemporalStats(col as TemporalColumnStats)
+					: nothing}
 				${col.type === 'text' ? this.renderTextStats(col) : nothing}
 			</aside>
 		`;
