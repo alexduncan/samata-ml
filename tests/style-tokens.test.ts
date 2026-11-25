@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 import * as fs from 'fs';
 import * as path from 'path';
+import { parseSync, Visitor } from 'oxc-parser';
 
 export const KNOWN_DRIFT: string[] = [];
 
@@ -176,6 +177,107 @@ function forbiddenCss(content: string, extension: '.css' | '.ts'): string[] {
 		(match) => match[0]
 	);
 }
+
+function inlineStyleBindings(file: string, source: string): string[] {
+	const { program, errors } = parseSync(file, source);
+	if (errors.length) return errors.map(({ message }) => `${file}: ${message}`);
+	const tags = new Set<string>();
+	const namespaces = new Set<string>();
+	const issues: string[] = [];
+	const report = (offset: number, issue: string) => {
+		issues.push(`${file}:${source.slice(0, offset).split('\n').length}: ${issue}`);
+	};
+
+	for (const statement of program.body) {
+		if (statement.type !== 'ImportDeclaration' || statement.importKind === 'type') continue;
+		const module = statement.source.value;
+		if (/^(?:lit|lit-html)\/directives\/style-map(?:\.js)?$/.test(module)) {
+			report(statement.start, 'Lit style-map import');
+		}
+		if (
+			!/^(?:lit|lit-html|lit-element)(?:\/(?:static-html|static|lit-html)\.js)?$/.test(module)
+		)
+			continue;
+		for (const specifier of statement.specifiers) {
+			if (specifier.type === 'ImportNamespaceSpecifier') namespaces.add(specifier.local.name);
+			if (
+				specifier.type === 'ImportSpecifier' &&
+				specifier.imported.type === 'Identifier' &&
+				['html', 'svg', 'mathml'].includes(specifier.imported.name)
+			) {
+				tags.add(specifier.local.name);
+			}
+		}
+	}
+
+	new Visitor({
+		TaggedTemplateExpression({ tag, quasi: template }) {
+			const namedTag = tag.type === 'Identifier' && tags.has(tag.name);
+			const namespaceTag =
+				tag.type === 'MemberExpression' &&
+				!tag.computed &&
+				tag.object.type === 'Identifier' &&
+				namespaces.has(tag.object.name) &&
+				tag.property.type === 'Identifier' &&
+				['html', 'svg', 'mathml'].includes(tag.property.name);
+			if (!namedTag && !namespaceTag) return;
+
+			const markup = template.quasis
+				.map(({ value }) => value.cooked ?? value.raw)
+				.join('lit-expression');
+			new HTMLRewriter()
+				.on('*', {
+					element(element) {
+						if (element.hasAttribute('style') || element.hasAttribute('?style')) {
+							report(
+								template.start,
+								`inline style attribute on <${element.tagName}>`
+							);
+						}
+					}
+				})
+				.transform(markup);
+		}
+	}).visit(program);
+	return issues;
+}
+
+describe('Inline styles under the production CSP', () => {
+	it('BETA-ERR-2: production Lit templates do not emit inline style attributes or use style-map', () => {
+		const issues = getSourceFiles('src', ['.ts'])
+			.filter((file) => !file.endsWith('.stories.ts'))
+			.flatMap((file) => inlineStyleBindings(file, fs.readFileSync(file, 'utf8')));
+		expect(issues).toEqual([]);
+	});
+
+	it('BETA-ERR-2: finds nested templates, imported aliases and varied attribute bindings', () => {
+		const source = [
+			"import { html as markup } from 'lit';",
+			"import * as lit from 'lit';",
+			"import { styleMap as mapStyles } from 'lit/directives/style-map.js';",
+			'const content = markup`<div STYLE="color: blue">${markup`<span style=${mapStyles(styles)}></span>`}</div>`;',
+			"const vector = lit.svg`<circle style='fill: blue'></circle>`;",
+			'const toggle = markup`<p ?style=${enabled}>Example</p>`;'
+		].join('\n');
+		expect(inlineStyleBindings('nested.ts', source)).toEqual([
+			'nested.ts:3: Lit style-map import',
+			'nested.ts:4: inline style attribute on <div>',
+			'nested.ts:4: inline style attribute on <span>',
+			'nested.ts:5: inline style attribute on <circle>',
+			'nested.ts:6: inline style attribute on <p>'
+		]);
+	});
+
+	it('BETA-ERR-2: leaves text, unrelated templates and CSSOM writes alone', () => {
+		const source = [
+			"import { html } from 'lit';",
+			'const prose = html`<p title=\'Use style="width: 1px"\'>style="width: 1px"</p><!-- <p style="width: 1px"> -->`;',
+			'const other = tag`<p style="width: 1px">`;',
+			'element.style.inlineSize = "10px";'
+		].join('\n');
+		expect(inlineStyleBindings('inert.ts', source)).toEqual([]);
+	});
+});
 
 describe('Static Style and Token Guards (TOK-1 .. TOK-6)', () => {
 	const globalTokens = getRootTokens();

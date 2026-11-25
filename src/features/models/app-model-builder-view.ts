@@ -374,6 +374,12 @@ export class AppModelBuilderView extends LitElement {
 				font-family: var(--font-mono);
 			}
 
+			#features-form fieldset {
+				margin: 0;
+				border: 0;
+				padding: 0;
+			}
+
 			/* Section Actions */
 			.section-actions {
 				display: flex;
@@ -981,7 +987,7 @@ export class AppModelBuilderView extends LitElement {
 									<form
 										id="features-form"
 										@submit=${(e: Event) => e.preventDefault()}>
-										<fieldset style="border: 0; padding: 0; margin: 0;">
+										<fieldset>
 											<legend>Features to include in model training</legend>
 
 											<div class="features-table-container">

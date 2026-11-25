@@ -1,6 +1,72 @@
 import { expect, test } from '@playwright/test';
 import { seedComparableGroups, seedComparablePair } from './helpers/seed-results';
 
+test('BETA-ERR-2b: comparison bars reflect changed input on a reused model row', async ({
+	page
+}) => {
+	await seedComparablePair(page);
+	await page.goto('/results');
+	await expect(page.locator('app-results-view app-comparison-table')).toBeVisible();
+	await page.evaluate(async () => {
+		const table = document.createElement('app-comparison-table');
+		table.id = 'comparison-bar-fixture';
+		table.labels = {
+			caption: 'Bar dimensions',
+			model: 'Model',
+			baseline: 'Baseline',
+			unavailable: 'Unavailable'
+		};
+		table.columns = [
+			{ id: 'balancedAccuracy', label: 'Balanced accuracy', lowerIsBetter: false }
+		];
+		table.rows = [
+			{
+				id: 'minimum',
+				label: 'Minimum',
+				kind: 'model',
+				metrics: { balancedAccuracy: { value: 0, text: '0%' } }
+			},
+			{
+				id: 'middle',
+				label: 'Middle',
+				kind: 'model',
+				metrics: { balancedAccuracy: { value: 0.5, text: '50%' } }
+			},
+			{
+				id: 'maximum',
+				label: 'Maximum',
+				kind: 'model',
+				metrics: { balancedAccuracy: { value: 1, text: '100%' } }
+			}
+		];
+		document.body.append(table);
+		await table.updateComplete;
+	});
+	const table = page.locator('app-comparison-table#comparison-bar-fixture');
+	const bar = table.getByRole('row').filter({ hasText: 'Middle' }).locator('.bar');
+	const share = () =>
+		bar.evaluate((element) => {
+			const cell = element.parentElement!;
+			const style = getComputedStyle(cell);
+			const contentWidth =
+				cell.clientWidth -
+				parseFloat(style.paddingInlineStart) -
+				parseFloat(style.paddingInlineEnd);
+			return element.getBoundingClientRect().width / contentWidth;
+		});
+	expect(await share()).toBeCloseTo(0.5, 2);
+	await table.evaluate(async (element) => {
+		const table = element as HTMLElementTagNameMap['app-comparison-table'];
+		table.rows = table.rows.map((row) =>
+			row.id === 'middle'
+				? { ...row, metrics: { balancedAccuracy: { value: 0.75, text: '75%' } } }
+				: row
+		);
+		await table.updateComplete;
+	});
+	expect(await share()).toBeCloseTo(0.75, 2);
+});
+
 test('TERM-AC-7: comparison terms explain pooled scores and the paired fold gap', async ({
 	page
 }) => {

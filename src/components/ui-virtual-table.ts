@@ -1,5 +1,6 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { ref } from 'lit/directives/ref.js';
 import { buttonStyles } from '../styles/button.styles';
 
 /** Column definition for the virtual table. */
@@ -488,7 +489,10 @@ export class UiVirtualTable extends LitElement {
 						${topSpacerHeight > 0
 							? html`<div
 									class="rail-spacer-top"
-									style="block-size: ${topSpacerHeight}px; height: ${topSpacerHeight}px;"></div>`
+									${ref((element) => {
+										if (element instanceof HTMLElement)
+											element.style.blockSize = `${topSpacerHeight}px`;
+									})}></div>`
 							: nothing}
 						${rowsToRender.map(({ index: absoluteRowIndex, values: rowValues }) => {
 							return html`
@@ -516,7 +520,10 @@ export class UiVirtualTable extends LitElement {
 						${bottomSpacerHeight > 0
 							? html`<div
 									class="rail-spacer-bottom"
-									style="block-size: ${bottomSpacerHeight}px; height: ${bottomSpacerHeight}px;"></div>`
+									${ref((element) => {
+										if (element instanceof HTMLElement)
+											element.style.blockSize = `${bottomSpacerHeight}px`;
+									})}></div>`
 							: nothing}
 					</div>
 				</div>

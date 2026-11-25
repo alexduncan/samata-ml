@@ -1,7 +1,7 @@
 import { LitElement, css, html, nothing, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { ref } from 'lit/directives/ref.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { tableStyles } from '../../styles/table.styles';
 import { resultsStyles } from '../../styles/results.styles';
 import type { ComparisonColumn, ComparisonUi } from '../../types/state';
@@ -132,7 +132,10 @@ export class AppComparisonTable extends LitElement {
 							? html`<span
 									class="bar"
 									aria-hidden="true"
-									style=${styleMap({ inlineSize: `${width}%` })}></span>`
+									${ref((element) => {
+										if (element instanceof HTMLElement)
+											element.style.inlineSize = `${width}%`;
+									})}></span>`
 							: nothing}
 					</td>`;
 				}
