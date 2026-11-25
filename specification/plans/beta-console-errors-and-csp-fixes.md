@@ -1,8 +1,8 @@
 # Beta console errors, CSP, dataset switching and modal harmonisation
 
-**Status:** draft | **Updated:** 2026-11-25T14:59:22Z
+**Status:** ready-for-review | **Updated:** 2026-11-25T15:00:00Z
 **Authors:** Google Antigravity (Gemini 4 Hydrogen High), Codex (GPT-6) | **Created:** 2026-11-24T13:46:55Z
-**Verified by:** — | **Verified:** — | **Verification:** changes-requested
+**Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -168,7 +168,7 @@ Facts verified by `codebase-scout` on 2026-11-24 and 2026-11-25:
     2. Use the installed `oxc-parser` to identify Lit imports and nested tagged-template literal segments. Inspect actual HTML attribute positions in those segments for inline style, including dynamic values and quote variants. Check imports of Lit’s `style-map` directive. Cover nested templates and false-positive cases for inert text, stories and CSSOM writes. A CSSOM assignment can serialise a style attribute at runtime, so verify actual CSP behaviour and geometry as well.
 - **Acceptance criteria:**
     - [ ] `BETA-ERR-2`: Production templates emit no style attribute and use no Lit `styleMap` bindings. CSSOM sizing works under the production policy.
-    - [ ] `BETA-ERR-2b`: Existing browser tests verify correct segment/bar size and accurate spacer scrolling through updates. T8 repeats these representative geometry checks under the strict production policy.
+    - [ ] `BETA-ERR-2b`: The comparison suite adds an assertion for a nonzero bar’s expected width and verifies the updated width after changing its input. The results-errors and virtual-table suites verify segment sizing and accurate spacer scrolling. T8 repeats representative geometry checks under the strict production policy.
 - **Verification:** `bun run check`, `bun run test:stories`, `bun run test:e2e tests/virtual-table.e2e.ts`, `bun run test:e2e tests/comparison.e2e.ts`, `bun run test:e2e tests/results-errors.e2e.ts`
 - **Progress:** [ ] Not started
 
@@ -191,7 +191,7 @@ Facts verified by `codebase-scout` on 2026-11-24 and 2026-11-25:
 - **Risk:** routine
 - **Likely files:** `src/features/models/app-model-builder-view.ts`, `src/features/models/app-training-setup.ts`, `src/features/models/app-training-setup.stories.ts`, `tests/training-panels.e2e.ts`
 - **Must not touch:** `src/router/`, `public/_headers`
-- **Implementation:** Add the closed `restoreFocus` property and bind it in the builder. When a pending request is still current and the submit control is actionable, consume it once after render, including a transition from disabled to enabled. Cancel it when leaving or disconnecting. Verify the existing native dialog safe-action autofocus in T6. Where those tests reproduce a warning, T6 focuses the same safe button immediately after `showModal()` with `preventScroll` instead.
+- **Implementation:** Add the closed `restoreFocus` property and bind it in the builder. Latch `restoreSubmitFocus` against the exact matched failed/cancelled attempt through Section 4’s render and until its submit control is actionable. Consume it only after that post-render focus, including a transition from disabled to enabled. The first render alone cannot clear the request. Cancel it when leaving or disconnecting. Verify the existing native dialog safe-action autofocus in T6. Where those tests reproduce a warning, T6 focuses the same safe button immediately after `showModal()` with `preventScroll` instead.
 - **Acceptance criteria:**
     - [ ] `BETA-ERR-4`: Cancelling or failing training on `/models/2` restores focus to `Train Model` without emitting `Autofocus processing was blocked because a document already has a focused element.`
     - [ ] `BETA-ERR-4b`: Normal numeric-model navigation leaves the normal page focus and emits no native autofocus warning. A stale request cannot steal focus.
@@ -225,7 +225,7 @@ Facts verified by `codebase-scout` on 2026-11-24 and 2026-11-25:
 - **Acceptance criteria:**
     - [ ] `DLG-HARM-1`: Every Content Modal (`app-content-dialog`, `app-datasheet-dialog`, `app-upload-dataset-dialog`, `app-model-description-dialog`, `app-welcome-modal`) uses `dialog.modal` and shared `dialogStyles` with SVG `.btn-icon` close button (except `app-welcome-modal`).
     - [ ] `DLG-HARM-2`: Every Confirm Dialog (`app-data-view`, `app-target-view`, `app-model-builder-view`) uses `dialog.confirm-dialog`, `.confirm-header`, plain-text `.confirm-body` (no `.notification-alert` banner), and `.confirm-footer` two-button layout.
-    - [ ] `DLG-STICKY-1`: When a tall `.modal` scrolls vertically, `.modal-header` remains pinned at the top of the dialog scrollport with opaque `var(--surface)` background, and tabbing through scrolled content never hides focus behind `.modal-header`.
+    - [ ] `DLG-STICKY-1`: With a scrollable `.modal` and a header no taller than half the scrollport, `.modal-header` stays pinned with the opaque surface background and forward/reverse Tab keeps focus visible. A taller header unpins, clears the temporary scroll padding and scrolls with the content so all controls stay reachable.
     - [ ] `DLG-STICKY-2`: `modal-dialog` visual parity in `tests/visual-parity.e2e.ts` passes at scroll `0`.
 - **Verification:** `bun run check`, `bun run test:stories`, `bun run test:e2e tests/app-shell.e2e.ts`, `bun run test:e2e tests/content-dialog.e2e.ts`, `bun run test:e2e tests/visual-parity.e2e.ts`, `bun run test:e2e tests/target-selection.e2e.ts`, `bun run test:e2e tests/data-selection.e2e.ts`, `bun run test:e2e tests/data-upload.e2e.ts`, `bun run test:e2e tests/content.e2e.ts`, `bun run test:e2e tests/training-setup.e2e.ts`, `bun run test:e2e tests/model-configuration.e2e.ts`, `bun run test:e2e tests/model-card.e2e.ts`, `bun run test:e2e tests/models-setup.e2e.ts`
 - **Progress:** [ ] Not started
@@ -252,7 +252,7 @@ Facts verified by `codebase-scout` on 2026-11-24 and 2026-11-25:
 - **Risk:** routine
 - **Likely files:** `tests/csp-and-console.e2e.ts`, `tests/fixtures/training/browser.ts`
 - **Must not touch:** `public/_headers`, `src/`
-- **Implementation:** Use `test.use({ baseURL: DIST_URL })` in the existing Chromium, Firefox and WebKit projects. Keep the base URL setup from `tests/classification-training.e2e.ts` without its Chromium-only restriction. Install page console/error listeners and a CSP event probe via `page.addInitScript` before navigating. Collect CSP events across document reloads, for example with a page binding, and assert that the document response carries the strict policy. Cover data preview and change/reload, target selection, actual saved links for two trained models, comparison and both backdrop policies. Read allocated links/numbers from the overview or sidebar before calling helpers that expect them. Verify confusion-flowchart segments, comparison bars and virtual-table spacer scrolling under this policy. Keep dev diagnostic assertions in T3 and T4.
+- **Implementation:** Use `test.use({ baseURL: DIST_URL })` in the existing Chromium, Firefox and WebKit projects. Keep the base URL setup from `tests/classification-training.e2e.ts` without its Chromium-only restriction. Install page console/error listeners and a CSP event probe via `page.addInitScript` before navigating. Collect CSP events across document reloads, for example with a page binding, and assert that the document response carries the strict policy. Cover data preview and change/reload, target selection, actual saved links for two trained models, comparison and both backdrop policies. Split `tests/fixtures/training/browser.ts` setup into allocation/entry and configuration of the already open draft. Keep `configureDraft(page, modelNum, …)` as a wrapper for existing callers that expect a specific number. In the new regression click the real overview activation, wait for the resulting numeric workflow URL, read the assigned number, then call the post-entry helper without triggering another creation. Use saved links for results and compare after two acknowledged completions. The companion workflow adapts the new fixture entry stage to `/models/new` and resolves the saved number at View Results. Verify confusion-flowchart segments, comparison bars and virtual-table spacer scrolling under this policy. Keep dev diagnostic assertions in T3 and T4.
 - **Acceptance criteria:**
     - [ ] `BETA-ERR-5`: Production server (`DIST_URL`) flow across all four workflow steps, `/results`, **Change Dataset**, and both dialog types produces zero `securitypolicyviolation` events, zero `pageerror`s, and zero console errors or Lit warnings in Chromium, Firefox, and WebKit.
 - **Verification:** `bun run test:e2e tests/csp-and-console.e2e.ts`
@@ -315,3 +315,4 @@ None.
 | 2026-11-25T14:32:18Z | Harmonised modals into Content Modal vs Confirm Dialog + draft mockups | Maintainer interview resolved two-type modal split, plain-text confirm body, Esc/backdrop rules, and draft mockups `00-2_content-modal.html` & `00-4_confirm-dialog.html` |
 | 2026-11-25T14:48:08Z | Confirm beta scope and reconcile companion plans                       | Record the maintainer decision and settle shared dialog, focus, CSP and results ownership.                                                                                |
 | 2026-11-25T14:55:08Z | Address first independent review                                       | Assign production geometry evidence to T8, make focus and zoom behaviour explicit, and define exactly-once upload cancellation and browser coverage.                      |
+| 2026-11-25T15:00:00Z | Address second independent review                                      | Make the training fixture follow real allocation and match browser acceptance to the short-scrollport and focus behaviour.                                                |
