@@ -1,8 +1,8 @@
 # Give new model training its own workflow
 
-**Status:** ready-for-review | **Updated:** 2026-11-25T14:51:08Z
+**Status:** draft | **Updated:** 2026-11-25T14:55:41Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-25T13:48:28Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -249,8 +249,9 @@ None.
 
 ## Plan review history
 
-| Reviewed (UTC) | Agent (model) | Decision | Findings |
-| -------------- | ------------- | -------- | -------- |
+| Reviewed (UTC)       | Agent (model) | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| -------------------- | ------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-25T14:55:41Z | Codex (GPT-6) | changes-requested | MAJOR: T1–T2 must retain the live provisional pointer for draft/training, distinguish explicit new entry from inferred resume/Help, and own focus through deferred binding (router.ts 120–131, 420–428; app.ts 208–225). T3 must define guard comparison and restore/replay on effective underlays, align MW-GUARD-1 with unindexed-entry preservation and cover repeated Help Close and Forward. T5 both lists and forbids persister.ts, assumes a nonexistent draft revision, and must acknowledge Step 1–3 fields plus featureSelectionInitialised atomically across replay and stale ordinary writes (persister.ts 705–725, 790–813, 882–915). T6 must retain the prior matching local attempt identity after stopped publication (app-model-builder-view.ts 292–319; training.store.ts 121–142). Update executable tests and task dependencies at each changed entry point. |
 
 ## Change log
 
