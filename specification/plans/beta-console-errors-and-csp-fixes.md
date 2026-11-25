@@ -1,8 +1,8 @@
 # Beta console errors, CSP, dataset switching and modal harmonisation
 
-**Status:** ready-for-review | **Updated:** 2026-11-25T14:55:08Z
+**Status:** draft | **Updated:** 2026-11-25T14:59:22Z
 **Authors:** Google Antigravity (Gemini 4 Hydrogen High), Codex (GPT-6) | **Created:** 2026-11-24T13:46:55Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -304,6 +304,7 @@ None.
 | Reviewed (UTC)       | Agent (model) | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | -------------------- | ------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-11-25T14:53:12Z | Codex (GPT-6) | changes-requested | MAJOR T2/T8: make strict-CSP geometry executable in its owning task and derive trained links from the actual fixture/UI (the current helper takes a number and returns a locator). MAJOR T4: reconcile firstUpdated-only wording with one-shot focus after re-enable. MAJOR T6/T7: define resize and zoom fallback for sticky focus and consistent idle/busy upload cancellation with exactly-once close policy. Clarify the build identity in T1 and list the final format and E2E checks in T9. |
+| 2026-11-25T14:59:22Z | Codex (GPT-6) | changes-requested | MAJOR T8: configureDraft allocates before reading the numeric URL, so split allocation and post-entry setup in the scoped browser fixture and read the actual committed route. MAJOR T6: DLG-STICKY-1 must allow and verify the short-scrollport unpinned fallback. T2: add the missing comparison-bar geometry assertion. T4: latch focus for the same attempt and Section 4 until consumed or superseded, and assert no warning on the actual fixture route.                                    |
 
 ## Change log
 
