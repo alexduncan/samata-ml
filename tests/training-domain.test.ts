@@ -3,6 +3,7 @@ import { openSamataDb, TRAINING_DOMAIN_KEY } from '../src/common/storage/db';
 import {
 	clearPendingTrainingCheckpoint,
 	commitTrainingCheckpoint,
+	decodeProtectedDomain,
 	decodeTrainingCheckpoint,
 	readTrainingCheckpoint,
 	type PendingTrainingDomain,
@@ -31,6 +32,8 @@ const emptyDomain: ProtectedDomainSnapshot = {
 	target: null,
 	models: [],
 	nextModelNum: 1,
+	newModelNum: null,
+	nextModelColorIndex: 0,
 	data: { mode: 'select', selectedColumn: null }
 };
 
@@ -61,12 +64,53 @@ const dataset = {
 	columns: [{ name: 'species', type: 'categorical', missingCount: 0 }]
 } as const;
 
+test('MW-STATE-2 and MW-STATE-3: legacy or malformed presentation fields default during decoding', () => {
+	const { newModelNum: _pointer, nextModelColorIndex: _cursor, ...legacy } = trained();
+	expect(decodeProtectedDomain(legacy)?.domain).toMatchObject({
+		newModelNum: null,
+		nextModelColorIndex: 0,
+		models: [{ modelLabel: null, provisionalCompletedRunId: null }]
+	});
+	expect(
+		decodeProtectedDomain({
+			...legacy,
+			newModelNum: 1,
+			nextModelColorIndex: 10,
+			models: [
+				{
+					...legacy.models[0],
+					modelColor: 'invalid',
+					modelLabel: 42,
+					provisionalCompletedRunId: ' '
+				}
+			]
+		})?.domain
+	).toMatchObject({
+		newModelNum: null,
+		nextModelColorIndex: 0,
+		models: [{ modelLabel: null, provisionalCompletedRunId: null }]
+	});
+	const provisional = decodeProtectedDomain({
+		...legacy,
+		newModelNum: 1,
+		nextModelColorIndex: 9,
+		models: [{ ...legacy.models[0], status: 'draft', modelLabel: '  Trial 1  ' }]
+	});
+	expect(provisional?.domain).toMatchObject({
+		newModelNum: 1,
+		nextModelColorIndex: 9,
+		models: [{ modelLabel: 'Trial 1' }]
+	});
+});
+
 function trained(): ProtectedDomainSnapshot {
 	return {
 		comparisonContextEpoch: 0,
 		dataset: { ...dataset, columns: [...dataset.columns] },
 		target: resultIdentity.target,
 		nextModelNum: 2,
+		newModelNum: null,
+		nextModelColorIndex: 0,
 		data: { mode: 'preview', selectedColumn: null },
 		models: [
 			{

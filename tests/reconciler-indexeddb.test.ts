@@ -94,6 +94,8 @@ function modelRecord(overrides: Partial<ModelRecord>): ModelRecord {
 		trainingSetup: null,
 		progress: null,
 		resultRevision: null,
+		provisionalCompletedRunId: null,
+		modelLabel: null,
 		error: null,
 		timings: null,
 		durationMs: null,

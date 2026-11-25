@@ -1,6 +1,6 @@
 # Give new model training its own workflow
 
-**Status:** ready | **Updated:** 2026-11-25T17:05:07Z
+**Status:** ready | **Updated:** 2026-11-25T17:14:38Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-25T13:48:28Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-25T17:05:07Z | **Verification:** approved
 **Verified hash:** sha256:22e262bd6f5b31f038c14692ba464bd24468100a05df3de79bb5e2cf48e1de30
@@ -122,11 +122,11 @@ The connected `app-model-builder-view` keeps its existing `modelNum: number = 0`
 - **Must not touch:** `src/features/models/training/*.worker.ts`, `src/types/model-evaluation.ts`, `vendor/`, `bun.lock`
 - **Implementation:** Extend local wire decoding, guarded state, recovery and reset paths. Reuse protected number allocation for `openNewModel`, and add the immutable first-wizard-run pin, saved-label and swatch contracts to the existing atomic finish and retry path. Fill legacy swatches as specified. Keep evaluation, comparison and training identities intact.
 - **Acceptance criteria:**
-    - [ ] MW-STATE-1 — Concurrent open/retry returns a single provisional identity. A fresh tab during active training adopts that record without starting a new attempt. Blocked, failed and old-epoch requests cannot create or bind a draft.
-    - [ ] MW-STATE-2 — Completions receive successive colours in commit order with wrap and no extra increment on replay. Historical states and results load, missing presentation is defaulted, and context reset starts a new sequence.
-    - [ ] MW-STATE-3 — A committed result and model have matching label state. Legacy and invalid presentation fields leave a valid evaluation usable. The first provisional run pin commits with pointer clearance, survives replay and demotion, and is unchanged by a subsequent numeric rerun. Existing fingerprints and metrics are identical.
+    - [x] MW-STATE-1 — Concurrent open/retry returns a single provisional identity. A fresh tab during active training adopts that record without starting a new attempt. Blocked, failed and old-epoch requests cannot create or bind a draft.
+    - [x] MW-STATE-2 — Completions receive successive colours in commit order with wrap and no extra increment on replay. Historical states and results load, missing presentation is defaulted, and context reset starts a new sequence.
+    - [x] MW-STATE-3 — A committed result and model have matching label state. Legacy and invalid presentation fields leave a valid evaluation usable. The first provisional run pin commits with pointer clearance, survives replay and demotion, and is unchanged by a subsequent numeric rerun. Existing fingerprints and metrics are identical.
 - **Verification:** `bun run typecheck`, `bun test tests/state-and-storage.test.ts`, `bun test tests/training-domain.test.ts`, `bun test tests/training-service.test.ts`, `bun test tests/reconciler-indexeddb.test.ts`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-25T17:14:38Z)
 
 ### T2 — Open new models at the provisional URL
 
@@ -243,9 +243,10 @@ None.
 
 ## Implementation and verification log
 
-| When (UTC) | Task | Agent (model) | Outcome / commands / evidence |
-| ---------- | ---- | ------------- | ----------------------------- |
-| —          | —    | —             | Not started                   |
+| When (UTC)           | Task | Agent (model) | Outcome / commands / evidence                                                                                                                                          |
+| -------------------- | ---- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —                    | —    | —             | Not started                                                                                                                                                            |
+| 2026-11-25T17:14:38Z | T1   | Codex (GPT-6) | Targeted storage, state, training service and reconciliation tests passed (164 tests). bun run check passed (667 tests). Task scope check and git diff --check passed. |
 
 ## Plan review history
 

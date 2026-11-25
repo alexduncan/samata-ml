@@ -4,10 +4,12 @@ import {
 	DEFAULT_MODEL_RESULTS_UI,
 	INITIAL_APP_STATE,
 	isModelEligibleColumnType,
+	MODEL_COLORS,
 	sanitiseModelResultsUi,
 	type DatasetSummary,
 	type HyperparameterConfig,
 	type HyperparameterValue,
+	type ModelColor,
 	type ModelRecord,
 	type ModelResultsUi,
 	type ModelSectionId,
@@ -214,6 +216,8 @@ export function reduceDatasetReplacement(
 					target: null,
 					models: [],
 					nextModelNum: 1,
+					newModelNum: null,
+					nextModelColorIndex: 0,
 					comparisonContextEpoch: state.comparisonContextEpoch + 1,
 					results: emptyComparisonResults()
 				})
@@ -281,6 +285,8 @@ export function reduceTargetChange(
 		...state,
 		target: column,
 		models: [],
+		newModelNum: null,
+		nextModelColorIndex: 0,
 		comparisonContextEpoch: state.comparisonContextEpoch + 1,
 		results: emptyComparisonResults(),
 		...(confirmed && { nextModelNum: 1 })
@@ -298,6 +304,8 @@ export function confirmDiscardModels(): boolean {
 		...state,
 		models: [],
 		nextModelNum: 1,
+		newModelNum: null,
+		nextModelColorIndex: 0,
 		comparisonContextEpoch: state.comparisonContextEpoch + 1,
 		results: emptyComparisonResults()
 	}));
@@ -324,6 +332,8 @@ export function reduceCreateModel(
 		trainingSetup: null,
 		progress: null,
 		resultRevision: null,
+		provisionalCompletedRunId: null,
+		modelLabel: null,
 		error: null,
 		timings: null,
 		durationMs: null,
@@ -727,8 +737,29 @@ export function updateTrainingProgress(
 
 /** Terminal outcome of a single protected training attempt. */
 export type TrainingOutcome =
-	| { kind: 'success'; durationMs: number; metrics?: Record<string, number> | null }
+	| {
+			kind: 'success';
+			durationMs: number;
+			metrics?: Record<string, number> | null;
+			modelLabel?: string | null;
+	  }
 	| { kind: 'stopped'; error: TrainingError };
+
+/** Projects persisted swatches and the deterministic fallback for legacy trained records. */
+export function modelSwatchAssignments(
+	state: Pick<PersistedAppState, 'models' | 'nextModelColorIndex'>
+): { colours: ReadonlyMap<number, ModelColor>; nextIndex: number } {
+	const colours = new Map<number, ModelColor>();
+	let nextIndex = state.nextModelColorIndex;
+	const trained = state.models.filter(({ status }) => status === 'trained');
+	trained.sort((left, right) => left.num - right.num);
+	for (const model of trained) {
+		const colour = model.modelColor ?? MODEL_COLORS[nextIndex]!;
+		colours.set(model.num, colour);
+		if (!model.modelColor) nextIndex = (nextIndex + 1) % MODEL_COLORS.length;
+	}
+	return { colours, nextIndex };
+}
 
 /** Creates the terminal candidate only for the current model creation and run ID. */
 export function reduceTrainingOutcome(
@@ -736,22 +767,8 @@ export function reduceTrainingOutcome(
 	identity: TrainingRunIdentity,
 	outcome: TrainingOutcome
 ): PersistedAppState | false {
-	return updateRunModel(state, identity, (model) => {
-		if (outcome.kind === 'success') {
-			return {
-				...model,
-				status: 'trained',
-				error: null,
-				progress: null,
-				metrics: outcome.metrics ?? null,
-				timings: null,
-				durationMs: outcome.durationMs,
-				completedSteps: model.completedSteps.includes('training')
-					? model.completedSteps
-					: [...model.completedSteps, 'training']
-			};
-		}
-		return {
+	if (outcome.kind === 'stopped') {
+		return updateRunModel(state, identity, (model) => ({
 			...model,
 			status: 'draft',
 			error: outcome.error,
@@ -766,8 +783,41 @@ export function reduceTrainingOutcome(
 					section !== 'training' &&
 					section !== 'results'
 			)
-		};
-	});
+		}));
+	}
+	const { colours, nextIndex } = modelSwatchAssignments(state);
+	const provisional = state.newModelNum === identity.modelNum;
+	const model = matchingModel(state, identity);
+	const colour = model?.modelColor ?? MODEL_COLORS[nextIndex]!;
+	const completed = updateRunModel(state, identity, (current) => ({
+		...current,
+		status: 'trained',
+		error: null,
+		progress: null,
+		metrics: outcome.metrics ?? null,
+		timings: null,
+		durationMs: outcome.durationMs,
+		modelColor: colour,
+		modelLabel: outcome.modelLabel ?? null,
+		...(provisional && {
+			provisionalCompletedRunId: current.provisionalCompletedRunId ?? identity.runId
+		}),
+		completedSteps: current.completedSteps.includes('training')
+			? current.completedSteps
+			: [...current.completedSteps, 'training']
+	}));
+	if (!completed) return false;
+	return {
+		...completed,
+		...(provisional && { newModelNum: null }),
+		nextModelColorIndex: model?.modelColor ? nextIndex : (nextIndex + 1) % MODEL_COLORS.length,
+		models: completed.models.map((record) => {
+			const legacyColour = colours.get(record.num);
+			return legacyColour && !record.modelColor
+				? { ...record, modelColor: legacyColour }
+				: record;
+		})
+	};
 }
 
 /** Publishes a completed matching run after its durable result is acknowledged. */

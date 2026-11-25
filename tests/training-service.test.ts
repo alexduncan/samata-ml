@@ -4,6 +4,7 @@ import { INGESTION_LOCK, deleteDatasetsExcept, openSamataDb } from '../src/commo
 import {
 	clearPendingTrainingCheckpoint,
 	commitTrainingCheckpoint,
+	protectedDomainSnapshot,
 	readTrainingCheckpoint
 } from '../src/common/storage/training-domain';
 import type { ClassifierId } from '../src/features/models/model-catalogue';
@@ -16,9 +17,11 @@ import type {
 	TrainingWorkerReply,
 	TrainingWorkerRequest
 } from '../src/features/models/training/protocol';
+import { decodeResultEnvelope } from '../src/features/models/training/result-validation';
 import {
 	$appState,
 	dismissWelcome,
+	modelSwatchAssignments,
 	reduceCreateModel,
 	reduceTrainingStart,
 	setHyperparameters,
@@ -51,6 +54,7 @@ import {
 	DEFAULT_ONE_SHOT_SETUP,
 	INITIAL_APP_STATE,
 	STATE_STORAGE_KEY,
+	type ModelRecord,
 	type PersistedAppState
 } from '../src/types/state';
 import { headlineMetrics } from '../src/common/evaluation/headline-metrics';
@@ -204,6 +208,33 @@ afterEach(() => {
 	$appState.set(INITIAL_APP_STATE);
 });
 
+function storeFixture(state: PersistedAppState): void {
+	$appState.set(state);
+	storage.setItem(
+		STATE_STORAGE_KEY,
+		JSON.stringify({
+			...state,
+			models: state.models.map((model) => ({
+				...model,
+				trainingSetup:
+					model.trainingSetup?.type === 'one_shot'
+						? { ...model.trainingSetup, type: 'train_test_split' }
+						: model.trainingSetup
+			}))
+		})
+	);
+}
+
+function configuredModel(model: ModelRecord, modelId: ClassifierId = 'gaussian-nb'): ModelRecord {
+	return {
+		...model,
+		modelId,
+		features: ['measurement'],
+		trainingSetup: DEFAULT_ONE_SHOT_SETUP,
+		completedSteps: ['choose-model', 'select-features', 'configure-model']
+	};
+}
+
 function seed(count = 1, modelId: ClassifierId = 'gaussian-nb'): PersistedAppState {
 	let state: PersistedAppState = {
 		...INITIAL_APP_STATE,
@@ -218,27 +249,199 @@ function seed(count = 1, modelId: ClassifierId = 'gaussian-nb'): PersistedAppSta
 	}
 	state = {
 		...state,
-		models: state.models.map((model) => ({
-			...model,
-			modelId,
-			features: ['measurement'],
-			trainingSetup: DEFAULT_ONE_SHOT_SETUP,
-			completedSteps: ['choose-model', 'select-features', 'configure-model']
-		}))
+		models: state.models.map((model) => configuredModel(model, modelId))
 	};
-	$appState.set(state);
-	storage.setItem(
-		STATE_STORAGE_KEY,
-		JSON.stringify({
-			...state,
-			models: state.models.map((model) => ({
-				...model,
-				trainingSetup: { ...DEFAULT_ONE_SHOT_SETUP, type: 'train_test_split' }
-			}))
-		})
-	);
+	storeFixture(state);
 	return state;
 }
+
+test('MW-STATE-1: provisional opens share one acknowledged model through retry and remote training', async () => {
+	const start = seed(0);
+	const captured = {
+		datasetId: metadata.id,
+		target: 'species',
+		comparisonContextEpoch: start.comparisonContextEpoch
+	};
+	expect(await service.openNewModel({ ...captured, comparisonContextEpoch: 1 })).toMatchObject({
+		ok: false,
+		code: 'conflict'
+	});
+	expect(await service.openNewModel({ ...captured, target: 'unavailable' })).toMatchObject({
+		ok: false,
+		code: 'conflict'
+	});
+	expect(await service.openNewModel(captured, false)).toMatchObject({
+		ok: false,
+		code: 'conflict'
+	});
+	await db.delete('metadata', metadata.id);
+	expect(await service.openNewModel(captured)).toMatchObject({ ok: false, code: 'conflict' });
+	await db.put('metadata', metadata);
+	expect(await readTrainingCheckpoint(db)).toEqual({ ok: true, checkpoint: null });
+
+	storage.reject = (state) => state.newModelNum === 1;
+	expect(await service.openNewModel(captured)).toMatchObject({
+		ok: false,
+		reason: 'security',
+		pending: 'recover'
+	});
+	expect($appState.get().newModelNum).toBeNull();
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: { generation: 1, pending: { domain: { newModelNum: 1, nextModelNum: 2 } } }
+	});
+	storage.reject = () => false;
+
+	const remote = createTrainingService({
+		locks,
+		persistence: { storage },
+		isIsolated: () => true
+	});
+	const [localOpen, remoteOpen] = await Promise.all([
+		service.openNewModel(captured),
+		remote.openNewModel(captured, false)
+	]);
+	expect(localOpen).toMatchObject({ ok: true, value: { ...captured, modelNum: 1 } });
+	expect(remoteOpen).toEqual(localOpen);
+	expect(await readTrainingCheckpoint(db)).toMatchObject({ checkpoint: { generation: 1 } });
+	const draft = $appState.get();
+	storeFixture({ ...draft, models: draft.models.map((model) => configuredModel(model)) });
+	const run = service.start(1);
+	const worker = await workerAt(0);
+	expect(await remote.openNewModel(captured)).toEqual(localOpen);
+	expect($appState.get().models).toHaveLength(1);
+	expect($appState.get().models[0]?.status).toBe('training');
+	expect(workers).toHaveLength(1);
+	worker.reply({ kind: 'cancelled', identity: worker.identity });
+	await run;
+	expect($appState.get().newModelNum).toBe(1);
+});
+
+test('MW-STATE-2: legacy colours fill in model order and new colours follow commit order', async () => {
+	const state = seed(4);
+	const [first, second, third, fourth] = state.models;
+	const historical: PersistedAppState = {
+		...state,
+		nextModelColorIndex: 8,
+		models: [
+			{ ...second!, status: 'trained' },
+			{ ...first!, status: 'trained' },
+			third!,
+			fourth!
+		]
+	};
+	storeFixture(historical);
+	expect([...modelSwatchAssignments(historical).colours]).toEqual([
+		[1, 'olive'],
+		[2, 'neutral']
+	]);
+	const thirdRun = service.start(3);
+	const thirdWorker = await workerAt(0);
+	const fourthRun = service.start(4);
+	const fourthWorker = await workerAt(1);
+	fourthWorker.succeed();
+	expect(await fourthRun).toMatchObject({ ok: true });
+	thirdWorker.succeed();
+	expect(await thirdRun).toMatchObject({ ok: true });
+	expect($appState.get().models.map(({ num, modelColor }) => [num, modelColor])).toEqual([
+		[2, 'neutral'],
+		[1, 'olive'],
+		[3, 'blue'],
+		[4, 'amber']
+	]);
+	expect($appState.get().nextModelColorIndex).toBe(2);
+	expect(await service.discardTarget(metadata.id, 'species', 'measurement')).toMatchObject({
+		ok: true
+	});
+	expect($appState.get()).toMatchObject({ newModelNum: null, nextModelColorIndex: 0 });
+});
+
+test('MW-STATE-3: first provisional finish pins its result atomically and cannot be replaced by a rerun', async () => {
+	const initial = seed(0);
+	const opened = await service.openNewModel({
+		datasetId: metadata.id,
+		target: 'species',
+		comparisonContextEpoch: initial.comparisonContextEpoch
+	});
+	expect(opened).toMatchObject({ ok: true, value: { modelNum: 1 } });
+	const draft = $appState.get();
+	storeFixture({ ...draft, models: draft.models.map((model) => configuredModel(model)) });
+	const firstRun = service.start(1);
+	const first = await workerAt(0);
+	storage.reject = (state) => state.newModelNum === null;
+	first.succeed();
+	expect(await firstRun).toMatchObject({ ok: false, pending: 'finish' });
+	expect($appState.get()).toMatchObject({ newModelNum: 1, nextModelColorIndex: 0 });
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: {
+			pending: {
+				domain: {
+					newModelNum: null,
+					nextModelColorIndex: 1,
+					models: [
+						{
+							provisionalCompletedRunId: first.identity.runId,
+							modelColor: 'amber',
+							modelLabel: null
+						}
+					]
+				}
+			}
+		}
+	});
+	const saved = await db.get('model_results', [metadata.id, 1]);
+	expect(saved).toMatchObject({ ...first.identity, modelLabel: null });
+	storage.reject = () => false;
+	expect(await service.retry(first.identity)).toMatchObject({ ok: true });
+	expect(await service.retry(first.identity)).toMatchObject({ ok: true });
+	expect($appState.get()).toMatchObject({
+		newModelNum: null,
+		nextModelColorIndex: 1,
+		models: [
+			{
+				provisionalCompletedRunId: first.identity.runId,
+				metrics: headlineMetrics(fixtureTrainingResult().evaluation)
+			}
+		]
+	});
+
+	if (!saved || !('schemaVersion' in saved)) throw new Error('Missing result row');
+	expect(decodeResultEnvelope({ ...saved, modelLabel: 42 }, first.identity)).toMatchObject({
+		modelLabel: null,
+		evaluation: fixtureTrainingResult().evaluation
+	});
+	await db.put('model_results', { ...saved, modelLabel: '  Trial A  ' });
+	expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({ ok: true });
+	expect($appState.get().models[0]?.modelLabel).toBe('Trial A');
+	await db.delete('model_results', [metadata.id, 1]);
+	expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({ ok: true });
+	expect($appState.get()).toMatchObject({
+		newModelNum: null,
+		nextModelColorIndex: 1,
+		models: [
+			{
+				status: 'draft',
+				provisionalCompletedRunId: first.identity.runId,
+				modelColor: 'amber'
+			}
+		]
+	});
+	const rerun = service.start(1);
+	const second = await workerAt(1);
+	second.succeed();
+	expect(await rerun).toMatchObject({ ok: true });
+	expect(second.identity.runId).not.toBe(first.identity.runId);
+	expect($appState.get()).toMatchObject({
+		nextModelColorIndex: 1,
+		models: [
+			{
+				resultRevision: second.identity.runId,
+				provisionalCompletedRunId: first.identity.runId,
+				modelColor: 'amber',
+				modelLabel: null
+			}
+		]
+	});
+});
 
 async function workerAt(index: number): Promise<ScriptedWorker> {
 	for (let attempt = 0; attempt < 150; attempt++) {
@@ -276,14 +479,14 @@ test('WML-P5-STATE-2: a stale ordinary write cannot overwrite a reused context',
 			}
 		}
 	};
-	const { dataset, target, data, models, nextModelNum, comparisonContextEpoch } = replacement;
+	const { models } = replacement;
 	const committed = await commitTrainingCheckpoint(
 		db,
 		0,
 		{
 			operationId: 'foreign',
 			kind: 'recover',
-			domain: { dataset, target, data, models, nextModelNum, comparisonContextEpoch }
+			domain: protectedDomainSnapshot(replacement)
 		},
 		{ type: 'none' }
 	);
@@ -1109,7 +1312,7 @@ test.each(['add model', 'replace model', 'replace target', 'replace revision'] a
 						]
 					};
 			if (!next) throw new Error('Could not advance the remote model domain');
-			const { dataset, target, data, models, nextModelNum } = next;
+			const { models } = next;
 			const operationId = 'remote-advance-before-retry';
 			const advance = locks.request(TRAINING_STATE_LOCK, async () => {
 				expect(
@@ -1119,14 +1322,7 @@ test.each(['add model', 'replace model', 'replace target', 'replace revision'] a
 						{
 							operationId,
 							kind: 'recover',
-							domain: {
-								dataset,
-								target,
-								data,
-								models,
-								nextModelNum,
-								comparisonContextEpoch: next.comparisonContextEpoch
-							}
+							domain: protectedDomainSnapshot(next)
 						},
 						{ type: 'none' }
 					)
@@ -1155,7 +1351,7 @@ test.each(['add model', 'replace model', 'replace target', 'replace revision'] a
 				expect(await retry).toMatchObject({ ok: true });
 				expect($appState.get()).toMatchObject({
 					trainingDomainGeneration: 3,
-					nextModelNum
+					nextModelNum: next.nextModelNum
 				});
 				expect($appState.get().models[0]?.resultRevision).toBe(worker.identity.runId);
 				expect(getTrainingSession(worker.identity)?.status).toBe('complete');
@@ -1324,7 +1520,7 @@ test.each([
 							]
 						};
 				if (!next) throw new Error('Could not advance the remote model domain');
-				const { dataset, data, target, models, nextModelNum } = next;
+				const { models } = next;
 				const operationId = 'remote-advance';
 				const committed = await commitTrainingCheckpoint(
 					db,
@@ -1332,14 +1528,7 @@ test.each([
 					{
 						operationId,
 						kind: 'recover',
-						domain: {
-							dataset,
-							data,
-							target,
-							models,
-							nextModelNum,
-							comparisonContextEpoch: next.comparisonContextEpoch
-						}
+						domain: protectedDomainSnapshot(next)
 					},
 					{ type: 'none' }
 				);
@@ -1820,7 +2009,6 @@ test.each([
 								]
 							};
 			if (!next) throw new Error('Missing revised state');
-			const { dataset, data, target, models, nextModelNum } = next;
 			const remote = locks.request(TRAINING_STATE_LOCK, async () => {
 				expect(
 					await commitTrainingCheckpoint(
@@ -1829,14 +2017,7 @@ test.each([
 						{
 							operationId: 'remote-change',
 							kind: 'recover',
-							domain: {
-								dataset,
-								data,
-								target,
-								models,
-								nextModelNum,
-								comparisonContextEpoch: next.comparisonContextEpoch
-							}
+							domain: protectedDomainSnapshot(next)
 						},
 						{ type: 'none' }
 					)
@@ -1853,10 +2034,7 @@ test.each([
 			}
 			expect($publicationPending.get()).toBeNull();
 			expect(storedState()).toMatchObject({
-				dataset,
-				target,
-				models,
-				nextModelNum,
+				...protectedDomainSnapshot(next),
 				trainingDomainGeneration: 3
 			});
 			expect($appState.get()).toEqual(storedState());

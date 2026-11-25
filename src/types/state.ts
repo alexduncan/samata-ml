@@ -176,6 +176,36 @@ export interface TrainingTimings {
 /** Execution status of a configured model. */
 export type ModelStatus = 'draft' | 'training' | 'trained';
 
+/** Model swatch suffixes in the order assigned by acknowledged finishes. */
+export const MODEL_COLORS = [
+	'amber',
+	'blue',
+	'teal',
+	'purple',
+	'red',
+	'green',
+	'pink',
+	'sky',
+	'olive',
+	'neutral'
+] as const;
+
+/** Colour of a model swatch, independent of the training algorithm. */
+export type ModelColor = (typeof MODEL_COLORS)[number];
+
+/** Project context captured before opening a provisional model. */
+export interface ProvisionalModelContext {
+	readonly datasetId: string;
+	readonly target: string;
+	readonly comparisonContextEpoch: number;
+}
+
+/** Acknowledged model identity bound to a new-workflow history entry. */
+export interface ProvisionalModelIdentity extends ProvisionalModelContext {
+	readonly modelNum: number;
+	readonly modelCreatedAt: number;
+}
+
 /** Record representing a single configured or trained machine learning model. */
 export interface ModelRecord {
 	/** Sequential integer model number (e.g. 1 in /models/1). */
@@ -204,6 +234,12 @@ export interface ModelRecord {
 	progress: TrainingProgress | null;
 	/** Current run identity during training and after its result has been saved. */
 	resultRevision: string | null;
+	/** First successful provisional run, retained across result recovery and reruns. */
+	provisionalCompletedRunId?: string | null;
+	/** Saved presentation label mirrored from the durable result. */
+	modelLabel?: string | null;
+	/** Swatch assigned by the first acknowledged finish in the current context. */
+	modelColor?: ModelColor;
 	/** Section 5: Error information if training ended in failure. */
 	error: TrainingError | null;
 	/** Section 5: Timing breakdown. */
@@ -216,6 +252,25 @@ export interface ModelRecord {
 
 	/** Section 6: UI selections (chart tab, etc.). */
 	ui: Record<string, unknown> & { trainingLogOpen?: boolean; results?: Partial<ModelResultsUi> };
+}
+
+/** Normalises a persisted label independently of the validity of its saved result. */
+export function sanitiseModelLabel(value: unknown): string | null {
+	return typeof value === 'string' ? value.trim() || null : null;
+}
+
+/** Resolves an unfinished provisional record from an app snapshot or wire pointer. */
+export function provisionalModelIn(
+	models: readonly ModelRecord[],
+	pointer: unknown
+): ModelRecord | undefined {
+	if (typeof pointer !== 'number' || !Number.isSafeInteger(pointer) || pointer < 1) return;
+	return models.find(
+		(model) =>
+			model.num === pointer &&
+			model.status !== 'trained' &&
+			model.provisionalCompletedRunId == null
+	);
 }
 
 /** Per-model display preferences for Section 6. Absent fields use `DEFAULT_MODEL_RESULTS_UI`. */
@@ -341,6 +396,10 @@ export interface PersistedAppState {
 	models: ModelRecord[];
 	/** Monotonic counter for allocating unique model numbers. */
 	nextModelNum: number;
+	/** Current provisional model, until its first result or an acknowledged discard. */
+	newModelNum: number | null;
+	/** Index within the palette for the next acknowledged model finish. */
+	nextModelColorIndex: number;
 
 	/** UI selections for /results page. */
 	results: { owner: ComparisonOwner | null; ui: ComparisonUi };
@@ -378,6 +437,8 @@ export const INITIAL_APP_STATE: PersistedAppState = {
 	target: null,
 	models: [],
 	nextModelNum: 1,
+	newModelNum: null,
+	nextModelColorIndex: 0,
 	results: { owner: null, ui: { ...DEFAULT_COMPARISON_UI, selected: [] } }
 };
 

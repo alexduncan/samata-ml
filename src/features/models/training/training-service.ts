@@ -4,6 +4,7 @@ import { reportWorkerFailure } from '../../../common/release/worker-failures';
 import { trackBetaEvent } from '../../../common/telemetry/telemetry-client';
 import { INGESTION_LOCK, deleteDataset, getMetadata } from '../../../common/storage/db';
 import {
+	protectedDomainSnapshot,
 	readTrainingCheckpoint,
 	type PendingTrainingDomain,
 	type PersistenceFailure,
@@ -52,9 +53,13 @@ import type {
 import type { DatasetMetadata } from '../../../types/dataset';
 import {
 	INITIAL_APP_STATE,
+	isModelEligibleColumnType,
+	provisionalModelIn,
 	type DatasetSummary,
 	type ModelRecord,
 	type PersistedAppState,
+	type ProvisionalModelContext,
+	type ProvisionalModelIdentity,
 	type TrainingError
 } from '../../../types/state';
 import { buildFeatureRows } from '../feature-eligibility';
@@ -281,11 +286,6 @@ function stoppedOutcome(
 	};
 }
 
-function domain(state: PersistedAppState) {
-	const { dataset, target, data, models, nextModelNum, comparisonContextEpoch } = state;
-	return { dataset, target, data, models, nextModelNum, comparisonContextEpoch };
-}
-
 /** Creates the route-independent service that owns resource locks and worker settlement. */
 export function createTrainingService(options: TrainingServiceOptions = {}) {
 	const active = new Map<number, ActiveAttempt>();
@@ -319,9 +319,11 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		) =>
 			| { state: PersistedAppState; mutation: TrainingDomainMutation }
 			| PersistenceFailure
+			| null
 			| Promise<
 					| { state: PersistedAppState; mutation: TrainingDomainMutation }
 					| PersistenceFailure
+					| null
 			  >,
 		identity?: TrainingRunIdentity,
 		stopped?: StoppedRepair
@@ -329,11 +331,19 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		const operationId = newId();
 		let committedGeneration: number | undefined;
 		const ack = await commitProtectedTrainingChange(
-			async (current, context): Promise<ProtectedTrainingChange | PersistenceFailure> => {
+			async (
+				current,
+				context
+			): Promise<ProtectedTrainingChange | PersistenceFailure | null> => {
 				const candidate = await prepare(current, context);
+				if (!candidate) return null;
 				if ('ok' in candidate) return candidate;
 				return {
-					pending: { operationId, kind, domain: domain(candidate.state) },
+					pending: {
+						operationId,
+						kind,
+						domain: protectedDomainSnapshot(candidate.state)
+					},
 					mutation: candidate.mutation
 				};
 			},
@@ -585,7 +595,8 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 			schemaVersion: 2,
 			algorithm: attempt.request.classifier.algorithm,
 			durationMs,
-			logEntries: entries
+			logEntries: entries,
+			modelLabel: null
 		};
 		const finish = await checkpoint(
 			'finish',
@@ -601,7 +612,8 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 				const next = reduceTrainingOutcome(state, identity, {
 					kind: 'success',
 					durationMs,
-					metrics: headlineMetrics(envelope.evaluation)
+					metrics: headlineMetrics(envelope.evaluation),
+					modelLabel: envelope.modelLabel
 				});
 				return next
 					? { state: next, mutation: { type: 'insert-result', result: envelope } }
@@ -1015,6 +1027,51 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		retry,
 		observePublishedStops,
 		recoverStoppedPublication,
+		/** Reuses or allocates the current provisional model under the protected state lock. */
+		async openNewModel(
+			captured: ProvisionalModelContext,
+			allowAllocation = true
+		): Promise<TrainingCommandResult<ProvisionalModelIdentity>> {
+			let binding: ProvisionalModelIdentity | undefined;
+			const { ack, committed } = await checkpoint('recover', async ({ state }, { db }) => {
+				if (
+					state?.dataset?.id !== captured.datasetId ||
+					state.target !== captured.target ||
+					state.comparisonContextEpoch !== captured.comparisonContextEpoch
+				)
+					return conflict;
+				const metadata = await getMetadata(db, captured.datasetId);
+				if (
+					!metadata?.columns.some(
+						(column) =>
+							column.name === captured.target &&
+							isModelEligibleColumnType(column.type)
+					)
+				)
+					return conflict;
+				const existing = provisionalModelIn(state.models, state.newModelNum);
+				if (existing) {
+					binding = {
+						...captured,
+						modelNum: existing.num,
+						modelCreatedAt: existing.createdAt
+					};
+					publishNewerTrainingSnapshot(state);
+					return null;
+				}
+				if (!allowAllocation) return conflict;
+				const modelCreatedAt = now();
+				const next = reduceCreateModel(state, modelCreatedAt);
+				if (!next) return conflict;
+				binding = { ...captured, modelNum: state.nextModelNum, modelCreatedAt };
+				return {
+					state: { ...next, newModelNum: binding.modelNum },
+					mutation: { type: 'none' }
+				};
+			});
+			if (!ack.ok) return notice(ack, committed ? 'recover' : undefined);
+			return binding ? { ok: true, value: binding } : notice(conflict);
+		},
 		async createModel(): Promise<TrainingCommandResult<number>> {
 			const captured = $appState.get();
 			let num = 0;
