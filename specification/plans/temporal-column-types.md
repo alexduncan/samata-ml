@@ -1,6 +1,6 @@
 # Temporal column types: date, time and datetime
 
-**Status:** ready | **Updated:** 2026-11-25T13:53:17Z
+**Status:** ready | **Updated:** 2026-11-25T13:54:10Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-25T10:49:58Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-25T12:38:45Z | **Verification:** approved
 **Verified hash:** sha256:170e52184c86cc170c93b0d486d248f334c2e7c038e22aabd36ec19133b41c68
@@ -326,21 +326,21 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
 - **Must not touch:** `src/common/storage/profiler.ts` — T3 owns election and removes the header-gate call sites.
 - **Implementation:** Make the _Interfaces_ → "Cell detectors" changes: `EPOCH_PATTERN`, `parseEpoch` units, `isDateOnly`, `parseTime` and the `coerceCell` `date` and `time` branches. Export the new functions with TSDoc. Keep `headerSuggestsTime` exported until T3 removes its last caller.
 - **Acceptance criteria:**
-    - [ ] TEMP-AC-4: `parseEpoch` gives:
+    - [x] TEMP-AC-4: `parseEpoch` gives:
         - `315532800` → `s`, ms `315_532_800_000`;
         - `999999999` → `s`;
         - `2524607999` → `s`;
         - `315532800000` and `1700000000000` → `ms`;
         - `315532800000000` and `1700000000000000` → `us`, ms `1_700_000_000_000`;
         - `315532799`, `2524608000`, `99999999999` (11 digits), `99999999999999` (14 digits), `0315532800` and `1700000000.5` → `null`.
-    - [ ] TEMP-AC-5: `parseTime` gives:
+    - [x] TEMP-AC-5: `parseTime` gives:
         - `9:05` → `32_700_000`;
         - `09:05:07` → `32_707_000`;
         - `23:59:59.9999` → `86_399_999`;
         - `00:00` → `0`;
         - `24:00`, `12:60`, `12:30:60`, `12:30Z`, `12:30 PM`, `1:2`, `123:00`, `12` and `2024-01-15` → `null`.
-    - [ ] TEMP-AC-6: `isDateOnly` is true for the parts of `2024-01-15`, `2024-01-15 00:00:00` and `2024-01-15T00:00:00Z`. It is false for `2024-01-15T00:00:00+01:00` and `2024-01-15 00:00:01`.
-    - [ ] TEMP-AC-7: `coerceCell` with `'date'` and ISO order gives:
+    - [x] TEMP-AC-6: `isDateOnly` is true for the parts of `2024-01-15`, `2024-01-15 00:00:00` and `2024-01-15T00:00:00Z`. It is false for `2024-01-15T00:00:00+01:00` and `2024-01-15 00:00:01`.
+    - [x] TEMP-AC-7: `coerceCell` with `'date'` and ISO order gives:
         - `2013-08-13 00:00:00` → `Date.UTC(2013, 7, 13)`;
         - `2013-08-13 06:03:42` → `null`;
         - `14/08/2013` with order `DMY` → `Date.UTC(2013, 7, 14)`.
@@ -348,7 +348,7 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
         `coerceCell` with `'time'` gives `17:45:10` → `63_910_000`.
 
 - **Verification:** `bun test tests/cells.test.ts`, `bun run check`, `bun run lint`, `bun run format <changed files>`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-25T13:54:10Z)
 
 ### T3 — Profiler election, Pass-2 statistics and sample datasets
 
@@ -447,6 +447,7 @@ None.
 | ---------- | ---- | ------------- | ----------------------------- |
 | —          | —    | —             | Not started                   |
 | 2026-11-25T13:53:17Z | T1 | Claude Code (claude-sonnet-5-5) | bun test: 622 pass, 2 fail (pre-existing: scripts/build-public-assets.ts cannot resolve @federicocarboni/saxe and svgo, not installed in worktree; same typecheck errors). bun run lint OK. bun run format applied. New tests/temporal-column-types.test.ts plus eligibility, provider tests. Changed src/types, training-domain, eligibility, provider, sidebar, pipeline, cells, profiler, story. |
+| 2026-11-25T13:54:10Z | T2 | Claude Code (claude-sonnet-5-5) | bun test tests/cells.test.ts 15 pass; bun test: 626 pass, 2 fail (pre-existing missing saxe/svgo modules); lint OK; format applied. Changed src/common/storage/cells.ts, tests/cells.test.ts |
 
 ## Plan review history
 
