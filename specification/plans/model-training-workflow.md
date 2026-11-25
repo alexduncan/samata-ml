@@ -1,9 +1,9 @@
 # Give new model training its own workflow
 
-**Status:** ready | **Updated:** 2026-11-25T15:09:15Z
+**Status:** ready-for-review | **Updated:** 2026-11-25T17:03:06Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-25T13:48:28Z
-**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-25T15:09:15Z | **Verification:** approved
-**Verified hash:** sha256:de3260a11330aad199fd8ebdc8e7e0c2b02c6aa2bbdd95f09f639ac43875151e
+**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -45,7 +45,7 @@
 - `specification/COMPONENTS.md` §§3–10, and `specification/components/{sidebar,training-progress,model-results,model-configuration,training-setup,content-modal}.md` for closed APIs, accessibility and stories.
 - `specification/workflow-steps.md` §3, `specification/app-state-and-navigation.md` §§3–8 and §9.2, `specification/state-and-storage.md` model records and protected writes, `specification/machine-learning-orchestrator.md` the durable finish, and `specification/content-and-i18n.md` § Static Content.
 - `specification/visual-design.md` §§1, 3 and 5, the specific 03-2 through 03-7 mockups and their style modules listed below.
-- `specification/plans/beta-console-errors-and-csp-fixes.md` § Interfaces and behaviour, `specification/plans/workflow-next-step-dot.md` § Interfaces and behaviour, and `specification/plans/router-help-history-and-dynamic-topics.md` for the reserved-route overlap.
+- `specification/plans/archive/beta-console-errors-and-csp-fixes.md` § Interfaces and behaviour, `specification/plans/workflow-next-step-dot.md` § Interfaces and behaviour, and `specification/plans/router-help-history-and-dynamic-topics.md` for the reserved-route overlap.
 
 ## Codebase context
 
@@ -267,3 +267,4 @@ None.
 | 2026-11-25T14:56:38Z | Address first independent review  | Define active provisional recovery, inferred entry and focus rules, guarded history boundaries, exact stopped-run retention and protected draft replay.        |
 | 2026-11-25T15:03:13Z | Address second independent review | Preserve pending bindings under Help, guard the active provisional record’s numeric alias, and recover stale completed entries safely.                         |
 | 2026-11-25T15:06:12Z | Address third independent review  | Pin the first provisional result through recovery and retraining, and align sidebar and routing specifications with the current state.                         |
+| 2026-11-25T17:02:56Z | Invalidated approval              | Beta closure automatically relocated its dependency link. Refresh the companion reference and reapprove without changing the contract.                         |
