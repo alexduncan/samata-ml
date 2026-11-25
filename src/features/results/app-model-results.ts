@@ -17,7 +17,7 @@ import { notificationStyles } from '../../styles/notification.styles';
 import { resultsStyles } from '../../styles/results.styles';
 import type { MetricUnavailableReason, StoredEvaluation } from '../../types/model-evaluation';
 import { DEFAULT_MODEL_RESULTS_UI, type ModelRecord } from '../../types/state';
-import { SUPERVISED_MODELS } from '../models/model-catalogue';
+import { savedModelName } from '../models/model-catalogue';
 import { sameTrainingRun } from '../models/training/result-validation';
 import type { ClasseeStripsLabels } from './app-classee-strips';
 import type { ClassMetricsTableLabels } from './app-class-metrics-table';
@@ -71,6 +71,21 @@ for (const [id, term] of resultTerms) {
 const messages = i18n('app-model-results', {
 	...resultTermMessages,
 	resultTermsSummary: 'What do these results terms mean?',
+	trainingDetails: 'Training Details',
+	detailModel: 'Model',
+	detailTarget: 'Target',
+	detailFeatures: 'Features',
+	detailFeatureCount: params<{ formatted: string }>(
+		count({ one: '{formatted} feature', many: '{formatted} features' })
+	),
+	detailStrategy: 'Evaluation strategy',
+	detailOneShot: 'One-Shot',
+	detailCrossValidation: 'Cross-Validation',
+	detailTrainingRows: 'Training rows',
+	detailHeldOutRows: 'Held-out rows',
+	detailFold: params<{ fold: string; rows: string }>('Fold {fold}: {rows}'),
+	detailOverlap: 'Training folds overlap.',
+	detailUnavailable: 'Unavailable',
 	loading: 'Loading results…',
 	empty: 'Train this model to see its results.',
 	legacy: 'This model was trained before detailed results were saved. Train it again to see them.',
@@ -502,7 +517,46 @@ export class AppModelResults extends LitElement {
 				margin-block-end: 2rem;
 			}
 
-			.block h3 {
+			.training-summary {
+				margin-block-end: 2rem;
+				overflow-wrap: anywhere;
+			}
+
+			.training-summary summary {
+				cursor: pointer;
+				color: var(--stone-800);
+				font-weight: 600;
+			}
+
+			.training-summary summary:focus-visible {
+				outline: 2px solid var(--focus-ring);
+				outline-offset: 2px;
+			}
+
+			.training-summary table {
+				margin-block-start: 0.75rem;
+				border-collapse: collapse;
+				inline-size: 100%;
+			}
+
+			.training-summary :is(th, td) {
+				vertical-align: top;
+				border-block-end: 1px solid var(--stone-200);
+				padding-inline: 0.375rem;
+				padding-block: 0.375rem;
+				text-align: start;
+			}
+
+			.training-summary th {
+				inline-size: 30%;
+			}
+
+			.training-summary ul {
+				margin-block: 0.25rem 0;
+				padding-inline-start: 1.25rem;
+			}
+
+			.block :is(h2, h3) {
 				margin-block: 0 0.75rem;
 				font-size: 1.125rem;
 			}
@@ -519,6 +573,9 @@ export class AppModelResults extends LitElement {
 
 	/** Number of the model whose results are shown. */
 	@property({ type: Number, attribute: 'model-num', reflect: true }) accessor modelNum = 0;
+
+	/** Heading level of the results panels within the surrounding workflow. */
+	@property({ attribute: false }) accessor headingLevel: 2 | 3 = 3;
 
 	private readonly appState = new StoreController(this, $appState);
 	private readonly resources = new StoreController(this, $modelResults);
@@ -624,11 +681,7 @@ export class AppModelResults extends LitElement {
 	}
 
 	private modelName(model: ModelRecord): string {
-		return (
-			SUPERVISED_MODELS.find((entry) => entry.id === model.modelId)?.name ??
-			model.modelId ??
-			''
-		);
+		return savedModelName(model) ?? model.modelId ?? '';
 	}
 
 	/** Builds the views for the current evaluation; reuses the previous ones when nothing changed. */
@@ -806,15 +859,122 @@ export class AppModelResults extends LitElement {
 		`;
 	}
 
+	private renderTrainingDetails(
+		model: ModelRecord,
+		target: string,
+		evaluation?: StoredEvaluation
+	): TemplateResult {
+		const t = this.text.value;
+		const number = this.format.value.number;
+		const strategy = evaluation?.protocol.kind ?? model.trainingSetup?.type;
+		const oneShot = strategy === 'one_shot';
+		const crossValidation = strategy === 'cross_validation' || strategy === 'nested_cv';
+		const partition = evaluation?.partitions[0];
+		const features = model.features ?? [];
+		const trainRows =
+			crossValidation && evaluation?.partitions.length
+				? html`
+						<ul>
+							${evaluation.partitions.map(
+								(fold) =>
+									html`<li>
+										${t.detailFold({
+											fold: number(fold.index + 1),
+											rows: number(fold.trainSampleCount)
+										})}
+									</li>`
+							)}
+						</ul>
+						<p>${t.detailOverlap}</p>
+					`
+				: oneShot && partition
+					? number(partition.trainSampleCount)
+					: t.detailUnavailable;
+		const heldOutRows = oneShot
+			? partition?.testSampleCount
+			: evaluation?.pooled.test.sampleCount;
+		return html`
+			<details class="training-summary">
+				<summary>${t.trainingDetails}</summary>
+				<table aria-label=${t.trainingDetails}>
+					<tbody>
+						<tr>
+							<th scope="row">${t.detailModel}</th>
+							<td>${this.modelName(model) || t.detailUnavailable}</td>
+						</tr>
+						<tr>
+							<th scope="row">${t.detailTarget}</th>
+							<td>${target}</td>
+						</tr>
+						<tr>
+							<th scope="row">${t.detailFeatures}</th>
+							<td>
+								${features.length
+									? html` ${t.detailFeatureCount({
+												formatted: number(features.length)
+											})(features.length)}
+											<ul>
+												${features.map(
+													(feature) => html`<li>${feature}</li>`
+												)}
+											</ul>`
+									: t.detailUnavailable}
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">${t.detailStrategy}</th>
+							<td>
+								${oneShot
+									? t.detailOneShot
+									: crossValidation
+										? t.detailCrossValidation
+										: t.detailUnavailable}
+							</td>
+						</tr>
+						<tr>
+							<th scope="row">${t.detailTrainingRows}</th>
+							<td>${trainRows}</td>
+						</tr>
+						<tr>
+							<th scope="row">${t.detailHeldOutRows}</th>
+							<td>
+								${heldOutRows === undefined
+									? t.detailUnavailable
+									: number(heldOutRows)}
+							</td>
+						</tr>
+					</tbody>
+				</table>
+			</details>
+		`;
+	}
+
+	private panelHeading(id: string, label: string): TemplateResult {
+		return this.headingLevel === 2
+			? html`<h2 id=${id}>${label}</h2>`
+			: html`<h3 id=${id}>${label}</h3>`;
+	}
+
 	override render() {
 		const t = this.text.value;
 		const model = this.model;
 		if (!model || !this.viewed) return html`<p>${t.empty}</p>`;
+		const expected = currentResultIdentity(this.modelNum);
+		if (!expected) return this.renderModelsLink(t.lost);
 		const resource = $modelResults.get()[this.modelNum] ?? this.resources.value[this.modelNum];
-		if (!resource || resource.status === 'idle' || resource.status === 'loading') {
+		if (
+			!resource ||
+			!sameTrainingRun(expected, resource.identity) ||
+			resource.status === 'idle' ||
+			resource.status === 'loading'
+		) {
 			return html`<progress aria-label=${t.loading}></progress>`;
 		}
-		if (resource.status === 'legacy') return this.renderModelsLink(t.legacy);
+		if (resource.status === 'legacy')
+			return html`
+				${this.renderTrainingDetails(model, resource.identity.target)}
+				${this.renderModelsLink(t.legacy)}
+			`;
 		if (resource.status === 'lost') return this.renderModelsLink(t.lost);
 		if (resource.status === 'error' || !resource.evaluation) {
 			return html`
@@ -832,8 +992,9 @@ export class AppModelResults extends LitElement {
 		const oneShot = evaluation.protocol.kind === 'one_shot';
 		const binary = evaluation.classLabels.length === 2;
 		return html`
+			${this.renderTrainingDetails(model, resource.identity.target, evaluation)}
 			<section class="block" aria-labelledby="summary-heading">
-				<h3 id="summary-heading">${t.summaryHeading}</h3>
+				${this.panelHeading('summary-heading', t.summaryHeading)}
 				<app-results-summary
 					.summary=${views.summary}
 					.moreOpen=${preferences.moreMetricsOpen}
@@ -842,7 +1003,10 @@ export class AppModelResults extends LitElement {
 				${this.renderTerms(oneShot, binary)}
 			</section>
 			<section class="block" aria-labelledby="folds-heading">
-				<h3 id="folds-heading">${oneShot ? t.foldHeadingOneShot : t.foldHeadingCv}</h3>
+				${this.panelHeading(
+					'folds-heading',
+					oneShot ? t.foldHeadingOneShot : t.foldHeadingCv
+				)}
 				<app-fold-strip
 					.series=${views.foldStrip.series}
 					.baselines=${views.foldStrip.baselines}
@@ -851,7 +1015,7 @@ export class AppModelResults extends LitElement {
 					.labels=${labels.foldStrip}></app-fold-strip>
 			</section>
 			<section class="block" aria-labelledby="errors-heading">
-				<h3 id="errors-heading">${t.errorsHeading}</h3>
+				${this.panelHeading('errors-heading', t.errorsHeading)}
 				${binary
 					? html`<app-confusion-flowchart
 							.flow=${views.flow}
@@ -873,7 +1037,7 @@ export class AppModelResults extends LitElement {
 			${binary
 				? html`
 						<section class="block" aria-labelledby="threshold-heading">
-							<h3 id="threshold-heading">${t.thresholdHeading}</h3>
+							${this.panelHeading('threshold-heading', t.thresholdHeading)}
 							<app-threshold-explorer
 								.explorer=${views.threshold}
 								.thresholdIndex=${preferences.thresholdIndex}
@@ -887,7 +1051,7 @@ export class AppModelResults extends LitElement {
 					`
 				: nothing}
 			<section class="block" aria-labelledby="reliability-heading">
-				<h3 id="reliability-heading">${t.reliabilityHeading}</h3>
+				${this.panelHeading('reliability-heading', t.reliabilityHeading)}
 				<app-reliability-diagram
 					.calibration=${views.calibration}
 					.caption=${views.reliabilityCaption}

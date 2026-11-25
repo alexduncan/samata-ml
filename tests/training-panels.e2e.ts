@@ -45,6 +45,11 @@ async function legacyTrainingSetup(page: Page, count = 1): Promise<ReturnType<Pa
 	return page.locator('app-training-setup');
 }
 
+async function openLegacyModel(page: Page, num: number): Promise<void> {
+	await page.locator('app-sidebar a[href="/models"]').click();
+	await page.locator(`app-models-view a[href="/models/${num}"]`).click();
+}
+
 async function assertPanelAccessibility(page: Page): Promise<void> {
 	const audit = new AxeBuilder({ page }).withTags([
 		'wcag2a',
@@ -248,7 +253,7 @@ test('BETA-ERR-4b: a result arriving after leaving training does not steal norma
 		.poll(() => page.evaluate(() => window.__appState!.get().models[0]?.status))
 		.toBe('draft');
 	await expect(overviewHeading).toBeFocused();
-	await page.locator('app-sidebar a[href="/models/1"]').click();
+	await openLegacyModel(page, 1);
 	await expect(page.locator('app-model-builder-view .page-header h1')).toBeFocused();
 	await expect(
 		page.locator('app-training-setup').getByRole('button', { name: 'Train Model' })
@@ -366,7 +371,7 @@ test('WML-P3-UI-2: each stopped model retries its own repair and preserves the r
 	const firstSetup = await legacyTrainingSetup(page, 2);
 	await firstSetup.getByRole('button', { name: 'Train Model' }).press('Enter');
 	await expect.poll(() => requestCount(page)).toBe(1);
-	await page.locator('app-sidebar a[href="/models/2"]').click();
+	await openLegacyModel(page, 2);
 	const secondSetup = page.locator('app-training-setup');
 	await secondSetup.getByRole('button', { name: 'Train Model' }).press('Enter');
 	await expect.poll(() => requestCount(page)).toBe(2);
@@ -381,7 +386,7 @@ test('WML-P3-UI-2: each stopped model retries its own repair and preserves the r
 	const panel = training(page);
 	const retry = panel.getByRole('button', { name: 'Retry saving' });
 	await expect(retry).toBeVisible();
-	await page.locator('app-sidebar a[href="/models/1"]').click();
+	await openLegacyModel(page, 1);
 	await expect(retry).toBeVisible();
 	await expect(panel.getByRole('alert')).toHaveText(/Training has stopped/);
 	await expect(panel.getByRole('button', { name: 'Cancel Training' })).toBeDisabled();
@@ -407,7 +412,7 @@ test('WML-P3-UI-2: each stopped model retries its own repair and preserves the r
 		generation + 1
 	);
 
-	await page.locator('app-sidebar a[href="/models/2"]').click();
+	await openLegacyModel(page, 2);
 	await expect(retry).toBeVisible();
 	await retry.press('Enter');
 	await expect(stoppedNotice).toHaveText(/The training library rejected this setup/);

@@ -11,7 +11,7 @@ import { notificationStyles } from '../../styles/notification.styles';
 import { tableStyles } from '../../styles/table.styles';
 import { headingFocusStyles } from '../../styles/heading-focus.styles';
 import { provisionalModelIn, type ModelRecord } from '../../types/state';
-import { SUPERVISED_MODELS } from './model-catalogue';
+import { savedModelName } from './model-catalogue';
 import { formatTrainingSetupSummary } from './training-setup';
 
 const messages = i18n('app-models-view', {
@@ -261,8 +261,7 @@ export class AppModelsView extends LitElement {
 		// Model Name: Model {num} — {library name} or Model {num}
 		let modelDisplayName = `Model ${model.num}`;
 		if (model.modelId) {
-			const entry = SUPERVISED_MODELS.find((e) => e.id === model.modelId);
-			const libraryName = entry ? entry.name : model.modelId;
+			const libraryName = savedModelName(model) ?? model.modelId;
 			modelDisplayName = `Model ${model.num} — ${libraryName}`;
 		}
 

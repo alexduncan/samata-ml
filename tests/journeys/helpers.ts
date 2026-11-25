@@ -142,7 +142,7 @@ export async function expectPopulatedResults(
 ): Promise<void> {
 	const results = page.locator('app-model-results');
 	await expect(results.locator('app-results-summary')).toBeVisible({ timeout: 15_000 });
-	await expect(results.locator('h3')).toHaveText([
+	await expect(results.locator('h2')).toHaveText([
 		'Scores on held-out rows',
 		expected.protocol === 'one_shot' ? 'Score on the test split' : 'Scores across folds',
 		'Where the model makes mistakes',

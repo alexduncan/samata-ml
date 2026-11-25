@@ -137,7 +137,7 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 						.locator('app-models-view')
 						.getByRole('link', { name: 'Train New Model' })
 						.click();
-					await expect(page).toHaveURL(/\/models\/1$/);
+					await expect(page).toHaveURL(/\/models\/new$/);
 					await page
 						.locator(
 							'app-model-builder-view app-model-card[model-id="logistic-regression"]'
@@ -166,7 +166,10 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 						.locator('app-models-view')
 						.getByRole('link', { name: 'Train New Model' })
 						.click();
-					await expect(page).toHaveURL(/\/models\/1$/);
+					await expect(page).toHaveURL(/\/models\/new$/);
+					await expect(
+						page.locator('app-model-builder-view app-model-card').first()
+					).toBeVisible();
 					await page.evaluate(() => {
 						const store = window.__appState!;
 						const state = store.get();
@@ -271,10 +274,10 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 	}
 
 	test('SIDE-AC-10: paired empty and populated sidebar reference review', async ({
-		page,
 		context
 	}, testInfo) => {
 		for (const fixture of ['empty', 'models'] as const) {
+			const page = await context.newPage();
 			await prepareSidebarFixture(page, fixture);
 			const reference = await context.newPage();
 			await prepareSidebarReference(reference, fixture, MOCKUPS_URL);
@@ -288,6 +291,7 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 				maxDiffPixels: 0
 			});
 			await reference.close();
+			await page.close();
 		}
 	});
 

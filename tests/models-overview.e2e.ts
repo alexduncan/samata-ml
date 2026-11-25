@@ -273,7 +273,9 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		await expect(compareDisabled).toBeDisabled();
 		await expect(compareHint).toBeVisible();
 		await firstResults.click();
-		await expect(page.getByRole('heading', { name: 'Model 1 Results' })).toBeFocused();
+		await expect(
+			page.getByRole('heading', { name: '1 Logistic Regression Results' })
+		).toBeFocused();
 		await expect(page.locator('app-model-results')).toBeVisible();
 		await sidebar.click();
 

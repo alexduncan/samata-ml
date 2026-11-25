@@ -12,9 +12,10 @@ test.describe('Sidebar acceptance', () => {
 		test(`SIDE-AC-1: ${key} is the only exact current workflow page`, async ({ page }) => {
 			await prepareSidebarFixture(page, 'empty');
 			await page.locator(`app-sidebar a[href="${path}"]`).click();
-			await expect(
-				page.locator('app-sidebar .step-link[aria-current="page"]')
-			).toHaveAttribute('href', path);
+			await expect(page.locator('app-sidebar a[aria-current="page"]')).toHaveAttribute(
+				'href',
+				path
+			);
 			await expect(page.locator('app-sidebar [aria-current]')).toHaveCount(1);
 		});
 	}
@@ -55,18 +56,40 @@ test.describe('Sidebar acceptance', () => {
 		}
 	});
 
-	test('SIDE-AC-4: status has accessible text alongside the decorative training dot and trained check', async ({
+	test('SIDE-AC-4 / MW-MODEL-1: training status and trained models have accessible names and numbers', async ({
 		page
 	}) => {
-		await prepareSidebarFixture(page, 'models');
-		await expect(
-			page.getByRole('link', { name: 'Model 2 training', exact: true })
-		).toBeVisible();
-		await expect(
-			page.getByRole('link', { name: 'Model 3 trained', exact: true })
-		).toBeVisible();
-		await expect(page.locator('app-sidebar .dot')).toHaveAttribute('aria-hidden', 'true');
-		await expect(page.locator('app-sidebar .trained')).toHaveAttribute('aria-hidden', 'true');
+		await prepareSidebarFixture(page, 'provisional');
+		const sidebar = page.locator('app-sidebar');
+		await expect(sidebar.locator('a[href="/models/1"]')).toHaveAccessibleName(
+			/1 Logistic Regression 1 feature trained/
+		);
+		await expect(sidebar.locator('a[href="/models/2"]')).toHaveAccessibleName(
+			/2 Decision Tree 2 features trained/
+		);
+		const training = sidebar.getByText('Training New Model…', { exact: true });
+		await expect(training).toHaveAttribute('aria-current', 'page');
+		await expect(sidebar.locator('a[href="/models/new"], .dot')).toHaveCount(0);
+		for (const check of await sidebar.locator('.trained').all())
+			await expect(check).toHaveAttribute('aria-hidden', 'true');
+		await sidebar.getByRole('link', { name: 'help', exact: true }).click();
+		await expect(page.getByRole('button', { name: 'Close', exact: true })).toBeVisible();
+		await expect(training).toBeVisible();
+		await expect(sidebar.locator('[aria-current]')).toHaveCount(0);
+	});
+
+	test('MW-MODEL-1: no trained models expose the dedicated Train New Model anchor', async ({
+		page
+	}) => {
+		await prepareSidebarFixture(page, 'target');
+		const sidebar = page.locator('app-sidebar');
+		await expect(sidebar.getByRole('link', { name: 'All Trained Models' })).toHaveAttribute(
+			'href',
+			'/models'
+		);
+		await expect(sidebar.locator('a.step-train-new')).toHaveAccessibleName('Train New Model');
+		await expect(sidebar.locator('a.step-train-new')).toHaveAttribute('href', '/models/new');
+		await expect(sidebar.locator('a.step-model-link[href="/models/new"]')).toHaveCount(0);
 	});
 
 	test('SIDE-AC-5: four valid list items contain sibling model links without interactive nesting', async ({
@@ -75,7 +98,12 @@ test.describe('Sidebar acceptance', () => {
 		await prepareSidebarFixture(page, 'models');
 		await expect(page.locator('app-sidebar ol.steps > li')).toHaveCount(4);
 		await expect(page.locator('app-sidebar ol.steps > :not(li)')).toHaveCount(0);
-		await expect(page.locator('app-sidebar .step:nth-child(3) > a + ul > li')).toHaveCount(3);
+		await expect(
+			page.locator('app-sidebar .step:nth-child(3) .step-link-small + ul > li')
+		).toHaveCount(3);
+		await expect(
+			page.locator('app-sidebar a.step-model-link[href="/models/new"]')
+		).toHaveAccessibleName('Train Another Model');
 		await expect(page.locator('app-sidebar a a, app-sidebar a button')).toHaveCount(0);
 	});
 
@@ -120,23 +148,13 @@ test.describe('Sidebar acceptance', () => {
 		expect(sidebar!.x + sidebar!.width).toBe(1440);
 	});
 
-	test('SIDE-AC-8: reduced motion retains a visible static training core without transitions', async ({
+	test('SIDE-AC-8: reduced motion retains visible training text without transitions', async ({
 		page
 	}) => {
-		await prepareSidebarFixture(page, 'models');
-		const core = await page.locator('app-sidebar .dot').evaluate((dot) => {
-			const style = getComputedStyle(dot, '::before');
-			return {
-				content: style.content,
-				background: style.backgroundColor,
-				animation: style.animationName,
-				width: dot.getBoundingClientRect().width
-			};
-		});
-		expect(core.content).toBe('""');
-		expect(core.background).not.toBe('rgba(0, 0, 0, 0)');
-		expect(core.animation).toBe('none');
-		expect(core.width).toBe(10);
+		await prepareSidebarFixture(page, 'provisional');
+		const training = page.locator('app-sidebar').getByText('Training New Model…');
+		await expect(training).toBeVisible();
+		await expect(training).toHaveCSS('animation-name', 'none');
 		await expect(page.locator('app-sidebar .step-model-link').first()).toHaveCSS(
 			'transition-duration',
 			'0s'

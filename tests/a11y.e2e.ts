@@ -460,9 +460,11 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		).toBeVisible();
 		await expect(training.getByRole('button', { name: 'Cancel Training' })).toBeEnabled();
 		await expect(training.getByRole('button', { name: 'View Results' })).toBeDisabled();
-		await page.locator('app-sidebar a[href="/models"]').click();
+		await page.locator('app-sidebar a[href="/help"]').click();
+		await expect(page.getByRole('dialog', { name: 'Help' })).toBeVisible();
+		await page.evaluate(() => history.go(-2));
 		await expect(page).toHaveURL('/models');
-		await page.locator('app-sidebar a[href="/models/new"]').click();
+		await page.locator('app-models-view').getByRole('link', { name: 'Continue' }).click();
 		await expect(
 			training.getByRole('progressbar', { name: 'Training progress' })
 		).toBeVisible();

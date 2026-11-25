@@ -1,6 +1,10 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import type { PersistedAppState } from '../src/types/state';
-import { divergentBinaryCrossValidation } from './fixtures/results/evaluations';
+import {
+	breastCancerOneShot,
+	divergentBinaryCrossValidation,
+	irisCrossValidation
+} from './fixtures/results/evaluations';
 import {
 	deleteEnvelope,
 	downgradeEnvelope,
@@ -40,10 +44,10 @@ function blocks(page: Page): Promise<string[]> {
 	return results(page).evaluate((host) =>
 		[
 			...host.shadowRoot!.querySelectorAll(
-				'section.block > h3, section.block > [class], section.block > app-results-summary, section.block > app-fold-strip, section.block > app-confusion-flowchart, section.block > app-classee-strips, section.block > app-confusion-matrix, section.block > app-class-metrics-table, section.block > app-threshold-explorer, section.block > app-reliability-diagram'
+				'section.block > h2, section.block > [class], section.block > app-results-summary, section.block > app-fold-strip, section.block > app-confusion-flowchart, section.block > app-classee-strips, section.block > app-confusion-matrix, section.block > app-class-metrics-table, section.block > app-threshold-explorer, section.block > app-reliability-diagram'
 			)
 		].map((node) =>
-			node.tagName === 'H3' ? `h3:${node.textContent!.trim()}` : node.tagName.toLowerCase()
+			node.tagName === 'H2' ? `h2:${node.textContent!.trim()}` : node.tagName.toLowerCase()
 		)
 	);
 }
@@ -187,22 +191,22 @@ test.describe('Section 6 shared results', () => {
 		await seedTrainedModel(page, 'breast-cancer');
 		await waitForResults(page);
 		expect(await blocks(page)).toEqual([
-			'h3:Scores on held-out rows',
+			'h2:Scores on held-out rows',
 			'app-results-summary',
 			'details',
-			'h3:Score on the test split',
+			'h2:Score on the test split',
 			'app-fold-strip',
-			'h3:Where the model makes mistakes',
+			'h2:Where the model makes mistakes',
 			'app-confusion-flowchart',
 			'app-confusion-matrix',
 			'app-class-metrics-table',
-			'h3:Probability threshold',
+			'h2:Probability threshold',
 			'app-threshold-explorer',
-			'h3:Calibration',
+			'h2:Calibration',
 			'app-reliability-diagram'
 		]);
 		await expect(
-			page.getByRole('heading', { level: 1, name: 'Model 1 Results' })
+			page.getByRole('heading', { level: 1, name: '1 Logistic Regression Results' })
 		).toBeVisible();
 		await expect(results(page).locator('app-results-summary')).toContainText(
 			'Balanced accuracy on held-out rows'
@@ -215,16 +219,16 @@ test.describe('Section 6 shared results', () => {
 		await seedTrainedModel(page, 'iris');
 		await waitForResults(page);
 		expect(await blocks(page)).toEqual([
-			'h3:Scores on held-out rows',
+			'h2:Scores on held-out rows',
 			'app-results-summary',
 			'details',
-			'h3:Scores across folds',
+			'h2:Scores across folds',
 			'app-fold-strip',
-			'h3:Where the model makes mistakes',
+			'h2:Where the model makes mistakes',
 			'app-classee-strips',
 			'app-confusion-matrix',
 			'app-class-metrics-table',
-			'h3:Calibration',
+			'h2:Calibration',
 			'app-reliability-diagram'
 		]);
 		await expect(results(page).locator('app-threshold-explorer')).toHaveCount(0);
@@ -258,7 +262,7 @@ test.describe('Section 6 shared results', () => {
 		await downgradeEnvelope(page);
 		await page.reload();
 		await expect(
-			page.getByRole('heading', { level: 1, name: 'Model 1 Results' })
+			page.getByRole('heading', { level: 1, name: '1 Logistic Regression Results' })
 		).toBeVisible();
 		await expect(results(page)).toContainText(
 			'This model was trained before detailed results were saved.'
@@ -268,9 +272,94 @@ test.describe('Section 6 shared results', () => {
 			'/models'
 		);
 		await expect(results(page).locator('app-results-summary')).toHaveCount(0);
+		const details = results(page).locator('.training-summary');
+		await details.locator('summary').click();
+		await expect(details.getByRole('row', { name: 'Training rows Unavailable' })).toBeVisible();
+		await expect(details.getByRole('row', { name: 'Held-out rows Unavailable' })).toBeVisible();
 		expect((await storedModel(page)).status).toBe('trained');
 		expect((await storedModel(page)).metrics).toBeNull();
 	});
+
+	for (const strategy of ['breast-cancer', 'iris'] as const) {
+		test(`MW-MODEL-2: ${strategy} training details show only counts supplied by the saved run`, async ({
+			page
+		}) => {
+			await seedTrainedModel(page, strategy);
+			await waitForResults(page);
+			const evaluation = strategy === 'iris' ? irisCrossValidation() : breastCancerOneShot();
+			const header = page.locator('#content h1.model-results');
+			const swatch = header.locator('.swatch-large');
+			await expect(swatch).toHaveText('1');
+			const sidebarSwatch = page.locator('app-sidebar a[href="/models/1"] .swatch');
+			const headerFill = await swatch.evaluate(
+				(element) => getComputedStyle(element).backgroundColor
+			);
+			await expect(sidebarSwatch).toHaveCSS('background-color', headerFill);
+			const details = results(page).locator('details.training-summary');
+			await expect(details).toHaveJSProperty('open', false);
+			await details.locator('summary').press('Enter');
+			await expect(details).toHaveJSProperty('open', true);
+			await expect(details.getByRole('row', { name: 'Target class' })).toBeVisible();
+			await expect(
+				details.getByRole('row', { name: /Features.*petal length/ })
+			).toBeVisible();
+			const train = details.getByRole('row', { name: /^Training rows/ });
+			const heldOut = details.getByRole('row', { name: /^Held-out rows/ }).getByRole('cell');
+			if (strategy === 'iris') {
+				await expect(
+					details.getByRole('row', { name: 'Evaluation strategy Cross-Validation' })
+				).toBeVisible();
+				await expect(train.locator('li')).toHaveText(
+					evaluation.partitions.map(
+						(fold) => `Fold ${fold.index + 1}: ${fold.trainSampleCount}`
+					)
+				);
+				await expect(train).toContainText('Training folds overlap.');
+				await expect(heldOut).toHaveText(String(evaluation.pooled.test.sampleCount));
+			} else {
+				await expect(
+					details.getByRole('row', { name: 'Evaluation strategy One-Shot' })
+				).toBeVisible();
+				await expect(train.getByRole('cell')).toHaveText(
+					String(evaluation.partitions[0]!.trainSampleCount)
+				);
+				await expect(heldOut).toHaveText(String(evaluation.partitions[0]!.testSampleCount));
+			}
+
+			await page.evaluate(() => {
+				const store = window.__appState!;
+				const state = store.get();
+				store.set({
+					...state,
+					models: [
+						{
+							...state.models[0]!,
+							modelLabel: 'A long unbroken ModelNameThatMustWrapAtNarrowWidths'
+						}
+					]
+				});
+			});
+			await page.setViewportSize({ width: 320, height: 900 });
+			await page.evaluate(() => {
+				document.documentElement.dir = 'rtl';
+			});
+			await expect(header).toContainText(
+				'A long unbroken ModelNameThatMustWrapAtNarrowWidths Results'
+			);
+			expect(
+				await page.evaluate(() => document.documentElement.scrollWidth)
+			).toBeLessThanOrEqual(320);
+			await page.setViewportSize({ width: 640, height: 900 });
+			await page.evaluate(() => {
+				document.documentElement.style.zoom = '2';
+			});
+			const scaledHeading = await header.boundingBox();
+			expect(scaledHeading!.x + scaledHeading!.width).toBeLessThanOrEqual(640);
+			await page.emulateMedia({ forcedColors: 'active' });
+			if (await page.evaluate(() => matchMedia('(forced-colors: active)').matches))
+				await expect(swatch).toHaveCSS('outline-style', 'solid');
+		});
+	}
 
 	test('WML-P4-UI-10: a result missing before startup returns to Training Setup with the configuration intact', async ({
 		page

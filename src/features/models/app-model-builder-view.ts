@@ -22,6 +22,7 @@ import {
 	chooseModel,
 	completeSection,
 	initialiseFeatureSelection,
+	modelSwatchAssignments,
 	reopenSection,
 	SECTION_ORDER,
 	setFeatures,
@@ -53,12 +54,14 @@ import { notificationStyles } from '../../styles/notification.styles';
 import { tableStyles } from '../../styles/table.styles';
 import { trainModelStyles } from '../../styles/train-model.styles';
 import { headingFocusStyles } from '../../styles/heading-focus.styles';
+import { modelSwatchStyles } from '../../styles/model-swatch.styles';
 import type { ColumnStats } from '../../types/dataset';
 import type { TrainingLogEntry, TrainingRunIdentity } from '../../types/model-result';
 import {
 	DEFAULT_ONE_SHOT_SETUP,
 	FIXED_ONE_SHOT_TEST_RATIO,
 	FIXED_TRAINING_RANDOM_STATE,
+	MODEL_COLORS,
 	type ColumnType,
 	type ModelRecord,
 	type ModelSectionId,
@@ -71,6 +74,7 @@ import { buildFeatureRows, formatFeatureNote, type FeatureRow } from './feature-
 import {
 	isClassifierId,
 	modelsForTarget,
+	savedModelName,
 	SUPERVISED_MODELS,
 	type ClassifierId,
 	type ModelCatalogueEntry
@@ -181,6 +185,8 @@ const messages = i18n('app-model-builder-view', {
 	trainModel: 'Train Model',
 	trainingHeading: '5. Train Model',
 	resultsHeading: '6. Model Results',
+	savedResultsHeading: params<{ name: string }>('{name} Results'),
+	savedModelFallback: params<{ num: string }>('Model {num}'),
 	trainingProgress: 'Training progress',
 	waitingToTrain: 'Waiting to train',
 	trainingPreparing: 'Preparing data',
@@ -360,6 +366,7 @@ export class AppModelBuilderView extends LitElement {
 		tableStyles,
 		notificationStyles,
 		trainModelStyles,
+		modelSwatchStyles,
 		css`
 			:host {
 				display: block;
@@ -377,6 +384,13 @@ export class AppModelBuilderView extends LitElement {
 					color: var(--stone-900);
 					font-weight: 500;
 					font-size: 1.5rem;
+				}
+
+				> .model-results {
+					display: flex;
+					align-items: center;
+					gap: 0.875rem;
+					overflow-wrap: anywhere;
 				}
 
 				> p {
@@ -2188,13 +2202,23 @@ export class AppModelBuilderView extends LitElement {
 
 		const session = displaySession(this.trainingSessions.value, appState, model);
 		if (this.numberedRoute && model.status === 'trained') {
+			const t = this.translations.value;
+			const num = $format.get().number(model.num);
+			const name = savedModelName(model) ?? t.savedModelFallback({ num });
+			const colour =
+				modelSwatchAssignments(appState).colours.get(model.num) ?? MODEL_COLORS[0];
 			return html`
 				<header class="page-header">
-					<h1 tabindex="-1">Model ${model.num} Results</h1>
+					<h1 tabindex="-1" class="model-results">
+						<span class="swatch swatch-large swatch-${colour}">${num}</span>
+						<span class="step-model-name">${t.savedResultsHeading({ name })}</span>
+					</h1>
 				</header>
-				<section class="page-body" data-testid="results-step">
-					<app-model-results model-num=${model.num}></app-model-results>
-				</section>
+				<article class="page-body" data-testid="results-step">
+					<app-model-results
+						model-num=${model.num}
+						.headingLevel=${2}></app-model-results>
+				</article>
 			`;
 		}
 		if (this.provisionalBinding && model.status === 'trained' && this.resultReadFailed) {

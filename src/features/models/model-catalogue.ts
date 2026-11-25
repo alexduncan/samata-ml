@@ -9,7 +9,7 @@ import logisticRegression from 'web-ml/model-specifications/logistic-regression'
 import mlpClassifier from 'web-ml/model-specifications/mlp-classifier';
 import multinomialNb from 'web-ml/model-specifications/multinomial-nb';
 import supportVectorClassifier from 'web-ml/model-specifications/support-vector-classifier';
-import type { ColumnType } from '../../types/state';
+import type { ColumnType, ModelRecord } from '../../types/state';
 
 /** Identifiers of the eight `web-ml` classifiers that samata-ml can configure and train. */
 export type ClassifierId = Extract<
@@ -76,6 +76,13 @@ export const SUPERVISED_MODELS: readonly ModelCatalogueEntry[] = indexJson.model
 			description: document.description ?? ''
 		};
 	});
+
+/** Displays a saved model label when available, otherwise the catalogue name. */
+export function savedModelName(
+	model: Pick<ModelRecord, 'modelId' | 'modelLabel'>
+): string | undefined {
+	return model.modelLabel ?? SUPERVISED_MODELS.find(({ id }) => id === model.modelId)?.name;
+}
 
 /**
  * Returns available supervised models for the given target column type,

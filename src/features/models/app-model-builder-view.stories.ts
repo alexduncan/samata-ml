@@ -502,28 +502,37 @@ export const TrainingComplete: Story = {
 		return restore;
 	}
 };
+function seedShownResult(label?: string) {
+	const restore = seedRun('trained', true);
+	const state = $appState.get();
+	const previous = $modelResults.get();
+	const record = state.models[0]!;
+	$appState.set({
+		...state,
+		models: [
+			{
+				...record,
+				completedSteps: [...record.completedSteps, 'results'],
+				modelLabel: label ?? null,
+				modelColor: 'blue'
+			}
+		]
+	});
+	const identity = currentResultIdentity(1);
+	if (identity) {
+		$modelResults.set({
+			1: { identity, status: 'ready', evaluation: irisCrossValidation(), error: '' }
+		});
+	}
+	return () => {
+		$modelResults.set(previous);
+		restore();
+	};
+}
+
 /** Section 6 shows the shared results of an acknowledged trained model. */
 export const ModelResultsShown: Story = {
-	beforeEach: () => {
-		const restore = seedRun('trained', true);
-		const state = $appState.get();
-		const previous = $modelResults.get();
-		const record = state.models[0]!;
-		$appState.set({
-			...state,
-			models: [{ ...record, completedSteps: [...record.completedSteps, 'results'] }]
-		});
-		const identity = currentResultIdentity(1);
-		if (identity) {
-			$modelResults.set({
-				1: { identity, status: 'ready', evaluation: irisCrossValidation(), error: '' }
-			});
-		}
-		return () => {
-			$modelResults.set(previous);
-			restore();
-		};
-	},
+	beforeEach: () => seedShownResult(),
 	play: async ({ canvasElement }) => {
 		const builder = canvasElement.querySelector('app-model-builder-view')!;
 		await builder.whenSettled();
@@ -532,6 +541,42 @@ export const ModelResultsShown: Story = {
 			expect(results.shadowRoot!.querySelector('app-results-summary')).not.toBeNull()
 		);
 	}
+};
+
+/** A trained numeric route starts at a heading and shows the saved evaluation. */
+export const NumberedModelResults: Story = {
+	beforeEach: () => seedShownResult(),
+	render: () =>
+		html`<app-model-builder-view
+			model-num="1"
+			.numberedRoute=${true}></app-model-builder-view>`,
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.whenSettled();
+		const root = builder.shadowRoot!;
+		expect(root.querySelector('h1.model-results')).toHaveTextContent(
+			'1 Logistic Regression Results'
+		);
+		expect(root.querySelector('.swatch-large')).toHaveClass('swatch-blue');
+		const results = root.querySelector('app-model-results')!;
+		const details = results.shadowRoot!.querySelector('details.training-summary')!;
+		await userEvent.click(details.querySelector('summary')!);
+		expect(details).toHaveAttribute('open');
+	}
+};
+
+/** The saved label wraps with its palette number in a right-to-left result heading. */
+export const NumberedResultsLongLabelRTL: Story = {
+	beforeEach: () => {
+		const restore = seedShownResult('A very long saved label with UnbrokenModelNameThatWraps');
+		const direction = document.documentElement.dir;
+		document.documentElement.dir = 'rtl';
+		return () => {
+			document.documentElement.dir = direction;
+			restore();
+		};
+	},
+	render: NumberedModelResults.render
 };
 /** All illustrated classifiers are available for a categorical target. */
 export const ChooseCategoricalModel: Story = {

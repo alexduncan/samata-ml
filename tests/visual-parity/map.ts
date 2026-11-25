@@ -205,9 +205,7 @@ export const parityMap: ParityEntry[] = [
 		([id, selector, properties, fixture, axes]): ParityEntry => ({
 			id: `sidebar-${id}`,
 			mockupPage:
-				fixture === 'empty'
-					? '01-1_select-data.html'
-					: '03-2_train-models-1-choose-model.html',
+				fixture === 'empty' ? '01-1_select-data.html' : '03-7_train-models-5-results.html',
 			mockupSelector: `.sidebar ${selector}`,
 			appRoute: '/data',
 			appSelector: `app-sidebar ${selector.replace('.project h4', '.project h2')}`,
