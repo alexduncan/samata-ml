@@ -1059,7 +1059,7 @@ test('WML-P3-TRAIN-6: persistent result pending recovers after reload without re
 	worker.succeed();
 	expect(await run).toMatchObject({ ok: false, reason: 'security', pending: 'finish' });
 	expect($appState.get().models[0]?.status).toBe('training');
-	expect(getTrainingSession(worker.identity)?.progress.percent).toBe(95);
+	expect(getTrainingSession(worker.identity)?.progress.percent).toBeNull();
 	expect(await db.get('model_results', [metadata.id, 1])).toMatchObject({
 		runId: worker.identity.runId
 	});

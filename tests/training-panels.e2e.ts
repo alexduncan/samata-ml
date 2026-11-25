@@ -101,7 +101,7 @@ async function succeed(page: Page): Promise<string> {
 	}, json);
 }
 
-test('starts once, keeps native controls stable and announces milestones across progress updates', async ({
+test('MW-PROGRESS-1: starts once, keeps native controls stable and announces milestones across progress updates', async ({
 	page
 }) => {
 	await controlTraining(page);
@@ -131,12 +131,22 @@ test('starts once, keeps native controls stable and announces milestones across 
 	await expect(panel.locator('ol li').last()).toHaveText('Fitting the model');
 	await fitProgress(page, 37, false);
 	await expect(progress).toHaveAttribute('value', '37');
+	await expect(panel.locator('.progress-percent')).toHaveText('37%');
+	await expect(panel.locator('.progress-percent')).toHaveAttribute('aria-hidden', 'true');
 	expect(await progress.evaluate((node, previous) => node === previous, progressNode)).toBe(true);
 	expect(await summary.evaluate((node, previous) => node === previous, summaryNode)).toBe(true);
 	await expect(status).toHaveText('Fitting the model');
 	await expect(status).toHaveAttribute('data-announcements', '1');
 	await expect(summary).toBeFocused();
 	await assertPanelAccessibility(page);
+	await page.setViewportSize({ width: 320, height: 800 });
+	await page.emulateMedia({ forcedColors: 'active' });
+	await expect(progress).toBeVisible();
+	await expect(summary).toBeVisible();
+	await expect(panel.locator('ol li').last()).toBeVisible();
+	expect(await panel.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(
+		true
+	);
 
 	await page.locator('app-sidebar a[href="/help"]').click();
 	const close = page.getByRole('button', { name: 'Close', exact: true });
@@ -160,17 +170,23 @@ test('starts once, keeps native controls stable and announces milestones across 
 });
 
 for (const outcome of ['cancelled', 'invalid-request', 'worker-crashed'] as const) {
-	test(`BETA-ERR-4: ${outcome} restores the Training Setup button with a safe localised reason`, async ({
+	test(`MW-PROGRESS-2 / BETA-ERR-4: ${outcome} restores the stopped action with a safe localised reason`, async ({
 		page
 	}) => {
 		await controlTraining(page);
-		const setup = await start(page);
+		await start(page);
+		const panel = training(page);
 		const autofocusWarnings: string[] = [];
 		page.on('console', (message) => {
 			if (message.text().includes('Autofocus processing was blocked'))
 				autofocusWarnings.push(message.text());
 		});
-		const cancel = training(page).getByRole('button', { name: 'Cancel Training' });
+		if (outcome === 'cancelled') {
+			await fitProgress(page, 40, true);
+			await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '40');
+			await panel.locator('summary').press('Enter');
+		}
+		const cancel = panel.getByRole('button', { name: 'Cancel Training' });
 		await cancel.focus();
 		await expect(cancel).toBeFocused();
 		if (outcome === 'cancelled') {
@@ -184,19 +200,38 @@ for (const outcome of ['cancelled', 'invalid-request', 'worker-crashed'] as cons
 				outcome
 			);
 		}
-		await expect(setup.getByRole('button', { name: 'Train Model' })).toBeFocused();
-		await expect(setup).not.toHaveAttribute('autofocus');
-		await expect(
-			page.locator('section[aria-labelledby="step-4-title"]').getByRole('alert')
-		).toHaveText(
+		await expect(panel.getByRole('heading', { name: '5. Training Stopped' })).toBeVisible();
+		const stoppedAction = panel.getByRole('button', { name: 'Train Model', exact: true });
+		await expect(stoppedAction).toBeFocused();
+		await expect(stoppedAction).not.toHaveAttribute('autofocus');
+		await expect(panel.locator('.notification')).toHaveText(
 			outcome === 'cancelled'
 				? /Training was cancelled/
 				: outcome === 'invalid-request'
 					? /The training library rejected this setup/
 					: /Training could not finish/
 		);
-		await expect(training(page)).toHaveCount(0);
+		await expect(panel.getByRole('alert')).toHaveCount(0);
+		await expect(panel.getByRole('status')).toHaveText(
+			outcome === 'cancelled'
+				? 'Training was cancelled. You can start again.'
+				: 'Training could not finish. Check your setup and try again.'
+		);
+		if (outcome === 'cancelled') {
+			await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '40');
+			await expect(panel.locator('.training-stopped')).toBeVisible();
+			await expect(panel.locator('details')).toHaveAttribute('open', '');
+		} else await expect(panel.getByRole('progressbar')).toHaveCount(0);
+		await expect(panel.getByRole('button', { name: 'View Results' })).toHaveCount(0);
+		await page.locator('app-sidebar a[href="/help"]').click();
+		await page
+			.getByRole('dialog', { name: 'Help' })
+			.getByRole('button', { name: 'Close' })
+			.click();
+		await expect(panel.getByRole('heading', { name: '5. Training Stopped' })).toBeVisible();
+		await assertPanelAccessibility(page);
 		await revisitTraining(page);
+		await expect(panel).toHaveCount(0);
 		await expect(
 			page.locator('section[aria-labelledby="step-4-title"]').getByRole('alert')
 		).toBeVisible();
@@ -204,6 +239,48 @@ for (const outcome of ['cancelled', 'invalid-request', 'worker-crashed'] as cons
 		expect(autofocusWarnings).toEqual([]);
 	});
 }
+
+test('MW-PROGRESS-2: blocked retry keeps recovery, and a new run and edit clear the old bar', async ({
+	page
+}) => {
+	await controlTraining(page);
+	await start(page);
+	const panel = training(page);
+	await fitProgress(page, 50, true);
+	await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '50');
+	await page.evaluate(() =>
+		window.__trainingFixture!.reply({ kind: 'failed', code: 'worker-crashed' })
+	);
+	const retry = panel.getByRole('button', { name: 'Train Model', exact: true });
+	await expect(retry).toBeEnabled();
+	await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '50');
+	await page.evaluate(() => {
+		window.__trainingFixture!.blockRead = true;
+	});
+	await retry.click();
+	await expect(panel.getByRole('alert')).toHaveText(/Training progress could not be saved/);
+	await expect(panel.getByRole('heading', { name: '5. Training Stopped' })).toBeVisible();
+	await expect(panel.getByRole('progressbar')).toHaveCount(0);
+	expect(await requestCount(page)).toBe(1);
+	await page.evaluate(() => {
+		window.__trainingFixture!.blockRead = false;
+	});
+	await retry.click();
+	await expect.poll(() => requestCount(page)).toBe(2);
+	const attempts = await page.evaluate(() =>
+		window.__trainingFixture!.requests.filter((request) => request.kind === 'start')
+	);
+	expect(attempts[1]?.identity.runId).not.toBe(attempts[0]?.identity.runId);
+	expect(attempts[1]?.setup).toEqual(attempts[0]?.setup);
+	await expect(panel.getByRole('progressbar')).not.toHaveAttribute('value');
+	await page.evaluate(() =>
+		window.__trainingFixture!.reply({ kind: 'failed', code: 'worker-crashed' })
+	);
+	await panel.getByRole('button', { name: 'Edit Training Setup' }).click();
+	await expect(panel).toHaveCount(0);
+	await expect(page.locator('#step-4-title')).toBeFocused();
+	await expect(page.locator('app-training-setup').getByRole('combobox')).toHaveValue('one_shot');
+});
 
 test('BETA-ERR-4b: a result arriving after leaving training does not steal normal route focus', async ({
 	page
@@ -302,13 +379,14 @@ test('WML-P3-UI-1/5: retries only publication and preserves a disclosure changed
 }) => {
 	await controlTraining(page);
 	await start(page);
+	await fitProgress(page, 72, true);
 	await page.evaluate(() => (window.__trainingFixture!.blockPublication = 'finish'));
 	const runId = await succeed(page);
 	const panel = training(page);
 	await expect(panel.getByRole('alert')).toHaveText(
 		'The result is saved, but progress could not be saved. Retry saving.'
 	);
-	await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '95');
+	await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '72');
 	await expect(panel.getByRole('button', { name: 'View Results' })).toBeDisabled();
 	await expect(panel.getByRole('button', { name: 'Cancel Training' })).toBeDisabled();
 	const blockedWrites = await page.evaluate(() => window.__trainingFixture!.blockedWrites);
@@ -519,8 +597,8 @@ for (const [outcome, recovery] of [
 	}) => {
 		await controlTraining(page);
 		const setup = await start(page);
-		const submit = setup.getByRole('button', { name: 'Train Model' });
-		const retry = training(page).getByRole('button', { name: 'Retry saving' });
+		const panel = training(page);
+		const retry = panel.getByRole('button', { name: 'Retry saving' });
 		const generation = (await savedRun(page)).generation + 1;
 		const reason =
 			outcome === 'invalid-request'
@@ -604,13 +682,14 @@ for (const [outcome, recovery] of [
 				});
 			}
 			if (recovery !== 'later storage event') await retry.press('Enter');
-			const notice = page
-				.locator('section[aria-labelledby="step-4-title"]')
-				.getByRole('alert');
-			await expect(submit).toBeEnabled();
-			await expect(notice).toHaveText(reason);
+			await expect(panel.getByRole('heading', { name: '5. Training Stopped' })).toBeVisible();
+			await expect(
+				panel.getByRole('button', { name: 'Train Model', exact: true })
+			).toBeEnabled();
+			await expect(panel.locator('.notification')).toHaveText(reason);
+			await expect(panel.getByRole('alert')).toHaveCount(0);
 			await expect(page.getByText('Private worker details')).toHaveCount(0);
-			await expect(training(page)).toHaveCount(0);
+			await expect(panel.getByRole('progressbar')).toHaveCount(0);
 			await expect(page.getByRole('button', { name: 'Retry saving' })).toHaveCount(0);
 			expect(await storedStop(page)).toEqual({
 				generation,
@@ -627,8 +706,11 @@ for (const [outcome, recovery] of [
 			expect(await requestCount(page)).toBe(1);
 			if (other) expect(await requestCount(other)).toBe(0);
 			await page.reload();
-			await expect(submit).toBeEnabled();
-			await expect(notice).toHaveText(reason);
+			await expect(panel).toHaveCount(0);
+			await expect(setup.getByRole('button', { name: 'Train Model' })).toBeEnabled();
+			await expect(
+				page.locator('section[aria-labelledby="step-4-title"]').getByRole('alert')
+			).toHaveText(reason);
 			expect(await storedStop(page)).toMatchObject({
 				logOpen: openLog,
 				reason: outcome,

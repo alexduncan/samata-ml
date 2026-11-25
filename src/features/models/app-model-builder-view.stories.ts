@@ -9,6 +9,7 @@ import { $datasetResources, type ResourceStatus } from '../../stores/dataset.sto
 import {
 	$trainingSession,
 	appendTrainingLog,
+	applyTrainingSessionUpdate,
 	createTrainingSession,
 	setTrainingSessionStatus
 } from '../../stores/training.store';
@@ -510,6 +511,56 @@ export const StoppedRepairPending: Story = {
 		setTrainingSessionStatus(identity, 'stopped-pending');
 		$publicationPending.set(null);
 		return restore;
+	}
+};
+
+/** The visible attempt becomes a stopped state with its own measured progress and actions. */
+export const TrainingStopped: Story = {
+	beforeEach: () => {
+		const restore = seedRun('training', false);
+		setTrainingSessionStatus(identity, 'running');
+		applyTrainingSessionUpdate(identity, {
+			progress: {
+				percent: 25,
+				stage: 'fitting',
+				phase: 'training',
+				statusMessage: 'training'
+			},
+			note: { key: 'phase', phase: 'training' }
+		});
+		setTrainingServiceForTesting({
+			...createTrainingService(),
+			activeIdentity: () => identity
+		});
+		return restore;
+	},
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const panel = builder.shadowRoot!.querySelector('[data-testid=training-step]')!;
+		panel.querySelector<HTMLButtonElement>('header button')!.focus();
+		const state = $appState.get();
+		$appState.set({
+			...state,
+			models: state.models.map((entry) => ({
+				...entry,
+				status: 'draft',
+				resultRevision: null,
+				completedSteps: entry.completedSteps.filter(
+					(step) => step !== 'configure-training'
+				),
+				error: { code: 'TRAINING_CANCELLED', message: 'Training cancelled', timestamp: 2 }
+			}))
+		});
+		setTrainingSessionStatus(identity, 'cancelled');
+		await waitFor(() =>
+			expect(panel.querySelector('h2')).toHaveTextContent('5. Training Stopped')
+		);
+		const retry = panel.querySelector('[data-stopped-retry]');
+		expect(retry).toBeEnabled();
+		expect(builder.shadowRoot!.activeElement).toBe(retry);
+		const progress = panel.querySelector('app-training-progress')!;
+		expect(progress.shadowRoot!.querySelector('progress')).toHaveAttribute('value', '25');
 	}
 };
 

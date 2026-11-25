@@ -195,6 +195,9 @@ const messages = i18n('app-model-builder-view', {
 	),
 	trainModel: 'Train Model',
 	trainingHeading: '5. Train Model',
+	trainingActiveHeading: '5. Training Model…',
+	trainingStoppedHeading: '5. Training Stopped',
+	trainingCompleteHeading: '5. Training Complete',
 	resultsHeading: '6. Model Results',
 	savedResultsHeading: params<{ name: string }>('{name} Results'),
 	savedModelFallback: params<{ num: string }>('Model {num}'),
@@ -218,6 +221,7 @@ const messages = i18n('app-model-builder-view', {
 	trainingReducedPerformance: 'Training is using reduced-performance mode',
 	trainingSaving: 'Saving results',
 	trainingComplete: 'Training complete',
+	trainingStopped: 'Training stopped',
 	trainingCancelling: 'Cancelling training',
 	trainingCancelled: 'Training was cancelled. You can start again.',
 	trainingFailed: 'Training could not finish. Check your setup and try again.',
@@ -523,6 +527,11 @@ export class AppModelBuilderView extends LitElement {
 				color: var(--neutral-700);
 				font-style: italic;
 			}
+			.stopped-actions {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 0.5rem;
+			}
 		`
 	];
 
@@ -568,6 +577,7 @@ export class AppModelBuilderView extends LitElement {
 	@state() private accessor verifiedProvisional = false;
 	@state() private accessor showingResults = false;
 	@state() private accessor retryingPublication = false;
+	@state() private accessor retryingTraining = false;
 	@state() private accessor leavingModel = false;
 	@state() private accessor wizardAdvance: WizardAdvance | undefined;
 	@state() private accessor wizardNotice:
@@ -584,6 +594,10 @@ export class AppModelBuilderView extends LitElement {
 	private logWatermark: { runId: string; id: number } | null = null;
 	private announcement = '';
 	private activeAttempt: TrainingRunIdentity | null = null;
+	private displayedRun:
+		| { key: string; entryId: string | undefined; identity: TrainingRunIdentity }
+		| undefined;
+	private stoppedRecovery: { key: string; entryId: string | undefined } | undefined;
 	private restoreSubmitFocus: TrainingRunIdentity | null = null;
 
 	private get currentModel(): ModelRecord | undefined {
@@ -630,6 +644,7 @@ export class AppModelBuilderView extends LitElement {
 		const session = model && displaySession(this.trainingSessions.value, appState, model);
 		const key = model && this.trainingNoticeKey(model);
 		const showingTraining = model?.status === 'training';
+		this.rememberDisplayedRun(model, session, key);
 		const advance = this.wizardAdvance;
 		if (advance) {
 			if (!this.ownsWizardAdvance(advance)) {
@@ -652,7 +667,7 @@ export class AppModelBuilderView extends LitElement {
 		} else if (this.stepMotion && this.routeController.value.kind !== 'workflow')
 			this.clearStepMotion();
 		this.updateTrainingSubmitFocus(model, session, showingTraining);
-		this.updateTrainingAnnouncement(session);
+		this.updateTrainingAnnouncement(session ?? (model && this.stoppedSession(model)));
 
 		const resultKey =
 			model?.status === 'trained' && model.resultRevision
@@ -721,11 +736,68 @@ export class AppModelBuilderView extends LitElement {
 		}
 	}
 
+	private rememberDisplayedRun(
+		model: ModelRecord | undefined,
+		session: TrainingSession | undefined,
+		key: string | undefined
+	): void {
+		const route = this.routeController.value;
+		const entryId = getWorkflowEntryId();
+		const owner = this.displayedRun ?? this.stoppedRecovery;
+		if (
+			!key ||
+			(route.kind !== 'workflow' && route.kind !== 'reserved') ||
+			getEffectiveModelNum(route) !== this.modelNum ||
+			(owner && (owner.key !== key || owner.entryId !== entryId))
+		) {
+			this.displayedRun = undefined;
+			this.stoppedRecovery = undefined;
+			return;
+		}
+		if (model?.status === 'trained') {
+			this.displayedRun = undefined;
+			this.stoppedRecovery = undefined;
+		} else if (model?.status === 'training' && session) {
+			const owned = getTrainingService().activeIdentity(model.num);
+			if (owned && sameTrainingRun(owned, session.identity)) {
+				this.displayedRun = { key, entryId, identity: session.identity };
+				this.stoppedRecovery = undefined;
+			}
+		}
+	}
+
+	private stoppedSession(model: ModelRecord): TrainingSession | undefined {
+		const run = this.displayedRun;
+		if (
+			!run ||
+			model.status !== 'draft' ||
+			run.key !== this.trainingNoticeKey(model) ||
+			(model.error?.code !== 'TRAINING_CANCELLED' && model.error?.code !== 'TRAINING_FAILED')
+		)
+			return;
+		return getTrainingSession(run.identity);
+	}
+
 	override updated(changed: PropertyValues<this>): void {
 		if (changed.has('modelNum') && changed.get('modelNum') !== undefined) {
 			this.handleCancelReopen();
 		}
 		this.syncLeaveDialog();
+		const model = this.currentModel;
+		const intent = this.restoreSubmitFocus;
+		const stopped = model && this.stoppedSession(model);
+		if (
+			intent &&
+			stopped &&
+			sameTrainingRun(intent, stopped.identity) &&
+			(stopped.status === 'cancelled' || stopped.status === 'failed')
+		) {
+			const button = this.renderRoot.querySelector<HTMLButtonElement>('[data-stopped-retry]');
+			if (button && !button.disabled) {
+				button.focus({ preventScroll: true });
+				this.restoreSubmitFocus = null;
+			}
+		}
 	}
 
 	override disconnectedCallback(): void {
@@ -735,6 +807,8 @@ export class AppModelBuilderView extends LitElement {
 		this.leaveDialog?.close();
 		super.disconnectedCallback();
 		this.activeAttempt = null;
+		this.displayedRun = undefined;
+		this.stoppedRecovery = undefined;
 		this.restoreSubmitFocus = null;
 		this.clearStepMotion();
 		this.wizardAdvance = undefined;
@@ -1063,14 +1137,18 @@ export class AppModelBuilderView extends LitElement {
 					this.confirmDialogEl.open = true;
 				}
 			}
-		} else {
-			reopenSection(this.modelNum, section);
+		} else if (reopenSection(this.modelNum, section)) {
+			this.displayedRun = undefined;
+			this.stoppedRecovery = undefined;
 		}
 	}
 
 	private handleConfirmReopen(): void {
 		if (this.pendingReopenSection) {
-			reopenSection(this.modelNum, this.pendingReopenSection);
+			if (reopenSection(this.modelNum, this.pendingReopenSection)) {
+				this.displayedRun = undefined;
+				this.stoppedRecovery = undefined;
+			}
 			this.pendingReopenSection = null;
 		}
 		if (this.confirmDialogEl?.open) {
@@ -2049,6 +2127,58 @@ export class AppModelBuilderView extends LitElement {
 		this.handleReopenClick('configure-training');
 	}
 
+	private handleCancelTraining(event: Event, identity: TrainingRunIdentity): void {
+		const model = this.currentModel;
+		const service = getTrainingService();
+		const owned = model && service.activeIdentity(model.num);
+		if (
+			!model ||
+			!owned ||
+			!sameTrainingRun(owned, identity) ||
+			!this.isCurrentTrainingRoute(this.trainingNoticeKey(model))
+		)
+			return;
+		(event.currentTarget as HTMLButtonElement).focus({ preventScroll: true });
+		void service.cancel(model.num);
+	}
+
+	private async retryStoppedTraining(model: ModelRecord): Promise<void> {
+		const service = getTrainingService();
+		const key = this.trainingNoticeKey(model);
+		if (
+			this.retryingTraining ||
+			service.activeIdentity(model.num) ||
+			!this.isCurrentTrainingRoute(key)
+		)
+			return;
+		const recovery = { key, entryId: getWorkflowEntryId() };
+		this.displayedRun = undefined;
+		this.stoppedRecovery = recovery;
+		this.trainingNotice = undefined;
+		this.retryingTraining = true;
+		try {
+			const result = await service.start(model.num);
+			if (!result.ok && this.stoppedRecovery === recovery)
+				this.trainingNotice = { key, code: result.code, pending: result.pending };
+		} finally {
+			this.retryingTraining = false;
+		}
+	}
+
+	private async editStoppedTraining(model: ModelRecord): Promise<void> {
+		const key = this.trainingNoticeKey(model);
+		if (this.retryingTraining || !this.isCurrentTrainingRoute(key)) return;
+		this.displayedRun = undefined;
+		this.stoppedRecovery = undefined;
+		this.restoreSubmitFocus = null;
+		this.requestUpdate();
+		await this.updateComplete;
+		if (this.isCurrentTrainingRoute(key))
+			this.renderRoot
+				.querySelector<HTMLElement>('.step-active #step-4-title')
+				?.focus({ preventScroll: true });
+	}
+
 	private handleTrainingSetupFocus(event: FocusEvent): void {
 		if ((event.currentTarget as AppTrainingSetup).restoreFocus) {
 			this.restoreSubmitFocus = null;
@@ -2199,7 +2329,8 @@ export class AppModelBuilderView extends LitElement {
 	private renderTrainingSection(
 		model: ModelRecord,
 		isActive: boolean,
-		session: TrainingSession | undefined
+		session: TrainingSession | undefined,
+		stopped = false
 	): TemplateResult {
 		const t = this.translations.value;
 		if (!isActive && model.status !== 'trained') {
@@ -2213,10 +2344,18 @@ export class AppModelBuilderView extends LitElement {
 		const viewed = !this.provisionalBinding && model.completedSteps.includes('results');
 		const pending = this.publication.value;
 		const pendingRun = pending?.identity && pending.identity.runId === session?.identity.runId;
+		const pendingStart =
+			stopped &&
+			pending?.kind === 'start' &&
+			pending.identity &&
+			belongsToModel(pending.identity, this.appStateController.value, model)
+				? pending.identity
+				: undefined;
 		const stoppedPending = session?.status === 'stopped-pending';
 		const awaitingRun = session?.status === 'publication-pending' || stoppedPending;
+		const acknowledgedStop = stopped && this.stoppedSession(model) !== undefined;
 		const notice =
-			this.trainingNotice?.key === this.trainingNoticeKey(model)
+			!acknowledgedStop && this.trainingNotice?.key === this.trainingNoticeKey(model)
 				? this.trainingNotice
 				: undefined;
 		const viewingPending = notice?.pending === 'recover' && pending?.kind === 'recover';
@@ -2228,25 +2367,26 @@ export class AppModelBuilderView extends LitElement {
 		const cancelVisible = (owner && !complete && session?.status !== 'saving') || awaitingRun;
 		const remote = !session && model.status === 'training';
 		const entries = session?.logEntries ?? [];
-		const rawProgress: TrainingProgress = session?.progress ??
-			model.progress ?? {
-				percent: null,
-				stage: 'preparing',
-				phase: null,
-				statusMessage: 'preparing'
-			};
+		const rawProgress: TrainingProgress = session?.progress ?? {
+			percent: null,
+			stage: 'preparing',
+			phase: null,
+			statusMessage: 'preparing'
+		};
 		const latest = entries.at(-1);
-		const status = remote
-			? t.trainingRemote
-			: cancelling
-				? t.trainingCancelling
-				: complete
-					? t.trainingComplete
-					: awaitingRun || session?.status === 'saving'
-						? t.trainingSaving
-						: latest
-							? this.formatTrainingLogEntry(latest)
-							: this.trainingProgressMessage(rawProgress.statusMessage);
+		const status = stopped
+			? t.trainingStopped
+			: remote
+				? t.trainingRemote
+				: cancelling
+					? t.trainingCancelling
+					: complete
+						? t.trainingComplete
+						: awaitingRun || session?.status === 'saving'
+							? t.trainingSaving
+							: latest
+								? this.formatTrainingLogEntry(latest)
+								: this.trainingProgressMessage(rawProgress.statusMessage);
 		const duration =
 			complete && model.durationMs !== null
 				? t.trainingElapsed({
@@ -2257,6 +2397,19 @@ export class AppModelBuilderView extends LitElement {
 						})
 					})
 				: '';
+		const percent = complete
+			? 100
+			: rawProgress.percent === null
+				? null
+				: Math.min(99, rawProgress.percent);
+		const heading = complete
+			? t.trainingCompleteHeading
+			: stopped
+				? t.trainingStoppedHeading
+				: t.trainingActiveHeading;
+		const stoppedReason = this.trainingFailureMessage(
+			model.error?.details ?? model.error?.code
+		);
 
 		return html`
 			<li
@@ -2267,41 +2420,42 @@ export class AppModelBuilderView extends LitElement {
 					aria-labelledby="step-5-title"
 					data-testid="training-step">
 					<header class="train-step-header">
-						<h2 id="step-5-title" tabindex="-1">${t.trainingHeading}</h2>
+						<h2 id="step-5-title" tabindex="-1">${heading}</h2>
 						<span class="train-step-action train-step-status">
-							${cancelVisible
+							${cancelVisible && !stopped
 								? html`<button
 										type="button"
 										class="btn"
 										?disabled=${awaitingRun}
 										aria-disabled=${cancelling ? 'true' : nothing}
-										@click=${() =>
+										@click=${(event: Event) =>
 											!cancelling &&
-											this.isCurrentTrainingRoute(
-												this.trainingNoticeKey(model)
-											) &&
-											getTrainingService().cancel(model.num)}>
+											session &&
+											this.handleCancelTraining(event, session.identity)}>
 										${t.cancelTraining}
 									</button>`
 								: nothing}
-							${viewed
-								? html` <span class="visually-hidden">${t.completed}</span
-										>${completedStepIcon}`
-								: html`<button
-										type="button"
-										class="btn"
-										?disabled=${!complete ||
-										this.showingResults ||
-										viewingPending}
-										@click=${() =>
-											session && this.handleViewResults(model, session)}>
-										${t.viewResults}
-									</button>`}
+							${stopped
+								? nothing
+								: viewed
+									? html` <span class="visually-hidden">${t.completed}</span
+											>${completedStepIcon}`
+									: html`<button
+											type="button"
+											class="btn"
+											?disabled=${!complete ||
+											this.showingResults ||
+											viewingPending}
+											@click=${() =>
+												session && this.handleViewResults(model, session)}>
+											${t.viewResults}
+										</button>`}
 						</span>
 					</header>
 					<div class="train-step-content">
 						<app-training-progress
-							.progress=${{ ...rawProgress, statusMessage: status }}
+							.progress=${{ ...rawProgress, percent, statusMessage: status }}
+							.variant=${complete ? 'complete' : stopped ? 'stopped' : 'active'}
 							.logEntries=${entries}
 							.logOpen=${model.ui.trainingLogOpen ?? false}
 							.announcement=${this.announcement}
@@ -2316,34 +2470,70 @@ export class AppModelBuilderView extends LitElement {
 								event: CustomEvent<{ readonly open: boolean }>
 							) => this.handleLogToggle(model, event)}>
 						</app-training-progress>
-						${stoppedPending || (awaitingRun && pendingRun)
-							? this.renderTrainingNotice(
-									model,
-									stoppedPending
-										? t.trainingPendingStop
-										: t.trainingPendingResult,
-									true,
-									session?.identity
-								)
-							: viewingPending
-								? this.renderTrainingNotice(
-										model,
-										t.trainingPendingResultsView,
-										true
-									)
-								: this.resultReadFailed && !complete
-									? this.renderTrainingNotice(
-											model,
-											t.trainingResultUnavailable,
-											false
-										)
-									: notice && complete
+						${stopped
+							? html` ${pendingStart
 										? this.renderTrainingNotice(
 												model,
-												this.trainingFailureMessage(notice.code),
+												t.trainingPendingStart,
+												true,
+												pendingStart
+											)
+										: notice
+											? this.renderTrainingNotice(
+													model,
+													this.trainingFailureMessage(notice.code),
+													false
+												)
+											: html`<p class="notification notification-alert">
+													${stoppedReason}
+												</p>`}
+									<div class="section-actions stopped-actions">
+										<button
+											type="button"
+											class="btn btn-primary"
+											data-stopped-retry
+											?disabled=${this.retryingTraining ||
+											Boolean(pendingStart)}
+											@click=${() => this.retryStoppedTraining(model)}>
+											${t.trainModel}
+										</button>
+										<button
+											type="button"
+											class="btn"
+											?disabled=${this.retryingTraining ||
+											Boolean(pendingStart)}
+											@click=${() => this.editStoppedTraining(model)}>
+											${t.reopenTrainingSetup}
+										</button>
+									</div>`
+							: stoppedPending || (awaitingRun && pendingRun)
+								? this.renderTrainingNotice(
+										model,
+										stoppedPending
+											? t.trainingPendingStop
+											: t.trainingPendingResult,
+										true,
+										session?.identity
+									)
+								: viewingPending
+									? this.renderTrainingNotice(
+											model,
+											t.trainingPendingResultsView,
+											true
+										)
+									: this.resultReadFailed && !complete
+										? this.renderTrainingNotice(
+												model,
+												t.trainingResultUnavailable,
 												false
 											)
-										: nothing}
+										: notice && complete
+											? this.renderTrainingNotice(
+													model,
+													this.trainingFailureMessage(notice.code),
+													false
+												)
+											: nothing}
 					</div>
 				</section>
 			</li>
@@ -2471,10 +2661,17 @@ export class AppModelBuilderView extends LitElement {
 				? this.wizardNotice
 				: undefined;
 		const wizard = this.wizardAdvance?.model ?? pending?.model ?? model;
+		const stoppedSession = this.stoppedSession(model);
+		const stopped =
+			model.status === 'draft' &&
+			(Boolean(stoppedSession) ||
+				this.stoppedRecovery?.key === this.trainingNoticeKey(model));
 		const activeStep =
 			this.wizardAdvance?.from ??
 			pending?.step ??
-			(this.provisionalBinding && model.status === 'trained' ? 5 : getActiveStep(model));
+			(stopped || (this.provisionalBinding && model.status === 'trained')
+				? 5
+				: getActiveStep(model));
 		const isStep1Completed = wizard.completedSteps.includes('choose-model');
 		const isStep2Completed = wizard.completedSteps.includes('select-features');
 		const isStep3Completed = wizard.completedSteps.includes('configure-model');
@@ -2495,7 +2692,12 @@ export class AppModelBuilderView extends LitElement {
 					${this.renderSelectFeaturesSection(wizard, activeStep === 2, isStep2Completed)}
 					${this.renderConfigureModelSection(wizard, activeStep === 3, isStep3Completed)}
 					${this.renderTrainingSetupSection(wizard, activeStep === 4, isStep4Completed)}
-					${this.renderTrainingSection(wizard, activeStep === 5, session)}
+					${this.renderTrainingSection(
+						wizard,
+						activeStep === 5,
+						stoppedSession ?? session,
+						stopped
+					)}
 					${this.renderResultsSection(wizard, activeStep)}
 				</ol>
 			</section>

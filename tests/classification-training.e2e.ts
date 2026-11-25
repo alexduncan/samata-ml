@@ -305,7 +305,7 @@ test.describe('Deployed Chromium classification worker', () => {
 		expect(second.result.featureNamesOut.join(' ')).not.toContain('validation-only');
 	});
 
-	test('an authoritative holdout partition rejection reopens the real builder', async ({
+	test('an authoritative holdout partition rejection can reopen Training Setup from the stopped panel', async ({
 		page
 	}) => {
 		const labels = ['cedar', 'maple', 'beech', 'ash'];
@@ -320,9 +320,10 @@ test.describe('Deployed Chromium classification worker', () => {
 		await page.locator('app-target-view header a[href="/models"]').click();
 		const setup = await configureDraft(page, 1);
 		await setup.getByRole('button', { name: 'Train Model' }).click();
-		await expect(
-			page.getByRole('alert').filter({ hasText: 'The training library rejected this setup' })
-		).toBeVisible();
+		const stopped = page.getByTestId('training-step');
+		await expect(stopped.getByRole('heading', { name: '5. Training Stopped' })).toBeVisible();
+		await expect(stopped.getByText(/The training library rejected this setup/)).toBeVisible();
+		await stopped.getByRole('button', { name: 'Edit Training Setup' }).click();
 		await expect(setup.getByRole('button', { name: 'Train Model' })).toBeEnabled();
 		const model = await page.evaluate(() => window.__appState!.get().models[0]);
 		expect(model).toMatchObject({

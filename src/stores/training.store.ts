@@ -135,7 +135,12 @@ export function setTrainingSessionStatus(
 	}
 	let progress = session.progress;
 	if (status === 'saving') {
-		progress = { percent: 95, stage: 'saving', phase: null, statusMessage: 'saving' };
+		progress = {
+			percent: progress.percent,
+			stage: 'saving',
+			phase: null,
+			statusMessage: 'saving'
+		};
 	} else if (status === 'complete') {
 		progress = { percent: 100, stage: 'saving', phase: null, statusMessage: 'completed' };
 	}

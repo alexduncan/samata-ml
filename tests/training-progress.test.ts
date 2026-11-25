@@ -99,9 +99,21 @@ test('WML-P3-EVENT-1: logs are bounded, warning text is discarded and only saved
 	expect(log).toHaveLength(250);
 	expect(log[0]?.id).toBe(11);
 	expect(log.at(-1)).toMatchObject({ id: 260, timestamp: 260 });
+	expect(
+		applyTrainingSessionUpdate(
+			identity,
+			mapper.training({
+				type: 'progress',
+				phase: 'training',
+				fraction: 0.8,
+				completed: 8,
+				total: 10
+			})!
+		)
+	).toBe(true);
 	setTrainingSessionStatus(identity, 'saving');
 	setTrainingSessionStatus(identity, 'publication-pending');
-	expect(getTrainingSession(identity)?.progress.percent).toBe(95);
+	expect(getTrainingSession(identity)?.progress.percent).toBe(70);
 	setTrainingSessionStatus(
 		identity,
 		'complete',
