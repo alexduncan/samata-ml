@@ -1,6 +1,6 @@
 # Human tasks
 
-**Updated:** 2026-11-24
+**Updated:** 2026-11-25
 
 This is the human's work queue: decisions, plan review, missing content and mockup styling. Detail lives in the linked plan/spec. TODO IDs refer to [TODO.md](TODO.md); Known gaps refer to [the index](README.md#known-gaps).
 
@@ -120,7 +120,8 @@ Only the human changes `ready` or `implemented` mockups and `mockups/mockups.css
 - [ ] **Style model descriptions (step-3-train-models-overview-and-setup):** Style description/loading/missing/error states. Non-blocking. → [draft](mockups/03-8_model-description.html)
 - [x] **Style model text entries (step-3-train-models-overview-and-setup):** Closed when eight illustrated cards replaced the text-entry chooser. → [historical draft](mockups/03-9_choose-model-text-entries.html)
 - [x] **Optional model illustrations (step-3-train-models-overview-and-setup):** The chooser uses the eight supplied classifier illustrations. → [current chooser specification](workflow-steps.md#1-choose-model)
-- [ ] **Style content modal (static-content-pipeline):** Style compiled prose/error state and promote. Non-blocking. → [draft](mockups/00-2_content-modal.html)
+- [ ] **Style harmonised Content Modal (beta-console-errors-and-csp-fixes):** Review and style sticky `.modal-header`, optional `.header-subtitle`, `.btn-icon` close control, `.modal-content` prose, and error state in `css/modal.css`, then promote to `ready`. Non-blocking for draft plan review. → [draft](mockups/00-2_content-modal.html) · [plan](plans/beta-console-errors-and-csp-fixes.md)
+- [ ] **Style harmonised Confirm Dialog (beta-console-errors-and-csp-fixes):** Review and style `.confirm-dialog`, `.confirm-header`, plain-text `.confirm-body`, `.confirm-footer`, and error/retry state in `css/modal.css`, then promote to `ready`. Non-blocking for draft plan review. → [draft](mockups/00-4_confirm-dialog.html) · [plan](plans/beta-console-errors-and-csp-fixes.md)
       The empty `03-4`..`03-7` placeholder duplicates are removed (TODO-36); `03-4`..`03-7` and `04_compare-results.html` are flat `status="draft"` files supplying structure for the proposed behaviour. Styling and promotion remain human work.
 - [ ] **Remove obsolete URL field (TODO-37):** Update 01-3; UI plans already exclude it. Non-blocking. → [mockup](mockups/01-3_upload-dataset.html)
 - [ ] **Current-step links (TODO-38):** Replace mockup div with canonical link/aria-current pattern. Non-blocking; conformance owns application semantics. → [rule](app-state-and-navigation.md#44-sidebar-and-shortcuts)
