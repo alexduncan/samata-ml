@@ -125,6 +125,8 @@ export class AppTrainingSetup extends LitElement {
 	@property({ attribute: false }) accessor blockedReason = '';
 	/** Whether the form's controls are read-only. */
 	@property({ attribute: false }) accessor disabled = false;
+	/** Requests focus on the submit control once it is actionable. */
+	@property({ attribute: false }) accessor restoreFocus = false;
 	/** Localised form text and formatters, with English defaults. */
 	@property({ attribute: false }) accessor labels: TrainingSetupLabels =
 		DEFAULT_TRAINING_SETUP_LABELS;
@@ -136,17 +138,12 @@ export class AppTrainingSetup extends LitElement {
 	@state() private accessor liveAnnouncement = '';
 	private lastEmittedSetup: ValidationMethodology | null = null;
 	private pendingNumberFocus = false;
+	private restoreFocusConsumed = false;
 	private controlsDisabled = false;
 	private sliderMax = MAX_CV_FOLDS;
 	private clampedSliderFolds = DEFAULT_CV_FOLDS;
 	private matrixFolds = DEFAULT_CV_FOLDS;
 	private displayText = String(DEFAULT_CV_FOLDS);
-
-	override firstUpdated(): void {
-		if (this.hasAttribute('autofocus') && !this.controlsDisabled) {
-			this.renderRoot.querySelector<HTMLButtonElement>('button[type="submit"]')?.focus();
-		}
-	}
 
 	override willUpdate(changed: PropertyValues<this>): void {
 		const externalSetupChanged = changed.has('value') && !this.matchesLastEmission();
@@ -186,6 +183,14 @@ export class AppTrainingSetup extends LitElement {
 		if (this.pendingNumberFocus) {
 			this.pendingNumberFocus = false;
 			this.renderRoot.querySelector<HTMLInputElement>('#folds-number')?.focus();
+		}
+		if (!this.restoreFocus) {
+			this.restoreFocusConsumed = false;
+		} else if (this.isConnected && !this.restoreFocusConsumed && !this.controlsDisabled) {
+			const submit =
+				this.renderRoot.querySelector<HTMLButtonElement>('button[type="submit"]');
+			submit?.focus();
+			this.restoreFocusConsumed = this.shadowRoot?.activeElement === submit;
 		}
 	}
 

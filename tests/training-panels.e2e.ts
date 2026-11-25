@@ -149,11 +149,16 @@ test('starts once, keeps native controls stable and announces milestones across 
 });
 
 for (const outcome of ['cancelled', 'invalid-request', 'worker-crashed'] as const) {
-	test(`${outcome} restores the Training Setup button with a safe localised reason`, async ({
+	test(`BETA-ERR-4: ${outcome} restores the Training Setup button with a safe localised reason`, async ({
 		page
 	}) => {
 		await controlTraining(page);
 		const setup = await start(page);
+		const autofocusWarnings: string[] = [];
+		page.on('console', (message) => {
+			if (message.text().includes('Autofocus processing was blocked'))
+				autofocusWarnings.push(message.text());
+		});
 		const cancel = training(page).getByRole('button', { name: 'Cancel Training' });
 		await cancel.focus();
 		await expect(cancel).toBeFocused();
@@ -169,6 +174,7 @@ for (const outcome of ['cancelled', 'invalid-request', 'worker-crashed'] as cons
 			);
 		}
 		await expect(setup.getByRole('button', { name: 'Train Model' })).toBeFocused();
+		await expect(setup).not.toHaveAttribute('autofocus');
 		await expect(
 			page.locator('section[aria-labelledby="step-4-title"]').getByRole('alert')
 		).toHaveText(
@@ -184,8 +190,37 @@ for (const outcome of ['cancelled', 'invalid-request', 'worker-crashed'] as cons
 			page.locator('section[aria-labelledby="step-4-title"]').getByRole('alert')
 		).toBeVisible();
 		await assertPanelAccessibility(page);
+		expect(autofocusWarnings).toEqual([]);
 	});
 }
+
+test('BETA-ERR-4b: a result arriving after leaving training does not steal normal route focus', async ({
+	page
+}) => {
+	await controlTraining(page);
+	await start(page);
+	const autofocusWarnings: string[] = [];
+	page.on('console', (message) => {
+		if (message.text().includes('Autofocus processing was blocked'))
+			autofocusWarnings.push(message.text());
+	});
+	await page.locator('app-sidebar a[href="/models"]').click();
+	const overviewHeading = page.locator('app-models-view .page-header h1');
+	await expect(overviewHeading).toBeFocused();
+	await page.evaluate(() =>
+		window.__trainingFixture!.reply({ kind: 'failed', code: 'worker-crashed' })
+	);
+	await expect
+		.poll(() => page.evaluate(() => window.__appState!.get().models[0]?.status))
+		.toBe('draft');
+	await expect(overviewHeading).toBeFocused();
+	await page.locator('app-sidebar a[href="/models/1"]').click();
+	await expect(page.locator('app-model-builder-view .page-header h1')).toBeFocused();
+	await expect(
+		page.locator('app-training-setup').getByRole('button', { name: 'Train Model' })
+	).not.toBeFocused();
+	expect(autofocusWarnings).toEqual([]);
+});
 
 test('rejects a non-isolated start before constructing a worker and keeps the form usable', async ({
 	page

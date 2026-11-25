@@ -1,6 +1,6 @@
 # Beta console errors, CSP, dataset switching and modal harmonisation
 
-**Status:** ready | **Updated:** 2026-11-25T15:28:58Z
+**Status:** ready | **Updated:** 2026-11-25T15:41:31Z
 **Authors:** Google Antigravity (Gemini 4 Hydrogen High), Codex (GPT-6) | **Created:** 2026-11-24T13:46:55Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-25T15:07:42Z | **Verification:** approved
 **Verified hash:** sha256:02527d117a4fa3b0b6fd9717c8d285dccee3c2c33c52e822040eac82d24dc505
@@ -193,10 +193,10 @@ Facts verified by `codebase-scout` on 2026-11-24 and 2026-11-25:
 - **Must not touch:** `src/router/`, `public/_headers`
 - **Implementation:** Add the closed `restoreFocus` property and bind it in the builder. Latch `restoreSubmitFocus` against the exact matched failed/cancelled attempt (including `TrainingSession.identity.runId`) through Section 4’s render and until its submit control is actionable. Consume it only after that post-render focus, including a transition from disabled to enabled. The first render alone cannot clear the request. Cancel it when leaving or disconnecting. Verify the existing native dialog safe-action autofocus in T6. Where those tests reproduce a warning, T6 focuses the same safe button immediately after `showModal()` with `preventScroll` instead.
 - **Acceptance criteria:**
-    - [ ] `BETA-ERR-4`: Cancelling or failing training on the allocated numeric model route restores focus to `Train Model` without emitting `Autofocus processing was blocked because a document already has a focused element.`
-    - [ ] `BETA-ERR-4b`: Normal numeric-model navigation leaves the normal page focus and emits no native autofocus warning. A stale request cannot steal focus.
+    - [x] `BETA-ERR-4`: Cancelling or failing training on the allocated numeric model route restores focus to `Train Model` without emitting `Autofocus processing was blocked because a document already has a focused element.`
+    - [x] `BETA-ERR-4b`: Normal numeric-model navigation leaves the normal page focus and emits no native autofocus warning. A stale request cannot steal focus.
 - **Verification:** `bun run check`, `bun run test:stories`, `bun run test:e2e tests/training-panels.e2e.ts`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-25T15:41:31Z)
 
 ### T5 — Fix "Change Dataset" catalogue reload on `/data` and add E2E tests
 
@@ -301,6 +301,7 @@ None.
 | 2026-11-25T15:16:57Z | T1   | Codex (GPT-6) | scripts/build-assets.ts and tests/build-cache-invalidation.test.ts. Artifact tests 9 pass (Lit production/dev in both orders), deploy dry-run passed, bun run check passed (660 tests), and scope gate passed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | 2026-11-25T15:24:53Z | T2   | Codex (GPT-6) | CSSOM sizing and OXC/HTML style guard. bun run check 663 pass, bun test tests/style-tokens.test.ts 11 pass, bun run test:stories 666 pass. bun run test:e2e tests/virtual-table.e2e.ts tests/comparison.e2e.ts tests/results-errors.e2e.ts 113 pass, 1 WebKit forced-colours skip. Raw visual-parity.e2e.ts 58 pass, 138 project skips, 11 failures identical to independent a003f51 baseline: PARITY-sidebar-steps, sidebar-step-first, sidebar-step-adjacent, sidebar-step-last, sidebar-step-label, step-links, main, target-alert-notification, models-disabled-alert, models-features-table, SIDE-AC-11. PARITY-modal-dialog passed. SAMATA_SKIP_KNOWN_FAILURES=1 parity 58 pass, 138 skip, 2 identical inherited alert border colour failures. Scope clean. |
 | 2026-11-25T15:28:58Z | T3   | Codex (GPT-6) | Guarded deferred model/comparison resource effects and current-run settlement. bun run check 663 pass, bun run test:stories 666 pass, bun run test:e2e tests/model-results.e2e.ts tests/comparison.e2e.ts tests/comparison-charts.e2e.ts 109 pass and 2 existing WebKit capability skips. Dev warning checks, delayed/obsolete pair settlement and scroll restoration passed. Scope clean.                                                                                                                                                                                                                                                                                                                                                                        |
+| 2026-11-25T15:41:31Z | T4   | Codex (GPT-6) | Exact-attempt non-native submit focus, including committed start publication and disabled-to-enabled control. bun run test:e2e tests/training-panels.e2e.ts --workers=1 66 pass across three engines; earlier concurrent timing failures did not recur. bun run test:stories 669 pass; serial bun run check 663 pass. Numeric-route focus and no host warning verified; native welcome/target autofocus is T6. Scope clean.                                                                                                                                                                                                                                                                                                                                       |
 
 ## Plan review history
 

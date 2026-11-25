@@ -30,7 +30,11 @@ import {
 } from '../../stores/dataset.store';
 import { blockedReason } from '../../stores/predicates';
 import { flushNow } from '../../stores/persister';
-import { $trainingSession, type TrainingSession } from '../../stores/training.store';
+import {
+	$trainingSession,
+	getTrainingSession,
+	type TrainingSession
+} from '../../stores/training.store';
 import { buttonStyles } from '../../styles/button.styles';
 import { cardStyles } from '../../styles/card.styles';
 import { chicletStyles } from '../../styles/chiclet.styles';
@@ -68,7 +72,7 @@ import './app-training-setup';
 import './app-training-progress';
 import '../results/app-model-results';
 import type { AppModelResults } from '../results/app-model-results';
-import type { TrainingSetupLabels } from './app-training-setup';
+import type { AppTrainingSetup, TrainingSetupLabels } from './app-training-setup';
 import type {
 	ConfigurationLabels,
 	ModelConfigurationChangeDetail,
@@ -528,8 +532,8 @@ export class AppModelBuilderView extends LitElement {
 	private checkedResultKey: string | null = null;
 	private logWatermark: { runId: string; id: number } | null = null;
 	private announcement = '';
-	private activeAttemptKey: string | null = null;
-	private restoreSubmitFocus = false;
+	private activeAttempt: TrainingRunIdentity | null = null;
+	private restoreSubmitFocus: TrainingRunIdentity | null = null;
 
 	private get currentModel(): ModelRecord | undefined {
 		return this.appStateController.value.models.find((m) => m.num === this.modelNum);
@@ -555,13 +559,7 @@ export class AppModelBuilderView extends LitElement {
 		const key = model && this.trainingNoticeKey(model);
 		const showingTraining =
 			model?.status === 'training' || (model?.status === 'draft' && session !== undefined);
-		this.restoreSubmitFocus = Boolean(
-			model?.status === 'draft' &&
-			!showingTraining &&
-			key === this.activeAttemptKey &&
-			this.shadowRoot?.activeElement?.closest('[data-testid="training-step"]')
-		);
-		this.activeAttemptKey = showingTraining && session ? (key ?? null) : null;
+		this.updateTrainingSubmitFocus(model, session, showingTraining);
 		this.updateTrainingAnnouncement(session);
 
 		const resultKey =
@@ -582,8 +580,42 @@ export class AppModelBuilderView extends LitElement {
 		}
 	}
 
+	private updateTrainingSubmitFocus(
+		model: ModelRecord | undefined,
+		session: TrainingSession | undefined,
+		showingTraining: boolean
+	): void {
+		const activeAttempt = this.activeAttempt;
+		this.activeAttempt = showingTraining ? (session?.identity ?? null) : null;
+		if (
+			!model ||
+			showingTraining ||
+			model.status !== 'draft' ||
+			getActiveStep(model) !== 4 ||
+			model.completedSteps.includes('configure-training') ||
+			!this.isCurrentTrainingRoute(this.trainingNoticeKey(model))
+		) {
+			this.restoreSubmitFocus = null;
+			return;
+		}
+
+		const appState = this.appStateController.value;
+		if (this.restoreSubmitFocus && !belongsToModel(this.restoreSubmitFocus, appState, model)) {
+			this.restoreSubmitFocus = null;
+		}
+		if (
+			activeAttempt &&
+			belongsToModel(activeAttempt, appState, model) &&
+			this.shadowRoot?.activeElement?.closest('[data-testid="training-step"]')
+		) {
+			this.restoreSubmitFocus = activeAttempt;
+		}
+	}
+
 	override disconnectedCallback(): void {
 		super.disconnectedCallback();
+		this.activeAttempt = null;
+		this.restoreSubmitFocus = null;
 		this.contentAbortController.abort();
 	}
 
@@ -1591,6 +1623,12 @@ export class AppModelBuilderView extends LitElement {
 		this.handleReopenClick('configure-training');
 	}
 
+	private handleTrainingSetupFocus(event: FocusEvent): void {
+		if ((event.currentTarget as AppTrainingSetup).restoreFocus) {
+			this.restoreSubmitFocus = null;
+		}
+	}
+
 	private renderTrainingSetupForm(model: ModelRecord): TemplateResult {
 		const t = this.translations.value;
 		const resource = this.trainingSetupResource.value;
@@ -1615,6 +1653,12 @@ export class AppModelBuilderView extends LitElement {
 		}
 
 		const key = trainingSetupKey(this.appStateController.value, model.num);
+		const stopped = this.restoreSubmitFocus && getTrainingSession(this.restoreSubmitFocus);
+		const restoreFocus =
+			stopped?.status === 'failed' ||
+			stopped?.status === 'cancelled' ||
+			stopped?.status === 'stopped-pending' ||
+			(stopped?.status === 'publication-pending' && this.publication.value?.kind === 'start');
 		return html`
 			${keyed(
 				key,
@@ -1626,10 +1670,11 @@ export class AppModelBuilderView extends LitElement {
 								this.trainingSetupChild = null;
 						})}
 						.value=${model.trainingSetup}
-						?autofocus=${this.restoreSubmitFocus}
+						.restoreFocus=${restoreFocus}
 						.maxFolds=${resource.bounds.maxFolds}
 						.blockedReason=${resource.bounds.blocked ? t.trainingSetupBlocked : ''}
 						.labels=${this.trainingSetupLabels()}
+						@focusin=${this.handleTrainingSetupFocus}
 						@app-training-setup-change=${this.handleTrainingSetupChange}
 						@app-training-setup-submit=${this.handleTrainingSetupSubmit}>
 					</app-training-setup>

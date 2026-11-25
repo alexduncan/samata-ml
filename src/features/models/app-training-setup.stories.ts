@@ -6,7 +6,10 @@ import { createCrossValidationSetup } from './training-setup';
 import './app-training-setup';
 
 type SetupArgs = Partial<
-	Pick<AppTrainingSetup, 'value' | 'maxFolds' | 'blockedReason' | 'disabled' | 'labels'>
+	Pick<
+		AppTrainingSetup,
+		'value' | 'maxFolds' | 'blockedReason' | 'disabled' | 'restoreFocus' | 'labels'
+	>
 >;
 
 /** Training strategy, fold controls and an accessible partition preview. */
@@ -27,6 +30,7 @@ const meta = {
 		maxFolds = 10,
 		blockedReason = '',
 		disabled = false,
+		restoreFocus = false,
 		labels
 	}: SetupArgs) => {
 		const setup = document.createElement('app-training-setup');
@@ -34,6 +38,7 @@ const meta = {
 		setup.maxFolds = maxFolds;
 		setup.blockedReason = blockedReason;
 		setup.disabled = disabled;
+		setup.restoreFocus = restoreFocus;
 		if (labels) setup.labels = labels;
 		return setup;
 	}
@@ -210,6 +215,28 @@ export const Disabled: Story = {
 		setup.addEventListener('app-training-setup-submit', submit);
 		form.requestSubmit();
 		expect(submit).not.toHaveBeenCalled();
+	}
+};
+
+/** Requests submit focus while disabled and consumes it after controls become actionable. */
+export const RestoreSubmitFocus: Story = {
+	name: 'BETA-ERR-4: Restore submit focus once',
+	args: { disabled: true, restoreFocus: true },
+	play: async ({ canvasElement }) => {
+		const { setup, root } = await getForm(canvasElement);
+		const submit = root.querySelector<HTMLButtonElement>('button[type=submit]')!;
+		expect(submit.disabled).toBe(true);
+		expect(root.activeElement).not.toBe(submit);
+		expect(setup.hasAttribute('autofocus')).toBe(false);
+		setup.disabled = false;
+		await setup.updateComplete;
+		expect(root.activeElement).toBe(submit);
+
+		const strategy = root.querySelector('select')!;
+		strategy.focus();
+		setup.maxFolds = 8;
+		await setup.updateComplete;
+		expect(root.activeElement).toBe(strategy);
 	}
 };
 
