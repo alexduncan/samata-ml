@@ -895,8 +895,8 @@ export class AppModelResults extends LitElement {
 			: evaluation?.pooled.test.sampleCount;
 		return html`
 			<details class="training-summary">
-				<summary>${t.trainingDetails}</summary>
-				<table aria-label=${t.trainingDetails}>
+				<summary id="training-details-label">${t.trainingDetails}</summary>
+				<table aria-labelledby="training-details-label">
 					<tbody>
 						<tr>
 							<th scope="row">${t.detailModel}</th>

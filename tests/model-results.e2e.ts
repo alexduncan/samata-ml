@@ -296,9 +296,14 @@ test.describe('Section 6 shared results', () => {
 			);
 			await expect(sidebarSwatch).toHaveCSS('background-color', headerFill);
 			const details = results(page).locator('details.training-summary');
+			const summary = details.locator('summary');
 			await expect(details).toHaveJSProperty('open', false);
-			await details.locator('summary').press('Enter');
+			await summary.press('Enter');
 			await expect(details).toHaveJSProperty('open', true);
+			await expect(summary).toBeFocused();
+			const table = details.getByRole('table', { name: 'Training Details' });
+			await expect(summary).toHaveAttribute('id', 'training-details-label');
+			await expect(table).toHaveAttribute('aria-labelledby', 'training-details-label');
 			await expect(details.getByRole('row', { name: 'Target class' })).toBeVisible();
 			await expect(
 				details.getByRole('row', { name: /Features.*petal length/ })
@@ -346,6 +351,7 @@ test.describe('Section 6 shared results', () => {
 			await expect(header).toContainText(
 				'A long unbroken ModelNameThatMustWrapAtNarrowWidths Results'
 			);
+			await expect(table).toBeVisible();
 			expect(
 				await page.evaluate(() => document.documentElement.scrollWidth)
 			).toBeLessThanOrEqual(320);
