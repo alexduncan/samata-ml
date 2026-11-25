@@ -107,7 +107,7 @@ export function buildTargetRows(
 			};
 		}
 
-		// Disqualifying check 1: Unsupported types (text, datetime)
+		// Disqualifying check 1: Unsupported types (text, date, time, datetime)
 		if (stats.type === 'text') {
 			return {
 				name: summaryCol.name,
