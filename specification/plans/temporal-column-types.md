@@ -1,6 +1,6 @@
 # Temporal column types: date, time and datetime
 
-**Status:** ready | **Updated:** 2026-11-25T14:01:40Z
+**Status:** implemented | **Updated:** 2026-11-25T14:02:17Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-25T10:49:58Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-25T12:38:45Z | **Verification:** approved
 **Verified hash:** sha256:170e52184c86cc170c93b0d486d248f334c2e7c038e22aabd36ec19133b41c68
@@ -414,12 +414,12 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
 
 ## Verification and definition of done
 
-- [ ] All task acceptance criteria met.
-- [ ] Relevant verification commands from `AGENTS.md` pass with no new failures.
-- [ ] Type-check, lint, formatting, and build checks pass.
-- [ ] Accessibility (WCAG 2.2 AA), privacy/security, and contract-compatibility checks completed where applicable.
-- [ ] Every item under _Specification changes_ is ticked, and specifications match the implemented code.
-- [ ] No unintended changes outside the tasks' likely files.
+- [x] All task acceptance criteria met.
+- [x] Relevant verification commands from `AGENTS.md` pass with no new failures.
+- [x] Type-check, lint, formatting, and build checks pass.
+- [x] Accessibility (WCAG 2.2 AA), privacy/security, and contract-compatibility checks completed where applicable.
+- [x] Every item under _Specification changes_ is ticked, and specifications match the implemented code.
+- [x] No unintended changes outside the tasks' likely files.
 
 ## Risks and open questions
 
@@ -451,6 +451,7 @@ None.
 | 2026-11-25T13:58:33Z | T3 | Claude Code (claude-sonnet-5-5) | bun run check: typecheck OK, 657 pass 0 fail (after bun install --frozen-lockfile restored missing saxe/svgo); bun run build OK, COMPAS descriptor 12 date + 2 datetime; bun run lint OK; format applied. Changed profiler.ts, cells.ts, pipeline.ts, generate-datasets.ts, COMPAS descriptor and datasheet, profiler/pipeline/cells/generate-datasets tests |
 | 2026-11-25T14:00:57Z | T4 | Claude Code (claude-sonnet-5-5) | bun run check 658 pass 0 fail; bun run lint OK; bun run test:stories 105 files 666 tests pass; bun run test:e2e tests/data-upload.e2e.ts: 9 pass (new TEMP-AC-14 in chromium, firefox, webkit), 3 fail = known DATA-UP-2 (11 vs 12 cards) per tests/known-failures.ts; format applied. Changed temporal-format.ts, app-data-view.ts, app-column-details.ts, stories, temporal-format test, data-upload e2e |
 | 2026-11-25T14:01:40Z | T5 | Claude Code (claude-sonnet-5-5) | bun run plans:check PASS; bun run build OK; format applied; grep finds no stale five-type or header-gate text outside plans. Changed 10 specification files and content/en/pages/help.md |
+| 2026-11-25T14:02:17Z | Implement | Claude Code (claude-sonnet-5-5) | Marked implemented |
 
 ## Plan review history
 
