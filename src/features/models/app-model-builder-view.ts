@@ -2651,13 +2651,17 @@ export class AppModelBuilderView extends LitElement {
 			`;
 		}
 		if (this.provisionalBinding && model.status === 'trained' && this.resultReadFailed) {
+			const t = this.translations.value;
+			const num = $format.get().number(model.num);
 			return html`
-				<header class="page-header"><h1 tabindex="-1">Model ${model.num}</h1></header>
+				<header class="page-header">
+					<h1 tabindex="-1">${t.savedModelFallback({ num })}</h1>
+				</header>
 				<section class="page-body" data-testid="provisional-route">
 					<p class="notification notification-alert" role="status">
-						${this.translations.value.trainingResultUnavailable}
+						${t.trainingResultUnavailable}
 					</p>
-					<a href="/models">${this.translations.value.backToModels}</a>
+					<a href="/models">${t.backToModels}</a>
 				</section>
 				${this.renderLeaveDialog()}
 			`;

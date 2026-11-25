@@ -402,9 +402,19 @@ test.describe('Section 6 shared results', () => {
 		const original = (await storedModel(page)).resultRevision;
 		expect(original).toBeTruthy();
 		expect((await storedModel(page)).provisionalCompletedRunId).toBe(original);
+
+		await interceptResultReads(page, { outcome: 'missing', after: 0 });
+		await page.getByRole('button', { name: 'View Results' }).click();
+		const recovery = page.getByTestId('provisional-route');
+		await expect(recovery.getByRole('link', { name: 'Back to Models' })).toBeVisible();
+		const headings = page.locator('app-model-builder-view').getByRole('heading', { level: 1 });
+		await expect(headings).toHaveCount(1);
+		await expect(headings).toHaveText('Model 1');
+		await expect(headings).toHaveAttribute('tabindex', '-1');
+		await expect(page).toHaveURL('/models/new');
+
 		await deleteEnvelope(page);
 		await page.reload();
-		const recovery = page.getByTestId('provisional-route');
 		await expect(recovery.getByRole('link', { name: 'Back to Models' })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'View Results' })).toHaveCount(0);
 

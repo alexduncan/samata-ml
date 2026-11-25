@@ -600,6 +600,41 @@ export const TrainingComplete: Story = {
 		await waitFor(() => expect(panel.querySelector('header button:last-child')).toBeEnabled());
 	}
 };
+
+/** The read-only fallback formats large model numbers in the active locale. */
+export const UnavailableProvisionalResult: Story = {
+	beforeEach: () => {
+		const restore = seedRun('trained', true, true);
+		const appState = $appState.get();
+		$appState.set({
+			...appState,
+			models: [{ ...appState.models[0]!, num: 1001 }],
+			nextModelNum: 1002
+		});
+		$route.set({
+			kind: 'workflow',
+			path: '/models/new',
+			section: 3,
+			provisional: { kind: 'bound', identity: { ...provisionalIdentity, modelNum: 1001 } }
+		});
+		setTrainingServiceForTesting({
+			...createTrainingService(),
+			loadCompletedResult: async () => null
+		});
+		return restore;
+	},
+	render: () => html`<app-model-builder-view model-num="1001"></app-model-builder-view>`,
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const root = builder.shadowRoot!;
+		await waitFor(() =>
+			expect(root.querySelector('[data-testid="provisional-route"]')).toBeVisible()
+		);
+		expect(root.querySelector('h1')).toHaveTextContent('Model 1,001');
+	}
+};
+
 function seedShownResult(label?: string) {
 	const restore = seedRun('trained', true);
 	const state = $appState.get();
