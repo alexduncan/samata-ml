@@ -273,10 +273,10 @@ Facts verified by `codebase-scout` on 2026-11-24 and 2026-11-25:
 
 ## Verification and definition of done
 
-- [ ] All task acceptance criteria met.
+- [x] All task acceptance criteria met.
 - [x] Relevant verification commands from `AGENTS.md` pass with no new failures.
 - [x] Type-check, lint, formatting, and build checks pass.
-- [ ] Accessibility (WCAG 2.2 AA), privacy/security, and contract-compatibility checks completed where applicable.
+- [x] Accessibility (WCAG 2.2 AA), privacy/security, and contract-compatibility checks completed where applicable.
 - [x] Every item under _Specification changes_ is ticked, and specifications match the implemented code.
 - [x] No unintended changes outside the tasks' likely files.
 
