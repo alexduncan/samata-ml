@@ -208,8 +208,8 @@ test('DLG-BACKDROP-1/2: datasheet and model description light-dismiss while Reop
 	await expect(description).toHaveAttribute('data-user-closes', '2');
 
 	await card.getByRole('button', { name: 'Select Model' }).click();
-	await choose.getByRole('button', { name: 'Continue', exact: true }).click();
 	await features.getByRole('button', { name: 'Continue', exact: true }).click();
+	await expect(builder.locator('#step-3-title')).toBeFocused();
 	const reopen = choose.getByRole('button', { name: 'Edit Choose Model' });
 	const confirmation = builder.locator('dialog[data-confirm="reopen-section"]');
 	await reopen.focus();

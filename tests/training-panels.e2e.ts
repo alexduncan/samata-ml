@@ -1,7 +1,12 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import type { PersistedAppState } from '../src/types/state';
-import { controlTraining, openSetup } from './fixtures/training/browser';
+import { DEFAULT_ONE_SHOT_SETUP, type PersistedAppState } from '../src/types/state';
+import {
+	controlTraining,
+	openLegacyModel,
+	openLegacyTrainingSetup,
+	openSetup
+} from './fixtures/training/browser';
 import { fixtureTrainingResult } from './fixtures/training/results';
 
 function training(page: Page) {
@@ -17,37 +22,6 @@ async function revisitTraining(page: Page): Promise<void> {
 	await expect(page.locator('app-model-builder-view')).toHaveCount(0);
 	await page.goForward();
 	await expect(page).toHaveURL('/models/new');
-}
-
-async function legacyTrainingSetup(page: Page, count = 1): Promise<ReturnType<Page['locator']>> {
-	await openSetup(page);
-	const saved = await page.evaluate((count) => {
-		const state = window.__appState!.get();
-		const [draft] = state.models;
-		return JSON.stringify({
-			...state,
-			newModelNum: null,
-			nextModelNum: count + 1,
-			models: Array.from({ length: count }, (_, index) => ({
-				...draft,
-				num: index + 1,
-				createdAt: draft!.createdAt + index,
-				trainingSetup: { type: 'one_shot', testRatio: 0.2, randomState: 42 }
-			}))
-		});
-	}, count);
-	await page.addInitScript((saved) => {
-		if (sessionStorage.getItem('legacy-drafts-seeded')) return;
-		localStorage.setItem('samata-ml:state', saved);
-		sessionStorage.setItem('legacy-drafts-seeded', 'yes');
-	}, saved);
-	await page.goto('/models/1');
-	return page.locator('app-training-setup');
-}
-
-async function openLegacyModel(page: Page, num: number): Promise<void> {
-	await page.locator('app-sidebar a[href="/models"]').click();
-	await page.locator(`app-models-view a[href="/models/${num}"]`).click();
 }
 
 async function assertPanelAccessibility(page: Page): Promise<void> {
@@ -235,7 +209,7 @@ test('BETA-ERR-4b: a result arriving after leaving training does not steal norma
 	page
 }) => {
 	await controlTraining(page);
-	const setup = await legacyTrainingSetup(page);
+	const setup = await openLegacyTrainingSetup(page);
 	await setup.getByRole('button', { name: 'Train Model' }).press('Enter');
 	await expect.poll(() => requestCount(page)).toBe(1);
 	const autofocusWarnings: string[] = [];
@@ -368,7 +342,10 @@ test('WML-P3-UI-2: each stopped model retries its own repair and preserves the r
 	page
 }) => {
 	await controlTraining(page);
-	const firstSetup = await legacyTrainingSetup(page, 2);
+	const firstSetup = await openLegacyTrainingSetup(page, [
+		DEFAULT_ONE_SHOT_SETUP,
+		DEFAULT_ONE_SHOT_SETUP
+	]);
 	await firstSetup.getByRole('button', { name: 'Train Model' }).press('Enter');
 	await expect.poll(() => requestCount(page)).toBe(1);
 	await openLegacyModel(page, 2);

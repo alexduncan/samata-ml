@@ -2,7 +2,7 @@ import { html } from 'lit';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
 import { expect, fn, userEvent, waitFor } from 'storybook/test';
 import { $route, initRouter, navigate, stopRouter } from '../../router/router';
-import { $appState } from '../../stores/app.store';
+import { $appState, reduceWizardStep } from '../../stores/app.store';
 import { $modelResults, currentResultIdentity } from '../../stores/model-results.store';
 import { irisCrossValidation } from '../../../tests/fixtures/results/evaluations';
 import { $datasetResources, type ResourceStatus } from '../../stores/dataset.store';
@@ -189,7 +189,7 @@ export const ConfigureModelComplete: Story = {
 };
 /** Editing an earlier completed section starts at the safe Cancel action. */
 export const ReopenSectionConfirmation: Story = {
-	beforeEach: ConfigureModelComplete.beforeEach,
+	beforeEach: () => seedTraining(),
 	play: async ({ canvasElement }) => {
 		const builder = canvasElement.querySelector('app-model-builder-view')!;
 		await builder.updateComplete;
@@ -590,22 +590,61 @@ export const ChooseBooleanModel: Story = {
 export const ChooseModelSelected: Story = {
 	beforeEach: () => seed('categorical', { completedSteps: [], features: [] })
 };
+/** Acknowledging Select Model closes the card panel and focuses the next heading. */
+export const AcknowledgeModelChoice: Story = {
+	beforeEach: () => {
+		const previous = $route.get();
+		seed('categorical', { completedSteps: [], modelId: null, features: [] });
+		$route.set({ kind: 'workflow', path: '/models/1', section: 3, modelNum: 1 });
+		setTrainingServiceForTesting({
+			...createTrainingService(),
+			async saveWizardStep(num, submission) {
+				const current = $appState.get();
+				const draft = current.models.find((entry) => entry.num === num);
+				const next = draft && reduceWizardStep(current, draft, submission);
+				if (!next) return { ok: false, code: 'invalid-request' };
+				$appState.set(next);
+				return { ok: true, value: undefined };
+			}
+		});
+		return () => {
+			setTrainingServiceForTesting();
+			$route.set(previous);
+		};
+	},
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const root = builder.shadowRoot!;
+		const card = root.querySelector('app-model-card[model-id="logistic-regression"]')!;
+		await userEvent.click(
+			card.shadowRoot!.querySelector<HTMLButtonElement>('button.btn-primary')!
+		);
+		await waitFor(() => expect(root.activeElement?.id).toBe('step-2-title'));
+		expect(root.querySelectorAll('.step-active[aria-current="step"]')).toHaveLength(1);
+		expect(root.querySelector('#step-1-title')).toHaveTextContent('1. Logistic Regression');
+	}
+};
 /** A numeric target has no classification model. */
 export const NoClassifierNumericTarget: Story = {
 	beforeEach: () => seed('numeric', { completedSteps: [], modelId: null, features: [] })
 };
-/** Section 3 beside a long saved value. */
+/** A long completed model name wraps beside its Edit control. */
 export const LongLabel: Story = {
 	beforeEach: () =>
 		seed('categorical', {
-			modelId: 'support-vector-classifier',
-			hyperparameters: { mode: 'manual', values: { C: 123456.789 } }
+			modelId: 'Model for comparing several groups using a deliberately long name',
+			completedSteps: ['choose-model']
 		})
 };
 /** Right-to-left direction. */
 export const RTL: Story = {
 	beforeEach: () => {
-		seed('categorical');
+		const direction = document.documentElement.dir;
+		seed('categorical', { completedSteps: ['choose-model'] });
 		document.documentElement.dir = 'rtl';
+		return () => {
+			document.documentElement.dir = direction;
+		};
 	}
 };

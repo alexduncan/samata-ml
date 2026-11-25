@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page } from '@playwright/test';
 import type { ClassifierId } from '../../../src/features/models/model-catalogue';
+import { DEFAULT_ONE_SHOT_SETUP, type ValidationMethodology } from '../../../src/types/state';
 import type {
 	TrainingStartRequest,
 	TrainingWorkerReply,
@@ -19,7 +20,7 @@ type BrowserTrainingFixture = {
 	reply(event: FixtureReply, modelNum?: number): void;
 	crash(): void;
 	blockRead: boolean;
-	blockPublication: 'start' | 'finish' | 'stop' | null;
+	blockPublication: 'start' | 'finish' | 'stop' | 'wizard' | null;
 	blockedWrites: number;
 };
 
@@ -81,12 +82,6 @@ export async function configureOpenDraft(
 	await page
 		.locator('app-model-builder-view')
 		.locator('.train-step')
-		.nth(0)
-		.getByRole('button', { name: 'Continue', exact: true })
-		.click();
-	await page
-		.locator('app-model-builder-view')
-		.locator('.train-step')
 		.nth(1)
 		.getByRole('button', { name: 'Continue', exact: true })
 		.click();
@@ -96,6 +91,9 @@ export async function configureOpenDraft(
 			.getByRole('button', { name: 'Save & Continue' })
 			.click();
 		await expect(page.locator('app-model-builder-view app-training-setup')).toBeVisible();
+		await expect(
+			page.locator('app-model-builder-view .step-active .train-step-content[inert]')
+		).toHaveCount(0);
 		await expect
 			.poll(() =>
 				page.evaluate((num) => {
@@ -108,6 +106,47 @@ export async function configureOpenDraft(
 			.toContain('configure-model');
 	}
 	return page.locator('app-model-builder-view app-training-setup');
+}
+
+/** Opens a historical numbered draft using persisted v1 records without a provisional pointer. */
+export async function openLegacyTrainingSetup(
+	page: Page,
+	setups: readonly ValidationMethodology[] = [DEFAULT_ONE_SHOT_SETUP]
+): Promise<Locator> {
+	await openSetup(page);
+	const saved = await page.evaluate((setups) => {
+		const state = window.__appState!.get();
+		const draft = state.models[0]!;
+		return JSON.stringify({
+			...state,
+			newModelNum: null,
+			nextModelNum: setups.length + 1,
+			models: setups.map((trainingSetup, index) => ({
+				...draft,
+				num: index + 1,
+				createdAt: draft.createdAt + index,
+				trainingSetup:
+					trainingSetup.type === 'one_shot'
+						? { ...trainingSetup, type: 'train_test_split' }
+						: trainingSetup
+			}))
+		});
+	}, setups);
+	await page.addInitScript((saved) => {
+		if (sessionStorage.getItem('legacy-drafts-seeded')) return;
+		localStorage.setItem('samata-ml:state', saved);
+		sessionStorage.setItem('legacy-drafts-seeded', 'yes');
+	}, saved);
+	await page.goto('/models/1');
+	const setup = page.locator('app-model-builder-view app-training-setup');
+	await expect(setup).toBeVisible();
+	return setup;
+}
+
+/** Follows the overview's Continue link to a numbered legacy draft. */
+export async function openLegacyModel(page: Page, num: number): Promise<void> {
+	await page.locator('app-sidebar a[href="/models"]').click();
+	await page.locator(`app-models-view a[href="/models/${num}"]`).click();
 }
 
 /** Controls only the dedicated training worker while all storage and locks remain real. */
@@ -175,9 +214,15 @@ export async function controlTraining(page: Page, isolated = true): Promise<void
 		const setItem = Storage.prototype.setItem;
 		Storage.prototype.setItem = function (key: string, value: string): void {
 			if (fixture.blockPublication && key === 'samata-ml:state') {
-				const status = JSON.parse(value).models?.[0]?.status;
-				const blocked = { start: 'training', finish: 'trained', stop: 'draft' };
-				if (status === blocked[fixture.blockPublication]) {
+				const model = JSON.parse(value).models?.[0];
+				const blocked =
+					fixture.blockPublication === 'wizard'
+						? model?.completedSteps.includes('configure-model')
+						: model?.status ===
+							{ start: 'training', finish: 'trained', stop: 'draft' }[
+								fixture.blockPublication
+							];
+				if (blocked) {
 					fixture.blockedWrites++;
 					throw new DOMException('Fixture blocked publication', 'SecurityError');
 				}

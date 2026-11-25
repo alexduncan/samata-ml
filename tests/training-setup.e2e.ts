@@ -3,7 +3,7 @@ import type { DatasetMetadata } from '../src/types/dataset';
 import type { ModelSectionId, ValidationMethodology } from '../src/types/state';
 import type { AppTrainingSetup } from '../src/features/models/app-training-setup';
 import type { StorageRequest } from '../src/features/data/ingestion/protocol';
-import { openSetup } from './fixtures/training/browser';
+import { openLegacyModel, openLegacyTrainingSetup, openSetup } from './fixtures/training/browser';
 
 const earlierSteps: ModelSectionId[] = ['choose-model', 'select-features', 'configure-model'];
 const oneShot = { type: 'one_shot', testRatio: 0.2, randomState: 42 } as const;
@@ -449,6 +449,8 @@ test.describe('Connected Training Setup', () => {
 			await expect(form.getByRole('combobox')).toHaveValue('one_shot');
 			expect((await trainingState(page)).models[0]?.trainingSetup).toBeNull();
 			const value = strategy === 'one_shot' ? oneShot : crossValidation(7);
+			const heading =
+				strategy === 'one_shot' ? 'One-Shot Training' : '7 Fold Cross-Validation';
 			const summary =
 				strategy === 'one_shot' ? 'One-Shot (80% / 20%)' : 'Cross-Validation (7 folds)';
 			if (strategy === 'nested_cv') {
@@ -458,7 +460,7 @@ test.describe('Connected Training Setup', () => {
 			}
 			await form.getByRole('button', { name: 'Train Model' }).click();
 			await expect(
-				setupStep(page).getByRole('heading', { name: `4. ${summary}` })
+				setupStep(page).getByRole('heading', { name: `4. ${heading}` })
 			).toBeVisible();
 			const progress = page.getByRole('progressbar', { name: 'Training progress' });
 			await expect(progress).toHaveAttribute('value', '100', { timeout: 45000 });
@@ -473,7 +475,7 @@ test.describe('Connected Training Setup', () => {
 			);
 			await page.reload();
 			await expect(
-				setupStep(page).getByRole('heading', { name: `4. ${summary}` })
+				setupStep(page).getByRole('heading', { name: `4. ${heading}` })
 			).toBeVisible();
 			await expect(setupStep(page).locator('.completed-summary')).toContainText(summary);
 			await expect(progress).toHaveAttribute('value', '100');
@@ -512,7 +514,7 @@ test.describe('Connected Training Setup', () => {
 		await expect(form.locator('#folds-error')).toHaveCount(0);
 		await submit.click();
 		await expect(
-			setupStep(page).getByRole('heading', { name: '4. One-Shot (80% / 20%)' })
+			setupStep(page).getByRole('heading', { name: '4. One-Shot Training' })
 		).toBeVisible();
 	});
 
@@ -574,7 +576,7 @@ test.describe('Connected Training Setup', () => {
 		await expect(number).toHaveAttribute('aria-invalid', 'false');
 		await submit.click();
 		await expect(
-			setupStep(page).getByRole('heading', { name: '4. Cross-Validation (4 folds)' })
+			setupStep(page).getByRole('heading', { name: '4. 4 Fold Cross-Validation' })
 		).toBeVisible();
 	});
 
@@ -643,7 +645,7 @@ test.describe('Connected Training Setup', () => {
 		await expect(edit).toHaveText('Edit');
 		await edit.click();
 		await expect(form).toBeVisible();
-		await expect(builder(page).locator('.confirm-dialog')).toBeHidden();
+		await expect(builder(page).locator('dialog[data-confirm="reopen-section"]')).toBeHidden();
 
 		await setupStep(page).getByRole('link', { name: 'What is this?' }).click();
 		const modal = page.getByRole('dialog', { name: 'Training Setup' });
@@ -659,7 +661,7 @@ test.describe('Connected Training Setup', () => {
 			await expect(article).toContainText(text, { ignoreCase: true });
 		}
 		await modal.getByRole('button', { name: 'Close' }).click();
-		await expect(page).toHaveURL('/models/1');
+		await expect(page).toHaveURL('/models/new');
 
 		await form.getByRole('combobox').selectOption('nested_cv');
 		const number = form.getByRole('spinbutton');
@@ -693,7 +695,7 @@ test.describe('Connected Training Setup', () => {
 		);
 		expect(await trainingState(page)).toEqual(before);
 		await modal.getByRole('button', { name: 'Close' }).click();
-		await expect(page).toHaveURL('/models/1');
+		await expect(page).toHaveURL('/models/new');
 		for (const [locator, original] of [
 			[form, oldForm],
 			[number, oldNumber],
@@ -743,14 +745,24 @@ test.describe('Connected Training Setup', () => {
 				previous = form.getByRole('link', { name: 'Learn more' });
 			} else if (targetState === 'missing') {
 				await page.evaluate(() => {
-					const app = window.__appState!;
-					app.set({ ...app.get(), target: 'missing-target' });
+					const target = window.__appState!.get().target;
+					const resources = window.__datasetResources!;
+					const current = resources.get();
+					const metadata = current.metadata!;
+					resources.set({
+						...current,
+						metadata: {
+							...metadata,
+							columns: metadata.columns.filter((column) => column.name !== target)
+						}
+					});
 				});
 				previous = help;
 			}
 			const link = targetState === 'eligible' ? help : recovery;
 			await expect(link).toBeVisible();
 			await previous.focus();
+			await expect(previous).toBeFocused();
 			await page.keyboard.press('Tab');
 			if (
 				browserName === 'webkit' &&
@@ -968,7 +980,7 @@ test.describe('Connected Training Setup', () => {
 	test('WML-P2-UI-6: changed target and mismatched dataset reject stale events and late metadata', async ({
 		page
 	}) => {
-		const form = await openSetup(page);
+		const form = await openLegacyTrainingSetup(page);
 		const metadata = await interceptMetadataRequests(page);
 		const before = await trainingState(page);
 		await form.evaluate(
@@ -1021,17 +1033,10 @@ test.describe('Connected Training Setup', () => {
 		test(`WML-P2-UI-7: an invalid Model 1 draft stays out of Model 2 with ${otherFolds} saved folds`, async ({
 			page
 		}) => {
-			const form = await openSetup(page);
-			await form.getByRole('combobox').selectOption('nested_cv');
-			await page.evaluate((trainingSetup) => {
-				const store = window.__appState!;
-				const state = store.get();
-				store.set({
-					...state,
-					models: [...state.models, { ...state.models[0]!, num: 2, trainingSetup }],
-					nextModelNum: 3
-				});
-			}, crossValidation(otherFolds));
+			const form = await openLegacyTrainingSetup(page, [
+				crossValidation(5),
+				crossValidation(otherFolds)
+			]);
 			const number = form.getByRole('spinbutton');
 			await number.fill('1');
 			await number.pressSequentially('e');
@@ -1040,8 +1045,7 @@ test.describe('Connected Training Setup', () => {
 				.toBe(true);
 			await number.press('Tab');
 			await expect(form.locator('[aria-live]')).toContainText('Enter a valid whole number.');
-			const sidebar = page.locator('app-sidebar');
-			await sidebar.getByRole('link', { name: 'Model 2', exact: true }).click();
+			await openLegacyModel(page, 2);
 			await expect(page).toHaveURL('/models/2');
 			await expect(number).toHaveValue(String(otherFolds));
 			await expect(number).toHaveAttribute('aria-invalid', 'false');
@@ -1049,7 +1053,7 @@ test.describe('Connected Training Setup', () => {
 			await number.fill('6');
 			await number.press('Tab');
 			await expect(number).toHaveValue('6');
-			await sidebar.getByRole('link', { name: 'Model 1', exact: true }).click();
+			await openLegacyModel(page, 1);
 			await expect(page).toHaveURL('/models/1');
 			await expect(number).toHaveValue('5');
 			await expect(number).toHaveAttribute('aria-invalid', 'false');

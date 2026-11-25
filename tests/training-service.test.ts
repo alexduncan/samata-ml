@@ -256,6 +256,104 @@ function seed(count = 1, modelId: ClassifierId = 'gaussian-nb'): PersistedAppSta
 	return state;
 }
 
+test('MW-STEP-1: precommit failure leaves the original draft and a committed save replays once', async () => {
+	const initial = seed(0);
+	const draft = reduceCreateModel(initial, 10);
+	if (!draft) throw new Error('Missing test draft');
+	storeFixture(draft);
+	const submission = {
+		section: 'choose-model',
+		modelId: 'gaussian-nb',
+		defaultFeatures: ['measurement']
+	} as const;
+	const save = () =>
+		service.saveWizardStep(1, { ...submission, defaultFeatures: ['measurement'] });
+	storage.denyRead = true;
+	expect(await save()).toMatchObject({ ok: false });
+	expect(await readTrainingCheckpoint(db)).toMatchObject({ checkpoint: null });
+	expect($appState.get()).toBe(draft);
+	storage.denyRead = false;
+	storage.reject = (state) => state.models[0]?.completedSteps.includes('choose-model') === true;
+	const [pending, duplicate] = await Promise.all([save(), save()]);
+	expect(duplicate).toMatchObject({ ok: false, code: 'busy' });
+	if (pending.ok || !pending.operationId) throw new Error('Missing pending save operation');
+	expect(pending.pending).toBe('recover');
+	expect($appState.get()).toBe(draft);
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: {
+			generation: 1,
+			pending: {
+				operationId: pending.operationId,
+				kind: 'recover',
+				domain: {
+					models: [
+						{
+							modelId: 'gaussian-nb',
+							features: ['measurement'],
+							completedSteps: ['choose-model'],
+							ui: { featureSelectionInitialised: true }
+						}
+					]
+				}
+			}
+		}
+	});
+	expect(await service.retryWizardStep(1, 'different-operation')).toMatchObject({
+		ok: false,
+		code: 'conflict'
+	});
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: { generation: 1, pending: { operationId: pending.operationId } }
+	});
+	expect(JSON.parse(storage.getItem(STATE_STORAGE_KEY)!).trainingDomainGeneration).toBe(0);
+	const again = await service.retryWizardStep(1, pending.operationId);
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: { generation: 1, pending: { operationId: pending.operationId } }
+	});
+	expect(again).toMatchObject({
+		ok: false,
+		operationId: pending.operationId
+	});
+	storage.reject = () => false;
+	expect(await service.retryWizardStep(1, pending.operationId)).toEqual({
+		ok: true,
+		value: undefined
+	});
+	expect($appState.get().models[0]).toMatchObject({
+		modelId: 'gaussian-nb',
+		features: ['measurement'],
+		completedSteps: ['choose-model'],
+		ui: { featureSelectionInitialised: true }
+	});
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: { generation: 1, pending: null }
+	});
+	expect(await service.retryWizardStep(1, pending.operationId)).toMatchObject({
+		ok: false,
+		code: 'conflict'
+	});
+});
+
+test('MW-STEP-2: a stale draft from another tab cannot commit its wizard step', async () => {
+	const captured = seed();
+	const prior = { ...captured.models[0]!, completedSteps: ['choose-model'] as const };
+	storeFixture({
+		...captured,
+		models: [{ ...prior, completedSteps: [...prior.completedSteps] }]
+	});
+	const raw = JSON.parse(storage.getItem(STATE_STORAGE_KEY)!);
+	storage.setItem(
+		STATE_STORAGE_KEY,
+		JSON.stringify({ ...raw, models: [{ ...raw.models[0], features: [] }] })
+	);
+	expect(await service.saveWizardStep(1, { section: 'select-features' })).toMatchObject({
+		ok: false,
+		code: 'conflict'
+	});
+	expect(await readTrainingCheckpoint(db)).toMatchObject({ checkpoint: null });
+	expect($appState.get().models[0]?.completedSteps).toEqual(['choose-model']);
+});
+
 test('MW-STATE-1: provisional opens share one acknowledged model through retry and remote training', async () => {
 	const start = seed(0);
 	const captured = {

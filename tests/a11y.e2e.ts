@@ -38,13 +38,11 @@ async function openTrainingSetupForAxe(page: Page) {
 		.locator('app-model-card[model-id="logistic-regression"]')
 		.getByRole('button', { name: 'Select Model: Logistic Regression', exact: true })
 		.click();
-	for (const step of [0, 1]) {
-		await builder
-			.locator('.train-step')
-			.nth(step)
-			.getByRole('button', { name: 'Continue', exact: true })
-			.click();
-	}
+	await builder
+		.locator('.train-step')
+		.nth(1)
+		.getByRole('button', { name: 'Continue', exact: true })
+		.click();
 	await builder.getByRole('button', { name: 'Save & Continue' }).click();
 	await expect(builder.locator('app-training-setup')).toBeVisible();
 	return builder;
@@ -334,7 +332,8 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 			.getByRole('link', { name: 'Train New Model' })
 			.click();
 		await expect(page).toHaveURL('/models/new');
-		await page.locator('app-sidebar a[href="/target"]').click();
+		await expect(page.locator('app-model-builder-view')).toHaveAttribute('model-num', '1');
+		await page.goto('/target');
 
 		// Click different target to open confirm dialog
 		const sepalLengthRow = targetView.locator('tbody tr:has(th:has-text("sepal length"))');
@@ -397,7 +396,7 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 
 	test('A11Y-E2E-12: Route /models in populated state', async ({ page }) => {
 		await openSetup(page, false);
-		await page.locator('app-sidebar a[href="/models"]').click();
+		await page.goto('/models');
 		const modelsView = page.locator('app-models-view');
 		await expect(modelsView.locator('table.table')).toBeVisible({ timeout: 10000 });
 
@@ -419,12 +418,10 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 			.locator('app-model-card[model-id="logistic-regression"]')
 			.getByRole('button', { name: 'Select Model: Logistic Regression', exact: true })
 			.click();
-		await builder
-			.locator('.train-step')
-			.first()
-			.getByRole('button', { name: 'Continue', exact: true })
-			.click();
 		await expect(builder.locator('table.table')).toBeVisible({ timeout: 10000 });
+		await expect(builder.locator('#step-2-title')).toBeFocused();
+		await page.reload();
+		await expect(builder.locator('.step-active #step-2-title')).toBeVisible();
 
 		await assertNoUnexpectedViolations(page);
 	});
@@ -453,7 +450,7 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 			.getByRole('button', { name: 'Train Model' })
 			.click();
 		const setup = builder.locator(trainingPanel(4));
-		await expect(setup.getByRole('heading', { name: '4. One-Shot (80% / 20%)' })).toBeVisible();
+		await expect(setup.getByRole('heading', { name: '4. One-Shot Training' })).toBeVisible();
 		const training = builder.locator(trainingPanel(5));
 		await expect(
 			training.getByRole('progressbar', { name: 'Training progress' })
@@ -493,7 +490,7 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		['A11Y-E2E-18', 'breast-cancer', 'binary'],
 		['A11Y-E2E-19', 'iris', 'multiclass']
 	] as const satisfies readonly (readonly [string, SeedName, string])[]) {
-		test(`WML-P4-UI-12 / ${id}: populated ${label} Section 6 with every data table open`, async ({
+		test(`WML-P4-UI-12 / ${id}: numbered ${label} result with every data table open`, async ({
 			page
 		}) => {
 			await seedTrainedModel(page, seed);
@@ -516,12 +513,7 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 			});
 			await expect(results.locator('.terms-disclosure dl')).toBeVisible();
 			const audit = await new AxeBuilder({ page })
-				.include({
-					fromShadowDom: [
-						'app-model-builder-view',
-						'section[aria-labelledby="step-6-title"]'
-					]
-				})
+				.include('app-model-builder-view')
 				.options({
 					runOnly: { type: 'tag', values: [...AXE_TAGS, 'wcag21a'] },
 					rules: { 'color-contrast': { enabled: true } }

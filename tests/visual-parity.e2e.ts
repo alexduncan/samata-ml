@@ -167,33 +167,15 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 						.getByRole('link', { name: 'Train New Model' })
 						.click();
 					await expect(page).toHaveURL(/\/models\/new$/);
-					await expect(
-						page.locator('app-model-builder-view app-model-card').first()
-					).toBeVisible();
-					await page.evaluate(() => {
-						const store = window.__appState!;
-						const state = store.get();
-						store.set({
-							...state,
-							models: [
-								{
-									...state.models[0]!,
-									modelId: 'logistic-regression',
-									completedSteps: ['choose-model'],
-									features: [
-										'sepal length',
-										'sepal width',
-										'petal length',
-										'petal width'
-									],
-									ui: { featureSelectionInitialised: true }
-								}
-							]
-						});
-					});
+					await page
+						.locator(
+							'app-model-builder-view app-model-card[model-id="logistic-regression"]'
+						)
+						.getByRole('button', { name: 'Select Model' })
+						.click();
 					await page
 						.locator('app-model-builder-view table.table')
-						.waitFor({ state: 'attached', timeout: 5000 });
+						.waitFor({ state: 'visible', timeout: 5000 });
 				}
 			}
 			const appEl = page.locator(entry.appSelector).first();

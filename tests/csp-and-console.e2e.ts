@@ -108,6 +108,11 @@ test('BETA-ERR-5: production data, training, results and dialogs stay clean unde
 		modelNumbers.push(number);
 
 		const setup = await configureOpenDraft(page, number, { classifier });
+		await expect(builder.locator('#step-1-title')).toHaveText(
+			classifier === 'logistic-regression'
+				? '1. Logistic Regression'
+				: '1. Gaussian Naive Bayes'
+		);
 		await setup.getByRole('button', { name: 'Train Model' }).click();
 		await expect(
 			page.getByTestId('training-step').getByRole('button', { name: 'View Results' })

@@ -10,6 +10,7 @@ import {
 	$leaveConfirmation,
 	$route,
 	getEffectiveModelNum,
+	getWorkflowEntryId,
 	ownsWizardLeave,
 	provisionalResultIdentity,
 	provisionalRouteModel,
@@ -19,18 +20,15 @@ import {
 } from '../../router/router';
 import {
 	$appState,
-	chooseModel,
-	completeSection,
-	initialiseFeatureSelection,
 	modelSwatchAssignments,
 	reopenSection,
 	SECTION_ORDER,
 	setFeatures,
 	setHyperparameters,
-	setMulticlassStrategy,
 	setTrainingLogOpen,
 	setTrainingSetup,
-	toggleFeature
+	toggleFeature,
+	type WizardStepSubmission
 } from '../../stores/app.store';
 import { params } from '@nanostores/i18n';
 import { $format, i18n } from '../../i18n';
@@ -134,6 +132,15 @@ const messages = i18n('app-model-builder-view', {
 	noModelHeading: 'No classification model available',
 	noModelText: 'This target is numeric. Regression will be added later.',
 	noModelLink: 'Choose a categorical or boolean target',
+	chooseHeading: '1. Choose Model',
+	chosenHeading: params<{ name: string }>('1. {name}'),
+	featuresHeading: '2. Select Features',
+	oneFeatureHeading: '2. 1 Feature Selected',
+	featuresSelectedHeading: params<{ count: string }>('2. {count} Features Selected'),
+	reopenChoose: 'Edit Choose Model',
+	reopenFeatures: 'Edit Select Features',
+	wizardPending: 'This step was saved. Retry saving to continue.',
+	wizardSaveFailed: 'This step could not be saved. Try again.',
 	configureHeading: '3. Configure Model',
 	configuredHeading: '3. Model Configured',
 	helpLink: 'What do these settings mean?',
@@ -144,6 +151,8 @@ const messages = i18n('app-model-builder-view', {
 	trainingSetupHelp: 'What is this?',
 	reopenTrainingSetup: 'Edit Training Setup',
 	completedTrainingSetup: params<{ summary: string }>('4. {summary}'),
+	oneShotHeading: 'One-Shot Training',
+	crossValidationHeading: params<{ folds: string }>('{folds} Fold Cross-Validation'),
 	selectedTrainingSetup: 'Selected training setup:',
 	oneShotSummary: 'One-Shot (80% / 20%)',
 	crossValidationSummary: params<{ folds: number }>('Cross-Validation ({folds} folds)'),
@@ -319,6 +328,24 @@ function getActiveStep(model: ModelRecord): number {
 function trainingSetupKey(appState: PersistedAppState, modelNum: number): string {
 	return JSON.stringify([appState.dataset?.id, appState.target, modelNum]);
 }
+
+type WizardAdvance = {
+	key: string;
+	entryId: string | undefined;
+	from: number;
+	model: ModelRecord;
+	focusOwner: Element | null;
+	runId?: string;
+	advancing?: boolean;
+};
+
+const completedStepIcon = html`<svg class="icon" aria-hidden="true"><use href="#check" /></svg>`;
+const wizardIconSprite = html` <svg class="wizard-icons" aria-hidden="true" focusable="false">
+	<symbol id="check" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+		<path
+			d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m5.73 5.29a1 1 0 0 0-1.41 0L10 14.6l-2.31-2.32a1 1 0 1 0-1.42 1.42l3.02 3.02a1 1 0 0 0 1.42 0l7.02-7.03a1 1 0 0 0 0-1.41" />
+	</symbol>
+</svg>`;
 
 function belongsToModel(
 	identity: TrainingRunIdentity,
@@ -502,6 +529,7 @@ export class AppModelBuilderView extends LitElement {
 	private readonly trainingSessions = new StoreController(this, $trainingSession);
 	private readonly publication = new StoreController(this, $publicationPending);
 	private readonly departure = new StoreController(this, $leaveConfirmation);
+	private readonly routeController = new StoreController(this, $route);
 	private readonly translations = new StoreController(this, messages);
 
 	/** Monotonically allocated sequential model number (e.g. 1 for /models/1). */
@@ -538,6 +566,11 @@ export class AppModelBuilderView extends LitElement {
 	@state() private accessor showingResults = false;
 	@state() private accessor retryingPublication = false;
 	@state() private accessor leavingModel = false;
+	@state() private accessor wizardAdvance: WizardAdvance | undefined;
+	@state() private accessor wizardNotice:
+		| { key: string; step: number; model: ModelRecord; operationId?: string }
+		| undefined;
+	private stepMotion: HTMLElement | undefined;
 	@state() private accessor leaveFailure: TrainingCommandFailure | undefined;
 	private openLeaveToken: number | undefined;
 
@@ -593,8 +626,28 @@ export class AppModelBuilderView extends LitElement {
 		const model = this.currentModel;
 		const session = model && displaySession(this.trainingSessions.value, appState, model);
 		const key = model && this.trainingNoticeKey(model);
-		const showingTraining =
-			model?.status === 'training' || (model?.status === 'draft' && session !== undefined);
+		const showingTraining = model?.status === 'training';
+		const advance = this.wizardAdvance;
+		if (advance) {
+			if (!this.ownsWizardAdvance(advance)) {
+				this.clearStepMotion();
+				this.wizardAdvance = undefined;
+			} else if (this.routeController.value.kind === 'reserved' && this.stepMotion) {
+				this.clearStepMotion();
+			}
+			if (
+				this.wizardAdvance === advance &&
+				advance.runId &&
+				model?.resultRevision === advance.runId &&
+				session &&
+				['running', 'cancelling', 'saving', 'publication-pending', 'complete'].includes(
+					session.status
+				)
+			) {
+				void this.finishWizardAdvance(advance);
+			}
+		} else if (this.stepMotion && this.routeController.value.kind !== 'workflow')
+			this.clearStepMotion();
 		this.updateTrainingSubmitFocus(model, session, showingTraining);
 		this.updateTrainingAnnouncement(session);
 
@@ -680,6 +733,8 @@ export class AppModelBuilderView extends LitElement {
 		super.disconnectedCallback();
 		this.activeAttempt = null;
 		this.restoreSubmitFocus = null;
+		this.clearStepMotion();
+		this.wizardAdvance = undefined;
 		this.contentAbortController.abort();
 	}
 
@@ -778,30 +833,21 @@ export class AppModelBuilderView extends LitElement {
 	// ==========================================
 
 	private handleModelSelect(e: CustomEvent<{ modelId: string; name: string }>): void {
-		chooseModel(this.modelNum, e.detail.modelId);
-	}
-
-	private handleContinueChooseModel(): void {
-		const model = this.currentModel;
-		if (!model || !model.modelId) return;
-
-		// 1. Mark section 1 completed
-		completeSection(this.modelNum, 'choose-model');
-
-		// 2. Initialise feature selection ONCE only
 		const resources = this.resourcesController.value;
 		const appState = this.appStateController.value;
-		if (resources.metadata && appState.target) {
-			const featureRows = buildFeatureRows(
+		if (!resources.metadata || resources.datasetId !== appState.dataset?.id || !appState.target)
+			return;
+		void this.saveWizardStep(1, {
+			section: 'choose-model',
+			modelId: e.detail.modelId,
+			defaultFeatures: buildFeatureRows(
 				resources.metadata,
 				appState.target,
 				resources.descriptor
-			);
-			const defaultFeatures = featureRows
+			)
 				.filter((r) => r.initiallySelected)
-				.map((r) => r.name);
-			initialiseFeatureSelection(this.modelNum, defaultFeatures);
-		}
+				.map((r) => r.name)
+		});
 	}
 
 	// ==========================================
@@ -815,7 +861,172 @@ export class AppModelBuilderView extends LitElement {
 	private handleContinueSelectFeatures(): void {
 		const model = this.currentModel;
 		if (!model || model.features.length === 0) return;
-		completeSection(this.modelNum, 'select-features');
+		void this.saveWizardStep(2, { section: 'select-features' });
+	}
+
+	private beginWizardAdvance(from: number, model = this.currentModel): WizardAdvance | undefined {
+		if (!model || this.wizardAdvance || this.stepMotion || getActiveStep(model) !== from)
+			return;
+		const key = this.trainingNoticeKey(model);
+		if (!this.isCurrentTrainingRoute(key)) return;
+		const advance = {
+			key,
+			entryId: getWorkflowEntryId(),
+			from,
+			model,
+			focusOwner: this.shadowRoot?.activeElement ?? document.activeElement
+		};
+		this.wizardAdvance = advance;
+		return advance;
+	}
+
+	private ownsWizardAdvance(advance: WizardAdvance): boolean {
+		const route = this.routeController.value;
+		const model = this.currentModel;
+		return (
+			this.isConnected &&
+			(route.kind === 'workflow' || route.kind === 'reserved') &&
+			getEffectiveModelNum(route) === this.modelNum &&
+			getWorkflowEntryId() === advance.entryId &&
+			Boolean(model && this.trainingNoticeKey(model) === advance.key)
+		);
+	}
+
+	private async saveWizardStep(step: number, submission?: WizardStepSubmission): Promise<void> {
+		const notice = this.wizardNotice;
+		const operationId =
+			notice?.step === step &&
+			this.currentModel &&
+			notice.key === this.trainingNoticeKey(this.currentModel)
+				? notice.operationId
+				: undefined;
+		if (Boolean(submission) === Boolean(operationId)) return;
+		const advance = this.beginWizardAdvance(
+			step,
+			operationId ? notice?.model : this.currentModel
+		);
+		if (!advance) return;
+		const service = getTrainingService();
+		const result = submission
+			? await service.saveWizardStep(this.modelNum, submission)
+			: await service.retryWizardStep(this.modelNum, operationId!);
+		if (this.wizardAdvance !== advance) return;
+		if (result.ok) {
+			await this.finishWizardAdvance(advance);
+		} else {
+			this.wizardAdvance = undefined;
+			if (this.ownsWizardAdvance(advance))
+				this.wizardNotice = {
+					key: advance.key,
+					step,
+					model: advance.model,
+					operationId: result.operationId
+				};
+		}
+	}
+
+	private renderWizardNotice(model: ModelRecord, step: number): TemplateResult | typeof nothing {
+		const notice = this.wizardNotice;
+		if (notice?.step !== step || notice.key !== this.trainingNoticeKey(model)) return nothing;
+		const t = this.translations.value;
+		return html`<div class="notification notification-alert">
+			<p class="notification-text" role="alert">
+				${notice.operationId ? t.wizardPending : t.wizardSaveFailed}
+			</p>
+			${notice.operationId
+				? html`<button
+						type="button"
+						class="btn"
+						aria-disabled=${this.wizardAdvance ? 'true' : nothing}
+						@click=${() => this.saveWizardStep(step)}>
+						${t.retrySaving}
+					</button>`
+				: nothing}
+		</div>`;
+	}
+
+	private clearStepMotion(): void {
+		const content = this.stepMotion;
+		if (!content) return;
+		content.classList.remove('step-sizing', 'step-collapsed');
+		content.style.removeProperty('block-size');
+		content.inert = false;
+		this.stepMotion = undefined;
+	}
+
+	private async animateStep(content: HTMLElement, opening: boolean): Promise<boolean> {
+		const size = content.offsetHeight;
+		if (size === 0) return true;
+		this.stepMotion = content;
+		content.inert = true;
+		content.style.setProperty('block-size', opening ? '0px' : `${size}px`);
+		content.classList.toggle('step-collapsed', opening);
+		content.getBoundingClientRect();
+		content.classList.add('step-sizing');
+		content.classList.toggle('step-collapsed', !opening);
+		content.style.setProperty('block-size', opening ? `${size}px` : '0px');
+		await Promise.allSettled(content.getAnimations().map((item) => item.finished));
+		if (this.stepMotion !== content) return false;
+		if (opening) this.clearStepMotion();
+		return true;
+	}
+
+	private async finishWizardAdvance(advance: WizardAdvance): Promise<void> {
+		if (advance.advancing || this.wizardAdvance !== advance) return;
+		advance.advancing = true;
+		await this.updateComplete;
+		if (this.wizardAdvance !== advance) return;
+		const model = this.currentModel;
+		const motion = matchMedia('(prefers-reduced-motion: no-preference)');
+		const oldStep = this.renderRoot.querySelector('.step-active');
+		const oldContent = oldStep?.querySelector<HTMLElement>('.train-step-content');
+		let focusOwner = this.shadowRoot?.activeElement ?? document.activeElement;
+		const ownsFocus =
+			focusOwner === advance.focusOwner || Boolean(oldStep?.contains(focusOwner));
+		if (
+			model &&
+			getActiveStep(model) > advance.from &&
+			motion.matches &&
+			oldContent &&
+			this.isCurrentTrainingRoute(advance.key)
+		) {
+			if (ownsFocus) {
+				oldStep?.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
+				focusOwner = this.shadowRoot?.activeElement ?? document.activeElement;
+			}
+			await this.animateStep(oldContent, false);
+		}
+		if (this.wizardAdvance !== advance) return;
+		if (this.wizardNotice?.step === advance.from) this.wizardNotice = undefined;
+		this.wizardAdvance = undefined;
+		await this.updateComplete;
+		this.clearStepMotion();
+		if (
+			!this.ownsWizardAdvance(advance) ||
+			!this.isCurrentTrainingRoute(advance.key) ||
+			this.wizardAdvance
+		)
+			return;
+		const next = this.renderRoot.querySelector('.step-active');
+		if (
+			!next ||
+			next === oldStep ||
+			!this.currentModel ||
+			getActiveStep(this.currentModel) <= advance.from
+		)
+			return;
+		const content = next.querySelector<HTMLElement>('.train-step-content');
+		if (motion.matches && content && !(await this.animateStep(content, true))) return;
+		const focused = this.shadowRoot?.activeElement ?? document.activeElement;
+		if (
+			ownsFocus &&
+			(focused === focusOwner || (!motion.matches && focused === document.body)) &&
+			this.ownsWizardAdvance(advance) &&
+			this.isCurrentTrainingRoute(advance.key) &&
+			!this.wizardAdvance &&
+			next.matches('.step-active')
+		)
+			next.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
 	}
 
 	// ==========================================
@@ -824,7 +1035,15 @@ export class AppModelBuilderView extends LitElement {
 
 	private handleReopenClick(section: ModelSectionId): void {
 		const model = this.currentModel;
-		if (!model) return;
+		if (
+			!model ||
+			model.status !== 'draft' ||
+			(this.wizardAdvance && !this.wizardAdvance.advancing) ||
+			!this.isCurrentTrainingRoute(this.trainingNoticeKey(model))
+		)
+			return;
+		this.clearStepMotion();
+		this.wizardAdvance = undefined;
 
 		// A confirmation is needed only when a section after this one is complete
 		const completed = model.completedSteps;
@@ -1009,33 +1228,32 @@ export class AppModelBuilderView extends LitElement {
 				aria-current=${isActive ? 'step' : nothing}>
 				<section class="train-step-panel" aria-labelledby="step-1-title">
 					<header class="train-step-header">
-						<h2 id="step-1-title">1. Choose Model</h2>
+						<h2 id="step-1-title" tabindex=${availableModels.length ? '-1' : nothing}>
+							${isCompleted && selectedModelName
+								? t.chosenHeading({ name: selectedModelName })
+								: t.chooseHeading}
+						</h2>
 						${isCompleted
 							? html`
 									<span class="train-step-action train-step-status">
-										<button
-											type="button"
-											class="btn reopen-btn"
-											aria-label="Edit Choose Model"
-											@click=${() => this.handleReopenClick('choose-model')}>
-											Edit
-										</button>
-										<span class="visually-hidden">Completed</span>
-										<svg
-											aria-hidden="true"
-											width="20"
-											height="20"
-											viewBox="0 0 24 24"
-											fill="currentColor">
-											<path
-												d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-										</svg>
+										${model.status === 'draft'
+											? html`<button
+													type="button"
+													class="btn reopen-btn"
+													aria-label=${t.reopenChoose}
+													@click=${() =>
+														this.handleReopenClick('choose-model')}>
+													${t.edit}
+												</button>`
+											: nothing}
+										<span class="visually-hidden">${t.completed}</span>
+										${completedStepIcon}
 									</span>
 								`
 							: nothing}
 					</header>
 
-					<div class="train-step-content" ?hidden=${!isActive && isCompleted}>
+					<div class="train-step-content" ?hidden=${!isActive}>
 						${isCompleted && !isActive
 							? html`
 									<div class="completed-summary">
@@ -1061,7 +1279,9 @@ export class AppModelBuilderView extends LitElement {
 												</div>
 											`
 										: nothing}
-									${availableModels.length
+									${availableModels.length &&
+									resources.status === 'ready' &&
+									resources.metadata
 										? html`
 												<ul class="cards-grid" role="list">
 													${repeat(
@@ -1102,22 +1322,25 @@ export class AppModelBuilderView extends LitElement {
 													)}
 												</ul>
 											`
-										: nothing}
-
-									<div class="section-actions">
-										<button
-											type="button"
-											class="btn btn-primary"
-											?disabled=${!model.modelId}
-											@click=${this.handleContinueChooseModel}>
-											Continue
-										</button>
-										${!model.modelId
-											? html`<p class="validation-hint">
-													Select a model to continue.
-												</p>`
+										: availableModels.length
+											? html`
+													${resources.status === 'error'
+														? html` <p role="alert">
+																	${t.trainingSetupError}
+																</p>
+																<button
+																	type="button"
+																	class="btn"
+																	@click=${this
+																		.handleTrainingSetupRetry}>
+																	${t.retryTrainingSetup}
+																</button>`
+														: html`<p role="status">
+																${t.trainingSetupLoading}
+															</p>`}
+												`
 											: nothing}
-									</div>
+									${this.renderWizardNotice(model, 1)}
 								`}
 					</div>
 				</section>
@@ -1134,6 +1357,15 @@ export class AppModelBuilderView extends LitElement {
 		const resources = this.resourcesController.value;
 		const metadata = resources.metadata;
 		const dataset = appState.dataset;
+		const t = this.translations.value;
+		if (!isActive && !isCompleted)
+			return this.renderPendingSection(
+				t.featuresHeading,
+				'step-2-title',
+				'select-features',
+				0,
+				2
+			);
 
 		let featureRows: FeatureRow[] = [];
 		if (metadata && appState.target) {
@@ -1148,34 +1380,36 @@ export class AppModelBuilderView extends LitElement {
 				aria-current=${isActive ? 'step' : nothing}>
 				<section class="train-step-panel" aria-labelledby="step-2-title">
 					<header class="train-step-header">
-						<h2 id="step-2-title">2. Select Features</h2>
+						<h2 id="step-2-title" tabindex="-1">
+							${!isCompleted
+								? t.featuresHeading
+								: model.features.length === 1
+									? t.oneFeatureHeading
+									: t.featuresSelectedHeading({
+											count: $format.get().number(model.features.length)
+										})}
+						</h2>
 						${isCompleted
 							? html`
 									<span class="train-step-action train-step-status">
-										<button
-											type="button"
-											class="btn reopen-btn"
-											aria-label="Edit Select Features"
-											@click=${() =>
-												this.handleReopenClick('select-features')}>
-											Edit
-										</button>
-										<span class="visually-hidden">Completed</span>
-										<svg
-											aria-hidden="true"
-											width="20"
-											height="20"
-											viewBox="0 0 24 24"
-											fill="currentColor">
-											<path
-												d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-										</svg>
+										${model.status === 'draft'
+											? html`<button
+													type="button"
+													class="btn reopen-btn"
+													aria-label=${t.reopenFeatures}
+													@click=${() =>
+														this.handleReopenClick('select-features')}>
+													${t.edit}
+												</button>`
+											: nothing}
+										<span class="visually-hidden">${t.completed}</span>
+										${completedStepIcon}
 									</span>
 								`
 							: nothing}
 					</header>
 
-					<div class="train-step-content" ?hidden=${!isActive && isCompleted}>
+					<div class="train-step-content" ?hidden=${!isActive}>
 						${isCompleted && !isActive
 							? html`
 									<div class="completed-summary">
@@ -1293,6 +1527,7 @@ export class AppModelBuilderView extends LitElement {
 										</fieldset>
 									</form>
 								`}
+						${isActive ? this.renderWizardNotice(model, 2) : nothing}
 					</div>
 				</section>
 			</li>
@@ -1347,12 +1582,11 @@ export class AppModelBuilderView extends LitElement {
 	): void {
 		const model = this.currentModel;
 		if (!model || !model.modelId || !isClassifierId(model.modelId)) return;
-		setHyperparameters(this.modelNum, event.detail.config);
-		setMulticlassStrategy(
-			this.modelNum,
-			this.targetClassCount() > 2 ? MULTICLASS_STRATEGY[model.modelId] : null
-		);
-		completeSection(this.modelNum, 'configure-model');
+		void this.saveWizardStep(3, {
+			section: 'configure-model',
+			config: event.detail.config,
+			strategy: this.targetClassCount() > 2 ? MULTICLASS_STRATEGY[model.modelId] : null
+		});
 	}
 
 	private renderConfigureModelSection(
@@ -1379,7 +1613,7 @@ export class AppModelBuilderView extends LitElement {
 				aria-current=${isActive ? 'step' : nothing}>
 				<section class="train-step-panel" aria-labelledby="step-3-title">
 					<header class="train-step-header">
-						<h2 id="step-3-title">
+						<h2 id="step-3-title" tabindex="-1">
 							${isCompleted ? t.configuredHeading : t.configureHeading}
 							${isActive
 								? html`<a href="/help/configure-model" class="help-link"
@@ -1390,24 +1624,18 @@ export class AppModelBuilderView extends LitElement {
 						${isCompleted
 							? html`
 									<span class="train-step-action train-step-status">
-										<button
-											type="button"
-											class="btn reopen-btn"
-											aria-label=${t.reopenConfigure}
-											@click=${() =>
-												this.handleReopenClick('configure-model')}>
-											${t.edit}
-										</button>
+										${model.status === 'draft'
+											? html`<button
+													type="button"
+													class="btn reopen-btn"
+													aria-label=${t.reopenConfigure}
+													@click=${() =>
+														this.handleReopenClick('configure-model')}>
+													${t.edit}
+												</button>`
+											: nothing}
 										<span class="visually-hidden">${t.completed}</span>
-										<svg
-											aria-hidden="true"
-											width="20"
-											height="20"
-											viewBox="0 0 24 24"
-											fill="currentColor">
-											<path
-												d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-										</svg>
+										${completedStepIcon}
 									</span>
 								`
 							: nothing}
@@ -1433,6 +1661,7 @@ export class AppModelBuilderView extends LitElement {
 										.handleConfigurationContinue}>
 								</app-model-configuration>`
 							: nothing}
+						${isActive ? this.renderWizardNotice(model, 3) : nothing}
 					</div>
 				</section>
 			</li>
@@ -1533,7 +1762,8 @@ export class AppModelBuilderView extends LitElement {
 	private trainingNoticeKey(model: ModelRecord): string {
 		return JSON.stringify([
 			trainingSetupKey(this.appStateController.value, model.num),
-			model.createdAt
+			model.createdAt,
+			this.appStateController.value.comparisonContextEpoch
 		]);
 	}
 
@@ -1573,12 +1803,15 @@ export class AppModelBuilderView extends LitElement {
 		)
 			return;
 		if (!setTrainingSetup(model.num, setup)) return;
+		const advance = this.beginWizardAdvance(4);
+		if (!advance) return;
 
 		this.trainingNotice = undefined;
 		const started = service.start(model.num);
-		if (service.activeIdentity(model.num)) void this.focusTrainingHeading(key, 5);
+		advance.runId = service.activeIdentity(model.num)?.runId;
 		const result = await started;
-		if (!result.ok && this.isCurrentTrainingRoute(key)) {
+		if (this.wizardAdvance === advance && !advance.advancing) this.wizardAdvance = undefined;
+		if (!result.ok && this.ownsWizardAdvance(advance)) {
 			this.trainingNotice = { key, code: result.code, pending: result.pending };
 		}
 	}
@@ -1784,7 +2017,8 @@ export class AppModelBuilderView extends LitElement {
 			return this.renderTrainingNotice(
 				model,
 				this.translations.value.trainingPendingStart,
-				true
+				true,
+				pending.identity
 			);
 		}
 		const notice =
@@ -1894,16 +2128,22 @@ export class AppModelBuilderView extends LitElement {
 					crossValidation: (folds) => t.crossValidationSummary({ folds })
 				})
 			: t.trainingSetupNotConfigured;
+		const strategy =
+			model.trainingSetup?.type === 'nested_cv'
+				? t.crossValidationHeading({
+						folds: $format.get().number(model.trainingSetup.outerFolds)
+					})
+				: t.oneShotHeading;
 		return html`
 			<li
 				class="train-step ${isActive ? 'step-active' : ''}"
 				aria-current=${isActive ? 'step' : nothing}>
 				<section class="train-step-panel" aria-labelledby="step-4-title">
 					<header class="train-step-header">
-						<h2 id="step-4-title">
+						<h2 id="step-4-title" tabindex="-1">
 							${showForm
 								? t.trainingSetupHeading
-								: t.completedTrainingSetup({ summary })}
+								: t.completedTrainingSetup({ summary: strategy })}
 							${showForm
 								? html`<a href=${TRAINING_SETUP_HELP_PATH} class="help-link"
 										>${t.trainingSetupHelp}</a
@@ -1925,15 +2165,7 @@ export class AppModelBuilderView extends LitElement {
 												`
 											: nothing}
 										<span class="visually-hidden">${t.completed}</span>
-										<svg
-											aria-hidden="true"
-											width="20"
-											height="20"
-											viewBox="0 0 24 24"
-											fill="currentColor">
-											<path
-												d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-										</svg>
+										${completedStepIcon}
 									</span>
 								`
 							: nothing}
@@ -2045,16 +2277,8 @@ export class AppModelBuilderView extends LitElement {
 									</button>`
 								: nothing}
 							${viewed
-								? html` <span class="visually-hidden">${t.completed}</span>
-										<svg
-											aria-hidden="true"
-											width="20"
-											height="20"
-											viewBox="0 0 24 24"
-											fill="currentColor">
-											<path
-												d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-										</svg>`
+								? html` <span class="visually-hidden">${t.completed}</span
+										>${completedStepIcon}`
 								: html`<button
 										type="button"
 										class="btn"
@@ -2233,15 +2457,20 @@ export class AppModelBuilderView extends LitElement {
 				${this.renderLeaveDialog()}
 			`;
 		}
+		const pending =
+			this.wizardNotice?.operationId &&
+			this.wizardNotice.key === this.trainingNoticeKey(model)
+				? this.wizardNotice
+				: undefined;
+		const wizard = this.wizardAdvance?.model ?? pending?.model ?? model;
 		const activeStep =
-			(model.status === 'draft' && session) ||
-			(this.provisionalBinding && model.status === 'trained')
-				? 5
-				: getActiveStep(model);
-		const isStep1Completed = model.completedSteps.includes('choose-model');
-		const isStep2Completed = model.completedSteps.includes('select-features');
-		const isStep3Completed = model.completedSteps.includes('configure-model');
-		const isStep4Completed = model.completedSteps.includes('configure-training');
+			this.wizardAdvance?.from ??
+			pending?.step ??
+			(this.provisionalBinding && model.status === 'trained' ? 5 : getActiveStep(model));
+		const isStep1Completed = wizard.completedSteps.includes('choose-model');
+		const isStep2Completed = wizard.completedSteps.includes('select-features');
+		const isStep3Completed = wizard.completedSteps.includes('configure-model');
+		const isStep4Completed = wizard.completedSteps.includes('configure-training');
 
 		return html`
 			<div class="page-header">
@@ -2252,13 +2481,14 @@ export class AppModelBuilderView extends LitElement {
 			</div>
 
 			<section class="page-body" data-testid="model-builder">
+				${wizard.completedSteps.length > 0 ? wizardIconSprite : nothing}
 				<ol class="train-model" aria-label="Model training steps">
-					${this.renderChooseModelSection(model, activeStep === 1, isStep1Completed)}
-					${this.renderSelectFeaturesSection(model, activeStep === 2, isStep2Completed)}
-					${this.renderConfigureModelSection(model, activeStep === 3, isStep3Completed)}
-					${this.renderTrainingSetupSection(model, activeStep === 4, isStep4Completed)}
-					${this.renderTrainingSection(model, activeStep === 5, session)}
-					${this.renderResultsSection(model, activeStep)}
+					${this.renderChooseModelSection(wizard, activeStep === 1, isStep1Completed)}
+					${this.renderSelectFeaturesSection(wizard, activeStep === 2, isStep2Completed)}
+					${this.renderConfigureModelSection(wizard, activeStep === 3, isStep3Completed)}
+					${this.renderTrainingSetupSection(wizard, activeStep === 4, isStep4Completed)}
+					${this.renderTrainingSection(wizard, activeStep === 5, session)}
+					${this.renderResultsSection(wizard, activeStep)}
 				</ol>
 			</section>
 

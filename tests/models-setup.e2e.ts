@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator } from '@playwright/test';
 import { interceptSampleDownload } from './fixtures/sample-dataset-downloads';
+import { controlTraining, openSetup } from './fixtures/training/browser';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
@@ -14,6 +15,54 @@ const CLASSIFIER_ARTWORK = [
 	['support-vector-classifier', 'support-vector-classifier'],
 	['decision-tree-classifier', 'decision-tree-classifier']
 ] as const;
+
+test('MW-STEP-2: a failed save keeps the form and the exact committed candidate replays once', async ({
+	page
+}) => {
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await controlTraining(page);
+	await openSetup(page, false);
+	const builder = page.locator('app-model-builder-view');
+	const configuration = builder.locator('app-model-configuration');
+	const maximumIterations = configuration.getByRole('spinbutton', {
+		name: 'Maximum iterations (exact value)'
+	});
+	await maximumIterations.fill('900');
+	const save = configuration.getByRole('button', { name: 'Save & Continue' });
+	const generation = await page.evaluate(() => window.__appState!.get().trainingDomainGeneration);
+	await page.evaluate(() => {
+		window.__trainingFixture!.blockRead = true;
+	});
+	await save.click();
+	await expect(builder.getByRole('alert')).toContainText('This step could not be saved');
+	await expect(maximumIterations).toHaveValue('900');
+	await expect(builder.locator('.step-active h2')).toHaveAttribute('id', 'step-3-title');
+
+	await page.evaluate(() => {
+		window.__trainingFixture!.blockRead = false;
+		window.__trainingFixture!.blockPublication = 'wizard';
+	});
+	await save.click();
+	const retry = builder.getByRole('button', { name: 'Retry Saving' });
+	await expect(retry).toBeVisible();
+	await expect(maximumIterations).toHaveValue('900');
+	await expect(builder.locator('.step-active h2')).toHaveAttribute('id', 'step-3-title');
+	expect(await page.evaluate(() => window.__appState!.get().trainingDomainGeneration)).toBe(
+		generation
+	);
+
+	await page.evaluate(() => {
+		window.__trainingFixture!.blockPublication = null;
+	});
+	await retry.click();
+	await expect(builder.locator('#step-4-title')).toBeFocused();
+	await expect(builder.locator('.step-active .train-step-content[inert]')).toHaveCount(0);
+	expect(await page.evaluate(() => window.__appState!.get().trainingDomainGeneration)).toBe(
+		generation + 1
+	);
+	await page.reload();
+	await expect(builder.locator('.step-active h2')).toHaveAttribute('id', 'step-4-title');
+});
 
 async function expectIllustratedCatalogue(step: Locator) {
 	const cards = step.locator('ul.cards-grid[role="list"] > li > app-model-card');
@@ -89,9 +138,10 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		await page.reload();
 	});
 
-	test('MOD-SETUP-1: select alone does not complete; continue does; initial features set once; empty selection survives reload', async ({
+	test('MW-STEP-1 / MOD-SETUP-1: selecting saves defaults, closes before opening and survives reload', async ({
 		page
 	}) => {
+		await page.emulateMedia({ reducedMotion: 'no-preference' });
 		// 1. Setup dataset and target
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
@@ -141,23 +191,37 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const lrCard = step1.locator('app-model-card[model-id="logistic-regression"]');
 		await expect(lrCard).toBeVisible();
 		const selectBtn = lrCard.locator('button:has-text("Select Model")');
+		await builder.evaluate((host) => {
+			const root = host.shadowRoot!;
+			root.addEventListener('transitionstart', (event) => {
+				const content = event.target;
+				if (!(content instanceof HTMLElement) || !content.classList.contains('step-sizing'))
+					return;
+				const close = content.classList.contains('step-collapsed');
+				const current = root.querySelector('[aria-current="step"] h2')?.id;
+				const recorded = `${close ? 'close' : 'open'}:${current}:${content.inert}`;
+				const phases = new Set(
+					(host.getAttribute('data-test-step-phases') ?? '').split(' ').filter(Boolean)
+				);
+				phases.add(recorded);
+				host.setAttribute('data-test-step-phases', [...phases].join(' '));
+			});
+		});
+		await expect(step1.getByRole('button', { name: 'Continue', exact: true })).toHaveCount(0);
 		await selectBtn.click();
-
-		// Check app state: modelId is set, but completedSteps is STILL empty!
+		await expect(step2.getByRole('heading', { name: '2. Select Features' })).toBeFocused();
+		await expect(builder).toHaveAttribute(
+			'data-test-step-phases',
+			'close:step-1-title:true open:step-2-title:true'
+		);
+		await expect(builder.locator('.step-active[aria-current="step"]')).toHaveCount(1);
+		await expect(step1.getByRole('heading', { name: '1. Logistic Regression' })).toBeVisible();
+		await expect(step1.getByRole('button', { name: 'Edit Choose Model' })).toBeVisible();
+		await expect(step1.getByText('Completed', { exact: true })).toHaveCount(1);
+		await expect(step1.locator('svg.icon use')).toHaveAttribute('href', '#check');
+		await expect(builder.locator('symbol[id="check"]')).toHaveCount(1);
 		let state = await page.evaluate(() => window.__appState!.get());
 		expect(state.models[0]?.modelId).toBe('logistic-regression');
-		expect(state.models[0]?.completedSteps).toEqual([]);
-
-		// Section 1 is STILL active (selecting alone does not complete!)
-		await expect(step1).toHaveAttribute('aria-current', 'step');
-
-		// 4. Click Section 1 Continue button
-		const continueBtn1 = step1.locator('.section-actions button:has-text("Continue")');
-		await expect(continueBtn1).toBeEnabled();
-		await continueBtn1.click();
-
-		// Now Section 1 is completed and Section 2 is active!
-		state = await page.evaluate(() => window.__appState!.get());
 		expect(state.models[0]?.completedSteps).toContain('choose-model');
 		expect(state.models[0]?.ui.featureSelectionInitialised).toBe(true);
 
@@ -260,13 +324,12 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const step1 = builder.locator('.train-step').nth(0);
 		const step2 = builder.locator('.train-step').nth(1);
 
-		// Select Logistic Regression and Continue
+		// Select Logistic Regression.
 		await step1
 			.locator(
 				'app-model-card[model-id="logistic-regression"] button:has-text("Select Model")'
 			)
 			.click();
-		await step1.locator('.section-actions button:has-text("Continue")').click();
 
 		// Now in Section 2 (Select Features)
 		await expect(step2).toHaveAttribute('aria-current', 'step');
@@ -288,12 +351,12 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 
 		// Complete section 2
 		await continueBtn.click();
+		const step3 = builder.locator('.train-step').nth(2);
+		await expect(step3).toHaveAttribute('aria-current', 'step');
 		const state = await page.evaluate(() => window.__appState!.get());
 		expect(state.models[0]?.completedSteps).toContain('select-features');
 
 		// Section 3 is now active
-		const step3 = builder.locator('.train-step').nth(2);
-		await expect(step3).toHaveAttribute('aria-current', 'step');
 		await expect(step3.locator('app-model-configuration form')).toBeVisible();
 		await expect(step3.locator('h2')).toContainText('3. Configure Model');
 	});
@@ -301,6 +364,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 	test('MOD-SETUP-3: reopening preserves choices and clears later completions only after confirmation; no later training controls', async ({
 		page
 	}) => {
+		await page.emulateMedia({ reducedMotion: 'reduce' });
 		// Setup Iris with completed Section 1 and Section 2
 		await page.goto('/data');
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
@@ -335,18 +399,25 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const step2 = builder.locator('.train-step').nth(1);
 		const step3 = builder.locator('.train-step').nth(2);
 
-		// Choose Logistic Regression & Continue
+		// Choose Logistic Regression.
 		await step1
 			.locator(
 				'app-model-card[model-id="logistic-regression"] button:has-text("Select Model")'
 			)
 			.click();
-		await step1.locator('.section-actions button:has-text("Continue")').click();
 
 		// Select only 2 features & Continue
+		await expect(step2).toHaveAttribute('aria-current', 'step');
 		await step2.locator('input[aria-label="Include sepal length"]').uncheck();
 		await step2.locator('input[aria-label="Include sepal width"]').uncheck();
+		expect(await page.evaluate(() => window.__appState!.get().models[0]?.features)).toEqual([
+			'petal length',
+			'petal width'
+		]);
 		await step2.locator('.section-actions button:has-text("Continue")').click();
+		await expect(step3).toHaveAttribute('aria-current', 'step');
+		await expect(step3.locator('h2')).toBeFocused();
+		await expect(builder.locator('.step-sizing, .train-step-content[inert]')).toHaveCount(0);
 
 		// Both Section 1 and Section 2 are completed
 		let state = await page.evaluate(() => window.__appState!.get());
@@ -357,7 +428,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const editBtn1 = step1.locator('button.reopen-btn');
 		await editBtn1.click();
 
-		const confirmDialog = builder.locator('dialog.confirm-dialog');
+		const confirmDialog = builder.locator('dialog[data-confirm="reopen-section"]');
 		await expect(confirmDialog).toBeVisible();
 
 		// 2. Cancel reopening -> nothing changes
@@ -390,19 +461,18 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		});
 		await expect(currentSelect).toHaveAttribute('aria-current', 'true');
 		await currentSelect.click();
-		expect(await page.evaluate(() => window.__appState!.get().models[0])).toEqual(
-			state.models[0]
+		await expect(step2).toHaveAttribute('aria-current', 'step');
+		expect(await page.evaluate(() => window.__appState!.get().models[0]?.features)).toEqual(
+			state.models[0]?.features
 		);
+		await step1.getByRole('button', { name: 'Edit Choose Model' }).click();
+		await expect(step1).toHaveAttribute('aria-current', 'step');
 
 		const otherSelect = step1.getByRole('button', {
 			name: 'Select Model: Bernoulli Naive Bayes',
 			exact: true
 		});
 		await otherSelect.click();
-		await expect(otherSelect).toHaveAttribute('aria-current', 'true');
-		await expect(step1.locator('button[aria-current="true"]')).toHaveCount(1);
-		await expect(step1).toHaveAttribute('aria-current', 'step');
-		await step1.getByRole('button', { name: 'Continue', exact: true }).click();
 		await expect(step2).toHaveAttribute('aria-current', 'step');
 		state = await page.evaluate(() => window.__appState!.get());
 		expect(state.models[0]).toMatchObject({
@@ -478,32 +548,17 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		await expect(bnbDesc).toBeFocused();
 
 		await bnbSelect.focus();
-		const focusRestored = await bnbDesc.evaluateHandle((button) => {
-			const focusedElement = () => {
-				let focused = document.activeElement;
-				while (focused?.shadowRoot?.activeElement)
-					focused = focused.shadowRoot.activeElement;
-				return focused;
-			};
-			let previous: Element | null = null;
-			button.addEventListener('click', () => (previous = focusedElement()), {
-				capture: true,
-				once: true
-			});
-			return () => focusedElement() === previous;
-		});
 		await bnbDesc.click();
 		await expect(descDialog).toBeVisible();
 		await descDialog.locator('button.btn-icon').click();
 		await expect(descDialog).not.toBeVisible();
-		await expect.poll(() => focusRestored.evaluate((restored) => restored())).toBe(true);
-		await focusRestored.dispose();
+		await expect(bnbDesc).toBeFocused();
 
 		await bnbSelect.click();
-		await expect(bnbSelect).toHaveAttribute('aria-current', 'true');
-		await expect(bnb.getByText('Selected', { exact: true })).toBeVisible();
-		await expect(step1.getByText('Selected', { exact: true })).toHaveCount(1);
-		await expect(step1).toHaveAttribute('aria-current', 'step');
+		await expect(
+			step1.getByRole('heading', { name: '1. Bernoulli Naive Bayes' })
+		).toBeVisible();
+		await expect(builder.locator('.train-step').nth(1)).toHaveAttribute('aria-current', 'step');
 		await expect
 			.poll(() =>
 				page.evaluate(
@@ -515,8 +570,10 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 			.toBe('bernoulli-nb');
 
 		await page.reload();
-		await expect(bnbSelect).toHaveAttribute('aria-current', 'true');
-		await expect(step1.locator('button[aria-current="true"]')).toHaveCount(1);
+		await expect(
+			step1.getByRole('heading', { name: '1. Bernoulli Naive Bayes' })
+		).toBeVisible();
+		await expect(builder.locator('.train-step').nth(1)).toHaveAttribute('aria-current', 'step');
 
 		// 2. Regression target (Boston Housing or Penguins bill_length_mm)
 		await page.goto('/target');
@@ -546,17 +603,19 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		await expect(notice.locator('h3')).toHaveText('No classification model available');
 		const targetLink = notice.locator('a[href="/target"]');
 		await expect(targetLink).toBeVisible();
-		await targetLink.click();
-		await expect(page).toHaveURL(/\/target$/);
-		await page.goBack();
 
-		// Axe check
 		const axeResults = await new AxeBuilder({ page })
 			.withTags(AXE_TAGS)
 			.include('app-model-builder-view')
 			.analyze();
 		const unexpectedViolations = axeResults.violations.filter((v) => v.id !== 'color-contrast');
 		expect(unexpectedViolations).toEqual([]);
+		await targetLink.click();
+		await builder
+			.getByRole('dialog', { name: 'Leave this model?' })
+			.getByRole('button', { name: 'Leave', exact: true })
+			.click();
+		await expect(page).toHaveURL(/\/target$/);
 	});
 
 	test('MODEL-ART-1: an uploaded Boolean target offers all eight illustrated cards', async ({

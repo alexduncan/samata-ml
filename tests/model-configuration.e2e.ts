@@ -76,7 +76,6 @@ async function openConfigure(page: Page, target = 'class', dataset = 'iris'): Pr
 	await step1
 		.locator('app-model-card[model-id="logistic-regression"] button:has-text("Select Model")')
 		.click();
-	await step1.locator('.section-actions button:has-text("Continue")').click();
 	await builder
 		.locator('.train-step')
 		.nth(1)
@@ -84,6 +83,7 @@ async function openConfigure(page: Page, target = 'class', dataset = 'iris'): Pr
 		.click();
 	const form = builder.locator('app-model-configuration');
 	await expect(form.locator('form')).toBeVisible();
+	await expect(builder.locator('.step-active .train-step-content[inert]')).toHaveCount(0);
 	return form;
 }
 
@@ -375,6 +375,16 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		const layer = form.getByRole('spinbutton', { name: 'Layer 1 size' });
 		await expect(layer).toBeVisible();
 		await expect(layer).toHaveAttribute('min', '1');
+		// Audit the last persisted form after exercising the transient controls in each model.
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => JSON.parse(localStorage.getItem('samata-ml:state')!).models[0]?.modelId
+				)
+			)
+			.toBe('mlp-classifier');
+		await page.reload();
+		await expect(layer).toBeVisible();
 
 		const axe = await new AxeBuilder({ page })
 			.withTags(AXE_TAGS)
@@ -422,7 +432,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 
 		// Edit reopens directly (no later section complete)
 		await step3.getByRole('button', { name: 'Edit Configure Model' }).click();
-		await expect(builder.locator('dialog.confirm-dialog')).not.toBeVisible();
+		await expect(builder.locator('dialog[data-confirm="reopen-section"]')).not.toBeVisible();
 		await expect(step3).toHaveAttribute('aria-current', 'step');
 		await form.locator('select#penalty').selectOption('l2');
 		await expect(form.locator('#C-number')).toHaveValue('1');
@@ -431,6 +441,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		// With a later section complete, Edit asks first (from persisted state, after a reload)
 		await form.locator('select#penalty').selectOption('none');
 		await form.getByRole('button', { name: 'Save & Continue' }).click();
+		await expect(step3.locator('h2')).toContainText('3. Model Configured');
 		await page.evaluate(() => {
 			const s = window.__appState!.get();
 			window.__appState!.set({
@@ -442,7 +453,15 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 				}))
 			});
 		});
-		await page.waitForTimeout(500);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:state')!).models[0]
+							.completedSteps
+				)
+			)
+			.toContain('configure-training');
 		await page.reload();
 		await dismissWelcome(page);
 		const reloaded = page.locator('app-model-builder-view .train-step').nth(2);
@@ -451,7 +470,9 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 			await page.evaluate(() => window.__appState!.get().models[0]!.completedSteps)
 		).toContain('configure-training');
 		await reloaded.getByRole('button', { name: 'Edit Configure Model' }).click();
-		await expect(page.locator('app-model-builder-view dialog.confirm-dialog')).toBeVisible();
+		await expect(
+			page.locator('app-model-builder-view dialog[data-confirm="reopen-section"]')
+		).toBeVisible();
 	});
 
 	test('WML-P1-UI-4: a binary target saves multiclass as null', async ({ page }) => {

@@ -20,8 +20,10 @@ import {
 	reduceTrainingOutcome,
 	reduceTrainingStart,
 	reduceViewResults,
+	reduceWizardStep,
 	updateTrainingProgress,
-	type TrainingOutcome
+	type TrainingOutcome,
+	type WizardStepSubmission
 } from '../../../stores/app.store';
 import {
 	commitProtectedTrainingChange,
@@ -30,6 +32,8 @@ import {
 	publishRecoveredTrainingSnapshot,
 	readGuardedTrainingSnapshot,
 	retryTrainingPublication,
+	sameDraft,
+	stageSubmittedDraft,
 	withTrainingStateLock,
 	TRAINING_STATE_LOCK,
 	type GuardedSnapshot,
@@ -90,6 +94,7 @@ export type TrainingCommandFailure = {
 		| 'cancelled';
 	reason?: PersistenceFailure['reason'];
 	pending?: PendingTrainingDomain['kind'];
+	operationId?: string;
 };
 
 /** Result of a training or protected state operation, after its storage acknowledgement. */
@@ -110,6 +115,13 @@ export type PublicationPending = {
 } & Partial<StopPublication>;
 
 type CommittedStop = PublicationPending & StopPublication;
+
+type CommittedWizardStep = {
+	operationId: string;
+	generation: number;
+	context: ProvisionalModelContext;
+	model: ModelRecord;
+};
 
 /** Route-independent notification for an operation whose state still needs to be published. */
 export const $publicationPending = atom<PublicationPending | null>(null);
@@ -295,6 +307,8 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 	const exclusiveIntents = new Set<string>();
 	const abandoning = new Set<number>();
 	const pendingAbandonments = new Map<string, string>();
+	const wizardSubmissions = new Set<number>();
+	const pendingWizardSteps = new Map<number, CommittedWizardStep>();
 	let pendingDatasetCleanup: { id: string; cleanup: () => Promise<void> } | null = null;
 	const newId = options.newId ?? (() => crypto.randomUUID());
 	const now = options.now ?? Date.now;
@@ -330,7 +344,12 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 			  >,
 		identity?: TrainingRunIdentity,
 		stopped?: StoppedRepair
-	): Promise<{ ack: PersistenceAck; committed: boolean; operationId: string }> {
+	): Promise<{
+		ack: PersistenceAck;
+		committed: boolean;
+		operationId: string;
+		committedGeneration: number | undefined;
+	}> {
 		const operationId = newId();
 		let committedGeneration: number | undefined;
 		const ack = await commitProtectedTrainingChange(
@@ -374,7 +393,148 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		} else if (ack.ok && $publicationPending.get()?.operationId === operationId) {
 			$publicationPending.set(null);
 		}
-		return { ack, committed: committedGeneration !== undefined, operationId };
+		return {
+			ack,
+			committed: committedGeneration !== undefined,
+			operationId,
+			committedGeneration
+		};
+	}
+
+	function wizardContextMatches(state: PersistedAppState, context: ProvisionalModelContext) {
+		return (
+			state.dataset?.id === context.datasetId &&
+			state.target === context.target &&
+			state.comparisonContextEpoch === context.comparisonContextEpoch
+		);
+	}
+
+	function wizardModel(state: PersistedAppState, model: ModelRecord) {
+		return state.models.find(
+			({ num, createdAt }) => num === model.num && createdAt === model.createdAt
+		);
+	}
+
+	/** Publishes the exact submitted wizard inputs and their completion in one checkpoint. */
+	async function saveWizardStep(
+		modelNum: number,
+		submission: WizardStepSubmission
+	): Promise<TrainingCommandResult> {
+		const captured = $appState.get();
+		const model = captured.models.find(({ num }) => num === modelNum);
+		if (!model || !captured.dataset || !captured.target || model.status !== 'draft')
+			return notice(conflict);
+		if (submission.section === 'choose-model' && !isClassifierId(submission.modelId))
+			return { ok: false, code: 'invalid-request' };
+		const context = {
+			datasetId: captured.dataset.id,
+			target: captured.target,
+			comparisonContextEpoch: captured.comparisonContextEpoch
+		};
+		const pending = pendingWizardSteps.get(modelNum);
+		if (
+			pending &&
+			wizardContextMatches(captured, pending.context) &&
+			wizardModel(captured, pending.model)
+		)
+			return { ...notice(conflict, 'recover'), operationId: pending.operationId };
+		if (wizardSubmissions.has(modelNum)) return { ok: false, code: 'busy' };
+		wizardSubmissions.add(modelNum);
+		try {
+			return await withResource(INGESTION_LOCK, 'shared', true, () =>
+				withResource(`samata-ml:training:${modelNum}`, 'exclusive', true, async () => {
+					let candidate: ModelRecord | undefined;
+					const { ack, operationId, committedGeneration } = await checkpoint(
+						'recover',
+						({ state }) => {
+							const visible = $appState.get();
+							const edited = wizardModel(visible, model);
+							if (
+								!state ||
+								!wizardContextMatches(visible, context) ||
+								!edited ||
+								edited.status !== 'draft' ||
+								!sameDraft(model, edited)
+							)
+								return conflict;
+							const staged = stageSubmittedDraft(state, captured, model);
+							if (!staged.ok) return staged;
+							const next = reduceWizardStep(staged.state, model, submission);
+							if (!next) return conflict;
+							candidate = wizardModel(next, model);
+							return { state: next, mutation: { type: 'none' } };
+						}
+					);
+					if (!ack.ok) {
+						if (!candidate || committedGeneration === undefined) return notice(ack);
+						pendingWizardSteps.set(modelNum, {
+							operationId,
+							generation: committedGeneration,
+							context,
+							model: candidate
+						});
+						return { ...notice(ack, 'recover'), operationId };
+					}
+					return { ok: true, value: undefined };
+				})
+			);
+		} finally {
+			wizardSubmissions.delete(modelNum);
+		}
+	}
+
+	/** Replays only the identified wizard save and verifies its exact committed draft. */
+	async function retryWizardStep(
+		modelNum: number,
+		operationId: string
+	): Promise<TrainingCommandResult> {
+		const pending = pendingWizardSteps.get(modelNum);
+		if (!pending || pending.operationId !== operationId) return notice(conflict);
+		const retried = await withResource(INGESTION_LOCK, 'shared', true, () =>
+			withResource(`samata-ml:training:${modelNum}`, 'exclusive', true, async () => {
+				const result = await withTrainingStateLock(
+					async (context): Promise<TrainingCommandResult> => {
+						const stored = await readTrainingCheckpoint(context.db);
+						if (!stored.ok) return { ...notice(stored, 'recover'), operationId };
+						if (
+							stored.checkpoint?.generation !== pending.generation ||
+							(stored.checkpoint.pending &&
+								stored.checkpoint.pending.operationId !== operationId)
+						) {
+							pendingWizardSteps.delete(modelNum);
+							return notice(conflict);
+						}
+						const snapshot = await readGuardedTrainingSnapshot(context);
+						if (!snapshot.ok) return { ...notice(snapshot, 'recover'), operationId };
+						const state = snapshot.state;
+						const model = state && wizardModel(state, pending.model);
+						if (
+							!state ||
+							snapshot.generation !== pending.generation ||
+							!wizardContextMatches(state, pending.context) ||
+							!model ||
+							model.status !== 'draft' ||
+							!sameDraft(model, pending.model)
+						) {
+							pendingWizardSteps.delete(modelNum);
+							return notice(conflict);
+						}
+						publishNewerTrainingSnapshot(state);
+						pendingWizardSteps.delete(modelNum);
+						if ($publicationPending.get()?.operationId === operationId)
+							$publicationPending.set(null);
+						return { ok: true, value: undefined };
+					},
+					persistence
+				);
+				return result.ok || 'code' in result
+					? result
+					: { ...notice(result, 'recover'), operationId };
+			})
+		);
+		return !retried.ok && pendingWizardSteps.get(modelNum) === pending
+			? { ...retried, pending: 'recover', operationId }
+			: retried;
 	}
 
 	async function withResource<Value>(
@@ -1123,6 +1283,8 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 
 	return {
 		start,
+		saveWizardStep,
+		retryWizardStep,
 		abandonNewModel,
 		loadCompletedResult,
 		activeIdentity(modelNum: number): TrainingRunIdentity | undefined {

@@ -717,17 +717,20 @@ function draftSteps(model: ModelRecord) {
 	);
 }
 
-function sameDraft(left: ModelRecord, right: ModelRecord): boolean {
+/** Compares the persisted editing inputs and wizard completions for a captured draft. */
+export function sameDraft(left: ModelRecord, right: ModelRecord): boolean {
 	return (
+		Boolean(left.ui.featureSelectionInitialised) ===
+			Boolean(right.ui.featureSelectionInitialised) &&
 		draftFields.every(
 			(field) => JSON.stringify(left[field]) === JSON.stringify(right[field])
-		) && JSON.stringify(draftSteps(left)) === JSON.stringify(draftSteps(right))
+		) &&
+		JSON.stringify(draftSteps(left)) === JSON.stringify(draftSteps(right))
 	);
 }
 
-/** Acknowledges the exact initiating draft against the state already checked under the lock. */
-export function flushSubmittedDraft(
-	context: TrainingStateContext,
+/** Reconciles a captured draft with the acknowledged base without publishing a snapshot. */
+export function stageSubmittedDraft(
 	latest: PersistedAppState,
 	captured: PersistedAppState,
 	model: ModelRecord
@@ -740,34 +743,54 @@ export function flushSubmittedDraft(
 		stored.status !== 'draft' ||
 		latest.trainingDomainGeneration !== captured.trainingDomainGeneration ||
 		latest.dataset?.id !== captured.dataset?.id ||
-		latest.target !== captured.target
+		latest.target !== captured.target ||
+		latest.comparisonContextEpoch !== captured.comparisonContextEpoch
 	) {
 		return { ok: false, reason: 'conflict' };
 	}
-	if (!sameDraft(stored, model)) {
-		const base = acknowledgedState?.models.find(
-			(record) => record.num === model.num && record.createdAt === model.createdAt
-		);
-		if (
-			!base ||
-			acknowledgedState?.trainingDomainGeneration !== latest.trainingDomainGeneration ||
-			!sameDraft(base, stored)
-		) {
-			return { ok: false, reason: 'conflict' };
+	const base =
+		acknowledgedState?.trainingDomainGeneration === latest.trainingDomainGeneration &&
+		acknowledgedState.comparisonContextEpoch === latest.comparisonContextEpoch &&
+		acknowledgedState.dataset?.id === latest.dataset?.id &&
+		acknowledgedState.target === latest.target
+			? acknowledgedState.models.find(
+					(record) => record.num === model.num && record.createdAt === model.createdAt
+				)
+			: undefined;
+	if (!sameDraft(stored, model) && (!base || !sameDraft(base, stored)))
+		return { ok: false, reason: 'conflict' };
+	const merged = mergeOrdinaryModel(stored, base ?? stored, model, true, !protectedPersistence);
+	// The submitted controls are authoritative once the captured base has been validated.
+	for (const field of draftFields) Object.assign(merged, { [field]: model[field] });
+	merged.completedSteps = [
+		...draftSteps(model),
+		...stored.completedSteps.filter(
+			(section) => section === 'training' || section === 'results'
+		)
+	];
+	const patched = mergeTrainingLogEdit(latest, merged);
+	return {
+		ok: true,
+		state: {
+			...latest,
+			models: latest.models.map((record) => (record === stored ? patched : record))
 		}
-	}
-	const patched = mergeTrainingLogEdit(
-		latest,
-		mergeOrdinaryModel(stored, stored, model, true, !protectedPersistence)
-	);
-	const state = {
-		...latest,
-		models: latest.models.map((record) => (record === stored ? patched : record))
 	};
-	const ack = writeAcknowledgedSnapshot(context.storage, state);
+}
+
+/** Acknowledges the exact initiating draft against the state already checked under the lock. */
+export function flushSubmittedDraft(
+	context: TrainingStateContext,
+	latest: PersistedAppState,
+	captured: PersistedAppState,
+	model: ModelRecord
+): { ok: true; state: PersistedAppState } | PersistenceFailure {
+	const draft = stageSubmittedDraft(latest, captured, model);
+	if (!draft.ok) return draft;
+	const ack = writeAcknowledgedSnapshot(context.storage, draft.state);
 	if (!ack.ok) return ack;
-	acknowledgedState = state;
-	return { ok: true, state };
+	acknowledgedState = draft.state;
+	return draft;
 }
 
 function mergeResultsUi(
@@ -797,6 +820,7 @@ function mergeOrdinaryModel(
 	const ui = { ...stored.ui };
 	for (const key of new Set([...Object.keys(base.ui), ...Object.keys(captured.ui)])) {
 		if (key === 'trainingLogOpen' && !includeTrainingLog) continue;
+		if (key === 'featureSelectionInitialised' && !sameGeneration) continue;
 		if (base.ui[key] === captured.ui[key]) continue;
 		if (key === 'results') {
 			// Preferences belong to one result revision and merge field by field, so a stale
