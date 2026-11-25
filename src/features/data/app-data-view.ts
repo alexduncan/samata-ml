@@ -232,7 +232,8 @@ export class AppDataView extends LitElement {
 	private readonly changeMessagesController = new StoreController(this, changeMessages);
 	private readonly noticeMessagesController = new StoreController(this, noticeMessages);
 
-	private cataloguePromise: Promise<SampleDatasetIndex> | null = null;
+	private cataloguePromise: Promise<void> | null = null;
+	private catalogueSelection: AbortController | null = null;
 	private activeDatasheetId: string | null = null;
 	private datasheetInvoker: HTMLElement | null = null;
 	private uploadInvoker: HTMLElement | null = null;
@@ -262,6 +263,7 @@ export class AppDataView extends LitElement {
 
 	override connectedCallback(): void {
 		super.connectedCallback();
+		if (this.abortController.signal.aborted) this.abortController = new AbortController();
 		const appState = this.appStateController.value;
 		if (appState.dataset && appState.data.mode === 'preview') {
 			const datasetId = appState.dataset.id;
@@ -280,14 +282,14 @@ export class AppDataView extends LitElement {
 			}
 		} else {
 			this.tableScrollRestored = false;
-			if (!this.catalogue && this.catalogueStatus === 'idle') {
-				this.fetchCatalogue();
-			}
+			this.startCatalogueSelection();
 		}
 	}
 
 	override disconnectedCallback(): void {
 		super.disconnectedCallback();
+		this.stopCatalogueSelection();
+		this.datasheetSeq++;
 		this.abortController.abort();
 	}
 
@@ -309,6 +311,7 @@ export class AppDataView extends LitElement {
 
 		const appState = this.appStateController.value;
 		if (appState.dataset && appState.data.mode === 'preview') {
+			this.stopCatalogueSelection();
 			const datasetId = appState.dataset.id;
 			const resources = this.resourcesController.value;
 			if (resources.datasetId !== datasetId && resources.status !== 'loading') {
@@ -325,6 +328,7 @@ export class AppDataView extends LitElement {
 			}
 		} else {
 			this.tableScrollRestored = false;
+			this.startCatalogueSelection();
 		}
 	}
 
@@ -365,22 +369,62 @@ export class AppDataView extends LitElement {
 		await this.updateComplete;
 	}
 
-	private fetchCatalogue(): void {
-		this.catalogueStatus = 'loading';
-		this.catalogueError = null;
-		const promise = loadSampleCatalogue(this.abortController.signal);
-		this.cataloguePromise = promise;
+	private startCatalogueSelection(): void {
+		this.catalogueSelection ??= new AbortController();
+		if (this.catalogueStatus === 'idle') this.fetchCatalogue();
+	}
 
-		promise
-			.then((index) => {
-				this.catalogue = index;
-				this.catalogueStatus = 'ready';
+	private stopCatalogueSelection(): void {
+		if (!this.catalogueSelection) return;
+		this.catalogueSelection.abort();
+		this.catalogueSelection = null;
+		this.cataloguePromise = null;
+		queueMicrotask(() => {
+			if (!this.cataloguePromise && this.catalogueStatus !== 'ready') {
+				this.catalogueStatus = 'idle';
+				this.catalogueError = null;
+			}
+		});
+	}
+
+	private fetchCatalogue(): void {
+		const selection = this.catalogueSelection;
+		if (!selection || this.cataloguePromise) return;
+		const current = () => {
+			const { dataset, data } = this.appStateController.value;
+			return (
+				this.isConnected &&
+				this.catalogueSelection === selection &&
+				(!dataset || data.mode === 'select')
+			);
+		};
+		const promise = Promise.resolve()
+			.then(async () => {
+				if (!current()) return;
+				this.catalogueStatus = 'loading';
+				this.catalogueError = null;
+				try {
+					const index = await loadSampleCatalogue(selection.signal);
+					if (!current()) return;
+					this.catalogue = index;
+					this.catalogueStatus = 'ready';
+				} catch (error) {
+					if (!current()) return;
+					// A newly connected view can briefly share an aborted loader request.
+					if (error instanceof DOMException && error.name === 'AbortError') {
+						this.cataloguePromise = null;
+						this.catalogueStatus = 'idle';
+						return;
+					}
+					this.catalogue = null;
+					this.catalogueStatus = 'error';
+					this.catalogueError = error instanceof Error ? error.message : String(error);
+				}
 			})
-			.catch((err) => {
-				this.catalogue = null;
-				this.catalogueStatus = 'error';
-				this.catalogueError = err instanceof Error ? err.message : String(err);
+			.finally(() => {
+				if (this.cataloguePromise === promise) this.cataloguePromise = null;
 			});
+		this.cataloguePromise = promise;
 	}
 
 	private handleUploadClick(e: MouseEvent): void {

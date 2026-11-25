@@ -1,5 +1,96 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import type { AppColumnDetails } from '../src/features/data/app-column-details';
+import type { PersistedAppState } from '../src/types/state';
+import { dismissWelcomeModal } from './journeys/helpers';
+
+async function loadIrisPreview(page: Page): Promise<void> {
+	await page.goto('/data');
+	await dismissWelcomeModal(page);
+	await page
+		.locator('app-dataset-card[dataset-id="iris"]')
+		.getByRole('button', { name: 'Load Dataset' })
+		.click();
+	await expect(page.locator('app-dataset-preview h1')).toContainText('Preview Dataset: Iris');
+}
+
+test('BETA-DATA-1 / BETA-DATA-2: change dataset after preview reload fetches the catalogue and Cancel preserves the project', async ({
+	page
+}) => {
+	await loadIrisPreview(page);
+	await page.goto('/target');
+	await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
+	await expect(
+		page.locator('app-target-view tbody tr:has(th:has-text("class")) button')
+	).toHaveText('Current Target');
+	await page.goto('/models');
+	await page.getByRole('button', { name: 'Train New Model' }).click();
+	await expect(page).toHaveURL('/models/1');
+	await page.goto('/data');
+	await page.reload();
+	const preview = page.locator('app-dataset-preview');
+	await expect(preview.locator('h1')).toContainText('Preview Dataset: Iris');
+	const change = preview.getByRole('button', { name: 'Change Dataset', exact: true });
+	const dialog = page.getByRole('dialog', { name: 'Change Dataset' });
+	const project = () =>
+		page.evaluate(() => {
+			const state = JSON.parse(localStorage.getItem('samata-ml:state')!) as PersistedAppState;
+			return [state.dataset?.id, state.target, state.models.map(({ num }) => num)];
+		});
+	const before = await project();
+	expect(before[1]).toBe('class');
+	expect(before[2]).toEqual([1]);
+	await change.click();
+	await dialog.getByRole('button', { name: 'Cancel', exact: true }).click();
+	await expect(dialog).toBeHidden();
+	await expect(preview).toBeVisible();
+	expect(await project()).toEqual(before);
+
+	await change.click();
+	await dialog.getByRole('button', { name: 'Change Dataset', exact: true }).click();
+	await expect(page).toHaveURL('/data');
+	await expect(page.locator('app-data-view .cards')).toBeVisible();
+	await page
+		.locator('app-dataset-card[dataset-id="breast-cancer-wisconsin"]')
+		.getByRole('button', { name: 'Load Dataset' })
+		.click();
+	await expect(preview.locator('h1')).toContainText('Preview Dataset: Breast Cancer');
+});
+
+test('BETA-DATA-3: a failed replacement catalogue request shows an alert and Retry reloads it', async ({
+	page
+}) => {
+	await page.goto('/data');
+	await dismissWelcomeModal(page);
+	await page.getByRole('button', { name: 'Upload Dataset', exact: true }).click();
+	await page.locator('app-upload-dataset-dialog input[type=file]').setInputFiles({
+		name: 'catalogue-retry.csv',
+		mimeType: 'text/csv',
+		buffer: Buffer.from('Length,Class\n1,Plant\n2,Animal\n3,Plant\n4,Animal\n')
+	});
+	const preview = page.locator('app-dataset-preview');
+	await expect(preview).toBeVisible();
+	// Uploaded data has no sample descriptor to prime the catalogue before selection.
+	await page.reload();
+	await expect(preview).toBeVisible();
+	let requests = 0;
+	await page.route(
+		(url) => url.pathname === '/datasets/index.json',
+		(route) => (++requests === 1 ? route.fulfill({ status: 503 }) : route.continue())
+	);
+	await preview.getByRole('button', { name: 'Change Dataset', exact: true }).click();
+	await page
+		.getByRole('dialog', { name: 'Change Dataset' })
+		.getByRole('button', { name: 'Change Dataset', exact: true })
+		.click();
+	const status = page
+		.getByRole('alert')
+		.filter({ hasText: 'Could not load sample dataset catalogue.' });
+	await expect(status).toBeVisible();
+	await status.getByRole('button', { name: 'Retry', exact: true }).click();
+	await expect(page.locator('app-data-view .cards')).toBeVisible();
+	await expect(status).toBeHidden();
+	expect(requests).toBe(2);
+});
 
 test('TERM-AC-2: the categorical frequency header expands only abbreviated labels', async ({
 	page

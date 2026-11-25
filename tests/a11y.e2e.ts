@@ -222,13 +222,16 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 				.waitFor({ state: 'hidden', timeout: 2000 });
 		} catch {}
 
-		const changeBtn = page.locator('app-dataset-preview button:has-text("Change Dataset")');
-		if (await changeBtn.isVisible()) {
-			await changeBtn.click();
-			await page.locator('dialog.change-dataset-modal button.btn-danger').click();
-		}
-
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
+		await irisCard.getByRole('button', { name: 'Load Dataset' }).click();
+		await page
+			.locator('app-dataset-preview')
+			.getByRole('button', { name: 'Change Dataset', exact: true })
+			.click();
+		await page
+			.getByRole('dialog', { name: 'Change Dataset' })
+			.getByRole('button', { name: 'Change Dataset', exact: true })
+			.click();
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button:has-text("Datasheet")').click();
 
