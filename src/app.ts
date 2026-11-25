@@ -127,6 +127,39 @@ function getActiveWorkflowRoute(currentRoute: ParsedRoute): ParsedRoute {
 	return parseRoute(resume);
 }
 
+function focusReservedPointerInvoker(event: MouseEvent): void {
+	if (
+		event.defaultPrevented ||
+		!event.isTrusted ||
+		event.detail === 0 ||
+		event.button !== 0 ||
+		event.metaKey ||
+		event.ctrlKey ||
+		event.shiftKey ||
+		event.altKey ||
+		$route.get().kind !== 'workflow'
+	) {
+		return;
+	}
+
+	const anchor = event.composedPath().find((node) => node instanceof HTMLAnchorElement);
+	const href = anchor?.getAttribute('href');
+	if (
+		!anchor ||
+		!href ||
+		href.startsWith('#') ||
+		(anchor.target && anchor.target !== '_self') ||
+		anchor.hasAttribute('download') ||
+		anchor.origin !== window.location.origin ||
+		parseRoute(anchor.pathname).kind !== 'reserved'
+	) {
+		return;
+	}
+
+	// Set the native dialog's focus origin before the document router opens it.
+	anchor.focus({ preventScroll: true });
+}
+
 async function retryDatasetPublication(container: HTMLElement): Promise<void> {
 	if (retryingDatasetPublication) return;
 	retryingDatasetPublication = true;
@@ -282,6 +315,7 @@ export async function bootstrapApp(): Promise<void> {
 	// 5. Mount root shell
 	const root = document.getElementById('app');
 	if (root) {
+		root.addEventListener('click', focusReservedPointerInvoker);
 		renderAppShell(root);
 		// Subscribe to route changes to re-render views dynamically
 		$route.subscribe(() => {

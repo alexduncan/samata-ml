@@ -579,6 +579,23 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await expect(about).toBeFocused();
 	});
 
+	test('DLG-BACKDROP-1: pointer activation of About restores focus to the link on backdrop dismissal', async ({
+		page
+	}) => {
+		const modelsLink = page.locator('app-sidebar a[href="/models"]');
+		const about = page.locator('app-sidebar a[href="/about"]');
+		const modal = page.locator('app-content-modal dialog');
+		await modelsLink.focus();
+		await expect(modelsLink).toBeFocused();
+		await about.click();
+		await expect(page).toHaveURL(/\/about$/);
+		await expect(modal).toBeVisible();
+		await page.mouse.click(2, 2);
+		await expect(modal).toBeHidden();
+		await expect(page).toHaveURL(/\/data$/);
+		await expect(about).toBeFocused();
+	});
+
 	for (const destination of ['workflow', 'modal'] as const) {
 		test(`FOCUS-AC-3: delayed target focus is cancelled by a later ${destination} navigation`, async ({
 			page
