@@ -1,8 +1,8 @@
 # Temporal column types: date, time and datetime
 
-**Status:** draft | **Updated:** 2026-11-25T11:31:22Z
+**Status:** ready-for-review | **Updated:** 2026-11-25T11:33:22Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-25T10:49:58Z
-**Verified by:** — | **Verified:** — | **Verification:** changes-requested
+**Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -57,13 +57,13 @@ Election keeps the existing principle: the most specific type with at least 98 %
 - `specification/plans/archive/data-ingestion-and-storage.md` _Interfaces and behaviour_ → "Epoch timestamps", "Date and time formats" and "Type inference" — the exact `parseDate`, `toEpochMs` and bounds that stay unchanged (T2, T3).
 - `specification/components/sidepanel.md` §3 — column-inspector display rules (T4).
 - `specification/COMPONENTS.md` §3–§10 — for T4, which changes Lit components and stories.
-- `specification/sample-datasets.md` — descriptor `dataType` rules (T5).
+- `specification/sample-datasets.md` — descriptor `dataType` rules (T3).
 
 ## Codebase context
 
 Facts verified by `codebase-scout` on 2026-11-25, so downstream agents need not re-sweep the tree.
 
-- **Relevant specifications:** `specification/data-ingestion.md` §3 and §5 (inference, statistics); `specification/state-and-storage.md:36` and §10 #4 (`ColumnType` copy); `specification/sample-datasets.md:24`; `specification/preview-dataset.md:24-26`; `specification/workflow-steps.md:52,76,79,134,151`; `specification/app-state-and-navigation.md:300-301`; `specification/components/sidepanel.md:20,35,37`; `specification/FUTURE.md:19`. Each restates the type vocabulary or datetime display.
+- **Relevant specifications:** `specification/data-ingestion.md` §3 and §5 (inference, statistics); `specification/state-and-storage.md:36` and §10 #4 (`ColumnType` copy); `specification/sample-datasets.md:24`; `specification/preview-dataset.md:24-26`; `specification/workflow-steps.md:52,76,79,134,151`; `specification/app-state-and-navigation.md:300-301`; `specification/components/sidepanel.md:20,35,37`; `specification/components/sidebar.md:43`; `specification/TODO.md:20,28,30`; `specification/FUTURE.md:19`. Each restates the type vocabulary or datetime display.
 - **Types:** `src/types/state.ts:16` `ColumnType`; `:19` `MODEL_ELIGIBLE_COLUMN_TYPES`; `:27-29` `isModelEligibleColumnType`; `:32-39` `ColumnSummary { name, type, missingCount }`; `:42-55` `DatasetSummary`, which is persisted to `localStorage`. `src/types/dataset.ts:57-65` `DatetimeColumnStats`, with `format` at `:62-64`; `:75-80` `ColumnStats`; `:105-120` `toDatasetSummary`.
 - **Cell detectors:** `src/common/storage/cells.ts`:
     - `CellFormat` `:86-90`;
@@ -229,19 +229,19 @@ Election when `V > 0`, after boolean:
 
 **Worked examples** (each line becomes a profiler test case):
 
-| Column values (non-missing)                                                   | Elected                            | Invalid                   |
-| ----------------------------------------------------------------------------- | ---------------------------------- | ------------------------- |
-| 100 × `2013-08-14`                                                            | `date`                             | 0                         |
-| 100 × `2013-08-14 00:00:00`                                                   | `date`                             | 0                         |
-| 99 × `2013-08-14`, 1 × `2013-08-13 06:03:42`                                  | `date`                             | 1 (the time-bearing cell) |
-| 99 × `2013-08-14`, 1 × `banana`                                               | `date`                             | 1                         |
-| 97 × `2013-08-14`, 3 × `2013-08-13 06:03:42`                                  | `datetime` (date format)           | 0                         |
-| 95 × `2013-08-14`, 5 × `banana`                                               | not temporal (categorical or text) | —                         |
-| 100 × `09:30` / `17:45:10` mix                                                | `time`                             | 0                         |
-| 50 × `2013-08-14`, 50 × `09:30`                                               | not temporal                       | —                         |
-| header `value`: `999999999`, `1000000000`, … (9 and 10 digits, spanning 2001) | `datetime` (epoch `s`)             | 0                         |
-| `1000000000`, `1000000001`, … strictly +1                                     | `numeric`, identifier hint         | —                         |
-| 11-digit integers                                                             | `numeric`                          | —                         |
+| Column values (non-missing)                                                                                                           | Elected                            | Invalid                   |
+| ------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------- | ------------------------- |
+| 100 × `2013-08-14`                                                                                                                    | `date`                             | 0                         |
+| 100 × `2013-08-14 00:00:00`                                                                                                           | `date`                             | 0                         |
+| 99 × `2013-08-14`, 1 × `2013-08-13 06:03:42`                                                                                          | `date`                             | 1 (the time-bearing cell) |
+| 99 × `2013-08-14`, 1 × `banana`                                                                                                       | `date`                             | 1                         |
+| 97 × `2013-08-14`, 3 × `2013-08-13 06:03:42`                                                                                          | `datetime` (date format)           | 0                         |
+| 95 × `2013-08-14`, 5 × `banana`                                                                                                       | not temporal (categorical or text) | —                         |
+| 100 × `09:30` / `17:45:10` mix                                                                                                        | `time`                             | 0                         |
+| 50 × `2013-08-14`, 50 × `09:30`                                                                                                       | not temporal                       | —                         |
+| header `value`: non-consecutive seconds such as `999999000`, `999999731`, `1000000417`, `1000086400` (9 and 10 digits, spanning 2001) | `datetime` (epoch `s`)             | 0                         |
+| `1000000000`, `1000000001`, … strictly +1                                                                                             | `numeric`, identifier hint         | —                         |
+| 11-digit integers                                                                                                                     | `numeric`                          | —                         |
 
 **Pass 2 (`src/features/data/ingestion/pipeline.ts`)**
 
@@ -291,6 +291,8 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
     - `date`, `time` and `datetime` are ineligible as targets (`INELIGIBLE_DATETIME`, "Date and time columns cannot be targets.") and as features;
     - earliest and latest values show at the column's precision, with UTC stated only for datetime.
 - [ ] `specification/components/sidepanel.md` §2 `column` row, §3 temporal bullet and definition coverage: seven discriminants; date and time display without "UTC"; inspector stories cover all seven types.
+- [ ] `specification/components/sidebar.md:43`: the type-label list includes `Date` and `Time` beside `Date/time`.
+- [ ] `specification/TODO.md:20,28,30`: the resolved notes name `date`, `time` and `datetime` as unsupported or UTC-displayed types where they now name only `datetime`.
 - [ ] `specification/FUTURE.md:19`: datetime feature engineering covers `date`, `time` and `datetime` columns. Add two items: user control over a column's temporal type, and user control over epoch-timestamp detection (D10). Also add 12-hour clocks for time-only columns and nanosecond epochs as further formats.
 
 ## Implementation tasks
@@ -348,16 +350,19 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
 - **Verification:** `bun test tests/cells.test.ts`, `bun run check`, `bun run lint`, `bun run format <changed files>`
 - **Progress:** [ ] Not started
 
-### T3 — Profiler election and Pass-2 statistics
+### T3 — Profiler election, Pass-2 statistics and sample datasets
 
 - **Depends on:** T2
-- **Risk:** needs care — election order and invalid counting decide every uploaded column's type.
-- **Likely files:** `src/common/storage/profiler.ts`, `src/common/storage/cells.ts`, `src/features/data/ingestion/pipeline.ts`, `tests/profiler.test.ts`, `tests/ingestion-pipeline.test.ts`, `tests/cells.test.ts`
-- **Must not touch:** `src/features/data/ingestion/limits.ts` — thresholds and checkpoints are unchanged.
+- **Risk:** needs care — election order and invalid counting decide every uploaded column's type. Ungated epoch detection may also re-type a column in another sample. `tests/sample-datasets-content.test.ts:21-29` runs the generator over real content inside `bun run check`, so the COMPAS descriptor must change in this same task.
+- **Likely files:** `src/common/storage/profiler.ts`, `src/common/storage/cells.ts`, `src/features/data/ingestion/pipeline.ts`, `scripts/generate-datasets.ts`, `content/datasets/compas-recidivism/descriptor.ts`, `content/datasets/compas-recidivism/datasheet.md`, `tests/profiler.test.ts`, `tests/ingestion-pipeline.test.ts`, `tests/cells.test.ts`, `tests/*generate-datasets*.test.ts`
+- **Must not touch:** `src/features/data/ingestion/limits.ts` — thresholds and checkpoints are unchanged; `content/datasets/*/data.csv` — curated sources.
 - **Implementation:**
     - Make the _Interfaces_ → "Profiler counters and election" and "Pass 2" changes, D11 and D12.
     - Remove the header-gated epoch path, then delete `headerSuggestsTime` and its tests.
-    - Compute `precision` in Pass 2, replacing T1's placeholder.
+    - Compute `precision` in Pass 2 for `time` and `datetime`.
+    - In `scripts/generate-datasets.ts:275-276`, reject a target whose type is temporal (`isTemporalColumnType`) rather than only `datetime`. The `implicitMissingValues` rule already allows only numeric and categorical columns (`:229-239`), so it needs no change.
+    - Set `dataType: 'date'` on the 12 date-only COMPAS columns. `c_jail_in` and `c_jail_out` stay `'datetime'`. Update the type column of the COMPAS `datasheet.md` column table to match.
+    - Run `bun run check` and `bun run build`. If either reports any other descriptor mismatch, **stop and escalate** with the column, its old and new types and three sample values. Do not edit that descriptor. A numeric column that turns into `datetime` is the D5 risk materialising.
 - **Acceptance criteria:**
     - [ ] TEMP-AC-8: every row of the _Worked examples_ table holds as a `tests/profiler.test.ts` case, including `invalidCount`. For the 99/1 time-bearing case, `invalidExamples` contains `2013-08-13 06:03:42`.
     - [ ] TEMP-AC-9: a DMY-forced year-last column with only date-only values elects `date` with `order: 'DMY'`. The same values with one `14/08/2013 10:00` per 20 cells elect `datetime`.
@@ -368,7 +373,9 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
         - a datetime column with seconds gets `'second'`;
         - an epoch-`ms` column with non-zero milliseconds gets `'millisecond'`.
     - [ ] TEMP-AC-12: a descriptor override to `date` on a date-only column produces `DateColumnStats` with the counters' order. Existing override tests still pass.
-- **Verification:** `bun test tests/profiler.test.ts`, `bun test tests/ingestion-pipeline.test.ts`, `bun run check`, `bun run lint`, `bun run format <changed files>`
+    - [ ] TEMP-AC-16: `bun run check` (including `tests/sample-datasets-content.test.ts`) and `bun run build` pass. In the generated COMPAS descriptor, 12 columns are `date` and 2 are `datetime`, and every other sample's column types are unchanged. The COMPAS datasheet column table shows the same types.
+    - [ ] TEMP-AC-17: the generator rejects a `date`, `time` or `datetime` target candidate (existing generator test extended, or a focused new case).
+- **Verification:** `bun test tests/profiler.test.ts`, `bun test tests/ingestion-pipeline.test.ts`, `bun run check`, `bun run build`, `bun run lint`, `bun run format <changed files>`
 - **Progress:** [ ] Not started
 
 ### T4 — Temporal display in the preview table and column inspector
@@ -379,7 +386,7 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
 - **Must not touch:** `css/`, `src/styles/`, `specification/mockups/` — text-only change; no styles.
 - **Implementation:**
     - Add the formatter (D7), then use it in `formatPreviewRows` and in a generalised `renderTemporalStats` that replaces `renderDatetimeStats`. Dispatch it for every temporal type, with D8 labels.
-    - Replace the `DateAndTime` story with a `Datetime` story (`precision: 'second'`, ISO date format), and add `Date` and `Time` stories. Keep the existing Long-label and RTL stories working with a temporal column.
+    - Replace the `DateAndTime` story with a `Datetime` story (`precision: 'second'`, ISO date format), and add `Date` and `Time` stories. The existing Long-label and RTL stories use categorical columns and stay unchanged.
     - Follow `lit-component-implementer`.
 - **Acceptance criteria:**
     - [ ] TEMP-AC-13: `formatTemporalValue` returns the four _Interfaces_ examples. It also gives `'millisecond'` time `86_399_999` → `23:59:59.999` and a `'minute'` datetime → `2013-08-13T06:03Z`. The module uses only `toISOString()` and integer arithmetic, never local-time `Date` getters or `Intl`, so its output does not depend on the zone (checked by code review against this criterion).
@@ -391,27 +398,11 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
 - **Verification:** `bun test tests/temporal-format.test.ts`, `bun run check`, `bun run test:stories`, `bun run test:e2e tests/data-upload.e2e.ts`, `bun run lint`, `bun run format <changed files>`. The existing `DATA-UP-2` failure is listed in `tests/known-failures.ts` and is not a regression.
 - **Progress:** [ ] Not started
 
-### T5 — Sample datasets and generator guards
+### T5 — Sync specification and Help text
 
-- **Depends on:** T3
-- **Risk:** needs care — ungated epoch detection may re-type a column in another sample.
-- **Likely files:** `content/datasets/compas-recidivism/descriptor.ts`, `scripts/generate-datasets.ts`, `tests/*generate-datasets*.test.ts`
-- **Must not touch:** `content/datasets/*/data.csv` — curated sources; `content/datasets/*/datasheet.md` — no prose change is needed.
-- **Implementation:**
-    - In the generator, reject a target whose type is temporal (`isTemporalColumnType`), and extend the `implicitMissingValues` rejection from `datetime` to all temporal types.
-    - Set `dataType: 'date'` on the 12 date-only COMPAS columns. `c_jail_in` and `c_jail_out` stay `'datetime'`.
-    - Run `bun run build`. If it reports any other descriptor mismatch, **stop and escalate** with the column, its old and new types and three sample values. Do not edit that descriptor. A numeric column that turns into `datetime` is the D5 risk materialising.
-- **Acceptance criteria:**
-    - [ ] TEMP-AC-16: `bun run build` passes. In the generated COMPAS descriptor, 12 columns are `date` and 2 are `datetime`, and every other sample's column types are unchanged.
-    - [ ] TEMP-AC-17: the generator rejects a temporal target candidate and `implicitMissingValues` on a `date` or `time` column (existing generator tests extended, or a focused new case).
-- **Verification:** `bun run build`, `bun run check`, `bun run lint`, `bun run format <changed files>`
-- **Progress:** [ ] Not started
-
-### T6 — Sync specification and Help text
-
-- **Depends on:** T3, T4, T5
+- **Depends on:** T3, T4
 - **Risk:** routine
-- **Likely files:** `specification/data-ingestion.md`, `specification/state-and-storage.md`, `specification/sample-datasets.md`, `specification/preview-dataset.md`, `specification/workflow-steps.md`, `specification/app-state-and-navigation.md`, `specification/components/sidepanel.md`, `specification/FUTURE.md`, `specification/plans/temporal-column-types.md`, `specification/plans/README.md`, `content/en/pages/help.md`
+- **Likely files:** `specification/data-ingestion.md`, `specification/state-and-storage.md`, `specification/sample-datasets.md`, `specification/preview-dataset.md`, `specification/workflow-steps.md`, `specification/app-state-and-navigation.md`, `specification/components/sidepanel.md`, `specification/components/sidebar.md`, `specification/TODO.md`, `specification/FUTURE.md`, `specification/plans/temporal-column-types.md`, `specification/plans/README.md`, `content/en/pages/help.md`
 - **Must not touch:** `specification/mockups/` — no visual change.
 - **Implementation:**
     - Apply every _Specification changes_ item in present tense, per the `specification/README.md` writing rules.
@@ -434,7 +425,8 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
 
 - **Blocking:** None
 - **Non-blocking:**
-    - **Ungated epochs (D5) misread integer columns.** Any integer column whose values are 98 % within 315,532,800–2,524,607,999 (or the ms/µs equivalents) becomes `datetime` and therefore model-ineligible: US phone numbers (`2125551234` → 2037), 9–10-digit account numbers, pence amounts. The user accepted this on 2026-11-25. Mitigations: D6 catches sequential ids; T5 escalates if a sample re-types; FUTURE.md records a user override (D10). Owner: maintainer.
+    - **Ungated epochs (D5) misread integer columns.** Any integer column whose values are 98 % within 315,532,800–2,524,607,999 (or the ms/µs equivalents) becomes `datetime` and therefore model-ineligible: US phone numbers (`2125551234` → 2037), 9–10-digit account numbers, pence amounts. The user accepted this on 2026-11-25. Mitigations: D6 catches sequential ids; T3 escalates if a sample re-types; FUTURE.md records a user override (D10). Owner: maintainer.
+    - **D6 turns 1 Hz epoch logs into numeric.** An epoch-seconds column sampled exactly once per second, with no gaps, is strictly +1 and stays `numeric` with an identifier hint. Accepted: such logs are rare in teaching datasets compared with sequential ids, and the FUTURE.md override (D10) is the remedy. Owner: maintainer.
     - **Mostly-date columns lose a few cells (D3).** Under `date`, up to 2 % of cells with a real time are `null`. They are visible as invalid count and examples, and the FUTURE.md override (D10) is the remedy.
     - **`MM:SS` durations read as times.** A lap-time column whose minutes never exceed 23 elects `time`. Accepted: durations are out of scope.
     - **Stale stored datasets (D9).** Datasets ingested before this change keep `datetime` for date-only columns until reloaded. Reloading creates a new dataset id, which resets the target and models as any reload does today.
@@ -463,6 +455,7 @@ None.
 
 ## Change log
 
-| When (UTC)           | Change        | Reason                                                                                                                              |
-| -------------------- | ------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-11-25T10:49:58Z | Initial draft | User request: split `datetime` into `date`, `time` and `datetime`; widen epoch support. Decisions D3, D4, D5, D9 from user answers. |
+| When (UTC)           | Change               | Reason                                                                                                                              |
+| -------------------- | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-25T10:49:58Z | Initial draft        | User request: split `datetime` into `date`, `time` and `datetime`; widen epoch support. Decisions D3, D4, D5, D9 from user answers. |
+| 2026-11-25T11:32:59Z | Revised after review | Fold in the 2026-11-25T11:31:22Z changes-requested findings (see _Review fixes_).                                                   |
