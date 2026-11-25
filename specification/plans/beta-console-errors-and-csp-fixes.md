@@ -1,6 +1,6 @@
-# Beta console errors, Lit production mode and CSP inline-style fixes
+# Beta console errors, CSP, dataset switching and modal fixes
 
-**Status:** draft | **Updated:** 2026-11-24T13:46:55Z
+**Status:** draft | **Updated:** 2026-11-25T13:57:01Z
 **Authors:** Google Antigravity (Gemini 4 Hydrogen High) | **Created:** 2026-11-24T13:46:55Z
 **Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
@@ -8,16 +8,19 @@
 
 ## Goal
 
-**Current behaviour:** Deploying to `beta.samata.ml` produces four classes of browser console errors and warnings observed on 2026-11-24:
+**Current behaviour:** Issues observed on `beta.samata.ml`:
 
 1. **Lit dev mode in production (`app.*.js`):** `scripts/build-assets.ts` calls `Bun.build(...)` without `NODE_ENV=production` (`package.json` `"build"` and `.github/workflows/ci.yml` `deploy`), causing Lit's `"development"` package export condition (`./development/*.js`) to be bundled instead of the `"default"` production files.
 2. **CSP `style-src-attr 'none'` violations (`AppConfusionFlowchart`, `AppComparisonTable`, plus latent sites):** `public/_headers` sets `style-src-attr 'none'`, which blocks HTML `style="..."` attributes including Lit's `styleMap(...)`. This strips runtime `inline-size` widths from `.segment` in `app-confusion-flowchart.ts` and `.bar` in `app-comparison-table.ts`. The same pattern exists in `app-model-builder-view.ts` (`<fieldset style="...">`) and `ui-virtual-table.ts` (`style="block-size: ..."` on `.rail-spacer-top` / `.rail-spacer-bottom`).
 3. **Lit `change-in-update` warnings (`AppModelResults`, `AppResultsView`):** Both components call store loaders/actions inside `updated()` that synchronously mutate Nanostores subscribed via `StoreController`, scheduling a new Lit update while `_$didUpdate()` is completing.
 4. **Blocked native `autofocus` warning (`2:1` on `/models/2`):** `app-model-builder-view.ts` binds `?autofocus=${this.restoreSubmitFocus}` onto `<app-training-setup>` specifically when an element inside the training step already has focus, triggering native HTML autofocus processing while `document.activeElement` is non-null.
+5. **Broken "Change Dataset" flow leaving `/data` empty:** `AppDataView.connectedCallback()` calls `this.fetchCatalogue()` only when `/data` mounts in selection mode. When `/data` mounts in preview mode (e.g. after reload with a dataset loaded), `catalogue` stays `null` (`catalogueStatus === 'idle'`). Confirming **Change Dataset** clears `dataset` and switches `data.mode` to `'select'` in place via `renderAppShell(root)`, and `AppDataView.updated()` resets `tableScrollRestored` without fetching the catalogue, leaving `/data` empty below `.page-header`. No E2E test exercises this transition.
+6. **`.modal-header` scrolls off screen:** `src/styles/dialog.styles.ts` makes `<dialog>` the scrollport (`padding: 1.5rem; max-block-size: calc(100dvh - 2rem); overflow: auto`) with an unpinned `.modal-header`, so long dialogs (such as Help, Privacy, About, or Datasheets) scroll `.modal-header` and its close button out of view.
+7. **No backdrop-click modal dismissal:** Modal `<dialog>` elements rely solely on Esc and explicit buttons (`showModal()` default `closerequest`). Clicking on the backdrop outside the dialog box does not dismiss informational/dismissible modals, and `app-model-description-dialog.ts` / `app-model-builder-view.ts` lack `@close` state synchronisation if closed outside their button handlers.
 
-**Target behaviour:** Production builds bundle Lit's production exports (`NODE_ENV=production`), all components comply with `style-src-attr 'none'` without dropping computed geometry, `app-model-results` and `app-results-view` do not schedule synchronous re-updates inside `updated()`, and `<app-training-setup>` restores focus without triggering native HTML `autofocus` warnings. Production-served E2E checks assert zero CSP violations and zero console errors or Lit warnings.
+**Target behaviour:** Production builds bundle Lit's production exports (`NODE_ENV=production`), all components comply with `style-src-attr 'none'` without dropping computed geometry, `app-model-results` and `app-results-view` do not schedule synchronous re-updates inside `updated()`, `<app-training-setup>` restores focus without triggering native HTML `autofocus` warnings, confirming **Change Dataset** on `/data` reliably loads and displays the dataset selection cards (covered by E2E tests), `.modal-header` remains sticky at the top of scrolled `<dialog>` surfaces without obscuring focused elements, and dismissible modal `<dialog>` elements close on backdrop click across Chromium, Firefox, and WebKit (Safari) while keeping mandatory beta onboarding and in-flight/busy confirmations protected.
 
-**Why:** Eliminate broken bar/spacer styling under production CSP, remove unnecessary double renders and dev-mode overhead in production, and establish a clean console baseline for `beta.samata.ml`. _(Intentionally left in `draft` so the maintainer can append additional beta issues as they arise.)_
+**Why:** Fix functional regressions, broken CSP-blocked styling, and UX friction discovered on `beta.samata.ml`, and establish a clean console and E2E regression baseline. _(Intentionally left in `draft` so the maintainer can append additional beta issues as they arise.)_
 
 ## Scope
 
@@ -27,8 +30,11 @@
 - Replacing `style="..."` attributes and `styleMap(...)` bindings across `src/` with CSP-safe `static styles` or CSSOM (`element.style.*`) assignments.
 - Deferring or restructuring store-mutating side effects out of `updated()` in `app-model-results.ts` and `app-results-view.ts` while preserving `whenSettled()` and loading/error states.
 - Replacing the native `autofocus` attribute on `<app-training-setup>` with a non-native reactive property (`restoreFocus`), and auditing `<dialog>` `autofocus` behaviour for stray warnings.
+- Fixing `AppDataView` so transitioning from preview mode to selection mode via **Change Dataset** fetches the sample catalogue if unpopulated, plus dedicated Playwright E2E coverage.
+- Making `.modal-header` sticky in `dialog.styles.ts` (and compatible across local dialog overrides) with `scroll-padding-block-start` so focused controls are not obscured.
+- Enabling backdrop-click light-dismiss on dismissible `<dialog>` elements (`closedby="any"` plus Safari/WebKit pointer-bounds fallback), synchronising `@close` handlers, and preserving beta welcome and busy-confirmation guards.
 - Adding production-CSP (`DIST_URL`) Playwright assertions for zero `securitypolicyviolation` events and zero console errors/Lit warnings.
-- Syncing `specification/COMPONENTS.md`, `specification/components/training-setup.md`, and `specification/ARCHITECTURE.md`.
+- Syncing affected specifications (`COMPONENTS.md`, `ARCHITECTURE.md`, `components/training-setup.md`, `components/dialog.md`, `components/content-modal.md`).
 - Placeholder for additional `beta.samata.ml` issues to be appended by the maintainer before `/verify-plan`.
 
 **Out of scope**
@@ -36,48 +42,60 @@
 - Weakening `public/_headers` CSP (keep `style-src-attr 'none'` strict).
 - Modifying `../web-ml`, `node_modules/`, `vendor/web-ml/`, or `bun.lock`.
 - Redesigning Observable Plot chart rendering (`PlotController` already uses CSSOM `.style` assignments).
+- Replacing native `<dialog>` with a custom modal wrapper element.
 
 **Constraints and invariants**
 
 - Keep `public/_headers` `style-src-attr 'none'`, COOP `same-origin`, COEP `require-corp`, and CORP `same-origin` unchanged.
 - Preserve `AppModelResults.whenSettled()` and `AppResultsView.whenSettled()` settlement semantics and scroll restoration timing.
 - Preserve `AppTrainingSetup` focus restoration on cancellation/failure (`tests/training-panels.e2e.ts` L151–L188) and WCAG 2.2 AA focus behaviour.
-- Keep `app-confusion-flowchart`, `app-comparison-table`, and `ui-virtual-table` closed public APIs unchanged; document any `app-training-setup` property addition in `specification/components/training-setup.md`.
+- `AppDataView` must not trigger Lit `change-in-update` warnings when initiating `fetchCatalogue()` on preview → select transition, and must handle network errors/Retry cleanly.
+- Beta `app-welcome-modal` (`$betaDeployment === true`) must remain non-dismissible until **Get Started** is clicked (`beta-release-and-ci-cd.md` D9), and `change-dataset-modal` / target `confirm-dialog` must not dismiss while a destructive transition or publication check is busy/pending.
+- Sticky `.modal-header` must preserve `modal-dialog` visual parity at scroll offset `0` (`tests/visual-parity/map.ts`) and satisfy WCAG 2.4.11 (Focus Not Obscured) via `scroll-padding-block-start`.
+- Backdrop click detection fallback must require both `pointerdown` and `pointerup` outside `dialog.getBoundingClientRect()`, never closing on text-selection drags or clicks on dialog padding/children.
 - Maintain RTL, 200% zoom, forced-colours, and token compliance (`tests/style-tokens.test.ts`).
 
 ## Required reading
 
 - `AGENTS.md` §Verification Commands, §Git workflow, §Rules.
-- `specification/COMPONENTS.md` §§3–10 (note §4 `styleMap` guidance conflicts with `style-src-attr 'none'` and is updated in T6).
+- `specification/COMPONENTS.md` §§3–10 (note §4 `styleMap` guidance conflicts with `style-src-attr 'none'` and is updated in T9).
 - `specification/ARCHITECTURE.md` §Tech Stack & Tooling, §Delivery and Caching.
+- `specification/workflow-steps.md` §1 (Load Data / Change Dataset), §2 (Model Discard Warning).
 - `specification/components/model-results.md` §§1–8.
 - `specification/components/results-comparison.md` §§1–8.
 - `specification/components/training-setup.md` §§1–8.
 - `specification/components/virtual-table.md` §§1–8.
+- `specification/components/dialog.md` §§1–8.
+- `specification/components/content-modal.md` §§1–8.
 
 ## Codebase context
 
-Facts verified by `codebase-scout` on 2026-11-24:
+Facts verified by `codebase-scout` on 2026-11-24 and 2026-11-25:
 
-- **Relevant specifications:** `specification/COMPONENTS.md` (partial) §4 L74 prescribes `styleMap()` for runtime inline styles, conflicting with `public/_headers` `style-src-attr 'none'`. `specification/components/training-setup.md` (implemented) §3 lists a closed `attribute: false` API without `autofocus`. `specification/components/model-results.md` (implemented), `specification/components/results-comparison.md` (implemented), `specification/components/virtual-table.md` (implemented), `specification/ARCHITECTURE.md` (partial).
-- **Build and CI:** `package.json#L7,L73` (`"build": "bun run scripts/build.ts"`, `"lit": "^3.3.3"`); `scripts/build.ts#L1-L83`; `scripts/build-assets.ts#L216-L227,L290-L305` (omits `NODE_ENV=production` / production conditions for `Bun.build`); `.github/workflows/ci.yml#L61,L108,L145`; `node_modules/@lit/reactive-element/package.json#L22-L31`, `node_modules/lit-html/package.json#L18-L27`, `node_modules/lit-element/package.json#L21-L25`.
-- **CSP and inline styles:** `public/_headers#L2` (`style-src 'self' 'unsafe-inline'; style-src-attr 'none';`); `scripts/release-headers.ts#L18-L55,L69-L191`; `src/features/results/app-confusion-flowchart.ts#L4,L122-L124`; `src/features/results/app-comparison-table.ts#L4,L135`; `src/features/models/app-model-builder-view.ts#L1259`; `src/components/ui-virtual-table.ts#L491,L519`; `src/features/results/charts/plot-controller.ts#L122-L127` (already uses CSSOM `.style`); `src/common/content/fragment-policy.ts#L44-L55,L127-L160` (already strips `style` in Markdown fragments).
-- **Lit `change-in-update`:** `src/features/results/app-model-results.ts#L522-L525,L583-L586` (`loadModelResults` in `updated()`); `src/stores/model-results.store.ts#L49,L54,L57-L64,L97-L108` (`evict` / `read` synchronously sets `$modelResults`); `src/features/results/app-results-view.ts#L207-L212,L329-L356` (`loadComparisonResults`, `selectComparisonGroup`, `requestComparisonAnalysis`, `clearRopeAnalysis` in `updated()`); `src/stores/comparison.store.ts#L117-L124,L132-L145,L182-L248`.
+- **Relevant specifications:** `specification/COMPONENTS.md` (partial) §4 L74 prescribes `styleMap()` for runtime inline styles, conflicting with `public/_headers` `style-src-attr 'none'`. `specification/components/training-setup.md` (implemented) §3 lists a closed `attribute: false` API without `autofocus`. `specification/components/dialog.md` (implemented) §5 documents `dialog` padding/overflow and `.modal-header`, §11 excludes light-dismiss. `specification/components/content-modal.md` (implemented), `specification/components/welcome-modal.md` (implemented), `specification/components/model-results.md` (implemented), `specification/components/results-comparison.md` (implemented), `specification/components/virtual-table.md` (implemented), `specification/ARCHITECTURE.md` (partial), `specification/workflow-steps.md` (partial).
+- **Build and CI:** `package.json#L7,L73` (`"build": "bun run scripts/build.ts"`, `"lit": "^3.3.3"`); `scripts/build.ts#L1-L83`; `scripts/build-assets.ts#L216-L227,L290-L305` (omits `NODE_ENV=production`); `.github/workflows/ci.yml#L61,L108,L145`; `node_modules/@lit/reactive-element/package.json#L22-L31`, `node_modules/lit-html/package.json#L18-L27`, `node_modules/lit-element/package.json#L21-L25`.
+- **CSP and inline styles:** `public/_headers#L2` (`style-src 'self' 'unsafe-inline'; style-src-attr 'none';`); `scripts/release-headers.ts#L18-L55,L69-L191`; `src/features/results/app-confusion-flowchart.ts#L4,L122-L124`; `src/features/results/app-comparison-table.ts#L4,L135`; `src/features/models/app-model-builder-view.ts#L1259`; `src/components/ui-virtual-table.ts#L491,L519`; `src/features/results/charts/plot-controller.ts#L122-L127` (already uses CSSOM `.style`); `src/common/content/fragment-policy.ts#L44-L55,L127-L160`.
+- **Lit `change-in-update`:** `src/features/results/app-model-results.ts#L522-L525,L583-L586` (`loadModelResults` in `updated()`); `src/stores/model-results.store.ts#L49,L54,L57-L64,L97-L108`; `src/features/results/app-results-view.ts#L207-L212,L329-L356`; `src/stores/comparison.store.ts#L117-L124,L132-L145,L182-L248`.
 - **Autofocus:** `src/features/models/app-model-builder-view.ts#L549,L575-L580,L1898`; `src/features/models/app-training-setup.ts#L145-L149`; `src/features/shell/app-welcome-modal.ts#L187`; `src/features/target/app-target-view.ts#L567`.
-- **Tests and commands:** `tests/build-cache-invalidation.test.ts#L94-L379`, `tests/headers-file.test.ts`, `tests/style-tokens.test.ts#L180-L327`, `tests/virtual-table.e2e.ts#L6-L431`, `tests/model-results.e2e.ts#L50-L468`, `tests/comparison.e2e.ts#L4-L440`, `tests/comparison-charts.e2e.ts#L11-L89`, `tests/training-panels.e2e.ts#L151-L188`, `tests/telemetry-acceptance.e2e.ts#L280-L296`, `tests/journeys/iris-classification.e2e.ts`, `tests/journeys/penguins-classification.e2e.ts`. Gap: no test currently asserts Lit production mode in `dist/`, zero `securitypolicyviolation` events, or zero browser `console` warnings/errors.
-- **Web guidance:** None — standard CSSOM, HTML `autofocus`, and CSP `style-src-attr` mechanics.
-- **Visual reference:** Existing mockups and `specification/COMPONENTS.md` — no visual design change intended; fixes restore intended bar and virtual-spacer geometry blocked by CSP.
-- **Domain skills:** `lit-component-implementer` for T2, T3, T4.
+- **Change Dataset & `/data`:** `src/features/data/app-dataset-preview.ts#L26,L231-L238,L353-L355` (`app-preview-change-dataset`); `src/features/data/app-data-view.ts#L51,L261-L285,L308-L327,L486-L540,L542-L627,L670-L707` (`fetchCatalogue()` only in `connectedCallback` `else` branch, omitted in `updated()` `else` branch); `src/stores/dataset.store.ts#L309-L318` (`changeDataset`); `src/stores/app.store.ts#L191-L247` (`reduceDatasetReplacement`, `setDataMode`); `src/app.ts#L97-L98,L309-L315` (updates `<app-data-view>` in place).
+- **Dialogs & `.modal-header`:** `specification/mockups/css/modal.css#L1-L37`; `src/styles/dialog.styles.ts#L7-L44`; `src/styles/dialog.stories.ts#L6-L30`; `src/features/shell/app-welcome-modal.ts#L51-L53,L98-L169` (beta blocks `cancel` / reopens on `close`); `src/features/shell/app-content-dialog.ts#L63-L69,L103-L171`; `src/features/data/app-datasheet-dialog.ts#L16-L55,L183-L212,L252-L272` (`.modal`); `src/features/data/app-upload-dataset-dialog.ts#L30-L56,L241-L274,L370-L424` (`.modal`); `src/features/models/app-model-description-dialog.ts#L39-L78,L213-L236,L317-L336` (`.modal`, lacks `@close`); `src/features/data/app-data-view.ts#L170-L200,L505-L511,L670-L707` (`.modal`); `src/features/target/app-target-view.ts#L125-L155,L311-L345,L541-L584`; `src/features/models/app-model-builder-view.ts#L453-L483,L733-L764,L1999-L2021` (`.confirm-dialog` lacks `@cancel`/`@close`).
+- **Tests and commands:** `tests/build-cache-invalidation.test.ts#L94-L379`, `tests/headers-file.test.ts`, `tests/style-tokens.test.ts#L180-L327`, `tests/virtual-table.e2e.ts#L6-L431`, `tests/model-results.e2e.ts#L50-L468`, `tests/comparison.e2e.ts#L4-L440`, `tests/comparison-charts.e2e.ts#L11-L89`, `tests/training-panels.e2e.ts#L151-L188`, `tests/data-selection.e2e.ts#L151-L202`, `tests/data-preview.e2e.ts`, `tests/data-upload.e2e.ts#L19-L108`, `tests/content-dialog.e2e.ts`, `tests/content.e2e.ts`, `tests/app-shell.e2e.ts#L519-L522`, `tests/target.e2e.ts#L139-L304`, `tests/a11y.e2e.ts#L225-L229` (dead `changeBtn` check with stale `.btn-danger`), `tests/telemetry-acceptance.e2e.ts#L280-L296`.
+- **Web guidance:** `light-dismiss-a-dialog`, `dialog`, `state-aware-sticky-headers` (skill version `2026_11_09-5bcc021b`) — `closedby="any"` is Limited Availability (Chrome 134+, Edge 134+, Firefox 141+; unsupported in Safari), so a `!('closedBy' in HTMLDialogElement.prototype)` `pointerdown`/`pointerup` bounds fallback is mandatory; `scroll-padding-block-start` prevents sticky headers from obscuring focused elements (WCAG 2.4.11).
+- **Visual reference:** `specification/mockups/00_first-load.html`, `specification/mockups/css/modal.css`, and `tests/visual-parity/map.ts` (`modal-dialog` entry has no drift exemption).
+- **Domain skills:** `lit-component-implementer` for T2, T3, T4, T5, T6, T7.
 - **Assumptions requiring verification:** Confirm during T4 whether `<button autofocus>` inside `<dialog>` in `app-welcome-modal.ts` or `app-target-view.ts` emits any `Autofocus processing was blocked` warning in Chromium, Firefox, or WebKit when navigated or opened.
 
 ## Technical decisions
 
-| Decision                     | Chosen approach and rationale                                                                                                                                                                                                                                                                          | Rejected alternative / trade-off                                                                                                    |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| Production Lit bundling      | Ensure `NODE_ENV=production` is set for `buildProductionBundle` (`scripts/build-assets.ts` / `package.json` `build` script and `ci.yml` as needed), restoring prior `NODE_ENV` if `buildProductionBundle` sets it programmatically during `runBuild` in tests.                                         | Passing `conditions: ['production']` alone to `Bun.build` still resolved Lit's `./development/*` entrypoints in local verification. |
-| CSP-compliant dynamic sizing | Keep `style-src-attr 'none'` in `public/_headers`. Move static `style="..."` to `static styles`, and apply runtime-computed dimensions (`inlineSize`, `blockSize`/`height`) via CSSOM (`element.style.*` in Lit `ref()` / `updated()`).                                                                | Allowing `'unsafe-inline'` or hashes in `style-src-attr` weakens CSP and fails for continuous percentage widths.                    |
-| Post-render store loading    | Defer `loadModelResults`, `loadComparisonResults`, `selectComparisonGroup`, `requestComparisonAnalysis`, and `clearRopeAnalysis` out of synchronous `updated()` execution (e.g. via `queueMicrotask` guarded by connection/identity checks), or avoid synchronous store writes inside `_$didUpdate()`. | Suppressing warnings only via Lit production mode leaves redundant double-render cycles in place.                                   |
-| Non-native focus restoration | Replace `?autofocus=${this.restoreSubmitFocus}` on `<app-training-setup>` with an unreflected property `restoreFocus: boolean = false` (`attribute: false`), focusing `button[type="submit"]` in `firstUpdated()` when `this.restoreFocus && !this.controlsDisabled`.                                  | Keeping HTML `autofocus` triggers native browser autofocus processing while `[data-testid="training-step"]` already holds focus.    |
+| Decision                                 | Chosen approach and rationale                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Rejected alternative / trade-off                                                                                                                                                                                                     |
+| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Production Lit bundling                  | Ensure `NODE_ENV=production` is set for `buildProductionBundle` (`scripts/build-assets.ts` / `package.json` `build` script and `ci.yml` as needed), restoring prior `NODE_ENV` if `buildProductionBundle` sets it programmatically during `runBuild` in tests.                                                                                                                                                                                                                                                                    | Passing `conditions: ['production']` alone to `Bun.build` still resolved Lit's `./development/*` entrypoints in local verification.                                                                                                  |
+| CSP-compliant dynamic sizing             | Keep `style-src-attr 'none'` in `public/_headers`. Move static `style="..."` to `static styles`, and apply runtime-computed dimensions (`inlineSize`, `blockSize`/`height`) via CSSOM (`element.style.*` in Lit `ref()` / `updated()`).                                                                                                                                                                                                                                                                                           | Allowing `'unsafe-inline'` or hashes in `style-src-attr` weakens CSP and fails for continuous percentage widths.                                                                                                                     |
+| Post-render store loading                | Defer `loadModelResults`, `loadComparisonResults`, `selectComparisonGroup`, `requestComparisonAnalysis`, and `clearRopeAnalysis` out of synchronous `updated()` execution (e.g. via `queueMicrotask` guarded by connection/identity checks).                                                                                                                                                                                                                                                                                      | Suppressing warnings only via Lit production mode leaves redundant double-render cycles in place.                                                                                                                                    |
+| Non-native focus restoration             | Replace `?autofocus=${this.restoreSubmitFocus}` on `<app-training-setup>` with an unreflected property `restoreFocus: boolean = false` (`attribute: false`), focusing `button[type="submit"]` in `firstUpdated()` when `this.restoreFocus && !this.controlsDisabled`.                                                                                                                                                                                                                                                             | Keeping HTML `autofocus` triggers native browser autofocus processing while `[data-testid="training-step"]` already holds focus.                                                                                                     |
+| Change Dataset catalogue fetch           | In `AppDataView`, trigger `fetchCatalogue()` whenever selection mode is active and `catalogueStatus === 'idle'` (both in `connectedCallback` and when entering selection mode after `updated()`, deferred via `queueMicrotask` or guarded in `willUpdate()` so it does not trigger `change-in-update`).                                                                                                                                                                                                                           | Unconditionally fetching on every `connectedCallback` wastes network requests in preview mode unless guarded, and wouldn't solve in-place updates from `renderAppShell`.                                                             |
+| Sticky `.modal-header` in `dialogStyles` | Keep `<dialog>` as the scroll container (preserving parity and supporting dialogs without `.modal-body`) and make `.modal-header` sticky using negative block/inline margins (`-1.5rem`) matched by `1.5rem` padding, `inset-block-start: -1.5rem`, `background-color: var(--surface)`, `z-index: 1`, and `scroll-padding-block-start` on `dialog` (WCAG 2.4.11).                                                                                                                                                                 | Requiring a new `.modal-body` scroll wrapper across all eight dialog consumers breaks `dialog.stories.ts` and un-wrapped consumers (`app-welcome-modal`, `app-upload-dataset-dialog`).                                               |
+| Backdrop click light-dismiss             | Use `closedby="any"` on dismissible `<dialog>` elements paired with a shared framework-free fallback helper for browsers lacking `'closedBy' in HTMLDialogElement.prototype` (Safari/WebKit): track `pointerdown` and `pointerup` outside `dialog.getBoundingClientRect()` and call `dialog.close()` (respecting a `canClose()` guard for busy dialogs). Add missing `@close` sync in `app-model-description-dialog.ts` and `app-model-builder-view.ts`. Keep beta `app-welcome-modal` on `closedby="none"` (no backdrop helper). | Checking `event.target === dialog` on `click` closes dialogs when clicking dialog padding/gaps or dragging text selection onto the backdrop (`modern-web-guidance` `dialog`). `closedby="any"` alone does not work in Safari/WebKit. |
 
 ### Interfaces and behaviour
 
@@ -85,13 +103,19 @@ Facts verified by `codebase-scout` on 2026-11-24:
     - Add `@property({ attribute: false }) accessor restoreFocus = false;` (default `false`, unreflected).
     - Remove `this.hasAttribute('autofocus')` check in `firstUpdated()`; replace with `if (this.restoreFocus && !this.controlsDisabled)` focusing `button[type="submit"]`.
     - In `AppModelBuilderView` (`src/features/models/app-model-builder-view.ts`), bind `.restoreFocus=${this.restoreSubmitFocus}` instead of `?autofocus=${this.restoreSubmitFocus}`.
-- **`AppConfusionFlowchart`, `AppComparisonTable`, `UiVirtualTable`:** Closed public APIs remain unchanged; `.segment` (`inlineSize`), `.bar` (`inlineSize`), and `.rail-spacer-top` / `.rail-spacer-bottom` (`blockSize` / `height`) receive their computed sizes via CSSOM rather than `style="..."` attributes.
+- **`AppConfusionFlowchart`, `AppComparisonTable`, `UiVirtualTable`:** Closed public APIs remain unchanged; `.segment`, `.bar`, and `.rail-spacer-top` / `.rail-spacer-bottom` receive computed sizes via CSSOM rather than `style="..."` attributes.
+- **`AppDataView` (`src/features/data/app-data-view.ts`):** Closed public API unchanged; `data.mode === 'select'` (or `!dataset`) with `catalogueStatus === 'idle'` initiates `fetchCatalogue()` on both initial mount and in-place transition from preview mode.
+- **Backdrop dismiss helper (`src/common/dom/dialog-backdrop.ts` or similar framework-free module, per `COMPONENTS.md` §3 >3 call sites):**
+    - Attaches `pointerdown`/`pointerup` listeners on a `<dialog>` only when `!('closedBy' in HTMLDialogElement.prototype)` (or enforces `canClose()` guard), returning a cleanup function for `disconnectedCallback()`.
+    - Dismissible dialogs (`app-content-dialog`, `app-datasheet-dialog`, `app-upload-dataset-dialog`, `app-model-description-dialog`, non-beta `app-welcome-modal`, idle `change-dataset-modal`, idle `confirm-dialog`) set `closedby="any"` (dynamically `"none"` on `app-welcome-modal` in beta mode or while confirmation dialogs are busy).
 - **Additional beta issues (pending maintainer additions):** Reserve space in `## Implementation tasks` / `## Scope` when further issues from `beta.samata.ml` are added before submission.
 
 ## Specification changes
 
-- [ ] `specification/COMPONENTS.md` §4 (`Rendering`) — Replace `styleMap()` guidance for runtime styles with CSP-safe CSSOM (`element.style.*`) or native elements (`<progress>`, SVG), explaining that `style-src-attr 'none'` blocks `style="..."` attributes; status stays `partial`.
+- [ ] `specification/COMPONENTS.md` §4 (`Rendering`), §5 (Modal overlays) — Replace `styleMap()` guidance for runtime styles with CSP-safe CSSOM (`element.style.*`) or native elements (`<progress>`, SVG) under `style-src-attr 'none'`; note sticky header and `closedby="any"` + fallback allowance for dismissible dialogs; status stays `partial`.
 - [ ] `specification/components/training-setup.md` §3 (`Public API`) — Add `restoreFocus` (`boolean`, default `false`, `attribute: false`) to the closed property table; status stays `implemented`.
+- [ ] `specification/components/dialog.md` §§5, 6, 11 — Document sticky `.modal-header`, `scroll-padding-block-start`, and `closedby="any"` light-dismiss + WebKit fallback contract; status stays `implemented`.
+- [ ] `specification/components/content-modal.md` §§3, 4, 6 — Document that backdrop click emits `app-content-dialog-close` once via native close; status stays `implemented`.
 - [ ] `specification/ARCHITECTURE.md` §Delivery and Caching — Document that production builds run with `NODE_ENV=production` so Lit resolves production exports; status stays `partial`.
 
 ## Implementation tasks
@@ -120,7 +144,7 @@ Facts verified by `codebase-scout` on 2026-11-24:
     2. In `src/features/results/app-comparison-table.ts`, remove `styleMap` and apply `inlineSize` (`${width}%`) via CSSOM (`ref()` callback or `updated()`).
     3. In `src/features/models/app-model-builder-view.ts`, move `<fieldset style="border: 0; padding: 0; margin: 0;">` styling into `static styles` for `#features-form fieldset`.
     4. In `src/components/ui-virtual-table.ts`, replace `style="block-size: ${...}px; height: ${...}px;"` on `.rail-spacer-top` and `.rail-spacer-bottom` with CSSOM (`el.style.blockSize` and `el.style.height` set via `ref()` / `updated()`).
-    5. Consider adding a static check in `tests/style-tokens.test.ts` rejecting `styleMap(` or literal `style="` in `src/` (excluding `*.stories.ts`).
+    5. Add a static check in `tests/style-tokens.test.ts` rejecting `styleMap(` or literal `style="` in `src/` (excluding `*.stories.ts`).
 - **Acceptance criteria:**
     - [ ] `BETA-ERR-2`: No non-story file in `src/` emits an HTML `style="..."` attribute or imports `styleMap`.
     - [ ] `BETA-ERR-2b`: Under `dist/_headers` CSP (`style-src-attr 'none'`), `app-confusion-flowchart` segments and `app-comparison-table` bars render with expected computed `inline-size`, `ui-virtual-table` spacers scroll accurately, and zero `securitypolicyviolation` events occur.
@@ -153,25 +177,69 @@ Facts verified by `codebase-scout` on 2026-11-24:
 - **Verification:** `bun run check`, `bun run test:stories`, `bun run test:e2e tests/training-panels.e2e.ts`
 - **Progress:** [ ] Not started
 
-### T5 — Add production-CSP and clean-console E2E regression test
+### T5 — Fix "Change Dataset" catalogue reload on `/data` and add E2E tests
 
-- **Depends on:** T1, T2, T3, T4
+- **Depends on:** None
+- **Risk:** needs care — in-place `AppDataView` transitions must avoid `change-in-update`, stale catalogue races, and dead test assertions.
+- **Likely files:** `src/features/data/app-data-view.ts`, `tests/data-preview.e2e.ts`, `tests/data-selection.e2e.ts`, `tests/a11y.e2e.ts`
+- **Must not touch:** `src/stores/dataset.store.ts`, `src/stores/app.store.ts`, `../web-ml/`
+- **Implementation:** In `AppDataView`, ensure that whenever `/data` enters selection mode (`!state.dataset || state.data.mode === 'select'`) and `this.catalogueStatus === 'idle'`, `fetchCatalogue()` is scheduled (deferred safely outside synchronous `updated()` if setting `@state()` `catalogueStatus = 'loading'`, or guarding against re-entrant updates), while keeping failure/Retry handling intact. Add Playwright E2E tests in `tests/data-preview.e2e.ts` (or `tests/data-selection.e2e.ts`) covering: (1) load dataset → reload `/data` directly in preview mode → click **Change Dataset** → confirm → sample dataset cards render and a new dataset can be loaded; (2) clicking **Change Dataset** → Cancel keeps the current preview intact. Repair the dead `changeBtn` / `.btn-danger` check in `tests/a11y.e2e.ts` if needed.
+- **Acceptance criteria:**
+    - [ ] `BETA-DATA-1`: Reloading `/data` with an active dataset and confirming **Change Dataset** loads and renders `.cards` with sample datasets without needing a page refresh.
+    - [ ] `BETA-DATA-2`: Cancelling **Change Dataset** preserves the loaded dataset preview and target/models; after confirming **Change Dataset**, loading another sample dataset succeeds.
+    - [ ] `BETA-DATA-3`: Error state when `/datasets/index.json` fails after **Change Dataset** displays the alert and Retry recovers the catalogue.
+- **Verification:** `bun run check`, `bun run test:e2e tests/data-preview.e2e.ts tests/data-selection.e2e.ts tests/a11y.e2e.ts`
+- **Progress:** [ ] Not started
+
+### T6 — Make `.modal-header` sticky across dialogs without obscuring focus
+
+- **Depends on:** None
+- **Risk:** needs care — affects `modal-dialog` visual parity (`tests/visual-parity.e2e.ts`) and multiple local dialog CSS overrides.
+- **Likely files:** `src/styles/dialog.styles.ts`, `src/styles/dialog.stories.ts`, `src/features/data/app-datasheet-dialog.ts`, `src/features/data/app-model-description-dialog.ts`, `src/features/data/app-upload-dataset-dialog.ts`, `src/features/data/app-data-view.ts`, `src/features/target/app-target-view.ts`, `src/features/shell/app-content-dialog.ts`, `tests/app-shell.e2e.ts`, `tests/visual-parity.e2e.ts`
+- **Must not touch:** `specification/mockups/`, `tests/visual-parity/map.ts` (parity should continue to pass at scroll `0`)
+- **Implementation:** Update `.modal-header` in `src/styles/dialog.styles.ts` to stick at the top of the scrolling `<dialog>` (`position: sticky; inset-block-start: -1.5rem; z-index: 1; margin-block-start: -1.5rem; margin-inline: -1.5rem; padding-block: 1.5rem 1rem; padding-inline: 1.5rem; background-color: var(--surface);`) and set `scroll-padding-block-start` on `dialog` (to at least the sticky header height) so keyboard focus inside scrolled dialogs stays unobscured (WCAG 2.4.11). Audit local `.modal-header` overrides in `app-datasheet-dialog.ts`, `app-model-description-dialog.ts`, `app-upload-dataset-dialog.ts`, `app-data-view.ts`, `app-target-view.ts`, and `app-content-dialog.ts` so `background-color` / margins / borders render cleanly in LTR, RTL, LongContent, and forced colours. Update `LongContent` story in `src/styles/dialog.stories.ts` to assert sticky header rect stays pinned when scrolled.
+- **Acceptance criteria:**
+    - [ ] `DLG-STICKY-1`: When a tall `<dialog>` (e.g. `AppContentDialog`, `AppDatasheetDialog`, `LongContent` story) scrolls vertically, `.modal-header` stays pinned at the top of the dialog viewport with opaque `var(--surface)` background and readable content beneath.
+    - [ ] `DLG-STICKY-2`: `modal-dialog` visual parity in `tests/visual-parity.e2e.ts` passes at scroll `0`, and tabbing through focusable links/buttons inside scrolled dialogs never hides the focused control behind `.modal-header`.
+- **Verification:** `bun run check`, `bun run test:stories`, `bun run test:e2e tests/app-shell.e2e.ts tests/content-dialog.e2e.ts tests/visual-parity.e2e.ts`
+- **Progress:** [ ] Not started
+
+### T7 — Add backdrop-click dismissal to dismissible modal `<dialog>` elements
+
+- **Depends on:** T6
+- **Risk:** needs care — must preserve beta onboarding enforcement, busy-state guards, Safari/WebKit compatibility, and invoker focus return.
+- **Likely files:** `src/common/dom/dialog-backdrop.ts`, `src/features/shell/app-content-dialog.ts`, `src/features/shell/app-welcome-modal.ts`, `src/features/data/app-datasheet-dialog.ts`, `src/features/data/app-upload-dataset-dialog.ts`, `src/features/models/app-model-description-dialog.ts`, `src/features/data/app-data-view.ts`, `src/features/target/app-target-view.ts`, `src/features/models/app-model-builder-view.ts`, `src/styles/dialog.stories.ts`, `tests/content-dialog.e2e.ts`, `tests/app-shell.e2e.ts`, `tests/welcome-acceptance.e2e.ts`, `tests/target.e2e.ts`
+- **Must not touch:** `src/router/`, `src/stores/persister.ts`, `../web-ml/`
+- **Implementation:**
+    1. Create a small framework-free helper (e.g. `src/common/dom/dialog-backdrop.ts`) implementing the `modern-web-guidance` `dialog-closedby` fallback for browsers lacking `'closedBy' in HTMLDialogElement.prototype` (Safari/WebKit): record `pointerdown` outside `dialog.getBoundingClientRect()`, and on `pointerup` outside `dialog.getBoundingClientRect()` call `dialog.close()` if `canClose()` allows.
+    2. Set `closedby=${...}` (`'any'` when dismissible, `'none'` when blocked — e.g. `app-welcome-modal` in `$betaDeployment`, or `change-dataset-modal` / `confirm-dialog` while `changing` / `publicationPending`) and wire the fallback helper across dismissible `<dialog>` elements (`app-content-dialog`, `app-datasheet-dialog`, `app-upload-dataset-dialog`, `app-model-description-dialog`, `app-welcome-modal`, `app-data-view`, `app-target-view`, `app-model-builder-view`).
+    3. Fix missing `@close` state synchronisation in `app-model-description-dialog.ts` and `app-model-builder-view.ts` (`confirm-dialog`) so native close via Esc or `closedby="any"` resets `open` / `pendingReopenSection` cleanly.
+    4. Add E2E and story tests in Chromium, Firefox, and WebKit for: backdrop click closes dismissible modals and restores invoker focus; dragging text selection from inside the dialog onto the backdrop does not close; clicking backdrop on beta `app-welcome-modal` or busy confirmation dialogs does not close.
+- **Acceptance criteria:**
+    - [ ] `DLG-BACKDROP-1`: Clicking and releasing on the backdrop outside any dismissible `<dialog>` closes it, emits its close intent once (`app-content-dialog-close` for content dialog), resets component state, and restores invoker focus across Chromium, Firefox, and WebKit.
+    - [ ] `DLG-BACKDROP-2`: Dragging from inside the dialog onto the backdrop, clicking dialog padding/gaps, or clicking the backdrop on beta `app-welcome-modal` or a busy confirmation dialog leaves the dialog open.
+- **Verification:** `bun run check`, `bun run test:stories`, `bun run test:e2e tests/content-dialog.e2e.ts tests/app-shell.e2e.ts tests/welcome-acceptance.e2e.ts tests/target.e2e.ts tests/data-selection.e2e.ts tests/data-upload.e2e.ts`
+- **Progress:** [ ] Not started
+
+### T8 — Add production-CSP and clean-console E2E regression test
+
+- **Depends on:** T1, T2, T3, T4, T5, T6, T7
 - **Risk:** routine
 - **Likely files:** `tests/csp-and-console.e2e.ts`
 - **Must not touch:** `public/_headers`, `src/`
-- **Implementation:** Add a Playwright test running against `DIST_URL` (which enforces `dist/_headers`) that attaches `page.on('console', ...)`, `page.on('pageerror', ...)`, and a document `securitypolicyviolation` listener across data preview (virtual table), target selection, `/models/2` training setup + single-model results, and `/results` comparison, asserting zero CSP violations, zero page errors, and zero console error/Lit-warning messages.
+- **Implementation:** Add a Playwright test running against `DIST_URL` (which enforces `dist/_headers`) that attaches `page.on('console', ...)`, `page.on('pageerror', ...)`, and a document `securitypolicyviolation` listener across data preview (virtual table), **Change Dataset** → re-load, target selection, `/models/2` training setup + single-model results, `/results` comparison, and modal open/scroll/backdrop-close, asserting zero CSP violations, zero page errors, and zero console error/Lit-warning messages.
 - **Acceptance criteria:**
-    - [ ] `BETA-ERR-5`: Production server (`DIST_URL`) flow across all four workflow steps and `/results` produces zero `securitypolicyviolation` events, zero `pageerror`s, and zero console errors or Lit warnings in Chromium, Firefox, and WebKit.
+    - [ ] `BETA-ERR-5`: Production server (`DIST_URL`) flow across all four workflow steps, `/results`, **Change Dataset**, and modals produces zero `securitypolicyviolation` events, zero `pageerror`s, and zero console errors or Lit warnings in Chromium, Firefox, and WebKit.
 - **Verification:** `bun run test:e2e tests/csp-and-console.e2e.ts`
 - **Progress:** [ ] Not started
 
-### T6 — Sync specification and run full verification
+### T9 — Sync specification and run full verification
 
-- **Depends on:** T1, T2, T3, T4, T5
+- **Depends on:** T1, T2, T3, T4, T5, T6, T7, T8
 - **Risk:** routine
-- **Likely files:** `specification/COMPONENTS.md`, `specification/components/training-setup.md`, `specification/ARCHITECTURE.md`, `specification/README.md`
+- **Likely files:** `specification/COMPONENTS.md`, `specification/components/training-setup.md`, `specification/components/dialog.md`, `specification/components/content-modal.md`, `specification/ARCHITECTURE.md`, `specification/README.md`
 - **Must not touch:** `src/`, `css/`, `scripts/`, `tests/`
-- **Implementation:** Update `specification/COMPONENTS.md` §4 (`Rendering`), `specification/components/training-setup.md` §3 (`Public API`), and `specification/ARCHITECTURE.md` §Delivery and Caching to reflect the implemented rules. Verify `specification/README.md` status alignment and run all verification gates.
+- **Implementation:** Update `specification/COMPONENTS.md`, `specification/components/training-setup.md`, `specification/components/dialog.md`, `specification/components/content-modal.md`, and `specification/ARCHITECTURE.md` to reflect all implemented changes. Verify `specification/README.md` status alignment and run all verification gates.
 - **Acceptance criteria:**
     - [ ] Every item under `## Specification changes` is complete and accurate.
     - [ ] `bun run check`, `bun run lint`, `bun run deploy:dry-run`, `bun run test:stories`, `bun run format:check`, and relevant `bun run test:e2e` suites pass.
@@ -189,8 +257,8 @@ Facts verified by `codebase-scout` on 2026-11-24:
 
 ## Risks and open questions
 
-- **Blocking:** Plan intentionally held in `draft` at the maintainer's request (`2026-11-24`) so additional `beta.samata.ml` console/runtime issues can be added before `/verify-plan` review. Once all issues are collected: (1) confirm whether `<button autofocus>` inside `<dialog>` (`app-welcome-modal.ts`, `app-target-view.ts`) needs changes beyond `<app-training-setup>`, and (2) confirm whether the `tests/style-tokens.test.ts` static guard should forbid all `style="..."` / `styleMap` in `src/` (excluding `*.stories.ts`).
-- **Non-blocking:** `queueMicrotask` deferral in T3 changes store-load initiation from synchronous inside `updated()` to the next microtask; `AppModelResults.whenSettled()` and `AppResultsView.whenSettled()` must still resolve only after the deferred load finishes.
+- **Blocking:** Plan intentionally held in `draft` at the maintainer's request (`2026-11-24`, expanded `2026-11-25`) so additional `beta.samata.ml` issues can be added before `/verify-plan` review. Before submitting to `ready-for-review`, confirm: (1) whether `<button autofocus>` inside `<dialog>` (`app-welcome-modal.ts`, `app-target-view.ts`) needs changes beyond `<app-training-setup>`; (2) whether `tests/style-tokens.test.ts` should forbid all `style="..."` / `styleMap` in `src/` (excluding `*.stories.ts`); (3) whether `.modal` class should be unified across all `<dialog>` elements or kept as `dialog` / `dialog::backdrop` styling; and (4) whether `app-model-builder-view.ts`'s `.confirm-dialog` (which uses `.confirm-header` rather than `.modal-header`) should also adopt `.modal-header` / backdrop light-dismiss.
+- **Non-blocking:** `queueMicrotask` deferral in T3 (and T5 if needed) changes store-load initiation from synchronous inside `updated()` to the next microtask; `whenSettled()` methods must still wait for the deferred load.
 
 ## Escalations
 
@@ -213,6 +281,7 @@ None.
 
 ## Change log
 
-| When (UTC)           | Change        | Reason                                                                                         |
-| -------------------- | ------------- | ---------------------------------------------------------------------------------------------- |
-| 2026-11-24T13:46:55Z | Initial draft | Browser console errors observed on `beta.samata.ml` (left in `draft` for maintainer additions) |
+| When (UTC)           | Change                                                      | Reason                                                                                             |
+| -------------------- | ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| 2026-11-24T13:46:55Z | Initial draft                                               | Browser console errors observed on `beta.samata.ml` (left in `draft` for maintainer additions)     |
+| 2026-11-25T13:57:01Z | Added T5–T7 (Change Dataset, sticky modal header, backdrop) | Maintainer requested adding dataset-switch bug, sticky `.modal-header`, and modal backdrop dismiss |
