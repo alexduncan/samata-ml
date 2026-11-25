@@ -326,18 +326,15 @@ Warn a user when trainibg a later model that it isn't good to compare a model tr
 - Add an option in the hover menu to change the color assigned to a model.
 
 
-### Colors for Models
-
-Allow each model to have a color which is used for all of it's visuals.
-
 ### Large Screens
 
 - Don't allow `.page-body` to expand beyond `max-width: 60rem`.
 
-### Sidebar
-
-- Display `{ModelName} ({numFeatures} features)` instead of `Model #`
-
 ### CSS Principles
 
 - Prefer logical CSS properties instead of physical properties to better support i18n.
+
+
+### Move Remote Dataset Notices
+
+Move all `<p class="remote-notice">Downloaded from the source when loaded. Internet connection required.</p>` to a `<div class="notification notification-info">When loaded, this dataset will be downloaded from {link}.</div>` inside the modal displaying dataset card.
