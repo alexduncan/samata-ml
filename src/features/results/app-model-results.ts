@@ -1,6 +1,6 @@
 import { count, params } from '@nanostores/i18n';
 import { StoreController } from '@nanostores/lit';
-import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
+import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { $format, i18n } from '../../i18n';
@@ -18,6 +18,7 @@ import { resultsStyles } from '../../styles/results.styles';
 import type { MetricUnavailableReason, StoredEvaluation } from '../../types/model-evaluation';
 import { DEFAULT_MODEL_RESULTS_UI, type ModelRecord } from '../../types/state';
 import { SUPERVISED_MODELS } from '../models/model-catalogue';
+import { sameTrainingRun } from '../models/training/result-validation';
 import type { ClasseeStripsLabels } from './app-classee-strips';
 import type { ClassMetricsTableLabels } from './app-class-metrics-table';
 import type { ConfusionFlowchartLabels } from './app-confusion-flowchart';
@@ -526,6 +527,7 @@ export class AppModelResults extends LitElement {
 	private views: ResultsViews | null = null;
 	private viewKey: readonly unknown[] = [];
 	private waiters = new Set<() => void>();
+	private pendingEffect: Promise<void> | null = null;
 
 	private get model(): ModelRecord | undefined {
 		return this.appState.value.models.find((entry) => entry.num === this.modelNum);
@@ -546,29 +548,44 @@ export class AppModelResults extends LitElement {
 		const num = this.modelNum;
 		const initial = currentResultIdentity(num);
 		if (!initial || !this.viewed || !this.isConnected) return;
+		const current = () => {
+			const identity = currentResultIdentity(num);
+			return (
+				this.isConnected &&
+				this.modelNum === num &&
+				this.viewed &&
+				identity !== null &&
+				sameTrainingRun(initial, identity)
+			);
+		};
+		await this.pendingEffect;
+		await this.updateComplete;
+		if (!current()) return;
 		await new Promise<void>((resolve) => {
 			const stops: (() => void)[] = [];
 			const done = () => {
 				for (const stop of stops) stop();
-				this.waiters.delete(done);
+				this.waiters.delete(check);
 				resolve();
 			};
 			const check = () => {
-				const identity = currentResultIdentity(num);
 				const entry = $modelResults.get()[num];
 				if (
-					!identity ||
-					identity.runId !== initial.runId ||
-					(entry && entry.status !== 'idle' && entry.status !== 'loading')
+					!current() ||
+					(entry &&
+						sameTrainingRun(entry.identity, initial) &&
+						entry.status !== 'idle' &&
+						entry.status !== 'loading')
 				) {
 					done();
 				}
 			};
-			this.waiters.add(done);
+			this.waiters.add(check);
 			stops.push($modelResults.listen(check), $appState.listen(check));
 			check();
 		});
 		await this.updateComplete;
+		if (!current()) return;
 		const charts = this.renderRoot.querySelectorAll<ChartElement>(
 			'app-fold-strip, app-classee-strips, app-threshold-explorer, app-reliability-diagram'
 		);
@@ -577,12 +594,30 @@ export class AppModelResults extends LitElement {
 
 	override disconnectedCallback(): void {
 		super.disconnectedCallback();
-		for (const settle of [...this.waiters]) settle();
+		this.pendingEffect = null;
+		for (const check of [...this.waiters]) check();
 	}
 
-	override updated(changed: PropertyValues<this>): void {
-		void changed;
-		if (this.viewed) void loadModelResults(this.modelNum);
+	override updated(): void {
+		const num = this.modelNum;
+		const identity = this.viewed ? currentResultIdentity(num) : null;
+		const effect = Promise.resolve().then(() => {
+			if (this.pendingEffect !== effect) return;
+			this.pendingEffect = null;
+			const active = currentResultIdentity(num);
+			if (
+				this.isConnected &&
+				this.modelNum === num &&
+				this.viewed &&
+				identity &&
+				active &&
+				sameTrainingRun(identity, active)
+			) {
+				void loadModelResults(num);
+			}
+			for (const check of [...this.waiters]) check();
+		});
+		this.pendingEffect = effect;
 	}
 
 	private preferences() {

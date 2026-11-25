@@ -48,6 +48,29 @@ function blocks(page: Page): Promise<string[]> {
 }
 
 test.describe('Section 6 shared results', () => {
+	test('BETA-ERR-3: saved results settle after navigation without a Lit lifecycle warning', async ({
+		page
+	}) => {
+		const warnings: string[] = [];
+		page.on('console', (message) => {
+			const text = message.text();
+			if (text.includes('app-model-results') && text.includes('change-in-update'))
+				warnings.push(text);
+		});
+		await seedTrainedModel(page, 'iris');
+		await settled(page);
+		await expect(results(page).locator('app-results-summary')).toBeVisible();
+
+		await page.locator('app-sidebar a[href="/models"]').click();
+		await page.goBack();
+		await settled(page);
+		await expect(results(page).locator('app-results-summary')).toBeVisible();
+		await page.reload();
+		await settled(page);
+		await expect(results(page).locator('app-results-summary')).toBeVisible();
+		expect(warnings).toEqual([]);
+	});
+
 	test.describe('Result terms', () => {
 		test.use({ hasTouch: true });
 

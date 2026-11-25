@@ -221,6 +221,7 @@ export class AppResultsView extends LitElement {
 	};
 	private waiters = new Set<() => void>();
 	private analysisKey = '';
+	private pendingEffect: Promise<void> | null = null;
 
 	/** Focuses the route heading without waiting for results. */
 	async focusHeading(signal: AbortSignal): Promise<void> {
@@ -271,6 +272,9 @@ export class AppResultsView extends LitElement {
 					model.status
 				])
 			) !== runs;
+		await this.pendingEffect;
+		await this.updateComplete;
+		if (superseded()) return;
 		await new Promise<void>((resolve) => {
 			const done = () => {
 				this.waiters.delete(check);
@@ -280,9 +284,10 @@ export class AppResultsView extends LitElement {
 				initialPair ??= pairKey();
 				if (
 					superseded() ||
-					(!this.comparison.value.unavailableModels.some(
-						(item) => item.reason === 'loading'
-					) &&
+					(!this.pendingEffect &&
+						!this.comparison.value.unavailableModels.some(
+							(item) => item.reason === 'loading'
+						) &&
 						(!this.comparison.value.pairA ||
 							!this.comparison.value.pairB ||
 							!['idle', 'loading'].includes(this.analysis.value.status)))
@@ -317,6 +322,7 @@ export class AppResultsView extends LitElement {
 
 	override disconnectedCallback(): void {
 		super.disconnectedCallback();
+		this.pendingEffect = null;
 		clearRopeAnalysis();
 		this.analysisKey = '';
 		for (const check of [...this.waiters]) check();
@@ -327,14 +333,31 @@ export class AppResultsView extends LitElement {
 	}
 
 	override updated(): void {
+		const app = this.app.value;
+		const comparison = this.comparison.value;
+		const effect = Promise.resolve().then(() => {
+			if (this.pendingEffect !== effect) return;
+			this.pendingEffect = null;
+			if (
+				this.isConnected &&
+				app === this.app.value &&
+				comparison === this.comparison.value
+			) {
+				this.updateResultResources();
+			}
+			for (const check of [...this.waiters]) check();
+		});
+		this.pendingEffect = effect;
+	}
+
+	private updateResultResources(): void {
 		if (this.canCompare.value) {
 			void loadComparisonResults();
-			const current = this.comparison.value;
 			const owner = comparisonOwner(this.app.value);
-			if (owner && current.activeGroup && this.app.value.results.ui.fingerprint === null)
-				selectComparisonGroup(owner, current.activeGroup.fingerprint);
-			const a = current.pairA,
-				b = current.pairB;
+			const group = this.comparison.value.activeGroup;
+			if (owner && group && this.app.value.results.ui.fingerprint === null)
+				selectComparisonGroup(owner, group.fingerprint);
+			const { pairA: a, pairB: b } = this.comparison.value;
 			const key = JSON.stringify([
 				a?.num,
 				a?.evaluation.partitionFingerprint,
@@ -352,7 +375,6 @@ export class AppResultsView extends LitElement {
 			this.analysisKey = '';
 			clearRopeAnalysis();
 		}
-		for (const check of [...this.waiters]) check();
 	}
 
 	private buildViews(data: ComparisonData): Views {

@@ -407,7 +407,15 @@ test('WML-P5-UI-11: settlement waits for visible charts and releases on disconne
 	expect(result).toEqual({ waitedForChart: true, released: true });
 });
 
-test('WML-P5-UI-11: initial settlement waits for the paired analysis', async ({ page }) => {
+test('BETA-ERR-3 / WML-P5-UI-11: initial settlement waits for the paired analysis without a Lit lifecycle warning', async ({
+	page
+}) => {
+	const warnings: string[] = [];
+	page.on('console', (message) => {
+		const text = message.text();
+		if (text.includes('app-results-view') && text.includes('change-in-update'))
+			warnings.push(text);
+	});
 	await seedComparablePair(page);
 	await page.addInitScript(() => {
 		const NativeWorker = window.Worker;
@@ -463,9 +471,12 @@ test('WML-P5-UI-11: initial settlement waits for the paired analysis', async ({ 
 		(window as Window & { releaseAnalysis?: () => void }).releaseAnalysis!()
 	);
 	await expect(page.locator('app-results-view')).toHaveAttribute('data-settled', 'yes');
+	expect(warnings).toEqual([]);
 });
 
-test('WML-P5-UI-11: a superseded pair releases the previous settlement', async ({ page }) => {
+test('BETA-ERR-3b / WML-P5-UI-11: a superseded pair releases the previous settlement', async ({
+	page
+}) => {
 	await seedComparablePair(page);
 	await page.goto('/results');
 	await expect(page.locator('app-rope-bar figure')).toBeVisible({ timeout: 45_000 });
