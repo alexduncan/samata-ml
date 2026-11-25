@@ -1,8 +1,8 @@
 # Beta console errors, CSP, dataset switching and modal harmonisation
 
-**Status:** ready-for-review | **Updated:** 2026-11-25T14:51:08Z
+**Status:** draft | **Updated:** 2026-11-25T14:53:12Z
 **Authors:** Google Antigravity (Gemini 4 Hydrogen High), Codex (GPT-6) | **Created:** 2026-11-24T13:46:55Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -301,8 +301,9 @@ None.
 
 ## Plan review history
 
-| Reviewed (UTC) | Agent (model) | Decision | Findings |
-| -------------- | ------------- | -------- | -------- |
+| Reviewed (UTC)       | Agent (model) | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| -------------------- | ------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-25T14:53:12Z | Codex (GPT-6) | changes-requested | MAJOR T2/T8: make strict-CSP geometry executable in its owning task and derive trained links from the actual fixture/UI (the current helper takes a number and returns a locator). MAJOR T4: reconcile firstUpdated-only wording with one-shot focus after re-enable. MAJOR T6/T7: define resize and zoom fallback for sticky focus and consistent idle/busy upload cancellation with exactly-once close policy. Clarify the build identity in T1 and list the final format and E2E checks in T9. |
 
 ## Change log
 
