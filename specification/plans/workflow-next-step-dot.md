@@ -36,7 +36,7 @@
 
 **Implementation order across plans**
 
-Start after [Model Training Workflow](model-training-workflow.md) has landed, including its T4 sidebar and T8 journey and baseline checks. That plan owns the native train anchors, current training row, removal of its old status dot, wizard handoff and uncued parity fixture. This plan adds only cue state, link decoration and arrival motion. [Beta Console Errors and CSP Fixes](beta-console-errors-and-csp-fixes.md) supplies the unchanged strict policy and the baseline production regression. Add the cue assertion separately using the same distribution-server setup.
+Start after [Model Training Workflow](model-training-workflow.md) has landed, including its T4 sidebar and T8 journey and baseline checks. That plan owns the native train anchors, current training row, removal of its old status dot, wizard handoff and uncued parity fixture. This plan adds only cue state, link decoration and arrival motion. [Beta Console Errors and CSP Fixes](archive/beta-console-errors-and-csp-fixes.md) supplies the unchanged strict policy and the baseline production regression. Add the cue assertion separately using the same distribution-server setup.
 
 ## Required reading
 

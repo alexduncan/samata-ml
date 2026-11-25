@@ -36,7 +36,7 @@
 
 **Implementation order across plans**
 
-- Start after [Beta Console Errors and CSP Fixes](beta-console-errors-and-csp-fixes.md) is integrated. Reuse its native confirmation, `restoreFocus`, CSSOM and result-settlement contracts. Keep the existing `reopen-section` confirmation and give the new wizard departure dialog its own selector. Keep the beta CSP test’s assertions and update only its workflow setup/actions to follow the new links and stages.
+- Start after [Beta Console Errors and CSP Fixes](archive/beta-console-errors-and-csp-fixes.md) is integrated. Reuse its native confirmation, `restoreFocus`, CSSOM and result-settlement contracts. Keep the existing `reopen-section` confirmation and give the new wizard departure dialog its own selector. Keep the beta CSP test’s assertions and update only its workflow setup/actions to follow the new links and stages.
 - This plan owns both sidebar training anchors and the uncued layout baseline. [The Dot](workflow-next-step-dot.md) starts after this plan is integrated and decorates those exact anchors. Train Another Model is available after leaving the completed `/models/new` entry, including when View Results replaces that entry. Keep lifecycle actions and cue state independent.
 
 ## Required reading
