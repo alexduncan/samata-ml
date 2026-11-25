@@ -169,6 +169,7 @@ async function runBuild(options: {
 	workerEntrypoints?: Partial<Record<'storage' | 'training' | 'analysis', string>>;
 }): Promise<ProductionBuildResult> {
 	const isProd = options.mode === 'production';
+	const nodeEnv = JSON.stringify(options.mode);
 	const appVersion = options.version ?? (await readPackageVersion());
 	const parsedVersion = parseSemVer(appVersion);
 	const crawlerPolicy = validateCrawlerPolicy(
@@ -271,6 +272,7 @@ async function runBuild(options: {
 	const buildId = sha256Hex(
 		[
 			appVersion,
+			nodeEnv,
 			WEB_ML_REVISION,
 			sha256Hex(storageBytes),
 			sha256Hex(trainingBytes),
@@ -304,6 +306,7 @@ async function runBuild(options: {
 		external: [modelRuntimeUrl],
 		define: {
 			...toDefine(buildConstants),
+			'process.env.NODE_ENV': nodeEnv,
 			WEB_ML_RUNTIME_URL: JSON.stringify(modelRuntimeUrl),
 			WEB_ML_RUNTIME_REVISION: JSON.stringify(WEB_ML_REVISION)
 		}

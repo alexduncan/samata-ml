@@ -1,6 +1,6 @@
 # Beta console errors, CSP, dataset switching and modal harmonisation
 
-**Status:** ready | **Updated:** 2026-11-25T15:07:42Z
+**Status:** ready | **Updated:** 2026-11-25T15:16:57Z
 **Authors:** Google Antigravity (Gemini 4 Hydrogen High), Codex (GPT-6) | **Created:** 2026-11-24T13:46:55Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-25T15:07:42Z | **Verification:** approved
 **Verified hash:** sha256:02527d117a4fa3b0b6fd9717c8d285dccee3c2c33c52e822040eac82d24dc505
@@ -152,10 +152,10 @@ Facts verified by `codebase-scout` on 2026-11-24 and 2026-11-25:
 - **Must not touch:** `node_modules/`, `bun.lock`, `public/_headers`
 - **Implementation:** Apply an explicit production or development `define` to the shared `Bun.build` call according to bundle mode. Include that definition in the bundle build identity as well as the output content hash, since the existing `BUILD_ID` drives stale detection independently. Preserve development diagnostics and sourcemaps. Exercise production and development artifacts built in both orders in the same process with the real Lit module.
 - **Acceptance criteria:**
-    - [ ] `BETA-ERR-1`: `buildProductionBundle` bundles Lit's production (`"default"`) exports with zero occurrences of `"Lit is in dev mode"` in emitted JS.
-    - [ ] `BETA-ERR-1b`: `buildDevBundle` continues to include development diagnostics and source maps.
+    - [x] `BETA-ERR-1`: `buildProductionBundle` bundles Lit's production (`"default"`) exports with zero occurrences of `"Lit is in dev mode"` in emitted JS.
+    - [x] `BETA-ERR-1b`: `buildDevBundle` continues to include development diagnostics and source maps.
 - **Verification:** `bun test tests/build-cache-invalidation.test.ts`, `bun run deploy:dry-run`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-25T15:16:57Z)
 
 ### T2 — Remove `style="..."` attributes and `styleMap()` bindings violating `style-src-attr 'none'`
 
@@ -295,9 +295,10 @@ None.
 
 ## Implementation and verification log
 
-| When (UTC) | Task | Agent (model) | Outcome / commands / evidence |
-| ---------- | ---- | ------------- | ----------------------------- |
-| —          | —    | —             | Not started                   |
+| When (UTC)           | Task | Agent (model) | Outcome / commands / evidence                                                                                                                                                                                  |
+| -------------------- | ---- | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —                    | —    | —             | Not started                                                                                                                                                                                                    |
+| 2026-11-25T15:16:57Z | T1   | Codex (GPT-6) | scripts/build-assets.ts and tests/build-cache-invalidation.test.ts. Artifact tests 9 pass (Lit production/dev in both orders), deploy dry-run passed, bun run check passed (660 tests), and scope gate passed. |
 
 ## Plan review history
 

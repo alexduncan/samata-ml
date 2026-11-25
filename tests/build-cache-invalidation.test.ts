@@ -22,12 +22,14 @@ const PUBLIC_STABLE_DIR = path.join(TEMP_ROOT, 'prod-public-stable');
 const BETA_TELEMETRY_DIR = path.join(TEMP_ROOT, 'prod-beta-telemetry');
 const STABLE_TELEMETRY_DIR = path.join(TEMP_ROOT, 'prod-stable-telemetry');
 const DEV_VARIANT_DIR = path.join(TEMP_ROOT, 'dev-default');
+const PROD_AFTER_DEV_DIR = path.join(TEMP_ROOT, 'prod-after-dev');
 
 let defaultProd!: ProductionBuildResult;
 let changedWorkerProd!: ProductionBuildResult;
 let publicStableProd!: ProductionBuildResult;
 let betaTelemetryProd!: ProductionBuildResult;
 let stableTelemetryProd!: ProductionBuildResult;
+let prodAfterDev!: ProductionBuildResult;
 
 async function collectFiles(dir: string, prefix = ''): Promise<string[]> {
 	const entries = await readdir(dir, { withFileTypes: true });
@@ -85,10 +87,47 @@ describe('hashed build, headers and crawler policy', () => {
 		});
 
 		await buildDevBundle({ outDir: DEV_VARIANT_DIR });
+		prodAfterDev = await buildProductionBundle({ outDir: PROD_AFTER_DEV_DIR });
 	}, 180_000);
 
 	afterAll(async () => {
 		await rm(TEMP_ROOT, { recursive: true, force: true });
+	});
+
+	test('BETA-ERR-1: production builds exclude the Lit development diagnostic in both build orders', async () => {
+		for (const outDir of [DEFAULT_PROD_DIR, PROD_AFTER_DEV_DIR]) {
+			const bundles = path.join(outDir, 'bundles');
+			for (const file of await collectFiles(bundles)) {
+				if (file.endsWith('.js')) {
+					expect(await readFile(path.join(bundles, file), 'utf8')).not.toContain(
+						'Lit is in dev mode'
+					);
+				}
+			}
+		}
+		expect(prodAfterDev.buildId).toBe(defaultProd.buildId);
+		expect(prodAfterDev.jsFile).toBe(defaultProd.jsFile);
+	});
+
+	test('BETA-ERR-1b: a development build after production retains Lit diagnostics and linked source maps', async () => {
+		const files = await collectFiles(DEV_VARIANT_DIR);
+		const scripts = await Promise.all(
+			files
+				.filter(
+					(file) =>
+						file === 'app.js' || (file.startsWith('chunks/') && file.endsWith('.js'))
+				)
+				.map((file) => readFile(path.join(DEV_VARIANT_DIR, file), 'utf8'))
+		);
+		expect(scripts.join('\n')).toContain('Lit is in dev mode');
+		expect(scripts).toEqual(
+			expect.arrayContaining([expect.stringContaining('sourceMappingURL=app.js.map')])
+		);
+		expect(files).toContain('app.js.map');
+		const manifest = JSON.parse(
+			await readFile(path.join(DEV_VARIANT_DIR, 'release.json'), 'utf8')
+		) as { build: string };
+		expect(manifest.build).not.toBe(defaultProd.buildId);
 	});
 
 	test('REL-CACHE-1: production writes only hashed /bundles/ assets, release.json, robots.txt and keeps public assets', async () => {
