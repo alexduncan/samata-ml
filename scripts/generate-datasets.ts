@@ -6,6 +6,7 @@ import { compileMarkdownFragment } from './markdown';
 import { acquireSource, prepareSource, validateSource } from './dataset-source';
 import { DatasetProfiler } from '../src/common/storage/profiler';
 import type { ElectedColumn } from '../src/common/storage/profiler';
+import { isTemporalColumnType } from '../src/types/state';
 import type {
 	AuthoredDatasetDescriptor,
 	AuthoredColumn,
@@ -273,7 +274,7 @@ function validateDescriptor(
 			authored.role === 'identifier' ||
 			elected.identifierHint ||
 			authored.dataType === 'text' ||
-			authored.dataType === 'datetime'
+			isTemporalColumnType(authored.dataType)
 		)
 			addError(errors, id, `target ${candidate.column} is not eligible`);
 		for (const leaky of candidate.leakyColumns ?? []) {

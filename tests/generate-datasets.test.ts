@@ -467,6 +467,35 @@ describe('sample dataset generator', () => {
 		}
 	});
 
+	it('TEMP-AC-17: rejects date, time and datetime target candidates', async () => {
+		const cases = [
+			{ dataType: 'date', cell: '2013-08-14' },
+			{ dataType: 'time', cell: '09:30' },
+			{ dataType: 'datetime', cell: '2013-08-13 06:03:42' }
+		];
+		for (const { dataType, cell } of cases) {
+			const root = tempDir();
+			const contentDir = path.join(root, 'content');
+			makeFixture(contentDir, {
+				csv: `x,when\n1,${cell}\n2,${cell}\n3,${cell}\n`,
+				columns: `{ name: 'x', displayName: 'X', description: 'Feature.', dataType: 'numeric', role: 'feature' }, { name: 'when', displayName: 'When', description: 'Temporal.', dataType: '${dataType}', role: 'feature' }`,
+				target: 'when'
+			});
+			const log = spyOn(console, 'error').mockImplementation(() => {});
+			try {
+				await expect(
+					generateSampleDatasets(path.join(root, 'out'), {
+						contentDir,
+						cacheDir: path.join(root, 'cache')
+					})
+				).rejects.toThrow('Sample dataset build failed');
+				expect(log.mock.calls.flat().join(' ')).toContain('target when is not eligible');
+			} finally {
+				log.mockRestore();
+			}
+		}
+	});
+
 	it('reports more than one rule failure for a dataset', async () => {
 		const root = tempDir();
 		const contentDir = path.join(root, 'content');

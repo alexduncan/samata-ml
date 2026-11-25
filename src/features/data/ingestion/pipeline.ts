@@ -456,8 +456,12 @@ export async function runIngestion(
 		const elected = profiler.elect();
 		const columns = elected.map(makeColumnStats);
 		const numericAccumulators = new Map<number, NumericAccumulator>();
+		const precisionFlags = new Map<number, { millisecond: boolean; second: boolean }>();
 		for (let index = 0; index < columns.length; index++) {
 			const stats = columns[index]!;
+			if (stats.type === 'time' || stats.type === 'datetime') {
+				precisionFlags.set(index, { millisecond: false, second: false });
+			}
 			if (stats.type === 'numeric') {
 				const range = elected[index]!.supersetRange;
 				const min = range.min ?? 0;
@@ -518,6 +522,11 @@ export async function runIngestion(
 								| DateColumnStats
 								| TimeColumnStats
 								| DatetimeColumnStats;
+							const flags = precisionFlags.get(columnIndex);
+							if (flags) {
+								if (value % 1000 !== 0) flags.millisecond = true;
+								if (value % 60_000 !== 0) flags.second = true;
+							}
 							temporal.count++;
 							temporal.min =
 								temporal.count === 1 ? value : Math.min(temporal.min, value);
@@ -544,6 +553,14 @@ export async function runIngestion(
 		for (const stats of columns) {
 			if (stats.type === 'categorical')
 				stats.distinctCount = Object.keys(stats.categoryCounts).length;
+		}
+		for (const [columnIndex, flags] of precisionFlags) {
+			const stats = columns[columnIndex] as TimeColumnStats | DatetimeColumnStats;
+			stats.precision = flags.millisecond
+				? 'millisecond'
+				: flags.second
+					? 'second'
+					: 'minute';
 		}
 		report({
 			phase: 'statistics',

@@ -3,7 +3,6 @@ import { readFile } from 'node:fs/promises';
 import {
 	BOOLEAN_LEXICON_PAIRS,
 	coerceCell,
-	headerSuggestsTime,
 	isDateOnly,
 	matchBoolean,
 	normaliseMissing,
@@ -173,15 +172,6 @@ describe('cell detectors', () => {
 		expect(toEpochMs(parseDate('25/03/2024')!, 'MDY')).toBeNull();
 		expect(toEpochMs(ambiguous, 'ISO')).toBeNull();
 		expect(toEpochMs(parseDate('2024-01-15')!, 'MDY')).toBe(Date.UTC(2024, 0, 15));
-	});
-
-	it('uses whole timestamp words for the header gate', () => {
-		for (const name of ['created_at', 'eventTime', 'ts', 'Date']) {
-			expect(headerSuggestsTime(name)).toBe(true);
-		}
-		for (const name of ['counts', 'overtime', 'posts']) {
-			expect(headerSuggestsTime(name)).toBe(false);
-		}
 	});
 
 	it('normalises default, replacement and implicit missing values', () => {

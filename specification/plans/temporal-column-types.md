@@ -1,6 +1,6 @@
 # Temporal column types: date, time and datetime
 
-**Status:** ready | **Updated:** 2026-11-25T13:54:10Z
+**Status:** ready | **Updated:** 2026-11-25T13:58:33Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-25T10:49:58Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-25T12:38:45Z | **Verification:** approved
 **Verified hash:** sha256:170e52184c86cc170c93b0d486d248f334c2e7c038e22aabd36ec19133b41c68
@@ -364,19 +364,19 @@ Behaviour follows D7. A time is built from `Math.floor` of hours, minutes, secon
     - Set `dataType: 'date'` on the 12 date-only COMPAS columns. `c_jail_in` and `c_jail_out` stay `'datetime'`. Update the type column of the COMPAS `datasheet.md` column table to match.
     - Run `bun run check` and `bun run build`. If either reports any other descriptor mismatch, **stop and escalate** with the column, its old and new types and three sample values. Do not edit that descriptor. A numeric column that turns into `datetime` is the D5 risk materialising.
 - **Acceptance criteria:**
-    - [ ] TEMP-AC-8: every row of the _Worked examples_ table holds as a `tests/profiler.test.ts` case, including `invalidCount`. For the 99/1 time-bearing case, `invalidExamples` contains `2013-08-13 06:03:42`.
-    - [ ] TEMP-AC-9: a DMY-forced year-last column with only date-only values elects `date` with `order: 'DMY'`. The same values with one `14/08/2013 10:00` per 20 cells elect `datetime`.
-    - [ ] TEMP-AC-10: a column whose first 1,000 rows are more than 2 % non-time switches `timeActive` off and does not elect `time`, even if later rows are all times. The same holds for `epochActive`.
-    - [ ] TEMP-AC-11: in pipeline tests:
+    - [x] TEMP-AC-8: every row of the _Worked examples_ table holds as a `tests/profiler.test.ts` case, including `invalidCount`. For the 99/1 time-bearing case, `invalidExamples` contains `2013-08-13 06:03:42`.
+    - [x] TEMP-AC-9: a DMY-forced year-last column with only date-only values elects `date` with `order: 'DMY'`. The same values with one `14/08/2013 10:00` per 20 cells elect `datetime`.
+    - [x] TEMP-AC-10: a column whose first 1,000 rows are more than 2 % non-time switches `timeActive` off and does not elect `time`, even if later rows are all times. The same holds for `epochActive`.
+    - [x] TEMP-AC-11: in pipeline tests:
         - a `date` column stores UTC-midnight epoch ms, with min and max correct and the time-bearing cell stored `null`;
         - a `time` column of `09:00` and `17:30` has `precision: 'minute'` and min `32_400_000`;
         - a datetime column with seconds gets `'second'`;
         - an epoch-`ms` column with non-zero milliseconds gets `'millisecond'`.
-    - [ ] TEMP-AC-12: a descriptor override to `date` on a date-only column produces `DateColumnStats` with the counters' order. Existing override tests still pass.
-    - [ ] TEMP-AC-16: `bun run check` (including `tests/sample-datasets-content.test.ts`) and `bun run build` pass. In the generated COMPAS descriptor, 12 columns are `date` and 2 are `datetime`, and every other sample's column types are unchanged. The COMPAS datasheet column table shows the same types.
-    - [ ] TEMP-AC-17: the generator rejects a `date`, `time` or `datetime` target candidate (existing generator test extended, or a focused new case).
+    - [x] TEMP-AC-12: a descriptor override to `date` on a date-only column produces `DateColumnStats` with the counters' order. Existing override tests still pass.
+    - [x] TEMP-AC-16: `bun run check` (including `tests/sample-datasets-content.test.ts`) and `bun run build` pass. In the generated COMPAS descriptor, 12 columns are `date` and 2 are `datetime`, and every other sample's column types are unchanged. The COMPAS datasheet column table shows the same types.
+    - [x] TEMP-AC-17: the generator rejects a `date`, `time` or `datetime` target candidate (existing generator test extended, or a focused new case).
 - **Verification:** `bun test tests/profiler.test.ts`, `bun test tests/ingestion-pipeline.test.ts`, `bun run check`, `bun run build`, `bun run lint`, `bun run format <changed files>`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-25T13:58:33Z)
 
 ### T4 — Temporal display in the preview table and column inspector
 
@@ -448,6 +448,7 @@ None.
 | —          | —    | —             | Not started                   |
 | 2026-11-25T13:53:17Z | T1 | Claude Code (claude-sonnet-5-5) | bun test: 622 pass, 2 fail (pre-existing: scripts/build-public-assets.ts cannot resolve @federicocarboni/saxe and svgo, not installed in worktree; same typecheck errors). bun run lint OK. bun run format applied. New tests/temporal-column-types.test.ts plus eligibility, provider tests. Changed src/types, training-domain, eligibility, provider, sidebar, pipeline, cells, profiler, story. |
 | 2026-11-25T13:54:10Z | T2 | Claude Code (claude-sonnet-5-5) | bun test tests/cells.test.ts 15 pass; bun test: 626 pass, 2 fail (pre-existing missing saxe/svgo modules); lint OK; format applied. Changed src/common/storage/cells.ts, tests/cells.test.ts |
+| 2026-11-25T13:58:33Z | T3 | Claude Code (claude-sonnet-5-5) | bun run check: typecheck OK, 657 pass 0 fail (after bun install --frozen-lockfile restored missing saxe/svgo); bun run build OK, COMPAS descriptor 12 date + 2 datetime; bun run lint OK; format applied. Changed profiler.ts, cells.ts, pipeline.ts, generate-datasets.ts, COMPAS descriptor and datasheet, profiler/pipeline/cells/generate-datasets tests |
 
 ## Plan review history
 

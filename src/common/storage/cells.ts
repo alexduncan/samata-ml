@@ -498,27 +498,6 @@ export function parseTime(cell: string): number | null {
 	return ((hour * 60 + minute) * 60 + second) * 1000 + ms;
 }
 
-/** Reports whether a column header contains a whole word commonly used for timestamps. */
-export function headerSuggestsTime(name: string): boolean {
-	const trimmed = name.trim().toLowerCase();
-	const words = name
-		.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-		.toLowerCase()
-		.split(/[\s_.-]+/)
-		.filter(Boolean);
-	const timeWords = new Set([
-		'time',
-		'timestamp',
-		'ts',
-		'epoch',
-		'created',
-		'updated',
-		'date',
-		'datetime'
-	]);
-	return words.some((word) => timeWords.has(word)) || trimmed.endsWith('_at');
-}
-
 /** Coerces a raw cell to a typed value using the selected column type and format. */
 export function coerceCell(raw: string, type: ColumnType, format?: CellFormat): CellValue {
 	if (type === 'text' || type === 'categorical') return raw;
