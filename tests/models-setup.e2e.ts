@@ -124,10 +124,10 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		// 2. Go to /models and create Model 1
 		await page.goto('/models');
 		const overview = page.locator('app-models-view');
-		await expect(overview.locator('button:has-text("Train New Model")')).toBeVisible();
-		await overview.locator('button:has-text("Train New Model")').click();
+		await expect(overview.locator('a[href="/models/new"]')).toBeVisible();
+		await overview.locator('a[href="/models/new"]').click();
 
-		await expect(page).toHaveURL(/\/models\/1$/);
+		await expect(page).toHaveURL(/\/models\/new$/);
 		const builder = page.locator('app-model-builder-view');
 		await expect(builder.locator('[data-testid="model-builder"]')).toBeVisible();
 
@@ -253,8 +253,8 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 
 		// Go to /models and create model
 		await page.goto('/models');
-		await page.locator('app-models-view button:has-text("Train New Model")').click();
-		await expect(page).toHaveURL(/\/models\/1$/);
+		await page.locator('app-models-view a[href="/models/new"]').click();
+		await expect(page).toHaveURL(/\/models\/new$/);
 
 		const builder = page.locator('app-model-builder-view');
 		const step1 = builder.locator('.train-step').nth(0);
@@ -328,7 +328,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 			.toBe('class');
 
 		await page.goto('/models');
-		await page.locator('app-models-view button:has-text("Train New Model")').click();
+		await page.locator('app-models-view a[href="/models/new"]').click();
 
 		const builder = page.locator('app-model-builder-view');
 		const step1 = builder.locator('.train-step').nth(0);
@@ -449,7 +449,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 			.toBe('class');
 
 		await page.goto('/models');
-		await page.locator('app-models-view button:has-text("Train New Model")').click();
+		await page.locator('app-models-view a[href="/models/new"]').click();
 
 		const builder = page.locator('app-model-builder-view');
 		const step1 = builder.locator('.train-step').nth(0);
@@ -537,7 +537,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 
 		// Go to /models and create model for regression
 		await page.goto('/models');
-		await page.locator('app-models-view button:has-text("Train New Model")').click();
+		await page.locator('app-models-view a[href="/models/new"]').click();
 
 		// WML-P1-CAT-2: a numeric target has no available classifier
 		await expect(step1.locator('app-model-card')).toHaveCount(0);
@@ -590,7 +590,10 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 			.getByRole('button')
 			.click();
 		await targetView.locator('header a[href="/models"]').click();
-		await page.getByRole('button', { name: 'Train New Model', exact: true }).click();
+		await page
+			.locator('app-models-view')
+			.getByRole('link', { name: 'Train New Model', exact: true })
+			.click();
 		const step = page.locator('app-model-builder-view .train-step').first();
 		await expect(step).toHaveAttribute('aria-current', 'step');
 		await expectIllustratedCatalogue(step);

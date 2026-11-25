@@ -70,7 +70,7 @@ async function openConfigure(page: Page, target = 'class', dataset = 'iris'): Pr
 		)
 		.toBe(target);
 	await page.goto('/models');
-	await page.locator('app-models-view button:has-text("Train New Model")').click();
+	await page.locator('app-models-view a[href="/models/new"]').click();
 	const builder = page.locator('app-model-builder-view');
 	const step1 = builder.locator('.train-step').nth(0);
 	await step1
@@ -530,7 +530,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 			dialog.getByRole('heading', { name: 'What do these settings mean?' })
 		).toBeVisible();
 		await page.keyboard.press('Escape');
-		await expect(page).toHaveURL(/\/models\/1$/);
+		await expect(page).toHaveURL(/\/models\/new$/);
 
 		const form = page.locator('app-model-configuration');
 		await form.locator('select#penalty').selectOption('l2');

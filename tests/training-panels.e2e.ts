@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import type { PersistedAppState } from '../src/types/state';
-import { configureDraft, controlTraining, openSetup } from './fixtures/training/browser';
+import { controlTraining, openSetup } from './fixtures/training/browser';
 import { fixtureTrainingResult } from './fixtures/training/results';
 
 function training(page: Page) {
@@ -9,10 +9,40 @@ function training(page: Page) {
 }
 
 async function revisitTraining(page: Page): Promise<void> {
-	await page.locator('app-sidebar a[href="/models"]').click();
+	const help = page.locator('app-sidebar a[href="/help"]');
+	await help.click();
+	await expect(page.getByRole('dialog', { name: 'Help' })).toBeVisible();
+	await page.evaluate(() => history.go(-2));
 	await expect(page).toHaveURL('/models');
-	await page.locator('app-sidebar a[href="/models/1"]').click();
-	await expect(page).toHaveURL('/models/1');
+	await expect(page.locator('app-model-builder-view')).toHaveCount(0);
+	await page.goForward();
+	await expect(page).toHaveURL('/models/new');
+}
+
+async function legacyTrainingSetup(page: Page, count = 1): Promise<ReturnType<Page['locator']>> {
+	await openSetup(page);
+	const saved = await page.evaluate((count) => {
+		const state = window.__appState!.get();
+		const [draft] = state.models;
+		return JSON.stringify({
+			...state,
+			newModelNum: null,
+			nextModelNum: count + 1,
+			models: Array.from({ length: count }, (_, index) => ({
+				...draft,
+				num: index + 1,
+				createdAt: draft!.createdAt + index,
+				trainingSetup: { type: 'one_shot', testRatio: 0.2, randomState: 42 }
+			}))
+		});
+	}, count);
+	await page.addInitScript((saved) => {
+		if (sessionStorage.getItem('legacy-drafts-seeded')) return;
+		localStorage.setItem('samata-ml:state', saved);
+		sessionStorage.setItem('legacy-drafts-seeded', 'yes');
+	}, saved);
+	await page.goto('/models/1');
+	return page.locator('app-training-setup');
 }
 
 async function assertPanelAccessibility(page: Page): Promise<void> {
@@ -129,18 +159,20 @@ test('starts once, keeps native controls stable and announces milestones across 
 	await expect(summary).toBeFocused();
 	await assertPanelAccessibility(page);
 
-	await page.locator('app-sidebar a[href="/target"]').click();
-	await expect(page).toHaveURL('/target');
+	await page.locator('app-sidebar a[href="/help"]').click();
+	const close = page.getByRole('button', { name: 'Close', exact: true });
+	await expect(close).toBeFocused();
 	const runId = await succeed(page);
 	await expect
 		.poll(() => page.evaluate(() => window.__appState!.get().models[0]?.status))
 		.toBe('trained');
-	await page.locator('app-sidebar a[href="/models/1"]').click();
+	await expect(close).toBeFocused();
+	await close.click();
 	await expect(panel.getByRole('button', { name: 'View Results' })).toBeEnabled();
 	await expect(progress).toHaveAttribute('value', '100');
 	await expect(panel.getByText(/^Elapsed time/)).toBeVisible();
 	await expect(panel.locator('details')).toHaveAttribute('open', '');
-	await expect(status).toBeEmpty();
+	await expect(panel.locator('ol li').last()).toHaveText('Training complete');
 	expect(await page.evaluate(() => window.__appState!.get().models[0]?.resultRevision)).toBe(
 		runId
 	);
@@ -198,7 +230,9 @@ test('BETA-ERR-4b: a result arriving after leaving training does not steal norma
 	page
 }) => {
 	await controlTraining(page);
-	await start(page);
+	const setup = await legacyTrainingSetup(page);
+	await setup.getByRole('button', { name: 'Train Model' }).press('Enter');
+	await expect.poll(() => requestCount(page)).toBe(1);
 	const autofocusWarnings: string[] = [];
 	page.on('console', (message) => {
 		if (message.text().includes('Autofocus processing was blocked'))
@@ -309,9 +343,11 @@ test('WML-P3-UI-2: each stopped model retries its own repair and preserves the r
 	page
 }) => {
 	await controlTraining(page);
-	await start(page);
-	await page.locator('app-sidebar a[href="/models"]').click();
-	const secondSetup = await configureDraft(page, 2);
+	const firstSetup = await legacyTrainingSetup(page, 2);
+	await firstSetup.getByRole('button', { name: 'Train Model' }).press('Enter');
+	await expect.poll(() => requestCount(page)).toBe(1);
+	await page.locator('app-sidebar a[href="/models/2"]').click();
+	const secondSetup = page.locator('app-training-setup');
 	await secondSetup.getByRole('button', { name: 'Train Model' }).press('Enter');
 	await expect.poll(() => requestCount(page)).toBe(2);
 	const generation = await page.evaluate(() => window.__appState!.get().trainingDomainGeneration);
@@ -678,7 +714,7 @@ for (const recovery of [
 			await expect(viewResults).toBeEnabled();
 			await expect(retry).toBeHidden();
 			await expect(owner.getByRole('progressbar')).toHaveAttribute('value', '100');
-			await expect(page).toHaveURL('/models/1');
+			await expect(page).toHaveURL('/models/new');
 			expect(await ownerState()).toEqual(trained);
 			expect(await savedRun(page)).toEqual(trained);
 			expect(await requestCount(page)).toBe(1);

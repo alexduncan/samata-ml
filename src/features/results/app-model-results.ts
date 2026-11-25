@@ -534,8 +534,7 @@ export class AppModelResults extends LitElement {
 	}
 
 	private get viewed(): boolean {
-		const model = this.model;
-		return model?.status === 'trained' && model.completedSteps.includes('results');
+		return this.model?.status === 'trained';
 	}
 
 	/**

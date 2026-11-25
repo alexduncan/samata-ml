@@ -1,6 +1,7 @@
 import { $scrollState, recordScroll } from '../stores/scroll.store';
 import type { ParsedRoute } from '../types/routes';
 import type { ScrollSnapshot } from '../types/state';
+import { getEffectiveModelNum, getEffectiveWorkflowRoute } from './router';
 
 let liveScrollTop = 0;
 let isRestoringScroll = false;
@@ -21,6 +22,7 @@ export function getScrollKeyForRoute(
 	route: ParsedRoute,
 	dataMode: 'select' | 'preview' = 'select'
 ): string | null {
+	if (route.kind === 'reserved' && route.underlayPath) route = getEffectiveWorkflowRoute(route);
 	if (route.kind !== 'workflow') {
 		return null;
 	}
@@ -35,10 +37,8 @@ export function getScrollKeyForRoute(
 		case '/results':
 			return 'results';
 		default:
-			if (route.modelNum !== undefined) {
-				return `models/${route.modelNum}`;
-			}
-			return null;
+			const modelNum = getEffectiveModelNum(route);
+			return modelNum === undefined ? null : `models/${modelNum}`;
 	}
 }
 

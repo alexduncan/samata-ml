@@ -1,16 +1,11 @@
 import { html } from 'lit';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
-import { expect, userEvent } from 'storybook/test';
+import { expect } from 'storybook/test';
 import { $appState } from '../../stores/app.store';
 import { $datasetResources } from '../../stores/dataset.store';
 import { DEFAULT_ONE_SHOT_SETUP, INITIAL_APP_STATE, type ModelRecord } from '../../types/state';
 import { featureA11yFindings } from '../../../tests/a11y-feature-findings';
 import { createCrossValidationSetup } from './training-setup';
-import {
-	createTrainingService,
-	setTrainingServiceForTesting,
-	type TrainingCommandResult
-} from './training/training-service';
 import './app-models-view';
 
 function seedModels() {
@@ -164,54 +159,44 @@ export const RtlLongLabel: Story = {
 	}
 };
 
-function createStoryFixture(createModel: () => Promise<TrainingCommandResult<number>>) {
-	const restore = seedModels();
-	setTrainingServiceForTesting({ ...createTrainingService(), createModel });
-	return () => {
-		setTrainingServiceForTesting();
-		restore();
-	};
-}
-
-/** A pending model allocation keeps navigation idle. */
-export const PendingCreation: Story = {
+/** Starts new work and resumes the current draft at the same workflow path. */
+export const ProvisionalModelLinks: Story = {
 	beforeEach: () => {
-		let settle!: (result: TrainingCommandResult<number>) => void;
-		const pending = new Promise<TrainingCommandResult<number>>((resolve) => {
-			settle = resolve;
-		});
-		const restore = createStoryFixture(() => pending);
-		return () => {
-			settle({ ok: false, code: 'cancelled' });
-			restore();
-		};
+		const restore = seedModels();
+		$appState.set({ ...$appState.get(), newModelNum: 3 });
+		return restore;
 	},
 	play: async ({ canvasElement }) => {
 		const models = canvasElement.querySelector('app-models-view')!;
 		await models.updateComplete;
-		const button = models.shadowRoot!.querySelector<HTMLButtonElement>(
-			'.header-actions button.btn-primary'
-		)!;
-		await userEvent.click(button);
-		await expect(button).toHaveTextContent('Saving…');
-		await expect(button).toBeDisabled();
+		await expect(models.shadowRoot!.querySelector('.header-actions a')).toHaveAttribute(
+			'href',
+			'/models/new'
+		);
+		await expect(models.shadowRoot!.querySelector('tbody tr:last-child a')).toHaveAttribute(
+			'href',
+			'/models/new'
+		);
+		await expect(models.shadowRoot!.querySelector('tbody tr:first-child a')).toHaveAttribute(
+			'href',
+			'/models/1'
+		);
 	}
 };
 
-/** A failed model allocation stays on the overview and offers another attempt. */
-export const FailedCreation: Story = {
-	beforeEach: () => createStoryFixture(async () => ({ ok: false, code: 'storage-unavailable' })),
+/** When a prerequisite is missing, the overview provides the matching workflow link. */
+export const MissingTarget: Story = {
+	beforeEach: () => {
+		const restore = seedModels();
+		$appState.set({ ...$appState.get(), target: null, models: [] });
+		return restore;
+	},
 	play: async ({ canvasElement }) => {
 		const models = canvasElement.querySelector('app-models-view')!;
 		await models.updateComplete;
-		const button = models.shadowRoot!.querySelector<HTMLButtonElement>(
-			'.header-actions button.btn-primary'
-		)!;
-		await userEvent.click(button);
-		await models.updateComplete;
-		await expect(models.shadowRoot!.querySelector('[role="alert"]')).toHaveTextContent(
-			'The new model could not be saved.'
-		);
-		await expect(button).toBeEnabled();
+		await expect(
+			models.shadowRoot!.querySelector('.header-actions button.btn-primary')
+		).toBeDisabled();
+		await expect(models.shadowRoot!.querySelector('a[href="/target"]')).toBeVisible();
 	}
 };

@@ -52,8 +52,12 @@ export async function configureDraft(
 	modelNum: number,
 	saveConfiguration = true
 ): Promise<Locator> {
-	await page.getByRole('button', { name: 'Train New Model' }).click();
-	await expect(page).toHaveURL(`/models/${modelNum}`);
+	await page.locator('app-models-view').getByRole('link', { name: 'Train New Model' }).click();
+	await expect(page).toHaveURL('/models/new');
+	await expect(page.locator('app-model-builder-view')).toHaveAttribute(
+		'model-num',
+		String(modelNum)
+	);
 	return configureOpenDraft(page, modelNum, { saveConfiguration });
 }
 

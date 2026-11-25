@@ -100,9 +100,11 @@ test('BETA-ERR-5: production data, training, results and dialogs stay clean unde
 	const overview = page.locator('app-models-view');
 	const modelNumbers: number[] = [];
 	for (const classifier of ['logistic-regression', 'gaussian-nb'] satisfies ClassifierId[]) {
-		await overview.getByRole('button', { name: 'Train New Model' }).click();
-		await expect(page).toHaveURL(/\/models\/[1-9]\d*$/);
-		const number = Number(new URL(page.url()).pathname.split('/').at(-1));
+		await overview.getByRole('link', { name: 'Train New Model' }).click();
+		await expect(page).toHaveURL('/models/new');
+		const builder = page.locator('app-model-builder-view');
+		await expect(builder).toHaveAttribute('model-num', /^[1-9]\d*$/);
+		const number = Number(await builder.getAttribute('model-num'));
 		modelNumbers.push(number);
 
 		const setup = await configureOpenDraft(page, number, { classifier });
@@ -119,10 +121,6 @@ test('BETA-ERR-5: production data, training, results and dialogs stay clean unde
 
 	for (const number of modelNumbers) {
 		await overview.locator(`a[href="/models/${number}"]`, { hasText: 'View Results' }).click();
-		await page
-			.getByTestId('training-step')
-			.getByRole('button', { name: 'View Results' })
-			.click();
 		const flowchart = page.locator('app-confusion-flowchart');
 		await expect(flowchart.locator('.rows > li')).toHaveCount(2);
 		const sizes = await flowchart.evaluate((host: AppConfusionFlowchart) =>

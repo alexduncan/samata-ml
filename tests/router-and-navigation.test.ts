@@ -86,6 +86,11 @@ describe('Router & Navigation (NAV-AC-1, NAV-AC-2, NAV-AC-4)', () => {
 				path: '/models',
 				section: 3
 			});
+			expect(parseRoute('/models/new')).toEqual({
+				kind: 'workflow',
+				path: '/models/new',
+				section: 3
+			});
 			expect(parseRoute('/results')).toEqual({
 				kind: 'workflow',
 				path: '/results',
@@ -424,6 +429,65 @@ describe('Router & Navigation (NAV-AC-1, NAV-AC-2, NAV-AC-4)', () => {
 				path: '/help',
 				underlayPath: '/models/2'
 			});
+		});
+
+		it('MW-ROUTE-1: inferred /models/new falls back to the overview without allocating', () => {
+			for (const path of ['/', '/help'] as const) {
+				stopRouter();
+				setResumePath('/models/new');
+				window.history.replaceState(null, '', path);
+				initRouter();
+				const route = $route.get();
+				if (path === '/')
+					expect(route).toEqual({ kind: 'workflow', path: '/models', section: 3 });
+				else
+					expect(route).toEqual({
+						kind: 'reserved',
+						path: '/help',
+						underlayPath: '/models'
+					});
+				expect($appState.get().models).toEqual([]);
+			}
+		});
+
+		it('MW-ROUTE-2: canonicalises an active numeric draft, including a reserved underlay', () => {
+			loadDatasetSucceeded(sampleDataset);
+			setTarget('species');
+			const num = createModel();
+			$appState.set({ ...$appState.get(), newModelNum: num || null });
+			for (const path of ['/models/1', '/help'] as const) {
+				stopRouter();
+				setResumePath('/models/1');
+				window.history.replaceState(null, '', path);
+				initRouter();
+				const route = $route.get();
+				const expectedBinding = {
+					kind: 'bound' as const,
+					identity: {
+						datasetId: sampleDataset.id,
+						target: 'species',
+						comparisonContextEpoch: $appState.get().comparisonContextEpoch,
+						modelNum: 1,
+						modelCreatedAt: $appState.get().models[0]!.createdAt
+					}
+				};
+				if (path === '/help')
+					expect(route).toEqual({
+						kind: 'reserved',
+						path: '/help',
+						underlayPath: '/models/new',
+						provisional: expectedBinding
+					});
+				else
+					expect(route).toEqual({
+						kind: 'workflow',
+						path: '/models/new',
+						section: 3,
+						provisional: expectedBinding
+					});
+				expect(getScrollKeyForRoute(route)).toBe('models/1');
+				expect($appState.get().models).toHaveLength(1);
+			}
 		});
 	});
 

@@ -1030,14 +1030,25 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		/** Reuses or allocates the current provisional model under the protected state lock. */
 		async openNewModel(
 			captured: ProvisionalModelContext,
-			allowAllocation = true
-		): Promise<TrainingCommandResult<ProvisionalModelIdentity>> {
+			allowAllocation = true,
+			expected?: ProvisionalModelIdentity
+		): Promise<
+			| { ok: true; value: ProvisionalModelIdentity }
+			| (TrainingCommandFailure & { candidate?: ProvisionalModelIdentity })
+		> {
 			let binding: ProvisionalModelIdentity | undefined;
 			const { ack, committed } = await checkpoint('recover', async ({ state }, { db }) => {
 				if (
 					state?.dataset?.id !== captured.datasetId ||
 					state.target !== captured.target ||
 					state.comparisonContextEpoch !== captured.comparisonContextEpoch
+				)
+					return conflict;
+				if (
+					expected &&
+					(expected.datasetId !== captured.datasetId ||
+						expected.target !== captured.target ||
+						expected.comparisonContextEpoch !== captured.comparisonContextEpoch)
 				)
 					return conflict;
 				const metadata = await getMetadata(db, captured.datasetId);
@@ -1049,8 +1060,30 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 					)
 				)
 					return conflict;
+				if (expected) {
+					const finished = state.models.find(
+						(model) =>
+							model.num === expected.modelNum &&
+							model.createdAt === expected.modelCreatedAt
+					);
+					if (
+						finished?.status === 'trained' &&
+						finished.provisionalCompletedRunId &&
+						finished.provisionalCompletedRunId === finished.resultRevision
+					) {
+						binding = expected;
+						publishNewerTrainingSnapshot(state);
+						return null;
+					}
+				}
 				const existing = provisionalModelIn(state.models, state.newModelNum);
 				if (existing) {
+					if (
+						expected &&
+						(existing.num !== expected.modelNum ||
+							existing.createdAt !== expected.modelCreatedAt)
+					)
+						return conflict;
 					binding = {
 						...captured,
 						modelNum: existing.num,
@@ -1059,7 +1092,7 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 					publishNewerTrainingSnapshot(state);
 					return null;
 				}
-				if (!allowAllocation) return conflict;
+				if (!allowAllocation || expected) return conflict;
 				const modelCreatedAt = now();
 				const next = reduceCreateModel(state, modelCreatedAt);
 				if (!next) return conflict;
@@ -1069,7 +1102,11 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 					mutation: { type: 'none' }
 				};
 			});
-			if (!ack.ok) return notice(ack, committed ? 'recover' : undefined);
+			if (!ack.ok)
+				return {
+					...notice(ack, committed ? 'recover' : undefined),
+					candidate: committed ? binding : undefined
+				};
 			return binding ? { ok: true, value: binding } : notice(conflict);
 		},
 		async createModel(): Promise<TrainingCommandResult<number>> {
@@ -1181,6 +1218,7 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 								)
 									return conflict;
 								const next = reduceViewResults(state, identity.modelNum);
+								if (next === state) return null;
 								return next
 									? { state: next, mutation: { type: 'none' } }
 									: conflict;

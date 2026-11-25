@@ -1,11 +1,13 @@
 import { computed } from 'nanostores';
 import { $route } from '../router/router';
 import { $appState } from './app.store';
+import { provisionalModelIn } from '../types/state';
 
 /** Read-only sidebar summaries and link states, derived without changing domain state. */
 export const $sidebarState = computed([$appState, $route], (state, route) => {
 	const path = route.kind === 'workflow' ? route.path : null;
 	const current = (href: string): 'page' | undefined => (path === href ? 'page' : undefined);
+	const provisional = provisionalModelIn(state.models, state.newModelNum);
 	return {
 		dataset: state.dataset
 			? {
@@ -24,8 +26,10 @@ export const $sidebarState = computed([$appState, $route], (state, route) => {
 			: null,
 		models: state.models.map((model) => ({
 			num: model.num,
+			href: model === provisional ? '/models/new' : `/models/${model.num}`,
+			provisional: model === provisional ? model.createdAt : undefined,
 			status: model.status,
-			current: current(`/models/${model.num}`)
+			current: current(model === provisional ? '/models/new' : `/models/${model.num}`)
 		})),
 		current: {
 			data: current('/data'),

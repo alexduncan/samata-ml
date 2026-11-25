@@ -6,6 +6,7 @@ import {
 	downgradeEnvelope,
 	interceptResultReads,
 	payloadFor,
+	replyWithEvaluation,
 	seedTrainedModel
 } from './helpers/seed-results';
 
@@ -200,9 +201,9 @@ test.describe('Section 6 shared results', () => {
 			'h3:Calibration',
 			'app-reliability-diagram'
 		]);
-		await expect(page.locator('.train-step[aria-current="step"] h2')).toHaveText(
-			'6. Model Results'
-		);
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Model 1 Results' })
+		).toBeVisible();
 		await expect(results(page).locator('app-results-summary')).toContainText(
 			'Balanced accuracy on held-out rows'
 		);
@@ -249,16 +250,16 @@ test.describe('Section 6 shared results', () => {
 		await expect(results(page).getByRole('slider')).toHaveCount(0);
 	});
 
-	test('WML-P4-UI-10: a valid version 1 envelope opens Section 6 with the legacy message and Models link', async ({
+	test('WML-P4-UI-10: a valid version 1 envelope opens numbered results with the legacy message and Models link', async ({
 		page
 	}) => {
 		await seedTrainedModel(page, 'iris');
 		await waitForResults(page);
 		await downgradeEnvelope(page);
 		await page.reload();
-		await expect(page.locator('.train-step[aria-current="step"] h2')).toHaveText(
-			'6. Model Results'
-		);
+		await expect(
+			page.getByRole('heading', { level: 1, name: 'Model 1 Results' })
+		).toBeVisible();
 		await expect(results(page)).toContainText(
 			'This model was trained before detailed results were saved.'
 		);
@@ -294,7 +295,7 @@ test.describe('Section 6 shared results', () => {
 		page
 	}) => {
 		await seedTrainedModel(page, 'breast-cancer', { acknowledge: false });
-		await interceptResultReads(page, { outcome: 'missing', after: 1 });
+		await interceptResultReads(page, { outcome: 'missing', after: 2 });
 		await page
 			.getByTestId('training-step')
 			.getByRole('button', { name: 'View Results' })
@@ -304,9 +305,54 @@ test.describe('Section 6 shared results', () => {
 		await expect(results(page).locator('app-results-summary')).toHaveCount(0);
 	});
 
+	test('MW-ROUTE-2: a lost provisional result cannot route to a later numbered rerun', async ({
+		page
+	}) => {
+		await seedTrainedModel(page, 'breast-cancer', { acknowledge: false });
+		await expect(page).toHaveURL('/models/new');
+		const original = (await storedModel(page)).resultRevision;
+		expect(original).toBeTruthy();
+		expect((await storedModel(page)).provisionalCompletedRunId).toBe(original);
+		await deleteEnvelope(page);
+		await page.reload();
+		const recovery = page.getByTestId('provisional-route');
+		await expect(recovery.getByRole('link', { name: 'Back to Models' })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'View Results' })).toHaveCount(0);
+
+		await recovery.getByRole('link', { name: 'Back to Models' }).click();
+		await page.locator('app-models-view').getByRole('link', { name: 'Continue' }).click();
+		await expect(page).toHaveURL('/models/1');
+		await page.getByRole('button', { name: 'Train Model' }).press('Enter');
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						window.__trainingFixture!.requests.filter(({ kind }) => kind === 'start')
+							.length
+				)
+			)
+			.toBe(1);
+		await replyWithEvaluation(page, 'breast-cancer');
+		await waitForResults(page);
+		const rerun = await storedModel(page);
+		expect(rerun.resultRevision).not.toBe(original);
+		expect(rerun.provisionalCompletedRunId).toBe(original);
+
+		await page.goBack();
+		await page.goBack();
+		await expect(page).toHaveURL('/models/new');
+		await expect(recovery.getByRole('link', { name: 'Back to Models' })).toBeVisible();
+		await page.locator('app-sidebar a[href="/help"]').click();
+		await page.reload();
+		await page.getByRole('button', { name: 'Close', exact: true }).click();
+		await expect(page).toHaveURL('/models/new');
+		await expect(recovery.getByRole('link', { name: 'Back to Models' })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'View Results' })).toHaveCount(0);
+	});
+
 	test('WML-P4-UI-10: a read error shows an alert and Retry recovers', async ({ page }) => {
 		await seedTrainedModel(page, 'breast-cancer', { acknowledge: false });
-		await interceptResultReads(page, { outcome: 'fail', after: 1 });
+		await interceptResultReads(page, { outcome: 'fail', after: 2 });
 		await page
 			.getByTestId('training-step')
 			.getByRole('button', { name: 'View Results' })

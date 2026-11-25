@@ -15,6 +15,7 @@ interface FocusTestWindow extends Window {
 	__releaseHeadingFocus?: () => void;
 	__detachedFocusView?: FocusableView;
 	__releaseMetadata?: () => void;
+	__releaseProvisional?: () => void;
 }
 
 async function mountPrimitiveFixture(page: Page): Promise<void> {
@@ -86,8 +87,25 @@ async function createIrisModel(page: Page): Promise<void> {
 	await keyboardNavigate(page, '/target');
 	await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
 	await keyboardNavigate(page, '/models');
-	await page.locator('app-models-view button:has-text("Train New Model")').click();
-	await expect(page).toHaveURL(/\/models\/1$/);
+	await page.locator('app-models-view a[href="/models/new"]').click();
+	await expect(page).toHaveURL(/\/models\/new$/);
+	await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
+}
+
+async function holdProvisionalPublication(page: Page): Promise<void> {
+	await page.evaluate(
+		() =>
+			new Promise<void>((entered) => {
+				void navigator.locks.request(
+					'samata-ml:training-state',
+					() =>
+						new Promise<void>((release) => {
+							(window as FocusTestWindow).__releaseProvisional = release;
+							entered();
+						})
+				);
+			})
+	);
 }
 
 async function delayHeadingFocus(page: Page, tag: string): Promise<void> {
@@ -312,8 +330,9 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await expect(page.locator('#content h1')).toHaveText('Train Models');
 	});
 
-	test('NAV-E2E-9: Deep link to /models/1 loads cleanly with root-absolute assets', async ({
-		page
+	test('NAV-E2E-9 / MW-ROUTE-2: a provisional numeric deep link canonicalises with root-absolute assets', async ({
+		page,
+		context
 	}) => {
 		// Persist a real model so startup reconciliation retains the deep-linked record.
 		await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
@@ -321,28 +340,127 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await page.locator('app-sidebar a[href="/target"]').click();
 		await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
 		await page.locator('app-sidebar a[href="/models"]').click();
-		await page.locator('app-models-view button:has-text("Train New Model")').click();
-		await expect(page).toHaveURL(/\/models\/1$/);
-		await page.locator('app-sidebar a[href="/data"]').click();
+		await page.locator('app-models-view a[href="/models/new"]').click();
+		await expect(page).toHaveURL(/\/models\/new$/);
+		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
+		const deepLink = await context.newPage();
 
 		const failedRequests: string[] = [];
-		page.on('requestfailed', (req) => {
+		deepLink.on('requestfailed', (req) => {
 			failedRequests.push(req.url());
 		});
 
-		await page.goto('/models/1');
+		await deepLink.goto('/models/1');
+		await expect(deepLink).toHaveURL('/models/new');
 
 		// Check heading
-		await expect(page.locator('#content h1')).toHaveText('Model 1');
+		await expect(deepLink.locator('#content h1')).toHaveText('Model 1');
 
 		// Sidebar should render steps
-		await expect(page.locator('app-sidebar nav.workflow')).toBeVisible();
+		await expect(deepLink.locator('app-sidebar nav.workflow')).toBeVisible();
 
 		// No stylesheet or script asset requests should have failed
 		const assetFailures = failedRequests.filter(
 			(url) => url.endsWith('.css') || url.endsWith('.js')
 		);
 		expect(assetFailures).toEqual([]);
+		await deepLink.close();
+	});
+
+	for (const dismiss of ['plain', 'Back', 'Close'] as const) {
+		test(`MW-ROUTE-1/2: provisional acknowledgement preserves entry and focus with ${dismiss}`, async ({
+			page
+		}) => {
+			await loadSampleDataset(page, 'iris');
+			await keyboardNavigate(page, '/target');
+			await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
+			await keyboardNavigate(page, '/models');
+			await expect(page.locator('app-models-view a[href="/models/new"]')).toBeVisible();
+			await holdProvisionalPublication(page);
+			const train = page.locator('app-models-view a[href="/models/new"]');
+			await train.press('Enter');
+			const placeholder = page.getByRole('heading', { name: 'Train New Model' });
+			await expect(placeholder).toBeFocused();
+			await expect(page.locator('app-model-builder-view')).toHaveCount(0);
+			const source = await page.evaluate(() => history.state.entryId);
+			const close = page.getByRole('button', { name: 'Close', exact: true });
+			if (dismiss !== 'plain') {
+				await page.locator('app-sidebar a[href="/help"]').click();
+				await expect(close).toBeFocused();
+				expect(await page.evaluate(() => history.state.underlayEntryId)).toBe(source);
+			}
+			await page.evaluate(() => (window as FocusTestWindow).__releaseProvisional!());
+			const model = page.locator('app-model-builder-view h1');
+			await expect(model).toHaveText('Model 1');
+			if (dismiss === 'plain') {
+				await expect(model).toBeFocused();
+			} else {
+				await expect(page).toHaveURL('/help');
+				await expect(close).toBeFocused();
+				if (dismiss === 'Back') await page.goBack();
+				else await close.click();
+				await expect(close).toBeHidden();
+			}
+			await expect(page).toHaveURL('/models/new');
+			expect(await page.evaluate(() => history.state.entryId)).toBe(source);
+			await page.reload();
+			await expect(model).toHaveText('Model 1');
+			expect(
+				await page.evaluate(() => window.__appState!.get().models.map(({ num }) => num))
+			).toEqual([1]);
+		});
+	}
+
+	test('MW-ROUTE-1: an explicit deep link can allocate once while inferred resume cannot', async ({
+		page
+	}) => {
+		await page.goto('/models/new');
+		await expect(
+			page.getByTestId('provisional-route').getByRole('link', { name: 'Load a dataset' })
+		).toBeVisible();
+		await page.goto('/data');
+		await loadSampleDataset(page, 'iris');
+		await keyboardNavigate(page, '/target');
+		await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
+		await expect(page.getByRole('button', { name: 'Current Target' })).toBeVisible();
+		await page.goto('/models/new');
+		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
+		await page.goto('/');
+		await expect(page).toHaveURL('/models/new');
+		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
+		expect(
+			await page.evaluate(() => window.__appState!.get().models.map(({ num }) => num))
+		).toEqual([1]);
+	});
+
+	test('MW-ROUTE-1: reloading an unacknowledged entry never allocates again', async ({
+		page,
+		context
+	}) => {
+		await loadSampleDataset(page, 'iris');
+		await keyboardNavigate(page, '/target');
+		await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
+		await keyboardNavigate(page, '/models');
+		const holder = await context.newPage();
+		try {
+			await holder.goto('/models');
+			await expect(holder.locator('app-models-view a[href="/models/new"]')).toBeVisible();
+			await holdProvisionalPublication(holder);
+			await page.locator('app-models-view a[href="/models/new"]').press('Enter');
+			await expect(
+				page.getByRole('status').filter({ hasText: 'Opening your model' })
+			).toBeVisible();
+			await page.reload({ waitUntil: 'commit' });
+			await holder.evaluate(() => (window as FocusTestWindow).__releaseProvisional!());
+			const retry = page.getByRole('button', { name: 'Retry saving', exact: true });
+			await expect(retry).toBeEnabled();
+			await retry.click();
+			await expect(retry).toBeEnabled();
+			await expect(page.locator('app-model-builder-view')).toHaveCount(0);
+			expect(await page.evaluate(() => window.__appState!.get().models)).toEqual([]);
+		} finally {
+			await holder.close();
+		}
 	});
 
 	test('NAV-E2E-2d: Sidebar link aria-current conforms to SEM-03', async ({ page }) => {
@@ -748,7 +866,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 			});
 		}
 		await page.goBack();
-		await keyboardNavigate(page, '/models/1');
+		await keyboardNavigate(page, '/models/new');
 		await expect(page.locator('#content h1')).toBeFocused();
 		expect(await outline(page.locator('#content h1'))).toMatchObject({
 			width: '2px',

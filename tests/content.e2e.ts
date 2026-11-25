@@ -144,8 +144,11 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		await targetView.locator('tbody tr:has(th:has-text("class")) button').click();
 
 		await page.goto('/models');
-		await page.getByRole('button', { name: 'Train New Model' }).click();
-		await expect(page).toHaveURL('/models/1');
+		await page
+			.locator('app-models-view')
+			.getByRole('link', { name: 'Train New Model' })
+			.click();
+		await expect(page).toHaveURL('/models/new');
 		const builder = page.locator('app-model-builder-view');
 		await expect(builder.getByTestId('model-builder')).toBeVisible();
 		const originalBuilder = await builder.elementHandle();
@@ -165,11 +168,11 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		expect(
 			await builder.evaluate((element, original) => element === original, originalBuilder)
 		).toBe(true);
-		expect(await page.evaluate(() => window.__appState!.get().resumePath)).toBe('/models/1');
+		expect(await page.evaluate(() => window.__appState!.get().resumePath)).toBe('/models/new');
 
 		await modal.getByRole('button', { name: 'Close' }).click();
 		await expect(modal).toBeHidden();
-		await expect(page).toHaveURL('/models/1');
+		await expect(page).toHaveURL('/models/new');
 		await expect(page).toHaveTitle('samatā.ml | Model 1');
 		expect(
 			await builder.evaluate((element, original) => element === original, originalBuilder)

@@ -6,7 +6,13 @@ import { repeat } from 'lit/directives/repeat.js';
 import { StoreController } from '@nanostores/lit';
 import { computed } from 'nanostores';
 import { ContentLoadError, loadContentEntry } from '../../common/content/content-loader';
-import { $route } from '../../router/router';
+import {
+	$route,
+	getEffectiveModelNum,
+	provisionalResultIdentity,
+	provisionalRouteModel,
+	promoteProvisionalResult
+} from '../../router/router';
 import {
 	$appState,
 	chooseModel,
@@ -53,6 +59,7 @@ import {
 	type ModelRecord,
 	type ModelSectionId,
 	type PersistedAppState,
+	type ProvisionalModelIdentity,
 	type TrainingProgress,
 	type ValidationMethodology
 } from '../../types/state';
@@ -99,6 +106,7 @@ import {
 	getTrainingService,
 	type TrainingCommandFailure
 } from './training/training-service';
+import { sameTrainingRun } from './training/result-validation';
 
 const MODEL_ART: Readonly<Record<ClassifierId, string>> = {
 	'bernoulli-nb': '/assets/bernoulli-naive-bayes.svg',
@@ -207,6 +215,7 @@ const messages = i18n('app-model-builder-view', {
 	trainingPendingResultsView:
 		'The change is saved, but progress could not be saved. Retry saving.',
 	trainingResultUnavailable: 'The saved result could not be read.',
+	backToModels: 'Back to Models',
 	trainingElapsed: params<{ seconds: string }>('Elapsed time {seconds}'),
 	cancelTraining: 'Cancel Training',
 	viewResults: 'View Results',
@@ -472,6 +481,14 @@ export class AppModelBuilderView extends LitElement {
 	@property({ type: Number, attribute: 'model-num' })
 	accessor modelNum = 0;
 
+	/** History-bound identity when mounted by the provisional workflow route. */
+	@property({ attribute: false })
+	accessor provisionalBinding: ProvisionalModelIdentity | undefined;
+
+	/** When the shell mounts a numbered route, a saved model opens its results directly. */
+	@property({ attribute: false })
+	accessor numberedRoute = false;
+
 	// Description dialog state
 	@state() private accessor dialogOpen = false;
 	@state() private accessor dialogHeading = '';
@@ -490,6 +507,7 @@ export class AppModelBuilderView extends LitElement {
 		  }
 		| undefined;
 	@state() private accessor resultReadFailed = false;
+	@state() private accessor verifiedProvisional = false;
 	@state() private accessor showingResults = false;
 	@state() private accessor retryingPublication = false;
 
@@ -503,6 +521,8 @@ export class AppModelBuilderView extends LitElement {
 	private restoreSubmitFocus: TrainingRunIdentity | null = null;
 
 	private get currentModel(): ModelRecord | undefined {
+		if (this.provisionalBinding)
+			return provisionalRouteModel(this.provisionalBinding, this.appStateController.value);
 		return this.appStateController.value.models.find((m) => m.num === this.modelNum);
 	}
 
@@ -531,12 +551,29 @@ export class AppModelBuilderView extends LitElement {
 
 		const resultKey =
 			model?.status === 'trained' && model.resultRevision
-				? JSON.stringify([key, model.resultRevision])
+				? JSON.stringify([key, model.resultRevision, this.provisionalBinding])
 				: null;
 		if (resultKey !== this.checkedResultKey) {
 			this.checkedResultKey = resultKey;
 			this.resultReadFailed = false;
-			if (model?.status === 'trained' && session?.status !== 'complete') {
+			this.verifiedProvisional = false;
+			if (this.provisionalBinding && model?.status === 'trained') {
+				const expected = provisionalResultIdentity(this.provisionalBinding);
+				if (!expected) this.resultReadFailed = true;
+				else
+					void getTrainingService()
+						.loadCompletedResult(model.num, expected)
+						.then((result) => {
+							if (this.checkedResultKey !== resultKey || !this.isConnected) return;
+							this.verifiedProvisional =
+								result !== null && sameTrainingRun(expected, result);
+							this.resultReadFailed = !this.verifiedProvisional;
+						});
+			} else if (
+				!this.numberedRoute &&
+				model?.status === 'trained' &&
+				session?.status !== 'complete'
+			) {
 				void getTrainingService()
 					.loadCompletedResult(model.num)
 					.then((result) => {
@@ -1288,7 +1325,7 @@ export class AppModelBuilderView extends LitElement {
 		const child = this.trainingSetupChild;
 		if (
 			route.kind !== 'workflow' ||
-			route.modelNum !== this.modelNum ||
+			getEffectiveModelNum(route) !== this.modelNum ||
 			!child?.element.isConnected ||
 			child.element !== event.currentTarget
 		)
@@ -1354,7 +1391,7 @@ export class AppModelBuilderView extends LitElement {
 		return (
 			this.isConnected &&
 			route.kind === 'workflow' &&
-			route.modelNum === this.modelNum &&
+			getEffectiveModelNum(route) === this.modelNum &&
 			Boolean(model && this.trainingNoticeKey(model) === key)
 		);
 	}
@@ -1504,17 +1541,26 @@ export class AppModelBuilderView extends LitElement {
 		model: ModelRecord,
 		identity?: TrainingRunIdentity
 	): Promise<void> {
-		if (this.retryingPublication) return;
+		if (this.retryingPublication || !this.isCurrentTrainingRoute(this.trainingNoticeKey(model)))
+			return;
 		const key = this.trainingNoticeKey(model);
 		this.retryingPublication = true;
 		try {
-			const result = await getTrainingService().retry(identity);
+			const resultIdentity =
+				this.provisionalBinding && !identity && this.verifiedProvisional
+					? provisionalResultIdentity(this.provisionalBinding)
+					: null;
+			const result = resultIdentity
+				? await promoteProvisionalResult(resultIdentity, true)
+				: await getTrainingService().retry(identity);
 			if (!this.isCurrentTrainingRoute(key)) return;
 			if (result.ok) {
 				this.trainingNotice = undefined;
 				const current = this.currentModel;
 				if (current?.completedSteps.includes('results'))
 					await this.focusTrainingHeading(key, 6);
+			} else if ('missingSavedResult' in result) {
+				this.resultReadFailed = true;
 			} else {
 				this.trainingNotice = { key, code: result.code, pending: result.pending };
 			}
@@ -1524,13 +1570,18 @@ export class AppModelBuilderView extends LitElement {
 	}
 
 	private async handleViewResults(model: ModelRecord, session: TrainingSession): Promise<void> {
-		if (this.showingResults) return;
+		if (this.showingResults || !this.isCurrentTrainingRoute(this.trainingNoticeKey(model)))
+			return;
 		const key = this.trainingNoticeKey(model);
 		this.showingResults = true;
 		try {
-			const result = await getTrainingService().viewResults(session.identity);
+			const result = this.provisionalBinding
+				? await promoteProvisionalResult(session.identity)
+				: await getTrainingService().viewResults(session.identity);
 			if (!this.isCurrentTrainingRoute(key)) return;
-			if (result.ok) await this.focusTrainingHeading(key, 6);
+			if (result.ok) {
+				if (!this.provisionalBinding) await this.focusTrainingHeading(key, 6);
+			} else if ('missingSavedResult' in result) this.resultReadFailed = true;
 			else this.trainingNotice = { key, code: result.code, pending: result.pending };
 		} finally {
 			this.showingResults = false;
@@ -1763,8 +1814,11 @@ export class AppModelBuilderView extends LitElement {
 			return this.renderPendingSection(t.trainingHeading, 'step-5-title', 'training', 0, 5);
 		}
 
-		const complete = model.status === 'trained' && session?.status === 'complete';
-		const viewed = model.completedSteps.includes('results');
+		const complete =
+			model.status === 'trained' &&
+			session?.status === 'complete' &&
+			(!this.provisionalBinding || this.verifiedProvisional);
+		const viewed = !this.provisionalBinding && model.completedSteps.includes('results');
 		const pending = this.publication.value;
 		const pendingRun = pending?.identity && pending.identity.runId === session?.identity.runId;
 		const stoppedPending = session?.status === 'stopped-pending';
@@ -1830,7 +1884,11 @@ export class AppModelBuilderView extends LitElement {
 										?disabled=${awaitingRun}
 										aria-disabled=${cancelling ? 'true' : nothing}
 										@click=${() =>
-											!cancelling && getTrainingService().cancel(model.num)}>
+											!cancelling &&
+											this.isCurrentTrainingRoute(
+												this.trainingNoticeKey(model)
+											) &&
+											getTrainingService().cancel(model.num)}>
 										${t.cancelTraining}
 									</button>`
 								: nothing}
@@ -1911,7 +1969,11 @@ export class AppModelBuilderView extends LitElement {
 	/** Section 6: the shared results once the acknowledged trained model's results are shown. */
 	private renderResultsSection(model: ModelRecord, activeStep: number): TemplateResult {
 		const t = this.translations.value;
-		if (model.status !== 'trained' || !model.completedSteps.includes('results')) {
+		if (
+			this.provisionalBinding ||
+			model.status !== 'trained' ||
+			!model.completedSteps.includes('results')
+		) {
 			return this.renderPendingSection(
 				t.resultsHeading,
 				'step-6-title',
@@ -1986,7 +2048,32 @@ export class AppModelBuilderView extends LitElement {
 		}
 
 		const session = displaySession(this.trainingSessions.value, appState, model);
-		const activeStep = model.status === 'draft' && session ? 5 : getActiveStep(model);
+		if (this.numberedRoute && model.status === 'trained') {
+			return html`
+				<header class="page-header">
+					<h1 tabindex="-1">Model ${model.num} Results</h1>
+				</header>
+				<section class="page-body" data-testid="results-step">
+					<app-model-results model-num=${model.num}></app-model-results>
+				</section>
+			`;
+		}
+		if (this.provisionalBinding && model.status === 'trained' && this.resultReadFailed) {
+			return html`
+				<header class="page-header"><h1 tabindex="-1">Model ${model.num}</h1></header>
+				<section class="page-body" data-testid="provisional-route">
+					<p class="notification notification-alert" role="status">
+						${this.translations.value.trainingResultUnavailable}
+					</p>
+					<a href="/models">${this.translations.value.backToModels}</a>
+				</section>
+			`;
+		}
+		const activeStep =
+			(model.status === 'draft' && session) ||
+			(this.provisionalBinding && model.status === 'trained')
+				? 5
+				: getActiveStep(model);
 		const isStep1Completed = model.completedSteps.includes('choose-model');
 		const isStep2Completed = model.completedSteps.includes('select-features');
 		const isStep3Completed = model.completedSteps.includes('configure-model');

@@ -61,7 +61,7 @@ export function blockedReason(route: string, state: PersistedAppState): BlockedR
 	}
 
 	// 3. /models requires dataset and target
-	if (route === '/models') {
+	if (route === '/models' || route === '/models/new') {
 		if (!hasDataset) return 'DATASET_REQUIRED';
 		if (!hasTarget) return 'TARGET_REQUIRED';
 		return null;

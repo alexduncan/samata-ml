@@ -82,7 +82,13 @@ export interface DatasetSummary {
 }
 
 /** Valid workflow navigation paths. */
-export type WorkflowPath = '/data' | '/target' | '/models' | `/models/${number}` | '/results';
+export type WorkflowPath =
+	| '/data'
+	| '/target'
+	| '/models'
+	| '/models/new'
+	| `/models/${number}`
+	| '/results';
 
 /** Identifier for each step in configuring and training a model. */
 export type ModelSectionId =

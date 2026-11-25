@@ -27,8 +27,8 @@ async function createDraftForAxe(page: Page) {
 	await expect(target.getByTestId('target-ready')).toBeVisible();
 	await target.locator('tbody tr:has(th:has-text("class")) button').click();
 	await target.locator('header a[href="/models"]').click();
-	await page.getByRole('button', { name: 'Train New Model' }).click();
-	await expect(page).toHaveURL('/models/1');
+	await page.locator('app-models-view').getByRole('link', { name: 'Train New Model' }).click();
+	await expect(page).toHaveURL('/models/new');
 	return page.locator('app-model-builder-view');
 }
 
@@ -329,8 +329,11 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		await classRow.locator('button').click();
 		await expect(classRow.locator('button')).toHaveText('Current Target');
 		await targetView.locator('header a[href="/models"]').click();
-		await page.getByRole('button', { name: 'Train New Model' }).click();
-		await expect(page).toHaveURL('/models/1');
+		await page
+			.locator('app-models-view')
+			.getByRole('link', { name: 'Train New Model' })
+			.click();
+		await expect(page).toHaveURL('/models/new');
 		await page.locator('app-sidebar a[href="/target"]').click();
 
 		// Click different target to open confirm dialog
@@ -459,7 +462,7 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		await expect(training.getByRole('button', { name: 'View Results' })).toBeDisabled();
 		await page.locator('app-sidebar a[href="/models"]').click();
 		await expect(page).toHaveURL('/models');
-		await page.locator('app-sidebar a[href="/models/1"]').click();
+		await page.locator('app-sidebar a[href="/models/new"]').click();
 		await expect(
 			training.getByRole('progressbar', { name: 'Training progress' })
 		).toBeVisible();

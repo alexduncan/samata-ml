@@ -174,11 +174,11 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		// Verify empty state text
 		await expect(modelsView).toContainText('No models yet. Train a new model to get started.');
 
-		// 3. Train New Model -> navigates to /models/1
-		const trainNewBtn = modelsView.locator('button.btn-primary:has-text("Train New Model")');
+		// 3. Train New Model -> navigates to /models/new
+		const trainNewBtn = modelsView.locator('a.btn-primary[href="/models/new"]');
 		await expect(trainNewBtn).toBeVisible();
 		await trainNewBtn.click();
-		await expect(page).toHaveURL(/\/models\/1$/);
+		await expect(page).toHaveURL(/\/models\/new$/);
 
 		const builder = page.locator('app-model-builder-view');
 		await expect(builder).toBeVisible();
@@ -251,7 +251,7 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 			)
 			.toContain('select-features');
 		await page.reload();
-		await expect(page).toHaveURL(/\/models\/1$/);
+		await expect(page).toHaveURL(/\/models\/new$/);
 		await expect(builder).toBeVisible();
 		await expect(step1).toContainText('Selected model: Logistic Regression');
 		await expect(step2).toContainText('Selected features (4):');

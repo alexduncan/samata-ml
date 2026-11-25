@@ -10,10 +10,21 @@ import './features/shell/app-welcome-modal';
 import './features/target/app-target-view';
 import './features/results/app-results-view';
 import { parseRoute } from './router/route-parser';
-import { $route, initRouter, takeFocusRequest } from './router/router';
+import {
+	$route,
+	getEffectiveModelNum,
+	getEffectiveWorkflowRoute,
+	getWorkflowEntryId,
+	initRouter,
+	isCurrentProvisionalContext,
+	provisionalRouteModel,
+	retryProvisionalRoute,
+	takeFocusRequest
+} from './router/router';
 import { getScrollKeyForRoute, initScrollRestorer, restoreScroll } from './router/scroll-restorer';
 import { $appState } from './stores/app.store';
 import { $datasetResources } from './stores/dataset.store';
+import { blockedReason } from './stores/predicates';
 import {
 	$storageSaveNotice,
 	adoptStoredBetaAcceptance,
@@ -35,7 +46,7 @@ import {
 	$publicationPending,
 	getTrainingService
 } from './features/models/training/training-service';
-import type { ParsedRoute, WorkflowPath } from './types/routes';
+import type { ParsedRoute } from './types/routes';
 
 let lastRestoredScrollKey: string | null = null;
 let pendingHeadingFocus: AbortController | undefined;
@@ -54,6 +65,18 @@ const releaseMessages = i18n('app-shell-release', {
 	message:
 		'A newer version of samatā.ml is available. Reload to continue with your saved progress.',
 	reload: 'Reload'
+});
+const provisionalMessages = i18n('app-shell-provisional', {
+	title: 'Train New Model',
+	loading: 'Opening your model…',
+	retry: 'Retry saving',
+	pending: 'Your model could not be opened. Retry saving to restore it.',
+	unavailable: 'This model is unavailable from this entry.',
+	models: 'Back to Models',
+	dataset: 'Load a dataset',
+	target: 'Choose a target',
+	datasetRequired: 'Load a dataset before training a model.',
+	targetRequired: 'Choose a target before training a model.'
 });
 
 async function retryStartup(container: HTMLElement): Promise<void> {
@@ -100,31 +123,76 @@ function renderWorkflowView(route: ParsedRoute) {
 			return html` <app-target-view></app-target-view> `;
 		case '/models':
 			return html` <app-models-view></app-models-view> `;
+		case '/models/new': {
+			const provisional = route.provisional;
+			if (provisional?.kind === 'bound' && provisionalRouteModel(provisional.identity)) {
+				return html`
+					<app-model-builder-view
+						model-num=${provisional.identity.modelNum}
+						.provisionalBinding=${provisional.identity}></app-model-builder-view>
+				`;
+			}
+			return renderProvisionalPlaceholder(provisional);
+		}
 		case '/results':
 			return html`<app-results-view></app-results-view>`;
 		default:
 			if (route.modelNum !== undefined) {
 				return html`
-					<app-model-builder-view model-num=${route.modelNum}></app-model-builder-view>
+					<app-model-builder-view
+						model-num=${route.modelNum}
+						.numberedRoute=${true}></app-model-builder-view>
 				`;
 			}
 			return html``;
 	}
 }
 
-/**
- * Resolves the active workflow route to display in <main>, keeping underlay mounted during reserved modals.
- */
-function getActiveWorkflowRoute(currentRoute: ParsedRoute): ParsedRoute {
-	if (currentRoute.kind === 'workflow') {
-		return currentRoute;
-	}
-	const resume = $appState.get().resumePath || '/data';
-	if (currentRoute.kind === 'reserved') {
-		const underlay = currentRoute.underlayPath ?? resume;
-		return parseRoute(underlay);
-	}
-	return parseRoute(resume);
+/** Renders the pending, prerequisite or recovery view for the new-model entry. */
+function renderProvisionalPlaceholder(
+	provisional: Extract<ParsedRoute, { kind: 'workflow' }>['provisional']
+) {
+	const text = provisionalMessages.get();
+	const blocked = blockedReason('/models/new', $appState.get());
+	const loading =
+		provisional?.kind === 'loading' && isCurrentProvisionalContext(provisional.context);
+	const retry =
+		provisional?.kind === 'pending' && isCurrentProvisionalContext(provisional.context);
+	const datasetMissing = blocked === 'DATASET_REQUIRED';
+	const prerequisite = !provisional && blocked;
+	return html`
+		<header class="page-header">
+			<h1 tabindex="-1" data-provisional-entry=${getWorkflowEntryId() ?? ''}>
+				${text.title}
+			</h1>
+		</header>
+		<section class="page-body" data-testid="provisional-route">
+			${loading
+				? html`<p role="status">${text.loading}</p>`
+				: html`<p class="notification notification-alert" role="status">
+							${prerequisite
+								? datasetMissing
+									? text.datasetRequired
+									: text.targetRequired
+								: retry
+									? text.pending
+									: text.unavailable}
+						</p>
+						${retry
+							? html`<button
+									type="button"
+									class="btn"
+									@click=${retryProvisionalRoute}>
+									${text.retry}
+								</button>`
+							: nothing}
+						${prerequisite
+							? html`<a href=${datasetMissing ? '/data' : '/target'}
+									>${datasetMissing ? text.dataset : text.target}</a
+								>`
+							: html`<a href="/models">${text.models}</a>`}`}
+		</section>
+	`;
 }
 
 function focusReservedPointerInvoker(event: MouseEvent): void {
@@ -176,7 +244,13 @@ export function renderAppShell(container: HTMLElement): void {
 	pendingHeadingFocus?.abort();
 	pendingHeadingFocus = undefined;
 	const currentRoute = $route.get();
-	const activeWorkflowRoute = getActiveWorkflowRoute(currentRoute);
+	const activeWorkflowRoute = getEffectiveWorkflowRoute(currentRoute);
+	const active = document.activeElement;
+	const transferProvisionalFocus =
+		currentRoute.kind === 'workflow' &&
+		currentRoute.path === '/models/new' &&
+		currentRoute.provisional?.kind === 'bound' &&
+		active?.getAttribute('data-provisional-entry') === getWorkflowEntryId();
 	const messages = storageMessages.get();
 	const release = releaseMessages.get();
 
@@ -240,7 +314,7 @@ export function renderAppShell(container: HTMLElement): void {
 
 	// Focus handling on user workflow navigation per §5.6
 	const requestedFocus = takeFocusRequest();
-	if (requestedFocus && currentRoute.kind === 'workflow') {
+	if ((requestedFocus || transferProvisionalFocus) && currentRoute.kind === 'workflow') {
 		const controller = new AbortController();
 		pendingHeadingFocus = controller;
 		const view = container.querySelector<WorkflowFocusView>(
@@ -262,6 +336,8 @@ export function renderAppShell(container: HTMLElement): void {
 	if (currentRoute.kind === 'workflow') {
 		const dataMode = $appState.get().data.mode;
 		const scrollKey = getScrollKeyForRoute(currentRoute, dataMode);
+		if (currentRoute.path === '/models/new' && getEffectiveModelNum(currentRoute) === undefined)
+			lastRestoredScrollKey = null;
 		if (scrollKey && scrollKey !== lastRestoredScrollKey) {
 			lastRestoredScrollKey = scrollKey;
 			const viewEl = container.querySelector<
@@ -323,11 +399,26 @@ export async function bootstrapApp(): Promise<void> {
 		});
 		$storageSaveNotice.listen(() => renderAppShell(root));
 		$publicationPending.listen(() => renderAppShell(root));
+		$appState.listen((state, previous) => {
+			const route = getEffectiveWorkflowRoute($route.get());
+			if (route.kind !== 'workflow' || route.path !== '/models/new' || !previous) return;
+			const binding = route.provisional?.kind === 'bound' && route.provisional.identity;
+			if (
+				state.dataset?.id !== previous.dataset?.id ||
+				state.target !== previous.target ||
+				state.comparisonContextEpoch !== previous.comparisonContextEpoch ||
+				(binding &&
+					Boolean(provisionalRouteModel(binding, state)) !==
+						Boolean(provisionalRouteModel(binding, previous)))
+			)
+				renderAppShell(root);
+		});
 		$staleAssetDetected.listen(() => renderAppShell(root));
 		installStaleReleaseDetection();
 		getTrainingService().observePublishedStops();
 		storageMessages.listen(() => renderAppShell(root));
 		releaseMessages.listen(() => renderAppShell(root));
+		provisionalMessages.listen(() => renderAppShell(root));
 		window.addEventListener('storage', (event) => {
 			if (event.key !== STATE_STORAGE_KEY && event.key !== null) return;
 			void refreshTrainingSnapshot().then((ack) => {

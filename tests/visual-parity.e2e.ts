@@ -133,7 +133,10 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 						.waitFor({ state: 'visible', timeout: 5000 });
 					await page.locator('tbody tr:has(th:has-text("class")) button').click();
 					await page.locator('app-target-view header a[href="/models"]').click();
-					await page.getByRole('button', { name: 'Train New Model' }).click();
+					await page
+						.locator('app-models-view')
+						.getByRole('link', { name: 'Train New Model' })
+						.click();
 					await expect(page).toHaveURL(/\/models\/1$/);
 					await page
 						.locator(
@@ -159,7 +162,10 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 						.waitFor({ state: 'visible', timeout: 5000 });
 					await page.locator('tbody tr:has(th:has-text("class")) button').click();
 					await page.locator('app-target-view header a[href="/models"]').click();
-					await page.getByRole('button', { name: 'Train New Model' }).click();
+					await page
+						.locator('app-models-view')
+						.getByRole('link', { name: 'Train New Model' })
+						.click();
 					await expect(page).toHaveURL(/\/models\/1$/);
 					await page.evaluate(() => {
 						const store = window.__appState!;

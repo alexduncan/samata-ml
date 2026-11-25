@@ -28,6 +28,10 @@ export function parseRoute(pathname: string): ParsedRoute {
 		return { kind: 'workflow', path: '/models', section: 3 };
 	}
 
+	if (normalised === '/models/new') {
+		return { kind: 'workflow', path: '/models/new', section: 3 };
+	}
+
 	if (normalised === '/results') {
 		return { kind: 'workflow', path: '/results', section: 4 };
 	}

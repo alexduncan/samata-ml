@@ -111,15 +111,15 @@ export async function acknowledgeDurableTraining(page: Page): Promise<{
 	await expect(training.getByRole('status')).toBeEmpty();
 	expect(await savedResult()).toEqual(before);
 
+	const historyLength = await page.evaluate(() => history.length);
 	await viewResults.click();
-	await expect(page.getByRole('heading', { name: '6. Model Results' })).toBeFocused();
+	await expect(page.getByRole('heading', { level: 1, name: /Results$/ })).toBeFocused();
 	await expect(page).toHaveURL('/models/1');
-	await expect(training.getByText('Completed', { exact: true })).toHaveCount(1);
+	expect(await page.evaluate(() => history.length)).toBe(historyLength);
+	await expect(training).toHaveCount(0);
 	await page.reload();
-	await expect(page.locator('.train-step[aria-current="step"] h2')).toHaveText(
-		'6. Model Results'
-	);
-	await expect(training.locator('ol li').last()).toHaveText('Training complete');
+	await expect(page.getByRole('heading', { level: 1, name: /Results$/ })).toBeVisible();
+	await expect(page.locator('app-model-results')).toBeVisible();
 	return before;
 }
 

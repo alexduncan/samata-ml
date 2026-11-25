@@ -165,6 +165,18 @@ export async function seedTrainedModel(
 			)
 		)
 		.toBe(1);
+	await replyWithEvaluation(page, name);
+	const training = page.getByTestId('training-step');
+	const viewResults = training.getByRole('button', { name: 'View Results' });
+	await expect(viewResults).toBeEnabled({ timeout: 15_000 });
+	if (options.acknowledge === false) return;
+	await viewResults.click();
+	await expect(page).toHaveURL('/models/1');
+	await expect(page.getByRole('heading', { level: 1, name: /Results$/ })).toBeFocused();
+}
+
+/** Completes the currently owned worker attempt with a matching fixture evaluation. */
+export async function replyWithEvaluation(page: Page, name: SeedName): Promise<void> {
 	await page.evaluate(
 		(json) => {
 			const result = JSON.parse(json, (_key, value) => {
@@ -178,14 +190,8 @@ export async function seedTrainedModel(
 			});
 			window.__trainingFixture!.reply({ kind: 'success', result });
 		},
-		encode(payloadFor(evaluation))
+		encode(payloadFor(evaluations[name]()))
 	);
-	const training = page.getByTestId('training-step');
-	const viewResults = training.getByRole('button', { name: 'View Results' });
-	await expect(viewResults).toBeEnabled({ timeout: 15_000 });
-	if (options.acknowledge === false) return;
-	await viewResults.click();
-	await expect(page.getByRole('heading', { name: '6. Model Results' })).toBeFocused();
 }
 
 /** Reads the stored result envelope of Model 1, or null when none exists. */
@@ -329,8 +335,8 @@ export function downgradeEnvelope(page: Page): Promise<void> {
 
 /**
  * Installs a hook on result reads for Model 1. After `after` reads succeed, the next read either
- * finds no envelope (as if it had been deleted in between) or fails. Call before View Results,
- * which itself reads the result once to validate the acknowledgement.
+ * finds no envelope (as if it had been deleted in between) or fails. Call before View Results
+ * to count its separate verification and acknowledgement reads.
  */
 export function interceptResultReads(
 	page: Page,

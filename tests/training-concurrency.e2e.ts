@@ -9,9 +9,10 @@ async function configuredTarget(page: Page): Promise<void> {
 	await page.getByRole('button', { name: 'Set as Target: class' }).click();
 	await expect(page.getByRole('link', { name: 'Train Models' }).last()).toBeVisible();
 	await page.getByRole('link', { name: 'Train Models' }).last().click();
-	await page.getByRole('button', { name: 'Train New Model' }).click();
-	await expect(page).toHaveURL(/\/models\/1$/);
-	await page.locator('app-sidebar a[href="/target"]').click();
+	await page.locator('app-models-view').getByRole('link', { name: 'Train New Model' }).click();
+	await expect(page).toHaveURL(/\/models\/new$/);
+	await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
+	await page.goto('/target');
 	await expect(page.getByRole('button', { name: 'Set as Target: sepal length' })).toBeVisible();
 }
 

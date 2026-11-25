@@ -422,7 +422,13 @@ export class AppSidebar extends LitElement {
 											html`<li class="step-model">
 												<a
 													class="step-model-link"
-													href="/models/${model.num}"
+													href=${model.href}
+													data-provisional-num=${model.provisional ===
+													undefined
+														? nothing
+														: model.num}
+													data-provisional-created-at=${model.provisional ??
+													nothing}
 													aria-current=${model.current ?? nothing}>
 													${t.model({ num: format.number(model.num) })}
 													${model.status === 'training'

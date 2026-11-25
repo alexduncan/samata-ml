@@ -23,8 +23,9 @@ test('BETA-DATA-1 / BETA-DATA-2: change dataset after preview reload fetches the
 		page.locator('app-target-view tbody tr:has(th:has-text("class")) button')
 	).toHaveText('Current Target');
 	await page.goto('/models');
-	await page.getByRole('button', { name: 'Train New Model' }).click();
-	await expect(page).toHaveURL('/models/1');
+	await page.locator('app-models-view').getByRole('link', { name: 'Train New Model' }).click();
+	await expect(page).toHaveURL('/models/new');
+	await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
 	await page.goto('/data');
 	await page.reload();
 	const preview = page.locator('app-dataset-preview');

@@ -183,11 +183,11 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		const modelsView = page.locator('app-models-view');
 		await expect(modelsView).toBeVisible();
 
-		// 3. Train New Model -> navigates to /models/1
-		const trainNewBtn = modelsView.locator('button.btn-primary:has-text("Train New Model")');
+		// 3. Train New Model -> navigates to /models/new
+		const trainNewBtn = modelsView.locator('a.btn-primary[href="/models/new"]');
 		await expect(trainNewBtn).toBeVisible();
 		await trainNewBtn.click();
-		await expect(page).toHaveURL(/\/models\/1$/);
+		await expect(page).toHaveURL(/\/models\/new$/);
 
 		const builder = page.locator('app-model-builder-view');
 		await expect(builder).toBeVisible();
@@ -237,7 +237,7 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 			)
 			.toContain('select-features');
 		await page.reload();
-		await expect(page).toHaveURL(/\/models\/1$/);
+		await expect(page).toHaveURL(/\/models\/new$/);
 		await expect(builder).toBeVisible();
 		await expect(step1).toContainText('Selected model: Logistic Regression');
 		await expect(step3).toHaveAttribute('aria-current', 'step');

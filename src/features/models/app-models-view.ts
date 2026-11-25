@@ -1,9 +1,8 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
-import { customElement, state } from 'lit/decorators.js';
+import { customElement } from 'lit/decorators.js';
 import { StoreController } from '@nanostores/lit';
 import { params } from '@nanostores/i18n';
 import { i18n } from '../../i18n';
-import { navigate } from '../../router/router';
 import { $appState } from '../../stores/app.store';
 import { $datasetResources, loadDatasetResources } from '../../stores/dataset.store';
 import { $canCompare, blockedReason } from '../../stores/predicates';
@@ -11,20 +10,15 @@ import { buttonStyles } from '../../styles/button.styles';
 import { notificationStyles } from '../../styles/notification.styles';
 import { tableStyles } from '../../styles/table.styles';
 import { headingFocusStyles } from '../../styles/heading-focus.styles';
-import type { ModelRecord } from '../../types/state';
+import { provisionalModelIn, type ModelRecord } from '../../types/state';
 import { SUPERVISED_MODELS } from './model-catalogue';
 import { formatTrainingSetupSummary } from './training-setup';
-import { getTrainingService } from './training/training-service';
 
 const messages = i18n('app-models-view', {
 	oneShotSummary: 'One-Shot (80% / 20%)',
 	crossValidationSummary: params<{ folds: number }>('Cross-Validation ({folds} folds)'),
 	notConfigured: 'Not configured',
-	create: 'Train New Model',
-	creating: 'Saving…',
-	createFailed: 'The new model could not be saved. Try again.',
-	createPending: 'The new model is saved, but finishing is pending. Retry saving.',
-	retrySaving: 'Retry saving'
+	create: 'Train New Model'
 });
 
 /**
@@ -131,9 +125,6 @@ export class AppModelsView extends LitElement {
 	private readonly messagesController = new StoreController(this, messages);
 
 	private loadPromise: Promise<void> | null = null;
-	@state() private accessor creatingModel = false;
-	@state() private accessor creationError = false;
-	@state() private accessor creationPending = false;
 
 	override willUpdate(_changed: PropertyValues<this>): void {
 		const appState = this.appStateController.value;
@@ -185,27 +176,6 @@ export class AppModelsView extends LitElement {
 		await this.updateComplete;
 	}
 
-	private async handleTrainNew(): Promise<void> {
-		if (this.creatingModel) return;
-		this.creationError = false;
-		this.creatingModel = true;
-		try {
-			const result = this.creationPending
-				? await getTrainingService().retry()
-				: await getTrainingService().createModel();
-			if (result.ok) {
-				this.creationPending = false;
-				if (typeof result.value === 'number' && this.isConnected)
-					navigate(`/models/${result.value}`);
-			} else {
-				this.creationError = true;
-				this.creationPending ||= Boolean(result.pending);
-			}
-		} finally {
-			this.creatingModel = false;
-		}
-	}
-
 	private handleRetry(): void {
 		const appState = this.appStateController.value;
 		if (appState.dataset?.id) {
@@ -222,17 +192,11 @@ export class AppModelsView extends LitElement {
 				<h1 tabindex="-1">Train Models</h1>
 				<p class="description">Train and compare models for the selected target.</p>
 				<div class="header-actions">
-					<button
-						type="button"
-						class="btn btn-primary"
-						?disabled=${!canTrain || this.creatingModel}
-						@click=${this.handleTrainNew}>
-						${this.creatingModel
-							? t.creating
-							: this.creationPending
-								? t.retrySaving
-								: t.create}
-					</button>
+					${canTrain
+						? html`<a href="/models/new" class="btn btn-primary">${t.create}</a>`
+						: html`<button type="button" class="btn btn-primary" disabled>
+								${t.create}
+							</button>`}
 					${canCompare
 						? html`<a href="/results" class="btn">Compare Results</a>`
 						: html`<button
@@ -243,11 +207,6 @@ export class AppModelsView extends LitElement {
 								Compare Results
 							</button>`}
 				</div>
-				${this.creationError
-					? html`<p class="notification notification-alert" role="alert">
-							${this.creationPending ? t.createPending : t.createFailed}
-						</p>`
-					: nothing}
 			</div>
 		`;
 	}
@@ -340,6 +299,9 @@ export class AppModelsView extends LitElement {
 
 		// Action
 		const actionLabel = model.status === 'trained' ? 'View Results' : 'Continue';
+		const app = this.appStateController.value;
+		const provisional = provisionalModelIn(app.models, app.newModelNum) === model;
+		const href = provisional ? '/models/new' : `/models/${model.num}`;
 
 		return html`
 			<tr>
@@ -349,7 +311,13 @@ export class AppModelsView extends LitElement {
 				<td>${setupText}</td>
 				<td>${durationText}</td>
 				<td>
-					<a href="/models/${model.num}" class="table-link">${actionLabel}</a>
+					<a
+						href=${href}
+						class="table-link"
+						data-provisional-num=${provisional ? model.num : nothing}
+						data-provisional-created-at=${provisional ? model.createdAt : nothing}
+						>${actionLabel}</a
+					>
 				</td>
 			</tr>
 		`;
