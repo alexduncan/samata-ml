@@ -1,8 +1,8 @@
 # Give The Dot one purpose in workflow navigation
 
-**Status:** ready-for-review | **Updated:** 2026-11-25T14:51:08Z
+**Status:** draft | **Updated:** 2026-11-25T14:57:39Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-25T10:57:56Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -165,8 +165,9 @@ None.
 
 ## Plan review history
 
-| Reviewed (UTC) | Agent (model) | Decision | Findings |
-| -------------- | ------------- | -------- | -------- |
+| Reviewed (UTC)       | Agent (model) | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------- | ------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-25T14:57:39Z | Codex (GPT-6) | changes-requested | MAJOR T1: synchronous component subscriptions conflict with COMPONENTS.md §5. Define a compliant transition owner behind StoreController, keep admission and trained counts in one acknowledged projection, and distinguish model-loss epochs from genuine dataset/target or full-discard resets. MAJOR navigation seam: compare the model workflow resolved effective path and specify same-underlay Help versus different-underlay history. Make the core visible in T1, target the exact /models/new anchors, and make the CSP test observe a real burst under the policy. Supply changed paths to the T3 format check. |
 
 ## Change log
 
