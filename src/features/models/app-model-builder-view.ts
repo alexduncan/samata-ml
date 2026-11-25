@@ -7,11 +7,15 @@ import { StoreController } from '@nanostores/lit';
 import { computed } from 'nanostores';
 import { ContentLoadError, loadContentEntry } from '../../common/content/content-loader';
 import {
+	$leaveConfirmation,
 	$route,
 	getEffectiveModelNum,
+	ownsWizardLeave,
 	provisionalResultIdentity,
 	provisionalRouteModel,
-	promoteProvisionalResult
+	promoteProvisionalResult,
+	resolveWizardLeave,
+	retireWizardOwner
 } from '../../router/router';
 import {
 	$appState,
@@ -216,6 +220,14 @@ const messages = i18n('app-model-builder-view', {
 		'The change is saved, but progress could not be saved. Retry saving.',
 	trainingResultUnavailable: 'The saved result could not be read.',
 	backToModels: 'Back to Models',
+	leaveTitle: 'Leave this model?',
+	leaveDescription: 'Leaving will discard this unfinished model and its settings.',
+	stay: 'Stay',
+	leave: 'Leave',
+	leaveWorking: 'Leaving the model…',
+	leavePending: 'The change is saved, but finishing is pending. Retry saving.',
+	leaveBusy: 'This model is busy. Try again when training in the other tab has finished.',
+	leaveError: 'The unfinished model could not be discarded. Try again.',
 	trainingElapsed: params<{ seconds: string }>('Elapsed time {seconds}'),
 	cancelTraining: 'Cancel Training',
 	viewResults: 'View Results',
@@ -475,6 +487,7 @@ export class AppModelBuilderView extends LitElement {
 	private readonly trainingSetupResource = new StoreController(this, $trainingSetupResource);
 	private readonly trainingSessions = new StoreController(this, $trainingSession);
 	private readonly publication = new StoreController(this, $publicationPending);
+	private readonly departure = new StoreController(this, $leaveConfirmation);
 	private readonly translations = new StoreController(this, messages);
 
 	/** Monotonically allocated sequential model number (e.g. 1 for /models/1). */
@@ -510,6 +523,9 @@ export class AppModelBuilderView extends LitElement {
 	@state() private accessor verifiedProvisional = false;
 	@state() private accessor showingResults = false;
 	@state() private accessor retryingPublication = false;
+	@state() private accessor leavingModel = false;
+	@state() private accessor leaveFailure: TrainingCommandFailure | undefined;
+	private openLeaveToken: number | undefined;
 
 	private loadPromise: Promise<void> | null = null;
 	private trainingSetupChild: { element: Element; key: string } | null = null;
@@ -528,6 +544,25 @@ export class AppModelBuilderView extends LitElement {
 
 	private get confirmDialogEl(): HTMLDialogElement | null {
 		return this.renderRoot?.querySelector('dialog[data-confirm="reopen-section"]') ?? null;
+	}
+
+	private get leaveDialog(): HTMLDialogElement | null {
+		return this.renderRoot?.querySelector('dialog[data-confirm="leave-new-model"]') ?? null;
+	}
+
+	private get leaveIntent() {
+		const intent = this.departure.value;
+		const binding = this.provisionalBinding;
+		if (
+			intent &&
+			binding &&
+			intent.binding.modelNum === binding.modelNum &&
+			intent.binding.modelCreatedAt === binding.modelCreatedAt &&
+			intent.binding.datasetId === binding.datasetId &&
+			intent.binding.target === binding.target &&
+			intent.binding.comparisonContextEpoch === binding.comparisonContextEpoch
+		)
+			return intent;
 	}
 
 	override willUpdate(_changed: PropertyValues<this>): void {
@@ -620,10 +655,14 @@ export class AppModelBuilderView extends LitElement {
 		if (changed.has('modelNum') && changed.get('modelNum') !== undefined) {
 			this.handleCancelReopen();
 		}
+		this.syncLeaveDialog();
 	}
 
 	override disconnectedCallback(): void {
 		this.handleCancelReopen();
+		if (this.provisionalBinding) retireWizardOwner(this.provisionalBinding);
+		this.openLeaveToken = undefined;
+		this.leaveDialog?.close();
 		super.disconnectedCallback();
 		this.activeAttempt = null;
 		this.restoreSubmitFocus = null;
@@ -817,6 +856,105 @@ export class AppModelBuilderView extends LitElement {
 		if (dialog?.open) return;
 		this.pendingReopenSection = null;
 		if (dialog) dialog.returnValue = '';
+		this.syncLeaveDialog();
+	}
+
+	private syncLeaveDialog(): void {
+		const dialog = this.leaveDialog;
+		const intent = this.leaveIntent;
+		if (!dialog) return;
+		if (dialog.open && this.openLeaveToken !== intent?.token) {
+			this.openLeaveToken = undefined;
+			dialog.close();
+		}
+		if (!intent || dialog.open || this.confirmDialogEl?.open || this.dialogOpen) return;
+		this.leaveFailure = undefined;
+		this.openLeaveToken = intent.token;
+		dialog.returnValue = '';
+		dialog.showModal();
+		dialog.querySelector<HTMLElement>('[data-stay]')?.focus({ preventScroll: true });
+	}
+
+	private handleNativeLeaveClose(): void {
+		const dialog = this.leaveDialog;
+		if (!dialog || dialog.open) return;
+		const token = this.openLeaveToken;
+		this.openLeaveToken = undefined;
+		dialog.returnValue = '';
+		if (token !== undefined) resolveWizardLeave(token, false);
+	}
+
+	private handleLeaveCancel(event: Event): void {
+		if (this.leavingModel || this.leaveFailure?.pending) {
+			event.preventDefault();
+			return;
+		}
+		this.stayWithModel();
+	}
+
+	private stayWithModel(): void {
+		const token = this.openLeaveToken;
+		this.openLeaveToken = undefined;
+		if (token !== undefined) resolveWizardLeave(token, false);
+	}
+
+	private async discardAndLeave(): Promise<void> {
+		const intent = this.leaveIntent;
+		if (!intent || this.leavingModel || !ownsWizardLeave(intent.token)) return;
+		const retry = Boolean(this.leaveFailure?.pending);
+		this.leavingModel = true;
+		this.leaveFailure = undefined;
+		try {
+			const result = await getTrainingService().abandonNewModel(intent.binding, retry);
+			if (!ownsWizardLeave(intent.token)) return;
+			if (!result.ok) {
+				this.leaveFailure = result;
+				return;
+			}
+			this.openLeaveToken = undefined;
+			this.leaveDialog?.close('leave');
+			resolveWizardLeave(intent.token, true);
+		} finally {
+			this.leavingModel = false;
+		}
+	}
+
+	private renderLeaveDialog(): TemplateResult {
+		const t = this.translations.value;
+		const pending = this.leaveFailure?.pending;
+		const busy = this.leavingModel || Boolean(pending);
+		const message = pending
+			? t.leavePending
+			: this.leaveFailure?.code === 'busy' || this.leaveFailure?.code === 'remote-training'
+				? t.leaveBusy
+				: t.leaveError;
+		return html` <dialog
+			class="confirm-dialog"
+			data-confirm="leave-new-model"
+			aria-labelledby="leave-new-model-title"
+			aria-describedby="leave-new-model-description"
+			closedby=${busy ? 'none' : 'closerequest'}
+			@cancel=${this.handleLeaveCancel}
+			@close=${this.handleNativeLeaveClose}>
+			<div class="confirm-header"><h2 id="leave-new-model-title">${t.leaveTitle}</h2></div>
+			<div class="confirm-body">
+				<p id="leave-new-model-description">${t.leaveDescription}</p>
+				${this.leavingModel ? html`<p role="status">${t.leaveWorking}</p>` : nothing}
+				${this.leaveFailure ? html`<p role="alert">${message}</p>` : nothing}
+			</div>
+			<form method="dialog" class="confirm-footer" @submit=${this.stayWithModel}>
+				<button class="btn" type="submit" value="stay" data-stay ?disabled=${busy}>
+					${t.stay}
+				</button>
+				<button
+					class="btn btn-primary"
+					type="button"
+					?disabled=${this.leavingModel}
+					@click=${this.discardAndLeave}>
+					${pending ? t.retrySaving : t.leave}
+				</button>
+			</form>
+		</dialog>`;
 	}
 
 	// ==========================================
@@ -2044,6 +2182,7 @@ export class AppModelBuilderView extends LitElement {
 						</p>
 					</div>
 				</section>
+				${this.renderLeaveDialog()}
 			`;
 		}
 
@@ -2067,6 +2206,7 @@ export class AppModelBuilderView extends LitElement {
 					</p>
 					<a href="/models">${this.translations.value.backToModels}</a>
 				</section>
+				${this.renderLeaveDialog()}
 			`;
 		}
 		const activeStep =
@@ -2142,6 +2282,7 @@ export class AppModelBuilderView extends LitElement {
 					</button>
 				</div>
 			</dialog>
+			${this.renderLeaveDialog()}
 		`;
 	}
 }

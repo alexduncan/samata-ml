@@ -11,6 +11,7 @@ import './features/target/app-target-view';
 import './features/results/app-results-view';
 import { parseRoute } from './router/route-parser';
 import {
+	$leaveConfirmation,
 	$route,
 	getEffectiveModelNum,
 	getEffectiveWorkflowRoute,
@@ -125,7 +126,12 @@ function renderWorkflowView(route: ParsedRoute) {
 			return html` <app-models-view></app-models-view> `;
 		case '/models/new': {
 			const provisional = route.provisional;
-			if (provisional?.kind === 'bound' && provisionalRouteModel(provisional.identity)) {
+			const departure = $leaveConfirmation.get();
+			if (
+				provisional?.kind === 'bound' &&
+				(provisionalRouteModel(provisional.identity) ||
+					(departure && departure.sourceEntryId === getWorkflowEntryId()))
+			) {
 				return html`
 					<app-model-builder-view
 						model-num=${provisional.identity.modelNum}

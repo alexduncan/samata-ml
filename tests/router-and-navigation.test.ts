@@ -9,7 +9,9 @@ import {
 	initRouter,
 	stopRouter,
 	getDocumentTitle,
-	takeFocusRequest
+	takeFocusRequest,
+	$leaveConfirmation,
+	resolveWizardLeave
 } from '../src/router/router';
 import {
 	getScrollKeyForRoute,
@@ -488,6 +490,27 @@ describe('Router & Navigation (NAV-AC-1, NAV-AC-2, NAV-AC-4)', () => {
 				expect(getScrollKeyForRoute(route)).toBe('models/1');
 				expect($appState.get().models).toHaveLength(1);
 			}
+		});
+
+		it('MW-GUARD-1: programmatic departure is deferred until the current intent resolves', () => {
+			loadDatasetSucceeded(sampleDataset);
+			setTarget('species');
+			const num = createModel();
+			$appState.set({ ...$appState.get(), newModelNum: num || null });
+			window.history.replaceState(null, '', '/models/1');
+			initRouter();
+			const source = window.history.state.entryId;
+			navigate('/target', { replace: true });
+			const intent = $leaveConfirmation.get()!;
+			expect(intent).toMatchObject({ sourceEntryId: source, binding: { modelNum: 1 } });
+			expect($route.get()).toMatchObject({ path: '/models/new' });
+			expect(takeFocusRequest()).toBe(false);
+			resolveWizardLeave(intent.token - 1, false);
+			expect($leaveConfirmation.get()).toBe(intent);
+			resolveWizardLeave(intent.token, false);
+			expect($leaveConfirmation.get()).toBeNull();
+			expect(window.history.state.entryId).toBe(source);
+			expect($appState.get().newModelNum).toBe(1);
 		});
 	});
 

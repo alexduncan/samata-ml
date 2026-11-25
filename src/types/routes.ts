@@ -51,6 +51,11 @@ export interface HistoryEntryState {
 	v: 1;
 	/** Random id so tests and router can tell history entries apart. */
 	entryId: string;
+	/** The app-owned navigation stack and this entry's reversible position. */
+	stackId?: string;
+	index?: number;
+	/** Reserved routes pushed by this document can close with Back on subsequent visits. */
+	modalDocumentId?: string;
 	/** Present only on reserved-route entries: the workflow page rendered underneath. */
 	underlayPath?: WorkflowPath;
 	/** Source of a reserved underlay; its identity can acknowledge while Help is open. */

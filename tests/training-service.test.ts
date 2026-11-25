@@ -80,6 +80,7 @@ import {
 } from '../src/stores/comparison.store';
 import { $modelResults, currentResultIdentity } from '../src/stores/model-results.store';
 import { irisCrossValidation } from './fixtures/results/evaluations';
+import { $scrollState, recordScroll } from '../src/stores/scroll.store';
 
 const metadata: DatasetMetadata = {
 	id: 'training-dataset',
@@ -450,6 +451,117 @@ async function workerAt(index: number): Promise<ScriptedWorker> {
 		await new Promise<void>((resolve) => setTimeout(resolve, 2));
 	}
 	throw new Error('Training worker did not start');
+}
+
+test('MW-GUARD-2: abandonment retries one committed draft removal and releases only its scroll key', async () => {
+	const initial = seed();
+	const opened = await service.openNewModel({
+		datasetId: metadata.id,
+		target: 'species',
+		comparisonContextEpoch: initial.comparisonContextEpoch
+	});
+	if (!opened.ok) throw new Error('The provisional fixture did not open');
+	const binding = opened.value;
+	const generation = $appState.get().trainingDomainGeneration;
+	const formerScroll = $scrollState.get();
+	try {
+		for (const num of [1, 2])
+			recordScroll(`models/${num}`, { top: 50, savedAt: 1, viewportWidth: 900 });
+		expect(
+			await service.abandonNewModel({
+				...binding,
+				modelCreatedAt: binding.modelCreatedAt - 1
+			})
+		).toMatchObject({ ok: false, code: 'conflict' });
+		const remote = Promise.withResolvers<void>();
+		const entered = Promise.withResolvers<void>();
+		const holding = locks.request('samata-ml:training:2', () => {
+			entered.resolve();
+			return remote.promise;
+		});
+		await entered.promise;
+		try {
+			expect(await service.abandonNewModel(binding)).toMatchObject({
+				ok: false,
+				code: 'busy'
+			});
+			expect($appState.get().newModelNum).toBe(2);
+		} finally {
+			remote.resolve();
+			await holding;
+		}
+		storage.reject = (state) => state.trainingDomainGeneration > generation;
+		expect(await service.abandonNewModel(binding)).toMatchObject({
+			ok: false,
+			pending: 'discard'
+		});
+		expect($appState.get().newModelNum).toBe(2);
+		expect($scrollState.get().snapshots['models/2']).toBeDefined();
+		expect(await readTrainingCheckpoint(db)).toMatchObject({
+			checkpoint: { generation: generation + 1, pending: { kind: 'discard' } }
+		});
+		storage.reject = () => false;
+		expect(await service.abandonNewModel(binding, true)).toMatchObject({ ok: true });
+		expect($appState.get()).toMatchObject({
+			newModelNum: null,
+			nextModelNum: 3,
+			models: initial.models
+		});
+		expect($scrollState.get().snapshots['models/2']).toBeUndefined();
+		expect($scrollState.get().snapshots['models/1']).toBeDefined();
+		expect(await service.abandonNewModel(binding)).toMatchObject({
+			ok: false,
+			code: 'conflict'
+		});
+		expect(await readTrainingCheckpoint(db)).toMatchObject({
+			checkpoint: { generation: generation + 1, pending: null }
+		});
+	} finally {
+		$scrollState.set(formerScroll);
+	}
+});
+
+for (const outcome of ['cancel', 'save'] as const) {
+	test(`MW-GUARD-2: a local ${outcome} settles before abandonment`, async () => {
+		const initial = seed(0);
+		const opened = await service.openNewModel({
+			datasetId: metadata.id,
+			target: 'species',
+			comparisonContextEpoch: initial.comparisonContextEpoch
+		});
+		if (!opened.ok) throw new Error('The provisional fixture did not open');
+		const draft = $appState.get();
+		storeFixture({ ...draft, models: draft.models.map((model) => configuredModel(model)) });
+		const started = service.start(1);
+		const worker = await workerAt(0);
+		if (outcome === 'save') {
+			worker.succeed();
+			await Promise.resolve();
+		}
+		const leave = service.abandonNewModel(opened.value);
+		expect(await service.abandonNewModel(opened.value)).toMatchObject({
+			ok: false,
+			code: 'busy'
+		});
+		expect(await leave).toMatchObject({ ok: true });
+		if (outcome === 'cancel') {
+			expect(worker.posted.filter(({ kind }) => kind === 'cancel')).toHaveLength(1);
+			expect(await started).toMatchObject({ ok: false, code: 'cancelled' });
+			expect($appState.get().models).toEqual([]);
+		} else {
+			expect(await started).toMatchObject({ ok: true });
+			expect(worker.posted.filter(({ kind }) => kind === 'cancel')).toHaveLength(0);
+			expect($appState.get().models[0]).toMatchObject({
+				status: 'trained',
+				resultRevision: worker.identity.runId
+			});
+			expect(await db.get('model_results', [metadata.id, 1])).toMatchObject({
+				runId: worker.identity.runId
+			});
+		}
+		expect($appState.get().newModelNum).toBeNull();
+		expect($appState.get().nextModelNum).toBe(2);
+	});
 }
 
 test('WML-P5-STATE-2: a stale ordinary write cannot overwrite a reused context', async () => {

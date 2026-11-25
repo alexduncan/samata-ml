@@ -141,7 +141,9 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		await page.goto('/target');
 		const targetView = page.locator('app-target-view');
 		await expect(targetView.getByTestId('target-ready')).toBeVisible({ timeout: 10_000 });
-		await targetView.locator('tbody tr:has(th:has-text("class")) button').click();
+		const target = targetView.locator('tbody tr:has(th:has-text("class")) button');
+		await target.click();
+		await expect(target).toHaveText('Current Target');
 
 		await page.goto('/models');
 		await page

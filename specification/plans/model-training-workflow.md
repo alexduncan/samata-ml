@@ -1,6 +1,6 @@
 # Give new model training its own workflow
 
-**Status:** ready | **Updated:** 2026-11-25T17:37:18Z
+**Status:** ready | **Updated:** 2026-11-25T17:53:46Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-25T13:48:28Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-25T17:05:07Z | **Verification:** approved
 **Verified hash:** sha256:22e262bd6f5b31f038c14692ba464bd24468100a05df3de79bb5e2cf48e1de30
@@ -149,10 +149,10 @@ The connected `app-model-builder-view` keeps its existing `modelNum: number = 0`
 - **Must not touch:** `specification/mockups/`, `vendor/`
 - **Implementation:** Implement the recorded in-app leave intent, indexed history restoration/replay, entry-local fixed Help close ownership and protected leave outcome. Use the existing shared native-dialog stylesheet and confirmation patterns. Guard async effects by the captured entry, model and context. Keep the focus/scroll owner and use translated dialog strings. Add the open, pending, error and viewing-from-Help states to the builder stories.
 - **Acceptance criteria:**
-    - [ ] MW-GUARD-1 — An anchor, router action and reversible same-stack Back/Forward departure from the visible unfinished wizard each present one confirmation. Stay or Escape preserves route, draft, scroll and available focus. Help retains model and input, including repeated Forward and Close. Traversing from a covered wizard to another underlay or through an unindexed legacy entry preserves the draft without prompting.
-    - [ ] MW-GUARD-2 — Confirming Leave performs the chosen protected operation exactly once, then replays the original navigation. Rejected, remote or pending operations leave a recoverable state at the source. Saving that wins the race keeps the successful trained result.
+    - [x] MW-GUARD-1 — An anchor, router action and reversible same-stack Back/Forward departure from the visible unfinished wizard each present one confirmation. Stay or Escape preserves route, draft, scroll and available focus. Help retains model and input, including repeated Forward and Close. Traversing from a covered wizard to another underlay or through an unindexed legacy entry preserves the draft without prompting.
+    - [x] MW-GUARD-2 — Confirming Leave performs the chosen protected operation exactly once, then replays the original navigation. Rejected, remote or pending operations leave a recoverable state at the source. Saving that wins the race keeps the successful trained result.
 - **Verification:** `bun test tests/router-and-navigation.test.ts`, `bun test tests/training-service.test.ts`, `bun run test:e2e tests/app-shell.e2e.ts`, `bun run test:e2e tests/training-panels.e2e.ts`, `bun run test:e2e tests/content.e2e.ts`, `bun run test:stories`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-25T17:53:46Z)
 
 ### T4 — Show trained models and the result header
 
@@ -248,6 +248,7 @@ None.
 | —                    | —    | —             | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | 2026-11-25T17:14:38Z | T1   | Codex (GPT-6) | Targeted storage, state, training service and reconciliation tests passed (164 tests). bun run check passed (667 tests). Task scope check and git diff --check passed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 2026-11-25T17:37:18Z | T2   | Codex (GPT-6) | bun run check 669/669, router 29/29 and lint passed. Six planned E2E suites initially had 263 passed, 2 skipped and 23 failures. Serial rechecks passed 41/42 route and related cases, 4/4 Firefox remount/accessibility cases, and the remote Firefox recovery regressions. Exact pinned-run, inferred/direct entry, alias, reload and Help checks passed in all three engines. Comparison main padding (all three engines) and pointer focus restoration after model description (WebKit) are independently reproduced on integrated Beta 3cc6f15. Full Storybook had 699 passes and six obsolete overview assertions; revised overview stories passed 12/12 on all engines. |
+| 2026-11-25T17:53:46Z | T3   | Codex (GPT-6) | Full bun run check passed 673/673 and lint passed. Storybook passed 717/717. Focus, guarded history replay, repeated Help Forward and Close, unindexed departures, scroll retention, cancellation and save races covered. Focused browser run 18/18; wider app-shell, training and content run 248/258. Serial fixture recheck 11/12 cleared the Help and cross-tab cases, then the isolated Firefox Axe case passed 1/1. PH-AC-2 comparison main padding is inherited across all engines and separately reproduced at 3cc6f15. Scope and diff passed. Untracked workflow tool lock excluded.                                                                                  |
 
 ## Plan review history
 

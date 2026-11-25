@@ -1,6 +1,7 @@
 import { atom } from 'nanostores';
 import type { TrainingRunIdentity } from '../types/model-result';
 import {
+	provisionalModelIn,
 	DEFAULT_MODEL_RESULTS_UI,
 	INITIAL_APP_STATE,
 	isModelEligibleColumnType,
@@ -15,6 +16,7 @@ import {
 	type ModelSectionId,
 	type MulticlassStrategy,
 	type PersistedAppState,
+	type ProvisionalModelIdentity,
 	type TrainingProgress,
 	type TrainingError,
 	type ValidationMethodology,
@@ -341,6 +343,24 @@ export function reduceCreateModel(
 		ui: { trainingLogOpen: false }
 	};
 	return { ...state, nextModelNum: state.nextModelNum + 1, models: [...state.models, newModel] };
+}
+
+/** Removes only the current unfinished provisional record, preserving its allocated number. */
+export function reduceAbandonProvisional(
+	state: PersistedAppState,
+	binding: ProvisionalModelIdentity
+): PersistedAppState | false {
+	const model = provisionalModelIn(state.models, state.newModelNum);
+	if (
+		state.dataset?.id !== binding.datasetId ||
+		state.target !== binding.target ||
+		state.comparisonContextEpoch !== binding.comparisonContextEpoch ||
+		model?.num !== binding.modelNum ||
+		model.createdAt !== binding.modelCreatedAt ||
+		model.status !== 'draft'
+	)
+		return false;
+	return { ...state, newModelNum: null, models: state.models.filter((entry) => entry !== model) };
 }
 
 /** Creates a draft in memory for reducer consumers. */

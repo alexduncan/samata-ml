@@ -1,7 +1,7 @@
 import { html } from 'lit';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
 import { expect, fn, userEvent, waitFor } from 'storybook/test';
-import { $route } from '../../router/router';
+import { $route, initRouter, navigate, stopRouter } from '../../router/router';
 import { $appState } from '../../stores/app.store';
 import { $modelResults, currentResultIdentity } from '../../stores/model-results.store';
 import { irisCrossValidation } from '../../../tests/fixtures/results/evaluations';
@@ -16,7 +16,8 @@ import {
 	DEFAULT_ONE_SHOT_SETUP,
 	INITIAL_APP_STATE,
 	type ModelRecord,
-	type PersistedAppState
+	type PersistedAppState,
+	type ProvisionalModelIdentity
 } from '../../types/state';
 import type { DatasetMetadata } from '../../types/dataset';
 import type { TrainingRunIdentity } from '../../types/model-result';
@@ -24,9 +25,11 @@ import { featureA11yFindings } from '../../../tests/a11y-feature-findings';
 import {
 	$publicationPending,
 	createTrainingService,
-	setTrainingServiceForTesting
+	setTrainingServiceForTesting,
+	type TrainingCommandResult
 } from './training/training-service';
 import './app-model-builder-view';
+import '../shell/app-content-modal';
 
 const builderFindings = featureA11yFindings.filter(
 	(f) => f.target[0]?.[0] === 'app-model-builder-view'
@@ -200,6 +203,133 @@ export const ReopenSectionConfirmation: Story = {
 		await expect(dialog).toBeVisible();
 		await expect(dialog.querySelector('.confirm-body .notification-alert')).toBeNull();
 		expect(root.activeElement).toBe(dialog.querySelector('.confirm-footer button'));
+	}
+};
+
+const leaveFixtureBinding: ProvisionalModelIdentity = {
+	datasetId: 'iris',
+	target: 'class',
+	comparisonContextEpoch: INITIAL_APP_STATE.comparisonContextEpoch,
+	modelNum: 1,
+	modelCreatedAt: 1
+};
+
+function seedLeaveFixture(
+	result?: () => Promise<TrainingCommandResult>,
+	covered = false
+): () => void {
+	const restore = seedTraining();
+	const originalUrl = window.location.href;
+	const originalState = window.history.state;
+	const originalTitle = document.title;
+	$appState.set({ ...$appState.get(), newModelNum: 1 });
+	const state = {
+		v: 1,
+		entryId: 'leave-story-source',
+		provisional: { kind: 'bound', identity: leaveFixtureBinding },
+		...(covered ? { underlayPath: '/models/new' } : {})
+	};
+	window.history.replaceState(state, '', covered ? '/help' : '/models/new');
+	initRouter();
+	if (!covered) navigate('/target');
+	if (result)
+		setTrainingServiceForTesting({ ...createTrainingService(), abandonNewModel: result });
+	return () => {
+		setTrainingServiceForTesting();
+		stopRouter();
+		window.history.replaceState(originalState, '', originalUrl);
+		document.title = originalTitle;
+		restore();
+	};
+}
+
+const renderLeaveFixture = () => html`
+	<app-model-builder-view
+		model-num="1"
+		.provisionalBinding=${leaveFixtureBinding}></app-model-builder-view>
+`;
+
+/** Leaving an unfinished provisional wizard initially focuses the safe Stay action. */
+export const LeaveConfirmation: Story = {
+	beforeEach: () => seedLeaveFixture(),
+	render: renderLeaveFixture,
+	play: async ({ canvasElement }) => {
+		const root = canvasElement.querySelector('app-model-builder-view')!.shadowRoot!;
+		await waitFor(() =>
+			expect(root.querySelector('dialog[data-confirm="leave-new-model"]')).toBeVisible()
+		);
+		expect(root.activeElement).toBe(root.querySelector('[data-stay]'));
+	}
+};
+
+/** A busy departure holds its dialog while the protected operation settles. */
+export const LeavePending: Story = {
+	beforeEach: () => {
+		const operation = Promise.withResolvers<TrainingCommandResult>();
+		const restore = seedLeaveFixture(() => operation.promise);
+		return () => {
+			restore();
+			operation.resolve({ ok: false, code: 'busy' });
+		};
+	},
+	render: renderLeaveFixture,
+	play: async ({ canvasElement }) => {
+		const root = canvasElement.querySelector('app-model-builder-view')!.shadowRoot!;
+		await waitFor(() =>
+			expect(root.querySelector('dialog[data-confirm="leave-new-model"]')).toBeVisible()
+		);
+		await userEvent.click(
+			root.querySelector('dialog[data-confirm="leave-new-model"] button.btn-primary')!
+		);
+		await waitFor(() =>
+			expect(
+				root.querySelector('dialog[data-confirm="leave-new-model"] [role="status"]')
+			).toHaveTextContent('Leaving the model')
+		);
+		await expect(root.querySelector('[data-stay]')).toBeDisabled();
+	}
+};
+
+/** A protected leave failure keeps the draft and offers another attempt. */
+export const LeaveError: Story = {
+	beforeEach: () => seedLeaveFixture(async () => ({ ok: false, code: 'remote-training' })),
+	render: renderLeaveFixture,
+	play: async ({ canvasElement }) => {
+		const root = canvasElement.querySelector('app-model-builder-view')!.shadowRoot!;
+		await waitFor(() =>
+			expect(root.querySelector('dialog[data-confirm="leave-new-model"]')).toBeVisible()
+		);
+		await userEvent.click(
+			root.querySelector('dialog[data-confirm="leave-new-model"] button.btn-primary')!
+		);
+		await waitFor(() =>
+			expect(
+				root.querySelector('dialog[data-confirm="leave-new-model"] [role="alert"]')
+			).toHaveTextContent('This model is busy')
+		);
+		await expect(root.querySelector('[data-stay]')).toBeEnabled();
+	}
+};
+
+/** The same provisional model remains mounted underneath Help without opening a leave confirmation. */
+export const LeaveCoveredByHelp: Story = {
+	beforeEach: () => seedLeaveFixture(undefined, true),
+	render: () => html`${renderLeaveFixture()}<app-content-modal></app-content-modal>`,
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const dialog = canvasElement.querySelector('app-content-modal')!;
+		await waitFor(() =>
+			expect(
+				dialog
+					.shadowRoot!.querySelector('app-content-dialog')
+					?.shadowRoot?.querySelector('dialog')
+			).toBeVisible()
+		);
+		expect(builder.shadowRoot!.querySelector('h1')).toHaveTextContent('Model 1');
+		expect(
+			builder.shadowRoot!.querySelector('dialog[data-confirm="leave-new-model"]')
+		).not.toBeVisible();
 	}
 };
 /** WML-P2-UI-8: Section 4 ready for an eligible target. */

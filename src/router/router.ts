@@ -31,11 +31,43 @@ export const $route = atom<ParsedRoute>(
 let isSyncingFromHistory = false;
 let routerInitialized = false;
 let cleanupListeners: (() => void) | undefined;
-let inAppHistoryCount = 0;
 let pendingFocusRequest = false;
 let activeEntry: HistoryEntryState | undefined;
+let documentId: string | undefined;
+let stackId: string | undefined;
 const allocations = new Map<string, object>();
 const provisionalLedger = new Map<string, ProvisionalEntry>();
+
+type StackEntry = HistoryEntryState & { stackId: string; index: number };
+type Departure =
+	| {
+			kind: 'navigation';
+			path: string;
+			replace?: boolean;
+			focus: boolean;
+			binding?: ProvisionalModelIdentity;
+	  }
+	| { kind: 'traversal'; destination: StackEntry };
+
+/** The current wizard entry and exact draft that own a visible leave confirmation. */
+export interface LeaveConfirmation {
+	readonly token: number;
+	readonly sourceEntryId: string;
+	readonly binding: ProvisionalModelIdentity;
+}
+
+type DepartureIntent = {
+	confirmation: LeaveConfirmation;
+	stage: 'restoring' | 'confirming' | 'replaying';
+	source: HistoryEntryState;
+	destination: Departure;
+	cancelOnRestore?: boolean;
+};
+
+/** Intent presented by the connected builder only after its source entry owns the URL. */
+export const $leaveConfirmation = atom<LeaveConfirmation | null>(null);
+let departureIntent: DepartureIntent | undefined;
+let nextDepartureToken = 0;
 
 function contextOf(state: PersistedAppState): ProvisionalModelContext | undefined {
 	if (!state.dataset || !state.target) return;
@@ -132,7 +164,163 @@ export function getWorkflowEntryId(): string | undefined {
 }
 
 function newEntry(): HistoryEntryState {
-	return { v: 1, entryId: Math.random().toString(36).slice(2) };
+	return { v: 1, entryId: navigationToken() };
+}
+
+function navigationToken(): string {
+	return Math.random().toString(36).slice(2);
+}
+
+function onCurrentStack(entry: HistoryEntryState | undefined): entry is StackEntry {
+	return Boolean(stackId && entry?.stackId === stackId && entry.index !== undefined);
+}
+
+function positionedEntry(replace: boolean): HistoryEntryState {
+	const current = activeEntry;
+	const entry = newEntry();
+	if (replace && current) entry.entryId = current.entryId;
+	if (onCurrentStack(current)) {
+		entry.stackId = current.stackId;
+		entry.index = replace ? current.index : current.index + 1;
+	} else {
+		stackId = navigationToken();
+		entry.stackId = stackId;
+		entry.index = 0;
+	}
+	return entry;
+}
+
+function visibleUnfinishedWizard(): ProvisionalModelIdentity | undefined {
+	const route = $route.get();
+	if (
+		route.kind !== 'workflow' ||
+		route.path !== '/models/new' ||
+		route.provisional?.kind !== 'bound'
+	)
+		return;
+	const binding = route.provisional.identity;
+	const model = provisionalRouteModel(binding);
+	if (model && model.status !== 'trained') return binding;
+}
+
+function destinationBinding(
+	route: ParsedRoute,
+	entry: HistoryEntryState
+): ProvisionalModelIdentity | undefined {
+	if (
+		((route.kind === 'workflow' && route.path === '/models/new') ||
+			(route.kind === 'reserved' && entry.underlayPath === '/models/new')) &&
+		entry.provisional?.kind === 'bound'
+	)
+		return entry.provisional.identity;
+}
+
+function clearDeparture(): void {
+	departureIntent = undefined;
+	$leaveConfirmation.set(null);
+}
+
+function confirmDeparture(intent: DepartureIntent): void {
+	intent.stage = 'confirming';
+	$leaveConfirmation.set(intent.confirmation);
+}
+
+function beginDeparture(
+	source: HistoryEntryState,
+	binding: ProvisionalModelIdentity,
+	destination: Departure
+): DepartureIntent {
+	const intent: DepartureIntent = {
+		confirmation: { token: ++nextDepartureToken, sourceEntryId: source.entryId, binding },
+		stage: 'restoring',
+		source,
+		destination
+	};
+	departureIntent = intent;
+	return intent;
+}
+
+/** Checks that a leave action still owns the visible history entry. */
+export function ownsWizardLeave(token: number): boolean {
+	const intent = departureIntent;
+	return (
+		intent?.confirmation.token === token &&
+		intent.stage === 'confirming' &&
+		activeEntry?.entryId === intent.source.entryId &&
+		readEntry()?.entryId === intent.source.entryId
+	);
+}
+
+/** Resolves the matching leave intent when the native confirmation closes. */
+export function resolveWizardLeave(token: number, leave: boolean): void {
+	const intent = departureIntent;
+	if (!leave && intent?.confirmation.token === token && intent.stage === 'restoring') {
+		intent.cancelOnRestore = true;
+		return;
+	}
+	if (!intent || !ownsWizardLeave(token)) return;
+	if (!leave) {
+		clearDeparture();
+		return;
+	}
+	const destination = intent.destination;
+	if (destination.kind === 'traversal' && onCurrentStack(intent.source)) {
+		intent.stage = 'replaying';
+		$leaveConfirmation.set(null);
+		window.history.go(destination.destination.index - intent.source.index);
+	} else if (destination.kind === 'navigation') {
+		clearDeparture();
+		internalNavigate(
+			destination.path,
+			{ replace: destination.replace },
+			destination.focus,
+			destination.binding,
+			true
+		);
+	}
+}
+
+/** Retires an unresolved departure when its connected wizard is disposed. */
+export function retireWizardOwner(binding: ProvisionalModelIdentity): void {
+	const intent = departureIntent;
+	if (!intent || !sameBinding(intent.confirmation.binding, binding)) return;
+	if (intent.stage === 'restoring') intent.cancelOnRestore = true;
+	else if (intent.stage === 'confirming') clearDeparture();
+}
+
+function interceptTraversal(entry: HistoryEntryState, route: ParsedRoute): boolean {
+	const source = activeEntry;
+	const intent = departureIntent;
+	if (!onCurrentStack(source) || !onCurrentStack(entry)) {
+		if (intent) clearDeparture();
+		return false;
+	}
+	if (intent?.stage === 'replaying') {
+		// The destination may have been superseded by a second browser action.
+		clearDeparture();
+		return false;
+	}
+	if (intent) {
+		if (entry.entryId === intent.source.entryId) {
+			if (intent.cancelOnRestore) clearDeparture();
+			else confirmDeparture(intent);
+			return true;
+		}
+		if (source.index === entry.index) {
+			clearDeparture();
+			return false;
+		}
+		intent.stage = 'restoring';
+		window.history.go(source.index - entry.index);
+		return true;
+	}
+	if (source.index === entry.index) return false;
+	const binding = visibleUnfinishedWizard();
+	const destination = destinationBinding(route, entry);
+	if (!binding || (destination && sameBinding(binding, destination))) return false;
+	beginDeparture(source, binding, { kind: 'traversal', destination: entry });
+	window.history.go(source.index - entry.index);
+	return true;
 }
 
 function validContext(value?: ProvisionalModelContext): value is ProvisionalModelContext {
@@ -176,6 +364,15 @@ function readEntry(): HistoryEntryState | undefined {
 	)
 		delete entry.underlayPath;
 	if (typeof entry.underlayEntryId !== 'string') delete entry.underlayEntryId;
+	if (
+		typeof entry.stackId !== 'string' ||
+		!Number.isSafeInteger(entry.index) ||
+		entry.index! < 0
+	) {
+		delete entry.stackId;
+		delete entry.index;
+	}
+	if (typeof entry.modalDocumentId !== 'string') delete entry.modalDocumentId;
 	return entry;
 }
 
@@ -440,7 +637,8 @@ function internalNavigate(
 	path: string,
 	options?: { replace?: boolean },
 	requestFocus: boolean = true,
-	requestedBinding?: ProvisionalModelIdentity
+	requestedBinding?: ProvisionalModelIdentity,
+	departureAccepted = false
 ): void {
 	if (typeof window === 'undefined') {
 		const parsed = parseRoute(path);
@@ -468,19 +666,51 @@ function internalNavigate(
 		openReserved(requested.path);
 		return;
 	}
-	const entry = newEntry();
+	if (departureIntent && !departureAccepted) return;
+	const replace = Boolean(
+		options?.replace || requested.kind === 'root' || requested.kind === 'unknown'
+	);
+	const entry = positionedEntry(replace);
 	if (requested.kind === 'workflow' && requested.path === '/models/new' && requestedBinding)
 		entry.provisional = { kind: 'bound', identity: requestedBinding };
 	const { route, start } = prepareEntry(requested, entry, true);
 	const pathToWrite = route.kind === 'workflow' ? route.path : normalisedTarget;
+	const visibleBinding = visibleUnfinishedWizard();
+	const proposedBinding = destinationBinding(route, entry);
+	if (
+		visibleBinding &&
+		proposedBinding &&
+		sameBinding(visibleBinding, proposedBinding) &&
+		pathToWrite === currentPath
+	)
+		return;
+	if (!departureAccepted && activeEntry && visibleBinding) {
+		const intent = beginDeparture(activeEntry, visibleBinding, {
+			kind: 'navigation',
+			path,
+			replace: options?.replace,
+			focus: requestFocus,
+			binding: requestedBinding
+		});
+		confirmDeparture(intent);
+		return;
+	}
+	const currentModel = getEffectiveModelNum($route.get());
+	const nextModel = proposedBinding?.modelNum ?? getEffectiveModelNum(route);
+	if (
+		replace &&
+		currentModel !== undefined &&
+		nextModel !== undefined &&
+		currentModel !== nextModel
+	)
+		entry.entryId = navigationToken();
 	if (route.kind === 'workflow' && route.path !== $appState.get().resumePath)
 		setResumePath(route.path);
 	flushNow();
-	if (options?.replace || requested.kind === 'root' || requested.kind === 'unknown') {
+	if (replace) {
 		window.history.replaceState(entry, '', pathToWrite);
 	} else {
 		window.history.pushState(entry, '', pathToWrite);
-		inAppHistoryCount++;
 	}
 	pendingFocusRequest = requestFocus && route.kind === 'workflow';
 	if (start && entry.provisional?.kind === 'pending')
@@ -506,25 +736,23 @@ export function openReserved(path: ReservedPath): void {
 		return;
 	}
 
-	if (window.location.pathname === path) return;
+	if (window.location.pathname === path || departureIntent) return;
 	const currentRoute = $route.get();
 	const prior = readEntry();
 	const workflow = getEffectiveWorkflowRoute(currentRoute);
 	const reserved = currentRoute.kind === 'reserved';
-	const entry = reserved && prior ? prior : newEntry();
+	const entry = reserved && prior ? prior : positionedEntry(reserved);
 	if (!reserved && prior) {
 		entry.underlayEntryId = prior.entryId;
 		entry.provisional = prior.provisional;
 	}
+	if (!reserved) entry.modalDocumentId = documentId;
 	if (workflow.kind === 'workflow') entry.underlayPath = workflow.path;
 	const { route } = prepareEntry({ kind: 'reserved', path }, entry, false);
 	flushNow();
 	pendingFocusRequest = false;
 	if (reserved) window.history.replaceState(entry, '', path);
-	else {
-		window.history.pushState(entry, '', path);
-		inAppHistoryCount++;
-	}
+	else window.history.pushState(entry, '', path);
 	publishRoute(route, entry);
 }
 
@@ -541,14 +769,11 @@ export function closeReserved(): void {
 		return;
 	}
 
-	// If opened in this document, use history.back()
-	if (inAppHistoryCount > 0) {
-		inAppHistoryCount--;
+	const prior = readEntry();
+	if (documentId && prior?.modalDocumentId === documentId) {
 		window.history.back();
 	} else {
-		const prior = readEntry();
-		const entry = newEntry();
-		if (prior?.underlayEntryId) entry.entryId = prior.underlayEntryId;
+		const entry = positionedEntry(true);
 		entry.provisional = prior?.provisional;
 		const { route } = prepareEntry(getEffectiveWorkflowRoute(current), entry, false);
 		if (route.kind !== 'workflow') return;
@@ -628,7 +853,16 @@ function handlePopState(): void {
 	try {
 		const entry = readEntry() ?? newEntry();
 		const { route } = prepareEntry(parseRoute(window.location.pathname), entry, false);
-		pendingFocusRequest = route.kind === 'workflow' && $route.get().kind === 'workflow';
+		const replay =
+			departureIntent?.stage === 'replaying' &&
+			departureIntent.destination.kind === 'traversal'
+				? departureIntent.destination.destination
+				: undefined;
+		if (interceptTraversal(entry, route)) return;
+		pendingFocusRequest =
+			route.kind === 'workflow' &&
+			$route.get().kind === 'workflow' &&
+			(!replay || replay.entryId === entry.entryId);
 		if (route.kind === 'workflow' || route.kind === 'reserved') {
 			flushNow();
 			window.history.replaceState(
@@ -663,6 +897,8 @@ export function initRouter(): () => void {
 	}
 
 	routerInitialized = true;
+	documentId = navigationToken();
+	stackId = navigationToken();
 
 	// Set manual scroll restoration per §5.1
 	if ('scrollRestoration' in window.history) {
@@ -680,6 +916,7 @@ export function initRouter(): () => void {
 		if (changed) {
 			allocations.clear();
 			provisionalLedger.clear();
+			clearDeparture();
 		}
 	});
 
@@ -689,7 +926,10 @@ export function initRouter(): () => void {
 		stopWatchingContext();
 		allocations.clear();
 		provisionalLedger.clear();
+		clearDeparture();
 		activeEntry = undefined;
+		documentId = undefined;
+		stackId = undefined;
 		routerInitialized = false;
 		cleanupListeners = undefined;
 	};
@@ -697,6 +937,8 @@ export function initRouter(): () => void {
 	const requested = parseRoute(window.location.pathname);
 	const prior = readEntry();
 	const entry = prior ?? newEntry();
+	entry.stackId = stackId;
+	entry.index = 0;
 	const { route, start } = prepareEntry(requested, entry, !prior);
 	pendingFocusRequest = false;
 	if (route.kind === 'workflow' || route.kind === 'reserved') {
@@ -721,7 +963,6 @@ export function stopRouter(): void {
 	if (cleanupListeners) {
 		cleanupListeners();
 	}
-	inAppHistoryCount = 0;
 	routerInitialized = false;
 	pendingFocusRequest = false;
 }

@@ -13,6 +13,7 @@ import {
 } from '../../../common/storage/training-domain';
 import {
 	$appState,
+	reduceAbandonProvisional,
 	reduceCreateModel,
 	reduceDatasetReplacement,
 	reduceTargetChange,
@@ -149,7 +150,7 @@ const conflict = { ok: false, reason: 'conflict' } as const;
 
 function modelIn(
 	state: ProtectedDomainSnapshot,
-	identity: TrainingRunIdentity
+	identity: Pick<TrainingRunIdentity, 'datasetId' | 'target' | 'modelNum' | 'modelCreatedAt'>
 ): ModelRecord | undefined {
 	if (state.dataset?.id !== identity.datasetId || state.target !== identity.target)
 		return undefined;
@@ -292,6 +293,8 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 	const stoppedRepairs = new Map<string, StoppedRepair>();
 	const committedStops = new Map<string, CommittedStop>();
 	const exclusiveIntents = new Set<string>();
+	const abandoning = new Set<number>();
+	const pendingAbandonments = new Map<string, string>();
 	let pendingDatasetCleanup: { id: string; cleanup: () => Promise<void> } | null = null;
 	const newId = options.newId ?? (() => crypto.randomUUID());
 	const now = options.now ?? Date.now;
@@ -327,7 +330,7 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 			  >,
 		identity?: TrainingRunIdentity,
 		stopped?: StoppedRepair
-	): Promise<{ ack: PersistenceAck; committed: boolean }> {
+	): Promise<{ ack: PersistenceAck; committed: boolean; operationId: string }> {
 		const operationId = newId();
 		let committedGeneration: number | undefined;
 		const ack = await commitProtectedTrainingChange(
@@ -371,7 +374,7 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		} else if (ack.ok && $publicationPending.get()?.operationId === operationId) {
 			$publicationPending.set(null);
 		}
-		return { ack, committed: committedGeneration !== undefined };
+		return { ack, committed: committedGeneration !== undefined, operationId };
 	}
 
 	async function withResource<Value>(
@@ -637,7 +640,11 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		if (!isIsolated()) return { ok: false, code: 'environment-not-supported' };
 		if (!captured.dataset || !captured.target || !model || model.status !== 'draft')
 			return { ok: false, code: 'invalid-request' };
-		if (active.has(modelNum) || exclusiveIntents.has(captured.dataset.id))
+		if (
+			active.has(modelNum) ||
+			abandoning.has(modelNum) ||
+			exclusiveIntents.has(captured.dataset.id)
+		)
 			return { ok: false, code: 'busy' };
 		let config;
 		try {
@@ -968,6 +975,108 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		return outcome.ok ? outcome.value : null;
 	}
 
+	/** Settles the exact draft's attempt before removing the acknowledged provisional record. */
+	async function abandonNewModel(
+		binding: ProvisionalModelIdentity,
+		retrySaving = false
+	): Promise<TrainingCommandResult> {
+		const { modelNum } = binding;
+		const captured = $appState.get();
+		if (
+			captured.dataset?.id !== binding.datasetId ||
+			captured.target !== binding.target ||
+			captured.comparisonContextEpoch !== binding.comparisonContextEpoch
+		)
+			return notice(conflict);
+		if (abandoning.has(modelNum)) return { ok: false, code: 'busy' };
+		abandoning.add(modelNum);
+		try {
+			const matchingRun = (identity?: TrainingRunIdentity): identity is TrainingRunIdentity =>
+				identity?.datasetId === binding.datasetId &&
+				identity.target === binding.target &&
+				identity.modelNum === modelNum &&
+				identity.modelCreatedAt === binding.modelCreatedAt;
+			const attempt = active.get(modelNum);
+			const current = modelIn(captured, binding);
+			if (
+				attempt &&
+				captured.newModelNum === modelNum &&
+				current &&
+				!current.provisionalCompletedRunId &&
+				matchingRun(attempt.request.identity)
+			) {
+				cancel(attempt);
+				await attempt.done;
+			}
+			const pending = $publicationPending.get();
+			const repair = [...stoppedRepairs.values()].find(({ identity }) =>
+				matchingRun(identity)
+			);
+			const ownedPending = matchingRun(pending?.identity) ? pending : null;
+			const recoverRun = ownedPending?.identity ?? repair?.identity;
+			if (recoverRun) {
+				if (!retrySaving) return notice(conflict, ownedPending?.kind ?? 'recover');
+				const settled = await retry(recoverRun);
+				if (!settled.ok) return settled;
+			}
+
+			const key = JSON.stringify([
+				binding.datasetId,
+				binding.target,
+				binding.comparisonContextEpoch,
+				modelNum,
+				binding.modelCreatedAt
+			]);
+			return await withResource(INGESTION_LOCK, 'shared', true, () =>
+				withResource(`samata-ml:training:${modelNum}`, 'exclusive', true, async () => {
+					let removed = false;
+					const awaiting = pendingAbandonments.get(key);
+					const { ack, committed, operationId } = await checkpoint(
+						'discard',
+						({ state }) => {
+							if (
+								!state ||
+								state.dataset?.id !== binding.datasetId ||
+								state.target !== binding.target ||
+								state.comparisonContextEpoch !== binding.comparisonContextEpoch
+							)
+								return conflict;
+							const model = modelIn(state, binding);
+							if (model?.status === 'trained') {
+								publishNewerTrainingSnapshot(state);
+								return null;
+							}
+							if (!model && pendingAbandonments.has(key)) {
+								removed = true;
+								publishNewerTrainingSnapshot(state);
+								return null;
+							}
+							const next = reduceAbandonProvisional(state, binding);
+							if (!next) return conflict;
+							removed = true;
+							return { state: next, mutation: { type: 'none' } };
+						}
+					);
+					if (!ack.ok) {
+						if (committed) pendingAbandonments.set(key, operationId);
+						return notice(ack, pendingAbandonments.has(key) ? 'discard' : undefined);
+					}
+					if (removed) {
+						clearScroll([`models/${modelNum}`]);
+						if (
+							pendingAbandonments.delete(key) &&
+							$publicationPending.get()?.operationId === awaiting
+						)
+							$publicationPending.set(null);
+					}
+					return { ok: true, value: undefined };
+				})
+			);
+		} finally {
+			abandoning.delete(modelNum);
+		}
+	}
+
 	async function destructive(
 		datasetId: string,
 		capturedTarget: string | null,
@@ -1014,6 +1123,7 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 
 	return {
 		start,
+		abandonNewModel,
 		loadCompletedResult,
 		activeIdentity(modelNum: number): TrainingRunIdentity | undefined {
 			return active.get(modelNum)?.request.identity;

@@ -463,6 +463,125 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		}
 	});
 
+	test('MW-GUARD-1/2: Stay and Escape retain the draft while Leave follows the original link', async ({
+		page
+	}) => {
+		await createIrisModel(page);
+		const source = await page.evaluate(() => history.state.entryId);
+		await page.setViewportSize({ width: 900, height: 420 });
+		await page.evaluate(() => window.scrollTo({ top: 160, behavior: 'instant' }));
+		const startingScroll = await page.evaluate(() => window.scrollY);
+		expect(startingScroll).toBeGreaterThan(0);
+		const target = page.locator('app-sidebar a[href="/target"]');
+		const dialog = page.getByRole('dialog', { name: 'Leave this model?' });
+		const stay = dialog.getByRole('button', { name: 'Stay', exact: true });
+		await target.press('Enter');
+		await expect(stay).toBeFocused();
+		await expect(page).toHaveURL('/models/new');
+		await stay.click();
+		await expect(dialog).toBeHidden();
+		await expect(target).toBeFocused();
+		expect(await page.evaluate(() => history.state.entryId)).toBe(source);
+		expect(await page.evaluate(() => window.scrollY)).toBe(startingScroll);
+
+		await target.press('Enter');
+		await expect(stay).toBeFocused();
+		await page.keyboard.press('Escape');
+		await expect(dialog).toBeHidden();
+		await expect(target).toBeFocused();
+		expect(await page.evaluate(() => window.__appState!.get().newModelNum)).toBe(1);
+
+		await target.press('Enter');
+		await dialog.getByRole('button', { name: 'Leave', exact: true }).click();
+		await expect(page).toHaveURL('/target');
+		await expect(page.locator('app-target-view h1')).toBeFocused();
+		expect(await page.evaluate(() => window.__appState!.get().models)).toEqual([]);
+		await keyboardNavigate(page, '/models');
+		await page.locator('app-models-view a[href="/models/new"]').click();
+		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 2');
+	});
+
+	test('MW-GUARD-1/2: Back restores the draft before prompting and replays once after Leave', async ({
+		page
+	}) => {
+		await createIrisModel(page);
+		const initial = await page.evaluate(() => ({
+			entryId: history.state.entryId,
+			length: history.length
+		}));
+		const dialog = page.getByRole('dialog', { name: 'Leave this model?' });
+		await page.evaluate(() => history.back());
+		await expect(dialog.getByRole('button', { name: 'Stay' })).toBeFocused();
+		await expect(page).toHaveURL('/models/new');
+		await page.evaluate(() => history.back());
+		await expect(page).toHaveURL('/models/new');
+		await dialog.getByRole('button', { name: 'Stay' }).click();
+		await expect(dialog).toBeHidden();
+		expect(
+			await page.evaluate(() => ({ entryId: history.state.entryId, length: history.length }))
+		).toEqual(initial);
+		expect(await page.evaluate(() => window.__appState!.get().newModelNum)).toBe(1);
+
+		await page.evaluate(() => history.back());
+		await expect(dialog).toBeVisible();
+		await dialog.getByRole('button', { name: 'Leave', exact: true }).click();
+		await expect(page).toHaveURL('/models');
+		await expect(page.locator('app-models-view h1')).toBeFocused();
+		expect(await page.evaluate(() => history.length)).toBe(initial.length);
+		await page.goForward();
+		await expect(page).toHaveURL('/models/new');
+		await expect(
+			page.getByTestId('provisional-route').getByRole('link', { name: 'Back to Models' })
+		).toBeVisible();
+		expect(await page.evaluate(() => window.__appState!.get().models)).toEqual([]);
+	});
+
+	test('MW-GUARD-1: forward visits close Help through Back and covered departures preserve the draft', async ({
+		page
+	}) => {
+		await createIrisModel(page);
+		const origin = await page.evaluate(() => history.state.entryId);
+		const help = page.locator('app-sidebar a[href="/help"]');
+		await help.press('Enter');
+		const close = page.getByRole('button', { name: 'Close', exact: true });
+		await expect(close).toBeFocused();
+		const historyLength = await page.evaluate(() => history.length);
+		await page.goBack();
+		await expect(page).toHaveURL('/models/new');
+		await page.goForward();
+		await expect(close).toBeFocused();
+		await close.click();
+		await expect(page).toHaveURL('/models/new');
+		expect(await page.evaluate(() => history.state.entryId)).toBe(origin);
+		expect(await page.evaluate(() => history.length)).toBe(historyLength);
+		await page.goForward();
+		await expect(close).toBeVisible();
+		await page.evaluate(() => history.go(-2));
+		await expect(page).toHaveURL('/models');
+		await expect(page.getByRole('dialog', { name: 'Leave this model?' })).toHaveCount(0);
+		await page.goForward();
+		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
+		expect(await page.evaluate(() => window.__appState!.get().newModelNum)).toBe(1);
+	});
+
+	test('MW-GUARD-1: Back to a legacy unindexed entry preserves the provisional draft', async ({
+		page
+	}) => {
+		await loadSampleDataset(page, 'iris');
+		await keyboardNavigate(page, '/target');
+		await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
+		await keyboardNavigate(page, '/models');
+		await page.evaluate(() =>
+			history.replaceState({ v: 1, entryId: 'legacy-overview' }, '', '/models')
+		);
+		await page.locator('app-models-view a[href="/models/new"]').click();
+		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
+		await page.goBack();
+		await expect(page).toHaveURL('/models');
+		await expect(page.getByRole('dialog', { name: 'Leave this model?' })).toHaveCount(0);
+		expect(await page.evaluate(() => window.__appState!.get().newModelNum)).toBe(1);
+	});
+
 	test('NAV-E2E-2d: Sidebar link aria-current conforms to SEM-03', async ({ page }) => {
 		for (const path of ['/data', '/target', '/models', '/results']) {
 			await page.goto(path);
@@ -633,9 +752,13 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
 		await expect(page.locator('app-model-builder-view h1')).toBeFocused();
 		await keyboardNavigate(page, '/data');
+		await page
+			.getByRole('dialog', { name: 'Leave this model?' })
+			.getByRole('button', { name: 'Leave', exact: true })
+			.click();
 		await expect(page.locator('app-dataset-preview h1')).toBeFocused();
 		await page.goBack();
-		await expect(page.locator('app-model-builder-view h1')).toBeFocused();
+		await expect(page.getByRole('heading', { name: 'Train New Model' })).toBeFocused();
 		await page.goForward();
 		await expect(page.locator('app-dataset-preview h1')).toBeFocused();
 	});
@@ -855,6 +978,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 			offset: '2px'
 		});
 		await createIrisModel(page);
+		await page.goto('/models');
 		for (const path of ['/data', '/target', '/models', '/results']) {
 			await keyboardNavigate(page, path);
 			const heading = page.locator('#content h1');

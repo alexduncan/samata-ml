@@ -273,6 +273,26 @@ test('rejects a non-isolated start before constructing a worker and keeps the fo
 	await assertPanelAccessibility(page);
 });
 
+test('MW-GUARD-2: confirmed departure waits for the matching local cancellation', async ({
+	page
+}) => {
+	await controlTraining(page);
+	await start(page);
+	await page.locator('app-sidebar a[href="/target"]').press('Enter');
+	const dialog = page.getByRole('dialog', { name: 'Leave this model?' });
+	await expect(dialog.getByRole('button', { name: 'Stay' })).toBeFocused();
+	await dialog.getByRole('button', { name: 'Leave', exact: true }).click();
+	await expect.poll(() => requestCount(page, 'cancel')).toBe(1);
+	await expect(dialog.getByRole('status')).toHaveText('Leaving the model…');
+	await page.keyboard.press('Escape');
+	await expect(dialog).toBeVisible();
+	await expect(page).toHaveURL('/models/new');
+	await page.evaluate(() => window.__trainingFixture!.reply({ kind: 'cancelled' }));
+	await expect(page).toHaveURL('/target');
+	await expect(dialog).toBeHidden();
+	expect(await page.evaluate(() => window.__appState!.get().models)).toEqual([]);
+});
+
 test('a committed start awaiting publication returns to a draft without launching a worker', async ({
 	page
 }) => {
@@ -584,7 +604,8 @@ for (const [outcome, recovery] of [
 					'training'
 				);
 				if (recovery === 'later storage event') {
-					await other.locator('app-sidebar a[href="/models"]').click();
+					// A document navigation keeps the unfinished draft for the original tab.
+					await other.goto('/models');
 					await expect(other).toHaveURL('/models');
 				}
 			} else {
