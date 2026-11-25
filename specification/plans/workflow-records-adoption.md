@@ -1,8 +1,8 @@
 # Adopt workflow records in Samata ML
 
-**Status:** ready-for-review | **Updated:** 2026-11-25T11:30:02Z
+**Status:** draft | **Updated:** 2026-11-25T11:37:22Z
 **Authors:** Codex (gpt-6.2-sol) | **Created:** 2026-11-25T11:26:57Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -135,6 +135,7 @@ None.
 
 | Reviewed (UTC) | Agent (model) | Decision | Findings |
 | -------------- | ------------- | -------- | -------- |
+| 2026-11-25T11:37:22Z | Codex (gpt-6.2-astra) | changes-requested | MAJOR T2: records_inventory.py reads committed HEAD blobs and includes specification/workflow-records-migration.md. A second run before the task commit repeats the input scan. Assign post-commit reinventory at the migrated SHA, classify new matches including ledger references, and place the resulting SHA, totals and exceptions in a later audit receipt. MAJOR T1: both whitelist hooks accept arbitrary arguments on existing wrapper patterns. Specify the supported producer records subcommands and bare verify, and exercise a receiver-only subcommand and verify with arguments as negative cases so adoption cannot silently grant them. |
 
 ## Change log
 
