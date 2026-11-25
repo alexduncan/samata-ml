@@ -1,8 +1,8 @@
 # Adopt workflow records in Samata ML
 
-**Status:** draft | **Updated:** 2026-11-25T11:37:22Z
+**Status:** ready-for-review | **Updated:** 2026-11-25T11:41:14Z
 **Authors:** Codex (gpt-6.2-sol) | **Created:** 2026-11-25T11:26:57Z
-**Verified by:** — | **Verified:** — | **Verification:** changes-requested
+**Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -29,7 +29,7 @@
 
 **Constraints and invariants**
 
-- Use an isolated Samata ML session on the local plan branch for implementation. Staged validation uses the tested parent candidate in a worktree-local installation or the identical integrated release. Record the exact tool commit and construct wrapper paths under one skill root. Preserve existing command spellings.
+- Use an isolated Samata ML session on the local plan branch for implementation. Staged validation uses the tested parent candidate `31530fcb41fae255a9d26d688f032f9fcf8de3ef` in a worktree-local installation or an integrated release containing the same tested workflow changes. Record the exact tool commit and construct wrapper paths under one skill root. Preserve existing command spellings.
 - Preserve archived plans, verified plan content and fingerprints, original human note bodies and product source comments. The maintainer’s primary `specification/notes/ui-fixes.md` has unrelated changes. The inventory uses committed evidence, with the maintainer as owner of any worktree-only material.
 - Samata ML is a producer. Its links to library requests are provenance. The receiver owns request files, receipts, decisions and activation. Keep legacy-format submission until the receiver is demonstrably ready.
 
@@ -37,7 +37,7 @@
 
 - `AGENTS.md` §§ Verification Commands, Git workflow and Rules, and `specification/README.md` §§ Backlog and Known gaps.
 - `specification/FUTURE.md`, `specification/TODO.md`, `specification/HUMAN.md`, and `specification/notes/README.md` for existing queue ownership and navigation.
-- Parent agent-workflow plan `specification/plans/workflow-records-and-request-archiving.md` at `5921031fd40c8ebce7869d578b749fdd4f3dcc86`, T9 and Interfaces and behaviour §§ 1, 4–5 and 7–8, including the promotion, request reconciliation and migration rules.
+- Parent agent-workflow plan `specification/plans/workflow-records-and-request-archiving.md` at `31530fcb41fae255a9d26d688f032f9fcf8de3ef`, T9 and Interfaces and behaviour §§ 1, 4–5 and 7–8, including the promotion, request reconciliation and migration rules.
 - Parent agent-workflow `docs/consumer-adoption.md` and `templates/samata-ml-AGENTS.md`, at the same revision, for local installation, baseline composition and request cutover.
 
 ## Codebase context
@@ -61,11 +61,15 @@
 
 ### Interfaces and behaviour
 
-1. `plans:records` runs the shared records CLI. Document `inventory`, `backlog-add`, `backlog-list [--all]`, `backlog-promote` and `reconcile [--apply]` under the lifecycle skill that owns each operation. Register and document the shared lifecycle options that apply to this consumer, including review submit with an initial index description, review handoff checks and task escalation and verification evidence. Keep the existing wrappers available and add `/.agent-workflow/` before any shared record writer runs. Use `AGENT_WORKFLOW_SKILLS` as the optional worktree-local selector with the current installed directory as the default for shared lifecycle wrappers.
+1. `plans:records` runs the shared records CLI. Register and document the shared lifecycle options that apply to this consumer, including review submit with an initial index description, review handoff checks, task escalation and verification evidence. Keep the existing wrappers available and add `/.agent-workflow/` before any shared record writer runs. Use `AGENT_WORKFLOW_SKILLS` as the optional worktree-local selector with the current installed directory as the default for shared lifecycle wrappers.
+    - Both local command hooks allow bare `bun run verify`. The complete new `bun run plans:records` allow-list is `inventory`, `backlog-list [--all]`, `backlog-add --key <kebab-key> --summary <text> --source <source> [--source <source> ...]`, `backlog-promote --key <kebab-key> --plan specification/plans/<slug>.md`, and bare `reconcile` for preview. Document these forms and their owning lifecycle skills in `AGENTS.md`.
+    - Match the whole invocation, require the listed positional and flag structure, and keep existing shell-operator handling. A documented value with spaces can use a quoted argument. Any extra argument on `verify`, unlisted records subcommand or unsupported option must miss the new allow rules. Receiver-only `request-decide`, `request-attest` and `reconcile --apply` remain under review.
 2. The version 1 backlog uses the shared writer and parser. Use stable kebab-case keys, one row per deferred obligation, and repeated sources for corroborating records. Use existing section anchors or revision-qualified paths with line references for relocated or historical sources. An indexed active plan that claims an existing backlog item uses the shared promotion operation. Published request residuals retain their namespaced source key.
-3. The ledger at `specification/workflow-records-migration.md` names the consumer input revision and exact shared tool commit. Cover each raw inventory result (`path:line` at the pinned revision) and each manual addition exactly once. It may group explicit locations with the same decision and evidence. Record one classification per location: delivered with evidence, actively planned with owner, human action with owner and actionable question, duplicate with canonical owner, deferred with backlog key, or irrelevant with reason. Classify overlapping locations and logical work separately so duplicate references do not create backlog rows. Reinventory the result and record classification totals and any reviewed exceptions with owners.
+3. The ledger at `specification/workflow-records-migration.md` names the consumer input revision and exact shared tool commit. Cover each raw inventory result (`path:line` at the pinned revision) and each manual addition exactly once. It may group explicit locations with the same decision and evidence. Record one classification per location: delivered with evidence, actively planned with owner, human action with owner and actionable question, duplicate with canonical owner, deferred with backlog key, or irrelevant with reason. Classify overlapping locations and logical work separately so duplicate references do not create backlog rows.
 4. Keep genuine decisions in `HUMAN.md` and their open questions in `TODO.md`. Split mixed items by keeping the decision and linking to its deferred backlog key from the human entry, then include the human entry’s stable source or ledger reference on the backlog item. Treat the FUTURE entries as evidence to classify. Preserve conditions on speculative ideas and respect existing active plan ownership. Preserve the note inbox and the human’s uncommitted work.
 5. The orphan mockup draft remains byte-identical at `specification/history/mockup-review-improvements-draft.md` if the audit finds no unique live plan scope. Classify any remaining item via its existing owner, HUMAN, or the backlog as the evidence warrants before relocating the draft. The ledger pins its original path, blob and reviewed closure, and records any relative or incoming links that need a current destination. Preserve the original blob as evidence and put current destinations in the ledger if the original draft’s relative links become historical. If unique plan scope still lacks an agreed owner or the duplicate cannot be retired safely, leave the files alone and escalate with the evidence.
+6. Inventory scans committed `HEAD` blobs. After the migration commit is landed, the independent auditor runs it from an isolated clean checkout of that exact Samata ML commit, using the same recorded tool commit, before recording closure. Correlate carried-forward matches with their input-ledger locations. Classify each new location, including matches in the newly committed ledger. A ledger reference to classified work is a duplicate when it resolves to that canonical record. A bookkeeping match with no work item is irrelevant with a reason. Treat a substantive uncovered item according to its actual class and resolve any migration obligation before closure.
+7. The independent auditor records a cumulative receipt in the implementation and verification log in a later commit. Include the Samata input and migrated commits, exact shared tool commit, command results, counts by class including zeros, new locations with their dispositions and evidence, remaining human actions, and exceptions with owners. Count carried-forward matches once and report the post-commit scan’s coverage separately from the combined classifications. Include local request and residual totals. Pin the receipt to the already migrated commit so adding the receipt does not change the inventory it verifies. Send the receipt and closure commit to the parent T9 audit.
 
 ## Specification changes
 
@@ -86,8 +90,8 @@
 - **Acceptance criteria:**
     - [ ] `verify` runs the existing typecheck and invokes the baseline wrapper exactly once per run, using an empty allowance. CI’s standalone `check` retains its existing typecheck and raw suite.
     - [ ] The registered records inventory and reconcile dry-run dispatch through the pinned skills from the repository root. The plans/task and review help expose the documented options.
-    - [ ] Both hook copies allow the new registered invocations and retain existing handling of chained commands, unregistered commands and blanket staging. No repository-wide permission grants are added.
-- **Verification:** Existing `bun run check`, `bun run plans:check specification/plans/workflow-records-adoption.md`, `bun run format:check <files>`. After registration, run `bun run verify`, `bun run plans:records inventory` and `bun run plans:records reconcile`. Exercise the exact new, unrelated and chained command strings through both existing hooks with representative hook input.
+    - [ ] Both hook copies allow every documented producer form and bare `bun run verify`. Both request review for `bun run plans:records request-decide specification/requests/2026-11-25-adoption-fixture.md --status declined --reason "Fixture decision"`, `bun run plans:records request-attest specification/requests/2026-11-25-adoption-fixture.md`, `bun run plans:records reconcile --apply`, `bun run plans:records inventory --all` and `bun run verify --help`. Existing handling of chained commands, unregistered commands and blanket staging remains in effect.
+- **Verification:** Existing `bun run check`, `bun run plans:check specification/plans/workflow-records-adoption.md`, `bun run format:check <files>`. After registration, run `bun run verify`, `bun run plans:records inventory` and `bun run plans:records reconcile`. Submit the listed positive and negative command strings, including a quoted summary, repeated sources and a chained command, as `CommandLine` values to both existing hooks. Compare the JSON decisions without executing the represented commands.
 - **Progress:** [ ] Not started
 
 ### T2 — Classify and migrate Samata ML’s workflow records
@@ -96,20 +100,20 @@
 - **Risk:** needs care — historical sources, human decisions and existing plan stamps must survive
 - **Likely files:** `specification/README.md`, `specification/FUTURE.md`, `specification/HUMAN.md`, `specification/TODO.md`, `specification/plans/README.md`, `specification/plans/BACKLOG.md`, `specification/workflow-records-migration.md`, `specification/plans/mockup-review-improvements.md`, `specification/history/mockup-review-improvements-draft.md`
 - **Must not touch:** `specification/requests/`, `specification/notes/`, `specification/mockups/`, `specification/plans/archive/`, `src/`, `tests/`, `scripts/`
-- **Implementation:** Run a pinned inventory in the owning worktree, then cover the named documentation, notes and limitation sections. Apply Interfaces and behaviour 2–5. Inspect the archived mockup closure and preserve its stamps and bytes. Review the local reconciliation dry run. Record zero local bodies and residuals if confirmed. If there is a new owned inbound request, stop and ask its owner to resolve scope before any request writes. Maintain the ledger and source links, run the resulting inventory again and check the outputs against the ledger. The implementation and independent audit receipts identify the resulting verified Samata commit and branch for the parent T9 audit.
+- **Implementation:** Run the input inventory in the owning worktree with clean, pinned HEAD, then cover the named documentation, notes and limitation sections. Apply Interfaces and behaviour 2–5. Inspect the archived mockup closure and preserve its stamps and bytes. Review the local reconciliation dry run. Record zero local bodies and residuals if confirmed. If there is a new owned inbound request, stop and ask its owner to resolve scope before any request writes. Land the migration and hand its exact commit and tool commit to the independent auditor for the separate post-commit check in Interfaces and behaviour 6–7.
 - **Acceptance criteria:**
-    - [ ] The checked-in ledger covers the pinned inventory and supplemental sources with observed class totals, including zeros. Reinventory leaves no unclassified candidates or unowned exceptions.
+    - [ ] The checked-in ledger covers the pinned input inventory and supplemental sources with observed class totals, including zeros.
     - [ ] Exactly one version 1 backlog exists. Equivalent deferrals share one entry, confirmed human actions retain useful links, and the sampled cross-links resolve.
     - [ ] The audited mockup archive and signed plan content retain their original blobs or fingerprints. Whole-repository plan validation passes after the orphan draft’s documented disposition.
     - [ ] The local request count and dry-run result are backed by Git tree evidence. No upstream or uncommitted human record is staged.
-- **Verification:** `bun run plans:check`, `bun run verify`, `bun run format:check <files>` on edited documents excluding the byte-identical historical draft, `bun run plans:records inventory`, `bun run plans:records backlog-list --all`, `bun run plans:records reconcile`. Compare source coverage, retained anchors, archive blobs and verified fingerprints against the pinned revision. Verify scoped task changes with the registered task gate before staging.
+- **Verification:** `bun run plans:check`, `bun run verify`, `bun run format:check <files>` on edited documents excluding the byte-identical historical draft, `bun run plans:records inventory` for the pinned input, `bun run plans:records backlog-list --all`, `bun run plans:records reconcile`. Compare source coverage, retained anchors, archive blobs and verified fingerprints against the pinned input revision. Verify scoped task changes with the registered task gate before staging. The independent auditor repeats `bun run plans:records inventory` after landing with HEAD at the migrated commit.
 - **Progress:** [ ] Not started
 
 ## Verification and definition of done
 
 - [ ] All task acceptance criteria and specification changes are verified.
 - [ ] The registered verification and repository-wide plan checks pass inside the implementation worktree. The format check covers changed authored documents.
-- [ ] The owner records the consumer SHA, tool SHA, counts, verified commands and any exceptions with owners. The independent audit verifies the report against Git objects and transfers it to the parent T9 task.
+- [ ] The independent auditor’s post-commit inventory covers the migrated tree, including matches in the migration ledger. Every match has a disposition. Repeated source references create no duplicate backlog items. The cumulative receipt covers both inventories and reaches the parent T9 audit.
 - [ ] Changed paths match the task scopes. Browser and WCAG checks are inapplicable because the changes are limited to workflow commands and records.
 
 ## Risks and open questions
@@ -133,12 +137,13 @@ None.
 
 ## Plan review history
 
-| Reviewed (UTC) | Agent (model) | Decision | Findings |
-| -------------- | ------------- | -------- | -------- |
+| Reviewed (UTC)       | Agent (model)         | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| -------------------- | --------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-11-25T11:37:22Z | Codex (gpt-6.2-astra) | changes-requested | MAJOR T2: records_inventory.py reads committed HEAD blobs and includes specification/workflow-records-migration.md. A second run before the task commit repeats the input scan. Assign post-commit reinventory at the migrated SHA, classify new matches including ledger references, and place the resulting SHA, totals and exceptions in a later audit receipt. MAJOR T1: both whitelist hooks accept arbitrary arguments on existing wrapper patterns. Specify the supported producer records subcommands and bare verify, and exercise a receiver-only subcommand and verify with arguments as negative cases so adoption cannot silently grant them. |
 
 ## Change log
 
-| When (UTC)           | Change        | Reason                                                                  |
-| -------------------- | ------------- | ----------------------------------------------------------------------- |
-| 2026-11-25T11:26:57Z | Initial draft | Owning-repository adoption for agent-workflow workflow records task T9. |
+| When (UTC)           | Change          | Reason                                                                                                                                                  |
+| -------------------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-25T11:26:57Z | Initial draft   | Owning-repository adoption for agent-workflow workflow records task T9.                                                                                 |
+| 2026-11-25T11:39:20Z | Review revision | Require reinventory of the committed migration and a cumulative audit receipt. Bound the producer hook commands and add negative checks in both copies. |
