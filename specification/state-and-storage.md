@@ -59,7 +59,13 @@ export interface DatasetSummary {
 	columns: ColumnSummary[];
 }
 
-export type WorkflowPath = '/data' | '/target' | '/models' | `/models/${number}` | '/results';
+export type WorkflowPath =
+	| '/data'
+	| '/target'
+	| '/models'
+	| '/models/new'
+	| `/models/${number}`
+	| '/results';
 
 export type ModelSectionId =
 	| 'choose-model'
@@ -115,6 +121,18 @@ export interface TrainingTimings {
 
 export type ModelStatus = 'draft' | 'training' | 'trained';
 
+export type ModelColor =
+	| 'amber'
+	| 'blue'
+	| 'teal'
+	| 'purple'
+	| 'red'
+	| 'green'
+	| 'pink'
+	| 'sky'
+	| 'olive'
+	| 'neutral';
+
 /** One entry per model; `num` is the `{num}` in `/models/{num}`. */
 export interface ModelRecord {
 	num: number;
@@ -137,6 +155,9 @@ export interface ModelRecord {
 	/** Section 5 – Training. */
 	progress: TrainingProgress | null;
 	resultRevision: string | null; // Current run ID while training or trained.
+	provisionalCompletedRunId?: string | null;
+	modelLabel?: string | null;
+	modelColor?: ModelColor;
 	error: TrainingError | null;
 	timings: TrainingTimings | null;
 	durationMs: number | null;
@@ -153,12 +174,12 @@ export interface ModelRecord {
 	 * Per-model UI selections (e.g. `featureSelectionInitialised: boolean`, `trainingLogOpen`).
 	 * `featureSelectionInitialised` tracks whether initial eligible features were populated once
 	 * on Choose Model completion, ensuring intentional user toggles (including empty selections)
-	 * survive reload and reopening. `results` holds the Section 6 preferences below.
+	 * survive reload and reopening. `results` holds the numbered-result preferences below.
 	 */
 	ui: Record<string, unknown> & { results?: Partial<ModelResultsUi> };
 }
 
-/** Section 6 display preferences. Absent fields use the defaults shown. */
+/** Numbered-result display preferences. Absent fields use the defaults shown. */
 export interface ModelResultsUi {
 	/** Index into the 101 stored threshold cutoffs; default 50 (0.50). */
 	thresholdIndex: number;
@@ -224,6 +245,10 @@ export interface PersistedAppState {
 	models: ModelRecord[];
 	/** Next `num` to allocate. Monotonic; numbers are never reused. */
 	nextModelNum: number;
+	/** Current unfinished provisional model. */
+	newModelNum: number | null;
+	/** Next swatch palette position in the active dataset and target context. */
+	nextModelColorIndex: number;
 	trainingDomainGeneration: number; // Zero for legacy v1 state.
 	comparisonContextEpoch: number; // Zero for legacy v1 state.
 
@@ -246,7 +271,9 @@ export interface PersistedScroll {
 }
 ```
 
-Defaults on first load: `welcomeDismissed: false`, `resumePath: '/data'`, `dataset: null`, `data: { mode: 'select', selectedColumn: null }`, `target: null`, `models: []`, `nextModelNum: 1`, `trainingDomainGeneration: 0`, `comparisonContextEpoch: 0`, unowned comparison defaults and no scroll snapshots. Comparison defaults are null fingerprint, empty selection, null sort and pair, width 0.01 and null class filter.
+Defaults on first load: `welcomeDismissed: false`, `resumePath: '/data'`, `dataset: null`, `data: { mode: 'select', selectedColumn: null }`, `target: null`, `models: []`, `nextModelNum: 1`, `newModelNum: null`, `nextModelColorIndex: 0`, `trainingDomainGeneration: 0`, `comparisonContextEpoch: 0`, unowned comparison defaults and no scroll snapshots. Comparison defaults are null fingerprint, empty selection, null sort and pair, width 0.01 and null class filter.
+
+The v1 wire and protected domain accept older snapshots with no provisional pointer, swatch cursor, run pin or presentation fields. Invalid pointers, blank or invalid pins and labels read as absent. An absent or invalid cursor starts at zero. An invalid colour is treated as missing. The optional `ResultEnvelopeV2.modelLabel` owns the saved label and the model record mirrors it. The catalogue name is the display fallback. These fields do not enter worker requests, training fingerprints or partition hashes.
 
 ### Training Setup on the v1 wire
 
@@ -264,14 +291,14 @@ The persister encodes v1 state and coordinates normal browser writes with the pr
 
 ### 4.1 Triggers
 
-| Change                                                                                                                     | Persistence                                                             |
-| -------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| Dataset publication, target changes and discard, model creation, training entry and exit, View Results and startup repairs | Acknowledged protected commit                                           |
-| Resume path, onboarding, UI selections, section changes and discrete draft edits                                           | Prompt best-effort write                                                |
-| Fold-count and free-form hyperparameter edits                                                                              | Debounced about 300 ms                                                  |
-| Compact training progress                                                                                                  | Throttled to at most one write per second                               |
-| Log disclosure                                                                                                             | Best-effort immediate flush                                             |
-| Scroll snapshots                                                                                                           | Debounced about 150 ms, with navigation and document visibility flushes |
+| Change                                                                                                                                                                     | Persistence                                                             |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| Dataset publication and discard, target changes, provisional allocation and abandonment, wizard step completion, training entry and exit, View Results and startup repairs | Acknowledged protected commit                                           |
+| Resume path, onboarding, UI selections and interactive draft edits                                                                                                         | Prompt best-effort write                                                |
+| Fold-count and free-form hyperparameter edits                                                                                                                              | Debounced about 300 ms                                                  |
+| Compact training progress                                                                                                                                                  | Throttled to at most one write per second                               |
+| Log disclosure                                                                                                                                                             | Best-effort immediate flush                                             |
+| Scroll snapshots                                                                                                                                                           | Debounced about 150 ms, with navigation and document visibility flushes |
 
 The persister requests a flush on `pagehide` and when the document becomes hidden. A form submission is checked against the persisted draft and can acknowledge the captured eligible edit before starting the protected attempt.
 
@@ -281,11 +308,17 @@ The protected writer uses `samata-ml:training-state` to validate the current gen
 
 The reserved result-store row has a distinct checkpoint tag and a v1 schema. Its pending entry carries the operation ID, kind and protected domain snapshot. Rows under the reservation are excluded from result lookup, dataset deletion and orphan cleanup.
 
+Provisional allocation and abandonment validate the captured dataset, target, epoch, model creation identity and current pointer as applicable. Abandonment removes the one matching unfinished draft and clears its pointer before acknowledging, without reusing its number. A concurrent successful finish retains the trained result. Ordinary state merges protect the pointer, cursor, result pin and saved presentation fields.
+
+Steps 1–3 publish eligible edited values and completion in one guarded checkpoint. The acknowledged generation and latest eligible draft must match the captured base. The committed candidate includes `featureSelectionInitialised` when choosing a model. Eligible newer unrelated edits and UI preferences survive publication. A committed recovery uses the same operation ID and candidate. Step 4 uses the acknowledged training start and saved setup.
+
+The first successful provisional finish clears `newModelNum` and records `provisionalCompletedRunId` with the matching result in the same transaction. Reconciliation and later historical numeric reruns preserve the pin. First acknowledged finishes assign colours in the listed palette order and advance the independent cursor modulo ten. Historical trained models lacking a colour get deterministic positions in ascending number order from the decoded cursor. The next finish persists those positions before assigning its own. Replay retains an existing assignment. Dataset and target resets start a fresh palette sequence.
+
 ### 4.3 Failure handling
 
 Ordinary edits continue in memory when `localStorage` throws. The persister shows a save-failure notice and can reclaim scroll snapshots before retrying a quota failure. Protected operations surface an explicit response for an unavailable read, a conflicting generation, a read-only version or a failed write. A failure before the IndexedDB commit leaves the prior published resources and domain intact. An unavailable read provides no evidence of missing data.
 
-After the IndexedDB commit, failures retain the pending candidate in the durable checkpoint. Further protected mutations wait on successful publication. Retry saving and startup replay the same operation and generation. A saved result stays at 95% until publication and a committed discard keeps the confirmation in recovery. The app shell withholds unreconciled workflow views until saved work can be restored.
+After the IndexedDB commit, failures retain the pending candidate in the durable checkpoint. Further protected mutations wait on successful publication. Retry saving and startup replay the same operation and generation. A saving session retains its last measured percentage until publication acknowledges 100%. A committed discard keeps the confirmation in recovery. The app shell withholds unreconciled workflow views until saved work can be restored.
 
 ## 5. UI State Persistence Rule
 
@@ -305,7 +338,7 @@ This is what makes "exact same UI" enforceable as the app grows. Each new featur
 | Feature initialisation state                                                 | `ModelRecord.ui.featureSelectionInitialised` | Tracks one-time population on model continue                                                                                        |
 | Chosen model, features, options, hyperparameters, multiclass, training setup | `ModelRecord.*`                              | Committed values                                                                                                                    |
 | Training log disclosure                                                      | `ModelRecord.ui.trainingLogOpen`             | Boolean, defaults to closed when absent                                                                                             |
-| Section 6 threshold, class filter and More metrics                           | `ModelRecord.ui.results`                     | `setModelResultsUi`; invalid fields drop to defaults without discarding the model. The "Show data table" disclosures are transient  |
+| Numbered-result threshold, class filter and More metrics                     | `ModelRecord.ui.results`                     | `setModelResultsUi`. Invalid fields drop to defaults and Show data table disclosures are transient.                                 |
 | Compare Results view                                                         | `results.ui`                                 | Group fingerprint, up to eight selected models, sort, ordered pair, ROPE width and class filter; owned by dataset, target and epoch |
 | Location                                                                     | URL, plus `resumePath` for `/`               |                                                                                                                                     |
 
@@ -318,9 +351,9 @@ Presentational components MUST NOT import stores (COMPONENTS.md §2). They recei
 Startup reads v1 storage and the IndexedDB checkpoint under the state lock. It replays any pending committed operation before exposing workflow views. A storage access failure enters recovery. Available but missing or invalid dataset metadata or results are handled separately.
 
 1. Validate the active dataset and eligible target. Confirmed resource loss clears the dependent state and scroll keys. Valid resources remain available when an unrelated record needs repair.
-2. Validate model identifiers, features and counters. A trained model requires a valid envelope with the same dataset, target, model creation identity, effective configuration and result revision. Version 2 envelopes carry a `StoredEvaluation` that must agree with the retained rows, class axis and strategy; the headline `metrics` are projected from it, the same way as when the result is first published. A valid version 1 envelope from Phase 3 stays trained with `metrics: null` and opens Section 6 with the legacy message. A missing or invalid envelope reopens the draft with a result-loss notice.
+2. Validate model identifiers, features and counters. A trained model requires an envelope with the same dataset, target, model creation identity, effective configuration and result revision. Version 2 `StoredEvaluation` must agree with the retained rows, class axis and strategy. Recover the headline metrics from it as on first publication. A valid version 1 result stays trained with `metrics: null` and shows the legacy message. A missing or invalid envelope reopens the draft with a result-loss notice.
 
-    Section 6 reads the envelope on demand through `$modelResults` (session-only, never persisted), keyed by model number and the full run identity. A result that goes missing after View Results shows the lost state rather than reopening the draft until the next startup.
+    The numbered result reads the envelope on demand through `$modelResults` (session-only and keyed by model number and full run identity). A result that goes missing after View Results shows the lost state until the next startup can reconcile it. A demoted historical numeric draft can recover the saved setup. A completed provisional visit with a missing or mismatched pin remains read-only and offers a Models link.
 
 3. For a training model, probe the exclusive per-model lock. Preserve a live run owned in another tab. When no owner remains, acknowledge an interrupted draft with its setup retained and Section 4 open.
 4. Apply model-local Training Setup decoding outcomes after result and lock checks. A malformed draft setup, or an unset setup with stale Section 4–6 markers, reopens Section 4. Keep the diagnostic created by result-loss or interruption recovery.
@@ -338,7 +371,7 @@ Comparison preferences are guarded separately from the protected domain. Their o
 
 Training takes the shared `samata-ml:ingestion` lock and the exclusive `samata-ml:training:{num}` lock through settlement. A confirmation cancels local attempts and waits for settlement before trying the exclusive ingestion lock. When another tab owns a shared training lock, keep the confirmation open with a remote-training notice. A different tab can replay a pending publication under the state lock. After that tab clears a finish checkpoint, the owning tab's **Retry saving** can adopt the guarded snapshot without waiting for a storage event. The owner verifies the original result and tries to save a matching unsaved disclosure before completing the session. The same recovery applies when a later storage event prompts the owner to load the result first. A denied preference write leaves the disclosure visible in memory with the save-failure notice.
 
-For a committed worker failure or cancellation, **Retry saving** restores the guarded draft and settles the original stopped session. The owner checks the committed generation, captured dataset, target, model creation, configuration and safe error under the resource and state locks. A matching draft can be restored after another tab acknowledges the checkpoint, even when no further storage event arrives. If a guarded write or storage refresh publishes the draft first, the owner can settle the stop automatically. Each committed stop remains recoverable by its original run when another model advances the shared checkpoint. The restored draft retains the original safe reason and can be edited or trained again through Section 4. If the model has since been replaced or restarted, the owner applies the current protected state and retires the older publication notice.
+For a committed worker failure or cancellation, **Retry saving** restores the guarded draft and settles the original stopped session. The owner checks the committed generation, captured dataset, target, model creation, configuration and safe error under the resource and state locks. Another tab can acknowledge the checkpoint, and an owner refresh may adopt it even when no later storage event arrives. Each committed stop remains recoverable by its exact run if another model advances the shared checkpoint. The matching local wizard retains the acknowledged safe reason even if an earlier command notice was present. It can retry the same setup or return to Step 4. A replaced or restarted model retires the older publication notice and partial progress.
 
 ## 8. Versioning & Validation
 

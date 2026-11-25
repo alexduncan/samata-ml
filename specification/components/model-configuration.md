@@ -38,6 +38,7 @@ There are no slots, parts, methods or custom properties. Styles come from `butto
 - **Dependencies:** a field with `activeWhen` false is not rendered, and its edit state and error are discarded. Its stored override is untouched. Solver/penalty combinations follow the policy rule; invalid combinations are never offered.
 - **`validity.badInput`:** the number input checks `badInput` before the value (browsers sanitise `1e` or `-` to `''`). Malformed or empty drafts are kept as edit state, fire no change event, leave the canonical value alone and are bound with `noChange`/`live()` so the user's text is never erased or reformatted. Errors appear on `blur` and on a failed submit.
 - **Submit:** `<form novalidate>`. `Save & Continue` is never disabled for validation errors; a failed submit renders every error and focuses the first invalid control. Issues on defaults (for example KNN neighbours above the row count) are reported on that field's number input.
+- **Save:** The builder checkpoints eligible overrides and step completion together. Only an acknowledged save advances to Training Setup. A pending or failed save retains the form and its edit state for recovery.
 - **Multiclass and fixed options** appear as `.form-note` text at the end of the form (see visual-design `MODELS-UI-04`).
 
 ## 5. Visual specification
@@ -67,7 +68,7 @@ The element owns default English labels only. The connected builder supplies `la
 | WML-P1-UI-2 | Range/number synchronisation and `validity.badInput` preservation; `tests/model-configuration.e2e.ts`.                                                     |
 | WML-P1-UI-3 | Accessibility tree names, `aria-invalid`, descriptions and live region; exact-target axe check.                                                            |
 | WML-P1-UI-4 | Failed submit focuses the first invalid control; inactive fields never block completion.                                                                   |
-| WML-P1-UI-5 | Help link opens the Configure Model help dialog and returns to `/models/{num}`; saved overrides survive reload.                                            |
+| WML-P1-UI-5 | The heading Help link opens Configure Model Help and returns to its invoker over the same provisional or historical draft. Saved overrides survive reload. |
 | WML-P1-UI-6 | Keyboard-only completion, 320 px, 200% zoom, RTL, long labels and forced colours.                                                                          |
 | WML-P1-UI-7 | Stories pass axe in three browsers (`bun run test:stories`).                                                                                               |
 | WML-P1-UI-8 | Compound fields and the layer editor, including edit-state cleanup when a compound mode leaves its value mode.                                             |
@@ -77,4 +78,4 @@ The element owns default English labels only. The connected builder supplies `la
 
 ## 9. Stories
 
-`src/features/models/app-model-configuration.stories.ts` (`Models/Model configuration`): Logistic, MlpLayers, SvcGamma, DecisionTreeDepth, NaiveBayesFixed, KnnSmallDataset, Invalid, Disabled, LongLabel and RTL. `src/features/models/app-model-builder-view.stories.ts` adds ConfigureModel, ConfigureModelComplete, NoClassifierNumericTarget, LongLabel and RTL. `src/styles/hyperparameters.stories.ts` (`Primitives/Hyperparameter field`) documents the field styles. Docs descriptions give Do/Don't usage; axe failures fail story tests.
+`src/features/models/app-model-configuration.stories.ts` (`Models/Model configuration`) covers all form states, including fixed options, invalid input, long labels and RTL. The builder stories cover configuration, completion and unavailable targets. `src/styles/hyperparameters.stories.ts` documents field styles and `src/styles/help-link.stories.ts` documents contextual heading links. The links use the shared `helpLinkStyles` CSSResult and retain their native focus outline.

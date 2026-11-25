@@ -62,6 +62,23 @@ export async function configureDraft(
 	return configureOpenDraft(page, modelNum, { saveConfiguration });
 }
 
+/** Enters a new draft through the named workflow sidebar item and waits for its binding. */
+export async function openSidebarDraft(
+	page: Page,
+	name: 'Train New Model' | 'Train Another Model'
+): Promise<number> {
+	const link = page.locator('app-sidebar').getByRole('link', { name, exact: true });
+	await expect(link).toHaveAttribute('href', '/models/new');
+	await expect(link).toHaveClass(
+		name === 'Train New Model' ? 'step-train-new' : 'step-model-link'
+	);
+	await link.click();
+	await expect(page).toHaveURL('/models/new');
+	const builder = page.locator('app-model-builder-view');
+	await expect(builder).toHaveAttribute('model-num', /^[1-9]\d*$/);
+	return Number(await builder.getAttribute('model-num'));
+}
+
 /** Configures the current draft after the caller has entered the workflow. */
 export async function configureOpenDraft(
 	page: Page,

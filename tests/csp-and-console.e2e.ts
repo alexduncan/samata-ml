@@ -1,9 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { DIST_URL } from '../scripts/ports';
-import type { ClassifierId } from '../src/features/models/model-catalogue';
 import type { AppConfusionFlowchart } from '../src/features/results/app-confusion-flowchart';
-import { configureOpenDraft } from './fixtures/training/browser';
-import { dismissWelcomeModal, loadSampleDataset } from './journeys/helpers';
+import { configureOpenDraft, openSidebarDraft } from './fixtures/training/browser';
+import { loadSampleDataset, viewNumberedTrainingResult } from './journeys/helpers';
 
 interface CspProbeWindow extends Window {
 	reportCspViolation(directive: string, blocked: string): Promise<void>;
@@ -53,7 +52,6 @@ test('BETA-ERR-5: production data, training, results and dialogs stay clean unde
 	});
 
 	await page.goto('/data');
-	await dismissWelcomeModal(page);
 	await loadSampleDataset(page, 'iris');
 	await page.reload();
 	const preview = page.locator('app-dataset-preview');
@@ -99,24 +97,18 @@ test('BETA-ERR-5: production data, training, results and dialogs stay clean unde
 	await modelStep.click();
 	const overview = page.locator('app-models-view');
 	const modelNumbers: number[] = [];
-	for (const classifier of ['logistic-regression', 'gaussian-nb'] satisfies ClassifierId[]) {
-		await overview.getByRole('link', { name: 'Train New Model' }).click();
-		await expect(page).toHaveURL('/models/new');
+	for (const [classifier, name, link] of [
+		['logistic-regression', 'Logistic Regression', 'Train New Model'],
+		['gaussian-nb', 'Gaussian Naive Bayes', 'Train Another Model']
+	] as const) {
+		const number = await openSidebarDraft(page, link);
 		const builder = page.locator('app-model-builder-view');
-		await expect(builder).toHaveAttribute('model-num', /^[1-9]\d*$/);
-		const number = Number(await builder.getAttribute('model-num'));
 		modelNumbers.push(number);
 
 		const setup = await configureOpenDraft(page, number, { classifier });
-		await expect(builder.locator('#step-1-title')).toHaveText(
-			classifier === 'logistic-regression'
-				? '1. Logistic Regression'
-				: '1. Gaussian Naive Bayes'
-		);
+		await expect(builder.locator('#step-1-title')).toHaveText(`1. ${name}`);
 		await setup.getByRole('button', { name: 'Train Model' }).click();
-		await expect(
-			page.getByTestId('training-step').getByRole('button', { name: 'View Results' })
-		).toBeEnabled({ timeout: 45_000 });
+		await viewNumberedTrainingResult(page, number, name);
 		await modelStep.click();
 		await expect(
 			overview.locator(`a[href="/models/${number}"]`, { hasText: 'View Results' })

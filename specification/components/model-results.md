@@ -4,7 +4,7 @@
 
 ## 1. Summary and responsibility
 
-Section 6 of the model builder shows the shared results of one trained classifier. `app-model-results` is the connected element. It reads the application state, the `$modelResults` resource and the number formatter, loads the saved evaluation for the model's current run, builds preformatted view models and passes them to eight presentational elements: `app-results-summary`, `app-fold-strip`, `app-class-metrics-table`, `app-confusion-matrix`, `app-confusion-flowchart`, `app-classee-strips`, `app-threshold-explorer` and `app-reliability-diagram`. The training library computes every number; the app displays them ([Machine Learning Orchestrator](../machine-learning-orchestrator.md#stored-evaluation)). The behaviour, order and wording of the blocks are in [workflow-steps §3.6](../workflow-steps.md). The [03-7 draft](../mockups/03-7_train-models-5-results.html) records the structure and awaits human styling.
+The numbered route shows one trained classifier. The builder owns the route heading and large number swatch. The connected `app-model-results` reads the current run from `$modelResults`, builds preformatted view models and passes them to eight shared elements: `app-results-summary`, `app-fold-strip`, `app-class-metrics-table`, `app-confusion-matrix`, `app-confusion-flowchart`, `app-classee-strips`, `app-threshold-explorer` and `app-reliability-diagram`. The training library supplies the evaluation numbers. See [Machine Learning Orchestrator](../machine-learning-orchestrator.md#stored-evaluation) and [workflow-steps §3.6](../workflow-steps.md#6-single-model-results).
 
 ## 2. Decision and rationale
 
@@ -17,7 +17,7 @@ Section 6 of the model builder shows the shared results of one trained classifie
 
 | Element                   | Properties (`attribute: false` unless stated)                                                                   | Events (all `bubbles` and `composed`)                     |
 | ------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `app-model-results`       | `modelNum` (attribute `model-num`, reflected); method `whenSettled()`                                           | none                                                      |
+| `app-model-results`       | `modelNum` (reflected `model-num`), `headingLevel: 2 \| 3` (default `3`), and `whenSettled()`                   | none                                                      |
 | `app-results-summary`     | `summary`, `moreOpen`, `labels`                                                                                 | `app-results-more-toggle` `{ open }`                      |
 | `app-fold-strip`          | `series`, `baselines`, `caption`, `formatPercent`, `labels`, `paired` (default `false`); method `whenSettled()` | none                                                      |
 | `app-class-metrics-table` | `rows`, `labels`                                                                                                | none                                                      |
@@ -35,13 +35,15 @@ For comparison, `paired = true` connects the corresponding partition indices acr
 
 ## 4. Usage
 
-The builder renders `<app-model-results model-num="N">` inside Section 6 when the model is trained and its results are acknowledged. It handles four resource states besides ready: loading (a labelled native `progress`), legacy (a Phase 3 result: a message and a link to Models), lost (a result that has gone missing since View Results) and error (an alert with Retry). The model must be trained for any state but empty.
+The numbered builder renders a single focusable `h1.model-results` with the number and the saved label or catalogue name, then supplies `.headingLevel=${2}` to the connected results host. Embedded presentations use the default h3. View Results from the provisional wizard replaces that visit with the numbered route. A direct numbered link to a trained model opens its result without a prior visit to the wizard. The connected host handles loading, legacy, lost, read error, empty and ready states.
+
+**Training Details** is a native disclosure before the result blocks. The named table lists the model, saved target, selected feature names and count, strategy, training rows and held-out rows. One-Shot uses the saved partition counts. Cross-Validation gives each fold's training count and the pooled held-out count. Missing historical counts display as unavailable.
 
 Display preferences persist per model through `setModelResultsUi`: the threshold index, the class filter and whether More metrics is open ([state-and-storage §5](../state-and-storage.md#5-ui-state-persistence-rule)). The ready view adds one native “What do these results terms mean?” disclosure after the summary, before the fold section. It starts closed, keeps its native open state while mounted and opens independently of More metrics and the chart tables. A fresh view starts closed. Cross-Validation includes the fold-mean definition, and binary results include the probability threshold definition. Other resource states have no disclosure. The “Show data table” disclosures are transient. Exploring the threshold never changes a stored score or `ModelRecord.metrics`.
 
 ## 5. Visual specification
 
-There is no normative mockup. The draft is structure only. Elements use `table.styles.ts`, `notification.styles.ts`, `button.styles.ts` and `src/styles/results.styles.ts` (chart figures, result and data-table disclosures and the keyboard-scrollable table region) plus the nine chart tokens ([visual-design §2](../visual-design.md#2-tokens)). Chart marks use token colours; typography is inherited. Correct and incorrect flowchart outcomes differ by outline style (solid and dashed), a striped fill and an icon as well as colour. See the scoped chart allowance in [visual-design §1.1](../visual-design.md#11-draft-mockups).
+The numbered heading and Training Details use the scoped port of [03-7](../mockups/03-7_train-models-5-results.html) and the shared swatch styles. The chart surfaces remain draft-only. Shared table, notification, button and results styles own the result blocks, chart figures and scroll regions. Chart marks use the existing chart tokens. Flowchart outcomes use distinct outlines, fill and icons as well as colour. See [visual-design](../visual-design.md#3-where-mockup-css-lives-in-the-app).
 
 ## 6. Accessibility
 
@@ -51,7 +53,7 @@ There is no normative mockup. The draft is structure only. Elements use `table.s
 - Tables use `contain: inline-size` on their scroll region so a wide matrix never widens the page at 320 px.
 - The diagnostic gap card is a `.notification` without `role="alert"`; only the read-error message is an alert.
 - The native summary adds one keyboard stop, preserves the marker and has a visible focus outline with a target at least 24 × 24 CSS px. A definition list presents full terms and expansions. The visible expansions accompany the `title` values for MCC, ROC-AUC and ECE.
-- Manual checks (WCAG 2.2 AA): VoiceOver in Safari reading one chart figure and its table; keyboard-only threshold exploration; forced colours; 200% zoom. Automated axe scans cover binary and multiclass Section 6 with every table and the definitions open. Safari showed the expected term order, visible expansions, expanded and collapsed states and focused summary at browser zoom. Spoken VoiceOver output remains a manual follow-up.
+- Automated axe scans cover binary and multiclass numbered results with every table and the definitions open. Safari showed term order, visible expansions, disclosure states and summary focus at browser zoom. Spoken chart and table output remains a results follow-up.
 
 ## 7. Internationalisation
 
@@ -59,7 +61,7 @@ There is no normative mockup. The draft is structure only. Elements use `table.s
 
 ## 8. Acceptance criteria
 
-Test names begin with the ID. `WML-P4-UI-1` to `WML-P4-UI-4` cover the summary, fold strip, confusion matrix and per-class table (`tests/results-view-model.test.ts`, `tests/results-summary.e2e.ts`); `WML-P4-UI-5` and `WML-P4-UI-6` the flowchart and Classee strips (`tests/results-errors.e2e.ts`); `WML-P4-UI-7` to `WML-P4-UI-9` the threshold explorer and reliability diagram (`tests/results-probability.e2e.ts`); `WML-P4-UI-10` to `WML-P4-UI-13` the connected Section 6, persisted preferences, accessibility and the Iris and Penguins journeys (`tests/model-results.e2e.ts`, `tests/a11y.e2e.ts`, `tests/journeys/`). The scroll-landing part of `WML-P4-UI-11` is not met; see Open questions.
+Test names begin with the ID. `WML-P4-UI-1` to `WML-P4-UI-4` cover the summary, fold strip, confusion matrix and per-class table. `WML-P4-UI-5` and `WML-P4-UI-6` cover the flowchart and Classee strips. `WML-P4-UI-7` to `WML-P4-UI-9` cover threshold exploration and reliability. The numbered page, details table, persisted preferences and accessibility are exercised by `tests/model-results.e2e.ts`, `tests/a11y.e2e.ts`, and the Iris and Penguins journeys. The scroll-landing part of `WML-P4-UI-11` remains open (see Open questions).
 
 `TERM-AC-6`, `TERM-AC-8` and `TERM-AC-9` exercise the single disclosure, unchanged metric reasons and other disclosures, and reflow. A six-row fixture distinguishes the 75% cross-validation fold mean and 25-point paired gap from the 83.3% pooled score.
 
@@ -69,7 +71,7 @@ Co-located `*.stories.ts` cover every element: CrossValidation, OneShot, Binary,
 
 ## 10. Files
 
-`src/features/results/` (the nine elements, their stories, `results-view-model.ts`, `result-term-copy.ts`, `evaluation-decoder.ts`, `charts/plot-controller.ts`), `src/styles/results.styles.ts`, `src/stores/model-results.store.ts`, `src/types/model-evaluation.ts`, `src/common/evaluation/`, and the Section 6 wiring in `src/features/models/app-model-builder-view.ts`.
+`src/features/results/` (elements, stories, view models, term copy, decoder and plot controller), `src/styles/results.styles.ts`, `src/stores/model-results.store.ts`, `src/types/model-evaluation.ts`, `src/common/evaluation/` and the numbered route in `src/features/models/app-model-builder-view.ts`.
 
 ## 11. Non-goals
 
@@ -78,4 +80,4 @@ Comparison across models (Phase 5), model-specific results (Phase 6), tuning res
 ## 12. Open questions
 
 - **`whenSettled()` on the chart elements.** The plan's element table lists no methods for them, yet `app-model-results.whenSettled()` must wait for the first visible chart render. The method was added to the four Plot elements. Confirm, or specify another mechanism.
-- **Scroll landing after reload.** `src/app.ts` passes a view's `whenSettled()` to scroll restoration only for `app-data-view`, so the builder's promise is not used and the page does not return to the same section of Section 6 after a reload. Letting the router use the builder's promise would meet the plan's criterion; `src/app.ts` was outside the task's scope.
+- **Scroll landing after reload.** The shell now awaits the builder's `whenSettled()` for document scroll restoration. Exact restoration inside named regions remains with [the scroll restoration follow-up](../plans/scroll-region-restoration.md).

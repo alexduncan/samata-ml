@@ -1,6 +1,6 @@
 # Machine Learning Orchestrator
 
-**Status:** implemented — local single-target classification with One-Shot and fixed-parameter Cross-Validation, with stored evaluation outputs for the shared Section 6 results.
+**Status:** implemented — local single-target classification with One-Shot and fixed-parameter Cross-Validation, with saved evaluation outputs for numbered results.
 
 ## 1. Runtime boundary
 
@@ -20,7 +20,7 @@ The worker reads the acknowledged dataset by ID. It reads bounded IndexedDB page
 
 The worker maps these outputs into `StoredEvaluation` (`src/types/model-evaluation.ts`, version 1), which belongs to Samatā so that later library changes cannot silently break saved results. Before mapping, the worker confirms that the library's declared class axis equals the request axis element for element, including label types; a mismatch is a contract error and the returned model is still disposed once. It holds the class axis, the explicit positive class index for binary targets, the partition fingerprint, one entry per partition (held-out report, training report, both baselines, duration and timing kind), the pooled held-out report and baselines, the per-row outputs and the curves. One-Shot is one partition of kind `holdout-test`; Cross-Validation is one `outer-fold` partition per fold. Source row indices are mapped back to original dataset rows. Metrics keep the library's value or its unavailability reason. The partition fingerprint is a SHA-256 over the dataset ID, protocol, seed, class axis and the sorted pairs of original row and partition, so matching held-out rows can be recognised across models. `decodeStoredEvaluation` validates every stored evaluation on read.
 
-The eight classifier adapters pass the active validated option overrides. Section 4 checks observed class counts and the user's fold count. The library is the authority for whether its split and estimator can execute. A safe rejection reopens Section 4 with a reason.
+The eight classifier adapters pass the active validated option overrides. Step 4 checks observed class counts and the user's fold count. The library decides whether its split and estimator can execute. A safe rejection for the displayed local run enters Training Stopped with the applicable reason and an Edit Training Setup action.
 
 ## 3. Worker messages and progress
 
@@ -28,15 +28,15 @@ The eight classifier adapters pass the active validated option overrides. Sectio
 
 The configuration key excludes the library-owned KNN `leafSize` and MLP `validationFraction` defaults added to the 0.2.0 catalogue. This preserves the keys used to restore earlier saved results.
 
-The worker returns progress with optional structured log entries, a result payload, a safe error code or cancellation. The session stores a compact progress snapshot and at most 250 ordered entries. Fit fractions and completed folds occupy the measurable 10–85% range. Indeterminate processing leaves the bar unset until measurable work starts. Evaluation and refit hold the last reliable fraction. Saving uses 95%. Acknowledged success uses 100%. The entry keys and bounded counts allow the builder to localise messages without exposing raw errors. See [Training Progress](components/training-progress.md).
+The worker returns progress with optional structured log entries, a result payload, a safe error code or cancellation. The session stores a compact progress snapshot and at most 250 ordered entries. An indeterminate native bar omits its value. The app retains the last measured fraction during saving and reserves 100% for acknowledged success. After a matching local stop, the same run's last measured percentage and log stay visible until retry, edit or departure. The entry keys let the builder localise milestone announcements without exposing raw errors. See [Training Progress](components/training-progress.md).
 
 ## 4. Publication and recovery
 
-Training holds a shared ingestion lock and an exclusive per-model lock. Start, success, cancellation and failure use the acknowledged training-domain journal. The start is published before creating the worker. On success, the service commits a checked version 2 result and the matching pending state together in IndexedDB, with the headline metrics projected from the stored evaluation. It publishes the state before enabling View Results. The envelope keeps the model and preprocessor JSON, web-ml revision, source row indices, class labels, duration, final log and `evaluation`, with the fold or holdout partitions specific to the chosen strategy. Version 1 envelopes from Phase 3 stay readable without a migration write; they open Section 6 with a message that detailed results need a new training run.
+Training holds a shared ingestion lock and an exclusive per-model lock. Start, success, cancellation and failure use the acknowledged training-domain journal. Start publishes the exact identity and setup before creating the worker. On success, the service commits a checked version 2 result and the matching pending state together in IndexedDB, with headline metrics projected from the stored evaluation. A first provisional finish pins the exact run and clears the pointer in that commit. The same guarded finish assigns the app swatch and mirrors the optional saved label. The envelope keeps the model and preprocessor JSON, web-ml revision, source row indices, labels, duration, final log and evaluation with the strategy's partitions. Version 1 results stay readable and display a legacy message for unavailable details.
 
-A saved result awaiting publication retains its run ID and stays at 95%. Retry and startup replay publish the same committed operation. After a failed start publication, recovery returns to a draft when no worker owns the run. The app never starts a new fit as part of this recovery. View Results validates the exact envelope again, acknowledges Section 5 and focuses Section 6 on the same route. [Application State Persistence](state-and-storage.md#6-indexeddb-reconciliation) defines the locks, journal and restoration order.
+A saved result awaiting publication retains its run ID and the last measured progress. Retry and startup replay publish the same committed operation. Recovery after a failed start publication returns to the saved draft if no worker owns it. An explicit retry from Training Stopped starts a distinct attempt. Confirmed departure cancels or waits for a matching local run and rechecks the acknowledged provisional identity before discarding. If finish wins the race, departure preserves the trained result.
 
-Section 6 reads the evaluation through the `$modelResults` store, which loads it with the full run identity and discards a result that no longer matches the active model. Tuned execution and model-specific results are follow-up phases.
+**View Results** on the provisional visit verifies and acknowledges the pinned first run, then replaces the visit with its numbered results route. That route reads the evaluation with full run identity through `$modelResults`, including for direct links. [Application State Persistence](state-and-storage.md#6-indexeddb-reconciliation) defines the locks, journal and restoration order. Tuned execution and model-specific results are follow-up phases.
 
 ## 5. Paired comparison analysis
 

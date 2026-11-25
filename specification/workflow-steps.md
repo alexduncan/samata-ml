@@ -1,6 +1,6 @@
 # Steps
 
-**Status:** partial — Steps 1–2, classification training, shared single-model results and comparison are implemented. Tuning and model-specific results remain target.
+**Status:** partial — Steps 1–2, the provisional classification wizard, numbered single-model results and comparison are implemented. Tuning and model-specific results remain target.
 
 This web application has four sections.
 
@@ -105,26 +105,30 @@ The user chooses the target variable to predict from their loaded dataset. Help 
 
 ## 3. Train Models
 
-**url:** `/models`
+**URLs** — `/models` for the overview, `/models/new` for a provisional wizard, and `/models/{num}` for a saved result or a historical draft.
 
-This step allows the user to train models on the dataset to predict the target variable. Multiple models can be trained sequentially, each with six accordion steps.
+Learners can train multiple models to predict the target variable. A new model has five wizard steps followed by an explicit handoff to its numbered results page.
 
-If the user visits `/models` before selecting a dataset or setting a target variable, an alert notification displays informing the user they must complete earlier steps (`data-testid="models-blocked"`).
+If the learner visits `/models` or `/models/new` before selecting a dataset or target, a notification links to the missing prerequisite. A blocked visit creates no draft.
 
 Once a dataset and target are configured:
 
 - If no models exist, `/models` displays the empty notice _"No models yet. Train a new model to get started."_ (`data-testid="models-empty"`).
-- A primary button "Train New Model" creates a new model record with monotonic numbering (Model 1, Model 2, etc.). The app navigates to `/models/{num}` after creation is acknowledged. A failed save leaves the learner on Models with recovery feedback.
+- The overview's **Train New Model** and the sidebar's **Train New Model** (no trained models) or **Train Another Model** link to `/models/new`. An explicit visit opens or resumes the single provisional model for the current dataset and target. The route shows a labelled loading state until a protected save binds that visit to a model. A failed or pending save offers recovery. Model numbers increase and are not reused when a draft is abandoned.
 - If models exist, `/models` renders a table (`data-testid="models-list"`) with columns:
     - **Model Name:** Displays `Model {num} — {Library Name}` (e.g. "Model 1 — Logistic Regression") or `Model {num}` if no model is selected yet. Models cannot be renamed, deleted, or duplicated.
     - **Features:** A comma-separated list of selected features in dataset column order, or "Not selected".
     - **Configuration:** Hyperparameter settings or "Not configured".
     - **Training Setup:** The formatted strategy and split or fold count, or "Not configured".
     - **Duration:** Training duration formatted via i18n (e.g. "1.2s") or "Not trained".
-    - **Action:** An action button linking to `/models/{num}`, labelled "View Results" if trained or "Continue" if draft.
+    - **Action:** **View Results** opens the numbered result. **Continue** opens the current provisional draft at `/models/new` or a historical draft at its numbered URL.
 - The header includes a "Compare Results" button (`<a href="/results">`). It is disabled with a visible hint until at least two models have completed training (`$canCompare`).
 
-Each individual model builder view is routed at `/models/{num}`. Navigating to an invalid or unallocated model number safely redirects to `/models` with a `MODEL_NOT_FOUND` error notification.
+The sidebar groups acknowledged trained models under **All Trained Models**. Each result link has a numbered swatch, the saved label or catalogue name, a feature count and a trained check. The current wizard has a static **Training New Model…** row through Step 5 completion. A well-formed but missing model number stays on its URL and links back to Models.
+
+Leaving an unfinished wizard through an app link or a reversible same-document Back/Forward action requires **Stay** or **Leave**. Leave removes only the matching unfinished provisional draft after any local attempt settles. If a save finishes first, the trained result stays available. Opening or closing Help over the wizard retains its identity, form edits and scroll. Reload and browser departures outside the app-owned history stack preserve the saved draft. See [Navigation Behaviour](app-state-and-navigation.md#5-navigation-behaviour).
+
+The connected `app-model-builder-view` accepts `modelNum: number = 0` (`model-num`) and exposes `focusHeading(signal): Promise<void>` and `whenSettled(): Promise<void>`. It has no custom slots, events, parts or CSS properties. On `/models/new`, the shell supplies the acknowledged binding's model number. A numbered trained route has one focusable results h1. Only one wizard step has `aria-current="step"`. An acknowledged transition closes the old content with a measured block-size transition, making it inert and moving focus to a stable heading, then opens and focuses the next heading. Reduced motion settles and focuses without animation. See the `MW-ROUTE`, `MW-GUARD`, `MW-STEP`, `MW-PROGRESS` and `MW-HELP` criteria in the [workflow implementation record](plans/model-training-workflow.md).
 
 ### 1. Choose Model
 
@@ -138,8 +142,7 @@ The UI renders candidate models:
 
 - Each classifier appears in a native list item containing an [illustrated model card](components/card.md). Bernoulli, Gaussian and Multinomial Naive Bayes use `bernoulli-naive-bayes.svg`, `gaussian-naive-bayes.svg` and `multinomial-naive-bayes.svg`. The other classifiers use `k-nearest-neighbours-classifier.svg`, `logistic-regression.svg`, `mlp-classifier.svg`, `support-vector-classifier.svg` and `decision-tree-classifier.svg`. All eight use `/assets/` URLs and the per-card geometry from [03-2](mockups/03-2_train-models-1-choose-model.html).
 - The card shows `Model Description` and `Select Model`. Their accessible names include the model name. The current model shows `Selected` beside its select button, and that button exposes `aria-current="true"`.
-- Selection updates `model.modelId` and leaves Section 1 active. Choosing the current ID preserves setup data. Reload restores the choice from the saved ID.
-- A primary "Continue" button in `.section-actions` completes Section 1, initialises candidate features once via `initialiseFeatureSelection`, and activates Section 2.
+- **Select Model** saves the chosen model, initial eligible features and Step 1 completion together. After acknowledgement, the heading shows the model name and Step 2 opens. Choosing the current ID preserves setup data. An unavailable save keeps the current step and offers **Retry saving** when publication is pending.
 - The "Model Description" button opens an `<app-model-description-dialog>` presenting authored Markdown content or falling back to library JSON metadata if unauthored.
 - Once completed, the section header displays an "Edit" button (`reopen-btn`). Reopening with downstream completions prompts a plain-text `dialog.confirm-dialog` with Cancel first. Confirming clears downstream completions while preserving selections.
 
@@ -151,7 +154,8 @@ Displays a tabular selection of all dataset columns in canonical dataset order:
 - **Ineligible columns:** Columns of type `text`, `date`, `time`, `datetime`, all-missing, or constant are disabled with visible note badges explaining why they cannot be included.
 - **Advisory columns:** Identifier columns and target candidate leaky columns default unticked with an advisory note, but the user may deliberately override and check them.
 - **Selection rules:** At least one feature must be selected to proceed. Initial features default to all eligible columns once on completing Section 1; intentional empty or subset selections persist across page reload.
-- Clicking "Continue" completes Section 2 and records `completedSteps: ['choose-model', 'select-features']`.
+- **Continue** saves the eligible feature selection and Step 2 completion together before opening Step 3. The completed heading gives the localised feature count.
+- **What are features?** links from the heading to `/help/select-features`, which explains features, target columns and leakage using Iris.
 - Once completed, an "Edit" button allows reopening Section 2. If a later section is complete, it uses the same Reopen Section confirmation.
 
 ### 3. Configure Model
@@ -163,7 +167,7 @@ Section 3 activates after Section 2 and renders `<app-model-configuration>` ([sp
 - **Dependencies:** fields whose dependency is unmet are hidden with a dependency note; solver/penalty combinations follow the policy rule.
 - **Multiclass:** when the target has more than two classes, a read-only note states the strategy used (no choice is offered).
 - **Help:** the section heading links to `/help/configure-model` ("What do these settings mean?") for definitions and setting guidance. Each field shows a plain-text hint associated with its control.
-- **Completion:** `Save & Continue` stores sparse overrides, completes Section 3 as `3. Model Configured` and shows `Edit`. A failed submit focuses the first invalid control.
+- **Completion:** `Save & Continue` saves sparse overrides with Step 3 completion. On acknowledgement it shows `3. Model Configured` with `Edit` and opens Training Setup. A validation failure focuses the first invalid control, and storage recovery retains the eligible edits and current step.
 - **Edit:** confirmation is requested when a later section, including Training Setup, is complete.
 
 ### 4. Training Setup
@@ -172,7 +176,7 @@ Choosing a strategy requires ready metadata for the current dataset and target. 
 
 **One-Shot** is selected initially. It requests an 80% training and 20% test split with stratification and a fixed seed of 42. **Cross-Validation** starts at five folds or the eligible maximum, whichever is smaller. The range and exact number field accept integers from 2 through the smallest observed class count, capped at 10. A scrollable matrix shows the training and validation roles for each run and the summary gives their approximate percentages. The strategy select describes the current choice beside the control and keeps the requested split note visible for One-Shot. Both Help links open the Training Setup article over the builder.
 
-**Train Model** is the form's submit button. A field error leaves it enabled and submission moves focus to the exact number field. The controls are disabled when the setup is blocked or read-only. Valid submission requests a single training attempt. The builder activates Section 5 while the accepted start is pending and shows the chosen setup when the start is acknowledged. A rejected start leaves Section 4 open with a reason. The **Training Setup** column on Models uses the same formatted summary. See [Training Setup](components/training-setup.md) for the controls and validation states.
+**Train Model** is the form's submit button. A field error leaves it enabled and submission moves focus to the exact number field. The controls are disabled when the setup is blocked or read-only. Valid submission requests one training attempt. The builder advances to Step 5 only after the matching start is durably acknowledged and shows the chosen strategy in the completed Step 4 heading. A rejected start leaves Step 4 open with a reason. The **Training Setup** column on Models uses the same formatted summary. See [Training Setup](components/training-setup.md) for the controls and validation states.
 
 For targets with more than two categories, the multiclass strategy is fixed by the model (native, One-vs-Rest or One-vs-One as the classifier supports) and shown read-only in Section 3. Selecting a strategy and Error-Correcting Output Codes remain future work.
 
@@ -180,15 +184,19 @@ For targets with more than two categories, the multiclass strategy is fixed by t
 
 Training runs in a dedicated worker while the app remains navigable. One-Shot evaluates an independent stratified holdout. Fixed Cross-Validation evaluates the chosen folds and refits the classifier on all eligible rows. See [Machine Learning Orchestrator](machine-learning-orchestrator.md) for the worker and storage contract.
 
-The [training panel](components/training-progress.md) displays one labelled native progress bar and a disclosure with the latest status and chronological log. The disclosure preference survives reload. The tab that owns the attempt can cancel before saving. Other tabs display the training status. Cancellation, fitting failure and interruption return to Training Setup with a reason and the saved settings.
+The [training panel](components/training-progress.md) displays a labelled native progress bar, the latest status and a chronological log in a native disclosure. The saved disclosure preference survives reload. The bar has no value until the run reports a percentage. Measured progress stays visible during saving, and the owning tab can cancel before saving. Other tabs show their remote training state. Committed work awaiting publication offers **Retry saving** with unavailable actions disabled.
 
-Saving holds at 95%. If the result is committed and state publication fails, the panel offers Retry saving and keeps Cancel Training and View Results disabled. Acknowledged completion shows 100%, the elapsed time and View Results. View Results acknowledges Section 5, replaces the button with the completion check and focuses Section 6 on the same URL. The saved log remains inspectable. A trained model opened from Models displays Section 5 until this acknowledgement.
+After a matching local cancellation or fitting failure, **Training Stopped** shows the acknowledged reason and the run's last measured percentage in red, when available. **Train Model** starts a new attempt with the saved setup. **Edit Training Setup** returns to the editable form. Help preserves the stopped state. A fresh reload without that in-memory attempt returns to the saved setup with any recovery reason.
+
+Acknowledged completion shows 100%, elapsed time and **View Results** at the same `/models/new` visit. The saved log remains inspectable. **View Results** revalidates that visit's pinned first run, acknowledges the result and replaces the visit with `/models/{num}` without adding a Back stop. A trained numbered deep link opens the result directly.
 
 Detailed timing tables for nested evaluation and tuning belong to the later results and tuning phases. The [03-6 draft](mockups/03-6_train-models-5-train.html) awaits human styling.
 
 ### 6. Single Model Results
 
-Section 6 opens after the learner acknowledges a trained result and shows the shared results that apply to every classifier. Predictive scores use the held-out test split or Cross-Validation folds from the saved reports. The headline averages fold balanced accuracies. The diagnostic uses the training and held-out balanced accuracies from the same partition or fold. See [Model Results](components/model-results.md) for the elements and their stories.
+The numbered page begins with a large numbered swatch and **{saved label or catalogue name} Results**. **Training Details** gives the model, saved target, selected feature names and count, evaluation strategy and saved training and held-out row counts. One-Shot uses the single partition. Cross-Validation shows the training count for each fold and the pooled held-out count. The training folds overlap. An omitted historical count is shown as unavailable.
+
+The shared results apply to every classifier. Predictive scores use the held-out test split or Cross-Validation folds from the saved reports. The headline averages fold balanced accuracies. The diagnostic uses the training and held-out balanced accuracies from the same partition or fold. See [Model Results](components/model-results.md) for the elements and their stories.
 
 The blocks appear in this order, each with its own heading:
 

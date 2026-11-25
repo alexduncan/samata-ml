@@ -1,6 +1,6 @@
 # Architecture Specification: Application State & Navigation (Hybrid Router + Store)
 
-**Status:** draft — routing, shell, route focus, scroll, protected storage coordination and classification training are implemented. Detailed results, dynamic view imports, broader synchronisation and service-worker delivery remain target. See [Known gap 14](README.md#known-gaps).
+**Status:** draft — routing, route focus, scroll, protected storage, the provisional wizard and numbered results are implemented. Dynamic view imports, broader synchronisation and service-worker delivery remain target. See [Known gap 14](README.md#known-gaps).
 
 > **History:** Replaces the previous five-step, single-FSM design (formerly `plans/finite-state-machine.md`; moved and renamed 2026-11-12).
 >
@@ -94,27 +94,28 @@ The three shell owners have closed component specs linked above and live in `src
 
 ## 3. Route Table
 
-| Path                    | Section  | Sidebar label              | View                                         | Notes                                                                                                                                                       |
-| :---------------------- | :------- | :------------------------- | :------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`                     | –        | –                          | none (redirect)                              | Resolves to the resume path (§9.2) with `replaceState`.                                                                                                     |
-| `/data`                 | 1        | Load Data                  | Dataset picker **or** dataset preview (§6.1) | Default resume path on first load.                                                                                                                          |
-| `/target`               | 2        | Set Target                 | Column table (§6.2)                          | Always reachable. Shows a `.notification` instead of the table if no dataset is loaded (§4.3).                                                              |
-| `/models`               | 3        | Train Models               | Table of models + "new model" action (§6.3)  | Always reachable. Shows a `.notification` if dataset or target is missing. Header holds **Compare Results** (disabled until ≥ 2 trained models).            |
-| `/models/{num}`         | 3        | `Model {num}` under step 3 | Six-section model builder (§6.3, §7)         | `num` is a positive integer, assigned at creation, never reused. A well-formed `num` with no model shows a "model not found" `.notification` (no redirect). |
-| `/results`              | 4        | Compare Results            | Cross-model comparison (§6.5)                | Always reachable. Shows a `.notification` if fewer than two models are trained.                                                                             |
-| `/about`                | reserved | footer                     | Static content modal                         | Never persisted.                                                                                                                                            |
-| `/privacy`              | reserved | footer                     | Static content modal                         | Never persisted.                                                                                                                                            |
-| `/help`                 | reserved | footer                     | Static content modal                         | Never persisted.                                                                                                                                            |
-| `/help/configure-model` | reserved | Section 3                  | Static content modal                         | Never persisted. Opens from the Section 3 heading help link; closing returns to `/models/{num}`.                                                            |
-| `/help/training-setup`  | reserved | Section 4                  | Static content modal                         | Opens from What is this? or Learn more. Closing returns to the same builder.                                                                                |
-| anything else           | –        | –                          | none (redirect)                              | `replaceState` to the resume path plus a transient notification.                                                                                            |
+| Path                    | Section  | Sidebar label       | View                                         | Notes                                                                                                                             |
+| :---------------------- | :------- | :------------------ | :------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                     | –        | –                   | none (redirect)                              | Resolves to the resume path (§9.2) with `replaceState`.                                                                           |
+| `/data`                 | 1        | Load Data           | Dataset picker **or** dataset preview (§6.1) | Default resume path on first load.                                                                                                |
+| `/target`               | 2        | Set Target          | Column table (§6.2)                          | Always reachable. Shows a `.notification` instead of the table if no dataset is loaded (§4.3).                                    |
+| `/models`               | 3        | All Trained Models  | Table of models and Train New Model (§6.3)   | Always reachable. Shows a notification if dataset or target is missing. Compare Results is disabled until two models are trained. |
+| `/models/new`           | 3        | Training New Model… | Provisional model wizard (§6.3, §7)          | Explicit navigation may allocate. Each acknowledged entry binds to one model in the current project context.                      |
+| `/models/{num}`         | 3        | Saved model name    | Trained result or historical draft (§6.3)    | Positive integer allocated once. A missing well-formed number keeps its URL and shows a recovery link.                            |
+| `/results`              | 4        | Compare Results     | Cross-model comparison (§6.5)                | Always reachable. Shows a `.notification` if fewer than two models are trained.                                                   |
+| `/about`                | reserved | footer              | Static content modal                         | Never persisted.                                                                                                                  |
+| `/privacy`              | reserved | footer              | Static content modal                         | Never persisted.                                                                                                                  |
+| `/help`                 | reserved | footer              | Static content modal                         | Never persisted.                                                                                                                  |
+| `/help/select-features` | reserved | Step 2              | Static content modal                         | What are features? opens over the current wizard entry.                                                                           |
+| `/help/configure-model` | reserved | Step 3              | Static content modal                         | What do these settings mean? opens over the current wizard entry.                                                                 |
+| `/help/training-setup`  | reserved | Section 4           | Static content modal                         | Opens from What is this? or Learn more. Closing returns to the same builder.                                                      |
+| anything else           | –        | –                   | none (redirect)                              | `replaceState` to the resume path plus a transient notification.                                                                  |
 
 Rules:
 
 - Matching is on `location.pathname` only. Query strings and hashes are ignored, not generated and not persisted. A trailing slash is normalised away by `replaceState`.
-- A `/models/{segment}` where `segment` is not a positive integer is an **unknown path** (it does not name a page) and is redirected like any other. A positive integer with no matching model is a valid page URL whose content is the "model not found" notification (§4.3); it is not redirected.
-- Reserved paths are exactly `/about`, `/privacy`, `/help`, `/help/configure-model` and `/help/training-setup`. Reserved paths MUST NOT be used for anything else in future.
-- Each reserved path maps to one page id via `RESERVED_CONTENT` in `src/router/reserved-content.ts` (`/about` → `about`, `/privacy` → `privacy-policy`, `/help` → `help`, `/help/configure-model` → `configure-model`, `/help/training-setup` → `training-setup`), compiled by the content pipeline (see [content-and-i18n.md](content-and-i18n.md)). The mapping lives in router configuration, not in content front matter.
+- `new` is the one reserved workflow segment under `/models`. Other segments must be positive integers. Unknown paths follow §9.2. A positive integer with no matching model is a valid page URL with the model-not-found notification (§4.3).
+- Reserved paths are the six fixed entries in the table. `RESERVED_CONTENT` in `src/router/reserved-content.ts` maps each to the page ID of its final segment, with `/privacy` using `privacy-policy`. The [content pipeline](content-and-i18n.md#static-content) compiles and validates the required default articles.
 
 ### 3.1 Types
 
@@ -125,15 +126,41 @@ export type ReservedPath =
 	| '/about'
 	| '/privacy'
 	| '/help'
+	| '/help/select-features'
 	| '/help/configure-model'
 	| '/help/training-setup';
 
-export type WorkflowPath = '/data' | '/target' | '/models' | `/models/${number}` | '/results';
+export type WorkflowPath =
+	| '/data'
+	| '/target'
+	| '/models'
+	| '/models/new'
+	| `/models/${number}`
+	| '/results';
+
+export type ProvisionalEntry =
+	| { kind: 'pending'; context: ProvisionalModelContext; candidate?: ProvisionalModelIdentity }
+	| { kind: 'bound'; identity: ProvisionalModelIdentity };
+
+export type ProvisionalRouteState =
+	| ProvisionalEntry
+	| { kind: 'loading'; context: ProvisionalModelContext };
 
 export type ParsedRoute =
 	| { kind: 'root' }
-	| { kind: 'workflow'; path: WorkflowPath; section: SectionNumber; modelNum?: number }
-	| { kind: 'reserved'; path: ReservedPath }
+	| {
+			kind: 'workflow';
+			path: WorkflowPath;
+			section: SectionNumber;
+			modelNum?: number;
+			provisional?: ProvisionalRouteState;
+	  }
+	| {
+			kind: 'reserved';
+			path: ReservedPath;
+			underlayPath?: WorkflowPath;
+			provisional?: ProvisionalRouteState;
+	  }
 	| { kind: 'unknown'; path: string };
 
 /** The only data written to `history.state` by the app. Domain state NEVER goes here. */
@@ -141,24 +168,26 @@ export interface HistoryEntryState {
 	v: 1;
 	/** Random id so tests and the router can tell entries apart. */
 	entryId: string;
-	/** Present only on reserved-route entries: the workflow page rendered underneath. */
+	stackId?: string;
+	index?: number;
+	modalDocumentId?: string;
 	underlayPath?: WorkflowPath;
+	underlayEntryId?: string;
+	provisional?: ProvisionalEntry;
 }
 ```
 
+The context is the dataset ID, target and comparison context epoch. A provisional identity adds the allocated model number and creation time. Version 1 history entries can omit the added fields. Only a pending or bound identity is stored in history. The loading presentation stays in memory.
+
 ---
 
-## 4. Navigation Is Never Blocked; State Decides What Is Shown
+## 4. Workflow Availability and Departure
 
-> **Principle.** The user can always navigate to any workflow page, by sidebar, link, typed URL, bookmark, or Back/Forward. Application state **never prevents, redirects or undoes** a navigation to a workflow page. State only decides _what that page displays_. A page that cannot yet show anything renders a `.notification` that explains, in plain English, why and what to do next.
+The main workflow routes are reachable by link, typed URL, bookmark and Back/Forward. A page whose prerequisites are missing explains what the learner needs to do. The unfinished provisional wizard guards a confirmed departure (§5.3).
 
 ### 4.1 Consequences
 
-- There are **no availability guards** in the router and no disabled or non-link sidebar entries. Every sidebar step is a real `<a href>`.
-- The only redirects the router performs are for URLs that do not name a page at all, never for state reasons:
-    1. `/` → resume path.
-    2. Unknown paths (including `/models/abc`, `/models/0`, `/models/1.5`) → resume path, with a transient notification.
-       Both use `replaceState`, so Back never loops.
+- Root and unknown paths resolve to the resume path with `replaceState`. A numeric URL for the current provisional record canonicalises to its bound `/models/new` entry. An inferred new-model resume without a valid pointer falls back to the Models overview.
 - A well-formed model URL for a model that does not exist (`/models/9`) **stays on that URL** and renders the "model not found" notification below. The same happens reactively if the model is discarded while it is on screen (another tab, §6.4).
 - When state changes while a page is open (another tab replaces the dataset, models are discarded), the page re-renders into its blocked state in place. It is never navigated away.
 
@@ -179,15 +208,17 @@ Pure, derived values over the persisted state (computed stores; never derived in
 
 The blocked view replaces the page body (the `.page-header` with title and description still renders so the user knows where they are). It is a `<section>` containing one `.notification.notification-alert` with the message and a link to the step that fixes the problem. The first unmet prerequisite wins.
 
-| Route           | Blocked when               | Message (English; i18n key per COMPONENTS.md §8)                                                   | Link                       |
-| :-------------- | :------------------------- | :------------------------------------------------------------------------------------------------- | :------------------------- |
-| `/target`       | `!hasDataset`              | "Load a dataset before choosing a target."                                                         | Load Data → `/data`        |
-| `/models`       | `!hasDataset`              | "You need to load a dataset and set a target variable before you can train a model."               | Load a dataset → `/data`   |
-| `/models`       | `hasDataset && !hasTarget` | "You need to set a target variable before you can train a model."                                  | Set a target → `/target`   |
-| `/models/{num}` | no model with that `num`   | "Model {num} doesn't exist. It may have been removed when the dataset or target variable changed." | Back to models → `/models` |
-| `/models/{num}` | model exists               | never blocked                                                                                      | –                          |
-| `/results`      | `!canCompare`              | "You need to train more than one model before you can compare results."                            | Train models → `/models`   |
-| `/data`         | never                      | –                                                                                                  | –                          |
+| Route           | Blocked when                                  | Message (English; i18n key per COMPONENTS.md §8)                                                   | Link                       |
+| :-------------- | :-------------------------------------------- | :------------------------------------------------------------------------------------------------- | :------------------------- |
+| `/target`       | `!hasDataset`                                 | "Load a dataset before choosing a target."                                                         | Load Data → `/data`        |
+| `/models`       | `!hasDataset`                                 | "You need to load a dataset and set a target variable before you can train a model."               | Load a dataset → `/data`   |
+| `/models`       | `hasDataset && !hasTarget`                    | "You need to set a target variable before you can train a model."                                  | Set a target → `/target`   |
+| `/models/new`   | Missing dataset or target                     | Explain the first missing prerequisite.                                                            | Load data or set a target  |
+| `/models/new`   | Bound model or first saved result unavailable | Show read-only recovery for the old visit.                                                         | Back to Models → `/models` |
+| `/models/{num}` | no model with that `num`                      | "Model {num} doesn't exist. It may have been removed when the dataset or target variable changed." | Back to models → `/models` |
+| `/models/{num}` | model exists                                  | never blocked                                                                                      | –                          |
+| `/results`      | `!canCompare`                                 | "You need to train more than one model before you can compare results."                            | Train models → `/models`   |
+| `/data`         | never                                         | –                                                                                                  | –                          |
 
 Notes:
 
@@ -199,10 +230,10 @@ Notes:
 
 ### 4.4 Sidebar and shortcuts
 
-- All four section entries, and every model under step 3, are always links. Entries may _indicate_ progress (the dataset name, the target and its type, a check mark) but never disable.
-- **Current location is marked, not removed.** The entry whose `href` equals the current workflow path is `<a href="…" aria-current="page">`. An entry for a section that contains the current page but is not the page itself (e.g. "Train Models" while on `/models/3`) is `aria-current="true"`. There is never more than one `aria-current="page"` at a time. `aria-current="step"` is not used: these are links to URLs, so `page` is the correct announcement.
-- Current entries are styled as inactive (visual state keyed off `[aria-current]`, `cursor: default`) but remain focusable, keep their `href`, and keep a `:focus-visible` outline. Activating one is a no-op in the router (§5.2): no history entry, no scroll change. This preserves keyboard focus when the sidebar re-renders reactively, keeps the section link usable from a model page, and keeps the link list a reliable map for screen reader users.
-- The mockups that render the current step as a non-link `<div>` are superseded by this rule and should be updated.
+- Each of the four sections has a native link. **All Trained Models** links to `/models`. Trained links are keyed by model number in a sibling list, with no nested link. When prerequisites allow, `a.step-train-new` or `a.step-model-link` links to `/models/new` as **Train New Model** or **Train Another Model**, respectively.
+- Mark the exact visible workflow destination `aria-current="page"` and mark the Models parent `aria-current="true"` on a descendant. The bound new wizard has a static **Training New Model…** row through Step 5 completion, with `aria-current="page"` only when the wizard is visible. Reserved routes retain the underlay and clear current markers from the workflow navigation. Within the wizard, the one active section uses `aria-current="step"`.
+- Current links retain their `href`, visible focus outline and keyboard focus. Activating the exact current link preserves the history entry and scroll (§5.2). The Models parent link is still a destination from a descendant.
+- Match mockup current states to native links and the static provisional status row.
 - **Deliberate exception: the Compare Results button.** The **Compare Results** button in the `/models` header is disabled until `canCompare`, as specified in workflow-steps §3, and this is a **deliberate design choice, not an oversight**. The principle in §4 is about _navigation_: where the user may go. The button is a _call to action_ that invites the user to go and compare, and inviting them when there is nothing to compare would be misleading. The two are kept separate on purpose:
     - `/results` is always reachable from the sidebar and by URL, and explains itself with the §4.3 notification.
     - The button is the only control in the application that is disabled because of workflow state. New controls MUST NOT copy this pattern for navigation; a disabled call to action needs the same justification and an entry here.
@@ -220,24 +251,26 @@ Notes:
 
 ### 5.2 `pushState` vs `replaceState`
 
-| Situation                                                                 | History call                               |
-| :------------------------------------------------------------------------ | :----------------------------------------- |
-| User navigates to a different workflow path                               | `pushState`                                |
-| User navigates to the path already shown                                  | no-op (no duplicate entry)                 |
-| "New model" creates a model and opens it                                  | `pushState` to `/models/{num}`             |
-| Open a reserved route from a workflow page                                | `pushState` (entry carries `underlayPath`) |
-| Reserved → reserved (link inside a modal)                                 | `replaceState` (never stack two overlays)  |
-| Close a reserved route opened in this document                            | `history.back()`                           |
-| Close a reserved route that was loaded directly (no in-app entry beneath) | `replaceState` to the underlay path        |
-| Root redirect, unknown path (never for state reasons, §4.1)               | `replaceState`                             |
+| Situation                                                                 | History call                                                                   |
+| :------------------------------------------------------------------------ | :----------------------------------------------------------------------------- |
+| User navigates to a different workflow path                               | `pushState`                                                                    |
+| User navigates to the path already shown                                  | no-op (no duplicate entry)                                                     |
+| Activate a start-new link                                                 | `pushState` to `/models/new` with a unique entry and a captured pending intent |
+| Acknowledge its matching binding                                          | `replaceState` for the same source entry or its active reserved underlay       |
+| View Results from an acknowledged provisional wizard                      | `replaceState` with its numbered result                                        |
+| Open a reserved route from a workflow page                                | `pushState` with underlay, source entry and document owner                     |
+| Reserved → reserved (link inside a modal)                                 | `replaceState` (never stack two overlays)                                      |
+| Close a reserved route opened in this document                            | `history.back()`                                                               |
+| Close a reserved route that was loaded directly (no in-app entry beneath) | `replaceState` to the underlay path                                            |
+| Root, unknown path or active provisional numeric alias                    | `replaceState`                                                                 |
 
 ### 5.3 `popstate`
 
-1. Parse `location.pathname`.
-2. Workflow route → mount its view (§5.5), restore its remembered scroll (§8.4).
-3. Reserved route → read `history.state.underlayPath` (fall back to the persisted resume path), ensure the underlay is mounted, open the modal.
-4. Arriving at a non-reserved route while a modal is open synchronises/closes the child **without** user-close intent. Suppress its queued native close inside the component; a short-lived router history-sync flag cannot guard a later asynchronous event. No second push/pop occurs.
-5. Never call `pushState` from the `popstate` handler.
+The router marks entries with a per-document stack ID and index. Push adds a unique entry and drops any forward branch. Replace retains its position and entry ID on the same visit. Bootstrap starts a new local stack at the current entry and decodes a still-valid binding.
+
+For an unfinished visible wizard, compare the destination's effective underlay and bound model with the source. A different underlay or model is a departure. Before rendering a reversible same-stack destination, restore the source by history delta and show the builder's native **Stay** / **Leave** dialog. Stay preserves the source entry, scroll and invoker focus. Leave waits for protected abandonment, then replays the confirmed destination once. The router owns history operations and a single source-entry intent with a monotonic token. Stale effects and unexpected replay retire the intent. Repeated traversals while a decision is pending do not start a second confirmation or write.
+
+Traversals without a valid shared stack/index, document reload and cross-document navigation preserve saved work. Opening, changing and closing a reserved overlay over the same wizard preserves the draft. Traversal from an overlay to a different underlay also preserves the draft and proceeds without a stacked dialog. History-driven modal close suppresses the queued native close event, so it cannot echo a navigation. `popstate` never pushes a new entry.
 
 ### 5.4 Reserved routes as modals
 
@@ -247,12 +280,13 @@ Notes:
 - Native user dismissal produces one `app-content-dialog-close` intent; the connected owner calls closeReserved only for the corresponding active reserved route (§5.2). Property/history-driven closing emits no intent. Route-keyed child instances and abort/sequence/path load guards prevent an old queued close or response from affecting a newer reserved route. This keeps native dismissal and the URL aligned without echoing Back/Forward navigation.
 - The page underneath is **not** scroll-locked with `overflow: hidden` / `position: fixed` on `html` or `body` (that would reset or jump the scroll position this spec is trying to preserve). Use `overscroll-behavior: contain` on `dialog:modal` and `overflow: hidden; overscroll-behavior: contain` on `dialog::backdrop`.
 - The underlay view stays mounted while the modal is open, so the workflow page's DOM, scroll position and focus return are unaffected.
-- A reload while a reserved route is open reopens the modal over the persisted resume path (§9.2). The reserved path itself is **never** written to persisted state.
+- A fixed reserved entry pushed in this document records its `modalDocumentId`. Close and Escape go Back on every visit, including after Forward. Topic switches retain the owner and the underlay's identity. Direct loads, reloads and legacy ownerless entries replace to the validated underlay. The reserved URL never becomes the persisted resume path.
+- A reserved entry retains the same wizard source via `underlayEntryId`. If the underlying pending wizard binds while Help is open, the router retains the acknowledgement against that source and updates the active overlay's underlay metadata. Returning to the source restores only the matching entry before rendering.
 - If the user first lands on a reserved URL, the welcome modal is not shown on top of it; it appears when the reserved modal is closed (if still undismissed).
 
 ### 5.5 Mounting views
 
-- A view is a Lit element created via dynamic `import()` for its route. The router keeps at most one workflow view mounted. Switching steps unmounts the previous view; its state lives in the store, not in the element.
+- The shell mounts one Lit workflow view for the resolved route and retains that same view under reserved content. Switching workflows unmounts the preceding view. Persistent state lives in stores. Dynamic route imports remain target.
 - A view that needs async data before its layout height is final (dataset metadata, table row count, results) MUST expose `whenSettled(): Promise<void>`, resolving once layout is stable. The scroll restorer waits on it (§8.4). _(This is part of the view contract and must be added to each view's component spec.)_
 
 ### 5.6 Document title and focus
@@ -308,35 +342,37 @@ Corresponds to workflow-steps §2.
 - Setting the target updates state and keeps the user on `/target`; a "Train Models" button (`<a href="/models" class="btn btn-primary">`) in the page header enables progressing to Step 3.
 - Without a dataset a `.notification` replaces the table body (§4.3).
 
-### 6.3 Section 3 — Train Models (`/models`, `/models/{num}`)
+### 6.3 Section 3 — Train Models
 
 Corresponds to workflow-steps §3.
 
-**`/models`** (requires `hasTarget`): table of all models with columns _Model Name, Features, Configuration, Training Setup, Duration, View Results_, all derived from `ModelRecord`. The action cell reads **View Results** for `status === 'trained'` and **Continue** otherwise, linking to `/models/{num}`. The header holds the **Compare Results** button (link to `/results`, disabled while `!canCompare`) and the action that creates a model: the service allocates `num = nextModelNum` and acknowledges the new draft before the owner navigates to `/models/{num}`. A pending or failed save keeps the learner on Models with recovery feedback.
+**`/models`** lists the workspace models, setup, and durations. **View Results** opens a trained numbered route. **Continue** routes the current provisional draft to `/models/new` with its binding and historical drafts to their numbered routes. The header offers **Train New Model** and **Compare Results**.
 
-**`/models/{num}`** shows six sections, in order, as a series down one page:
+**`/models/new`** renders a focusable loading or recovery view until the source binds. Explicit entry may allocate under the protected state lock after checking dataset, target and metadata. Duplicate visits or concurrent tabs adopt the one valid provisional pointer. A pending entry's acknowledgement must match its captured entry, context and candidate. Reload and traversal never create a second draft for a pending or bound entry. Explicit retry can recover the current matching pointer. Only if the source still owns the loading heading's focus may acknowledgement transfer focus to the bound view.
 
-| #   | Section id           | Completion trigger                            | Header `<h2>` after completion                |
-| :-- | :------------------- | :-------------------------------------------- | :-------------------------------------------- |
-| 1   | `choose-model`       | **Continue** after a model is selected        | Selected model name                           |
-| 2   | `select-features`    | **Continue** with ≥ 1 feature                 | "{n} features"                                |
-| 3   | `configure-model`    | **Continue** once all hyperparameters are set | "Model Configured" or "Hyperparameter Tuning" |
-| 4   | `configure-training` | Acknowledged worker start                     | Chosen training setup                         |
-| 5   | `training`           | Acknowledged saved result                     | “5. Train Model”                              |
-| 6   | `results`            | Acknowledged **View Results**                 | “6. Model Results”                            |
+The wizard presents the following steps. Historical numbered drafts retain their existing editable route.
 
-The persisted markers drive the completion checks. Section 4 shows the saved setup summary after start acknowledgement. A historical completed draft can reopen setup through Edit. Section 5 shows its check after View Results acknowledges the saved run.
+| Step | Section ID           | Acknowledgement that advances                              | Completed heading                         |
+| :--- | :------------------- | :--------------------------------------------------------- | :---------------------------------------- |
+| 1    | `choose-model`       | Select Model saves model, eligible defaults and completion | Selected catalogue name                   |
+| 2    | `select-features`    | Continue saves eligible features and completion            | Localised feature count                   |
+| 3    | `configure-model`    | Save & Continue saves eligible options and completion      | Model Configured                          |
+| 4    | `configure-training` | Matching acknowledged start with saved strategy            | One-Shot Training or localised fold count |
+| 5    | `training`           | Matching durable finish enables View Results               | Training Complete                         |
+
+The connected builder animates the measured block-size from the departing panel to the acknowledged step and focuses its heading. The departing controls are inert while closing. Reduced motion, supersession and disconnection settle the current ownership without a stale focus change. A failed or pending Step 1–3 save keeps its eligible draft and current step. The same operation and candidate replay when publication was committed.
 
 Model-level rules:
 
 - **Eligible models** are classifiers for boolean and categorical targets. Numeric targets show the current classification limit (workflow-steps §3.1).
 - **Features**: all columns are listed; the target is shown but not selectable; ineligible (`text`) columns are not selectable. The target can never be in `features`.
-- **Multiclass strategy** (`native | one-vs-rest | one-vs-one`) is required only when the target is categorical with more than two categories _and_ the `web-ml` model supports the choice. It is part of section 3.
+- **Multiclass strategy** (`native | one-vs-rest | one-vs-one`) is derived from the selected classifier for eligible multiclass targets and shown read-only in Step 3.
 - **Training Setup** (Section 4) displays **One-Shot** before the first write. The builder checks that the route, active model, dataset and target still match ready eligible metadata before accepting a change or submit. Cross-Validation uses the current target’s observed class counts to bound folds and shows a scrollable matrix. Valid **Train Model** submission captures the setup and requests an attempt. Accepted start activates Section 5 and focuses its heading for the initiating action. Rejected start leaves Section 4 open with a reason. The Models table uses the same summary and shows “Not configured” when there is no usable setup, including for read-only models.
-- **Help and transient edits.** The Training Setup form is keyed by dataset ID, target name and model number. Opening Help leaves the same builder and form mounted and the router preserves the underlay's resume path. The form retains invalid drafts and focus returns to the Help link on close. An intent dispatched while Help is open cannot write. Changing the dataset, target or model creates a fresh form for the current setup.
+- **Help and transient edits.** Steps 2–4 have contextual heading links. Opening Help keeps the same builder, form, draft values and effective history entry. The native modal returns focus to the invoker on Close, Escape or Back. Covered workflow actions are unavailable. A different dataset, target or model gets a fresh keyed form.
 - **Editing earlier sections**: while `status === 'draft'`, a completed section can be re-opened and edited. If the edit **changes** its value, completion of all _later_ sections is removed (their values are kept where still valid and the user re-confirms with the section action). Re-selecting the same model, or re-confirming unchanged values, invalidates nothing. Selecting a **different** model resets `modelOptions`, `hyperparameters` and `multiclass` to the new model's defaults and un-completes sections 2 and 3; `features` and `trainingSetup` are kept.
-- **Training and acknowledgement.** Training continues across navigation. Section 5 displays run progress or the remote status. The owner can cancel before saving. A saved result awaiting publication stays at 95% and offers Retry saving. An acknowledged result reaches 100%, shows its elapsed time and enables View Results. Activating it opens and focuses Section 6 on the same URL. The saved log remains inspectable.
-- **Frozen configuration.** Once a model leaves `draft` (training starts), sections 1–4 are read-only so the configuration shown in `/models` and `/results` is exactly what was trained. To try different settings the user creates a new model.
+- **Training and acknowledgement.** The first acknowledged provisional finish clears `newModelNum` and pins that run in the same commit. Its source visit stays bound at `/models/new` through Help or refresh. View Results first verifies the pinned run against the current saved revision and exact envelope. It then acknowledges the result and replaces that visit with the numbered route. A stale binding, missing pin or later numeric rerun shows read-only recovery with a Models link.
+- **Numbered results.** A trained numbered route opens the result directly with its own focusable heading, swatch and Training Details. A numeric URL for the current unfinished provisional record canonicalises to its bound new-model route, including under Help. Historical numbered drafts keep their existing edit and training routes.
+- **Frozen configuration.** Completed saved results display the settings used by the acknowledged evaluation. A learner starts a new model to train with different settings.
 
 ### 6.4 Changing the dataset or target while models exist
 
@@ -355,14 +391,16 @@ Inputs are trained models and their saved evaluations. `$comparison` groups comp
 
 ## 7. Model Lifecycle (Small State Machine)
 
-| Before   | Action                                                                                                                      | After    | Acknowledgement                                                   |
-| -------- | --------------------------------------------------------------------------------------------------------------------------- | -------- | ----------------------------------------------------------------- |
-| Draft    | Train Model                                                                                                                 | Training | Store the exact run identity and setup before starting the worker |
-| Training | The training service owns start, cancel and retry. Run-scoped progress and the disclosure action update presentation state. |
-| Training | The training service owns start, cancel and retry. Run-scoped progress and the disclosure action update presentation state. |
-| Trained  | View Results                                                                                                                | Trained  | Validate the matching result and record the Results completion    |
+| Before   | Action                                   | After    | Acknowledgement                                                                                     |
+| -------- | ---------------------------------------- | -------- | --------------------------------------------------------------------------------------------------- |
+| Draft    | Train Model                              | Training | Store the exact run identity and setup before starting the worker                                   |
+| Training | Matching cancelled or failed run settles | Draft    | Publish the safe reason and preserve setup                                                          |
+| Training | Matching run finishes                    | Trained  | Save the envelope and state. The first provisional finish also pins the run and clears the pointer. |
+| Trained  | View Results                             | Trained  | Verify the exact run and acknowledge its numbered handoff                                           |
 
-A failed start before worker launch presents its reason in Section 4. A committed start awaiting publication returns to an interrupted draft during recovery when no worker owns it. View Results acknowledges the result on the current URL. Background completion and cross-tab updates leave the current focus alone. After failure or cancellation, Section 4 restores focus to Train Model when a focused local Section 5 control was removed.
+A rejected start presents its reason in Training Setup. A committed start awaiting publication returns to an interrupted draft when no worker owns it. A local stopped panel keeps only the last known percentage from the exact displayed run and presents Train Model and Edit Training Setup. Retry starts a new run. A focus request after a stopped local run applies only to its enabled retry action. Background completion and cross-tab updates preserve focus. A fresh reload has no local stopped attempt, so it restores the saved editable setup.
+
+Confirmed departure waits for matching local cancellation or an already cancelling or saving attempt. Publication pending must settle first. A remote owner or unavailable acknowledgement keeps the source visible with recovery. Protected abandonment rechecks the captured identity and removes only that unfinished draft and pointer. A finish that wins the race retains its evaluation and allows departure.
 
 ```typescript
 export interface TrainingProgress {
@@ -391,16 +429,17 @@ The **document** scrolls (`document.scrollingElement`). `<main>` MUST NOT be `ov
 
 One snapshot is kept per key, latest write wins:
 
-| Route             | Key            |
-| :---------------- | :------------- |
-| `/data` (picker)  | `data:select`  |
-| `/data` (preview) | `data:preview` |
-| `/target`         | `target`       |
-| `/models`         | `models`       |
-| `/models/{num}`   | `models/{num}` |
-| `/results`        | `results`      |
+| Route                    | Key                                |
+| :----------------------- | :--------------------------------- |
+| `/data` (picker)         | `data:select`                      |
+| `/data` (preview)        | `data:preview`                     |
+| `/target`                | `target`                           |
+| `/models`                | `models`                           |
+| `/models/new` once bound | `models/{num}` for the bound model |
+| `/models/{num}`          | `models/{num}`                     |
+| `/results`               | `results`                          |
 
-`/data` has two keys because the two views have unrelated content heights. Reserved routes have **no** key; opening a modal never changes the underlay's position.
+`/data` has two keys because the views have unrelated heights. An unbound wizard has no numeric scroll key. A Help overlay keeps the current underlay's position and bound numeric key. Acknowledged abandonment clears the abandoned model's snapshot.
 
 ### 8.3 Snapshot shape
 
@@ -461,12 +500,13 @@ The Training Setup matrix scrolls inside its own wrapper. Its horizontal offset 
 
 ### 9.2 Resolving the initial URL
 
-| Loaded URL      | Behaviour                                                                                                                                                    |
-| :-------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `/`             | `replaceState` to `resumePath` (persisted; defaults to `/data`)                                                                                              |
-| A workflow path | Honour the URL exactly, even if it differs from `resumePath` (e.g. a pasted deep link); `resumePath` is updated                                              |
-| A reserved path | Open the modal over `resumePath`; write `{ underlayPath: resumePath }` into this entry's `history.state` with `replaceState`; do **not** modify `resumePath` |
-| Unknown path    | `replaceState` to `resumePath` and show a notification                                                                                                       |
+| Loaded URL                 | Behaviour                                                                                                                                                        |
+| :------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `/`                        | Replace to the persisted resume path, defaulting to `/data`. An inferred `/models/new` can adopt a valid pointer or falls back to `/models`.                     |
+| An explicit workflow path  | Honour the visit. A new explicit `/models/new` may allocate, and a numeric alias for the active provisional draft canonicalises to its exact binding.            |
+| A recorded new-model entry | Restore its valid pending or bound identity. A completed visit can read only its pinned saved run. An invalid or stale visit offers recovery without allocating. |
+| A reserved path            | Open over the validated recorded underlay or its inferred resume path. Keep the binding and do not modify `resumePath`.                                          |
+| Unknown path               | `replaceState` to `resumePath` and show a notification                                                                                                           |
 
 `resumePath` is written synchronously on every workflow navigation (push or replace). Opening the base URL in a new tab therefore shows whatever workflow page was most recently visited in any tab.
 
@@ -493,16 +533,16 @@ Deliberately **not** restored: reserved-route modals as persisted state (they re
 
 State changes occur only through exported action functions in the store modules (COMPONENTS.md §5). Names are normative; signatures live in the TSDoc of the implementation.
 
-| Area                       | Actions                                                                                                                                                                                                                                                                                                                                                                            |
-| :------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Onboarding                 | `dismissWelcome`                                                                                                                                                                                                                                                                                                                                                                   |
-| Navigation (router module) | `navigate(path)`, `openReserved(path)`, `closeReserved()`                                                                                                                                                                                                                                                                                                                          |
-| Data                       | Dataset publication and discard use the training service. View settings use the ordinary actions.                                                                                                                                                                                                                                                                                  |
-| Target                     | The training service acknowledges the target change and any confirmed result deletion.                                                                                                                                                                                                                                                                                             |
-| Models                     | Acknowledged creation through the training service. Draft actions include `chooseModel(num, modelId, defaults)`, `setFeatures(num, names)`, `toggleFeature(num, name)`, `setModelOptions(num, options)`, `setHyperparameters(num, config)`, `setMulticlassStrategy(num, strategy)`, `setTrainingSetup(num, setup)`, `completeSection(num, section)`, `reopenSection(num, section)` |
-| Training                   | The training service owns start, cancel and retry. Run-scoped progress and the disclosure action update presentation state.                                                                                                                                                                                                                                                        |
-| Results                    | The training service acknowledges View Results for the exact run identity.                                                                                                                                                                                                                                                                                                         |
-| Scroll                     | `recordScroll(key, snapshot)`, `clearScroll(keys)`                                                                                                                                                                                                                                                                                                                                 |
+| Area                       | Actions                                                                                                                                                                                                                            |
+| :------------------------- | :--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Onboarding                 | `dismissWelcome`                                                                                                                                                                                                                   |
+| Navigation (router module) | `navigate(path)`, `openReserved(path)`, `closeReserved()`                                                                                                                                                                          |
+| Data                       | Dataset publication and discard use the training service. View settings use the ordinary actions.                                                                                                                                  |
+| Target                     | The training service acknowledges the target change and any confirmed result deletion.                                                                                                                                             |
+| Models                     | The training service acknowledges provisional allocation, abandonment and eligible wizard completion. Interactive draft edits use actions including `toggleFeature`, `setHyperparameters`, `setTrainingSetup` and `reopenSection`. |
+| Training                   | The training service owns start, cancel and retry. Run-scoped progress and the disclosure action update presentation state.                                                                                                        |
+| Results                    | The training service acknowledges View Results for the exact run identity.                                                                                                                                                         |
+| Scroll                     | `recordScroll(key, snapshot)`, `clearScroll(keys)`                                                                                                                                                                                 |
 
 All actions are guarded: an action that is invalid for the current state (for example `toggleFeature` on a non-draft model, or `setFeatures` including the target) is a no-op that returns `false`; it does not throw and does not mutate.
 
@@ -536,10 +576,10 @@ Unit and browser training checks exercise exact run identities, guarded state, r
 | :--------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | NAV-E2E-1  | Navigating Data → Target → Models pushes entries; Back/Forward re-render the correct step and restore each step's scroll.                                                                                                                                                                                                                                                                              |
 | NAV-E2E-2  | Loading `/` in a new tab resumes the last workflow path and its scroll; loading `/models/9999` stays on that URL and shows the "model not found" notification; loading `/models/abc` replaces to the resume path.                                                                                                                                                                                      |
-| NAV-E2E-2d | On each workflow page exactly one sidebar link has `aria-current="page"` (and on `/models/{num}` the "Train Models" link has `aria-current="true"`); current entries remain focusable with a visible focus outline; activating one adds no history entry and does not change scroll; keyboard focus stays on the activated link after the sidebar re-renders.                                          |
+| NAV-E2E-2d | The exact workflow link or visible provisional status row owns `aria-current="page"`. The Models parent uses `aria-current="true"` on a descendant. Duplicate current links preserve history, scroll and focus.                                                                                                                                                                                        |
 | NAV-E2E-2c | On `/models` the Compare Results control is a disabled `<button>` with its visible hint as `aria-describedby` while fewer than two models are trained, and an enabled link to `/results` once two are trained; the sidebar's Compare Results link is enabled in both cases.                                                                                                                            |
 | NAV-E2E-2b | For every workflow page and every combination of missing prerequisites, the sidebar link is enabled, navigation succeeds with no redirect (URL and history length as expected), and the page shows the expected `.notification` text from §4.3. When state later satisfies the prerequisite (e.g. a second model finishes training) the same page re-renders to its normal content without navigation. |
-| NAV-E2E-3  | Opening `/about` pushes one entry; `Esc`, the close button and Back each close it and leave exactly one entry removed; the underlay's scroll offset is unchanged and nothing in persisted state mentions `/about`.                                                                                                                                                                                     |
+| NAV-E2E-3  | Opening a reserved route pushes one entry. Escape or Close goes Back again after a Forward revisit. Direct Back closes once, and the underlay retains scroll. The reserved path stays out of persisted workflow state.                                                                                                                                                                                 |
 | NAV-E2E-4  | Direct load of `/help` shows the modal over the persisted resume page; closing replaces rather than leaving the app; Back/Forward behaves coherently.                                                                                                                                                                                                                                                  |
 | NAV-E2E-5  | Resize the viewport width, reload: the previous scroll is **not** applied; restore the width, reload: it is.                                                                                                                                                                                                                                                                                           |
 | NAV-E2E-6  | Reload during `training` returns to the model page with section 4 active and the interrupted error; a second tab loaded during training does not mark it interrupted.                                                                                                                                                                                                                                  |
@@ -561,6 +601,6 @@ For a human to answer; implementers must not resolve these silently.
 2. ~~**Changing the target or dataset with existing models**~~ (§6.4) — answered: confirm-and-discard (`setTarget` rejects with models present; explicit `confirmDiscardModels` action clears them).
 3. **Transient dialogs on reload:** should an open Datasheet / Model Description dialog be restored? (Currently not; "exact same UI" could be read to include them.)
 4. ~~**Scroll semantics**~~ (§8.4) — answered: latest-per-step scroll memory is accepted.
-5. **Reserved content mapping:** `content/pages/privacy-policy.md` serves `/privacy`; there is no `help` content and `terms-and-conditions.md` has no route. Create `help.md`? Add a reserved route for terms?
+5. **Reserved content mapping:** Fixed Help and Privacy articles are live. Should Terms and Conditions have a reserved route?
 6. ~~**File rename** to `app-state-and-navigation.md`~~ — done 2026-11-12.
-7. **Results** (builder Section 6 and workflow Step 4) remain TODO in workflow-steps.md. Their persisted shapes are placeholders.
+7. ~~**Results**~~ — numbered trained results and workflow comparison are implemented. See [Workflow Steps](workflow-steps.md#6-single-model-results).

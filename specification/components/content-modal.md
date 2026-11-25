@@ -50,7 +50,9 @@ Pass loader/sanitiser output, never HTML strings. The child clones the fragment 
 
 The owner reconciles the native dialog on first render and open-property changes. Updates to loading or content preserve the current native state. Counted suppression consumes queued closes caused by property changes or disconnection, including immediate reopening.
 
-The connected parent retains transient status/entry/fragment, AbortController, request sequence and path guards around loadContentEntry. Only a complete current entry and safe fragment become ready; idle/loading maps to loading. Each reserved-route opening or switch creates a fresh child instance, so an old route's queued event cannot dismiss a new reserved route. Leaving a reserved route keeps the current instance connected while it closes, so the browser returns focus to the invoker after Back as well as after Esc or the close button. User intent calls closeReserved once only for the corresponding active reserved path; history-driven close has no navigation echo. Source loader, sanitiser, router decisions and underlay/scroll ownership remain unchanged.
+The connected parent guards loading by AbortController, request sequence and path. Only a complete current entry and sanitised fragment become ready. Each reserved-route opening or switch creates a fresh child. Leaving the route keeps that instance connected until native close can restore invoker focus. User dismissal calls `closeReserved` once for the corresponding active path. History-driven close does not navigate again.
+
+Each fixed-route history entry pushed by this document records its document owner. Close and Escape go Back after Forward revisits as well as the initial opening. Direct, reloaded or ownerless entries replace to the validated underlay. The overlay keeps the wizard source entry and binding, and preserves the underlying form and scroll. The router can acknowledge a pending wizard under Help and recover the binding on return to that exact source.
 
 ## 5. Visual specification
 
@@ -64,7 +66,7 @@ Native `aria-labelledby` references the h2. Close has the translated accessible 
 
 ## 7. Internationalisation
 
-The connected dictionary owns the fallback titles and the Close and load-error text. `/help/configure-model` uses “Configure Model” and `/help/training-setup` uses “Training Setup” while loading and on failure. Loaded entry titles retain their consumer wording. The child owns no messages/stores and receives ContentDialogLabels; entry metadata controls ready content language/direction. No language switcher or locale persistence is introduced.
+The connected dictionary owns fallback titles and Close and load-error text. The wizard routes use **What are features?**, **What do these settings mean?** and **Training Setup** while loading or on failure. Loaded article titles retain their authored wording. The child receives `ContentDialogLabels` and uses content metadata for the ready language and direction.
 
 ## 8. Acceptance criteria
 

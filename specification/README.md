@@ -31,11 +31,11 @@ These rules apply whenever a spec changes, whether in a plan's `Sync specificati
 | Spec                                                                 | Status      | Read when                                                                                                                |
 | -------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
 | [VISION.md](VISION.md)                                               | reference   | Planning a new feature (product intent, educational and ethical goals)                                                   |
-| [workflow-steps.md](workflow-steps.md)                               | partial     | Anything a user sees in the four workflow steps. **Wins over other specs on user-facing behaviour.**                     |
+| [workflow-steps.md](workflow-steps.md)                               | partial     | Four workflow steps, provisional model wizard, numbered results and comparison. **Wins on user-facing behaviour.**       |
 | [ARCHITECTURE.md](ARCHITECTURE.md)                                   | partial     | New directories or modules, routing, build, delivery, caching, Bun tooling                                               |
 | [COMPONENTS.md](COMPONENTS.md)                                       | partial     | Any Lit component, style primitive, store binding, a11y or i18n in UI                                                    |
 | [visual-design.md](visual-design.md)                                 | partial     | Anything a user sees: colours, type, spacing, tokens, mockup fidelity, contrast. Wins over the mockups on accessibility. |
-| [app-state-and-navigation.md](app-state-and-navigation.md)           | draft       | Router, URL/history, step behaviour, scroll memory, model lifecycle                                                      |
+| [app-state-and-navigation.md](app-state-and-navigation.md)           | draft       | Routes, provisional binding and departure, fixed Help history, scroll memory and model lifecycle                         |
 | [state-and-storage.md](state-and-storage.md)                         | draft       | Nanostores, persisted schema, `localStorage`, IndexedDB, multi-tab                                                       |
 | [data-ingestion.md](data-ingestion.md)                               | implemented | CSV upload/parsing, column statistics, IndexedDB dataset storage                                                         |
 | [sample-datasets.md](sample-datasets.md)                             | implemented | Typed sample descriptors, build-time validation, generated catalogue and datasheets                                      |
@@ -60,9 +60,9 @@ Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only wh
 | [sidebar.md](components/sidebar.md)                         | implemented | Connected `app-sidebar`                                                                       |
 | [welcome-modal.md](components/welcome-modal.md)             | implemented | Connected `app-welcome-modal`                                                                 |
 | [content-modal.md](components/content-modal.md)             | implemented | Connected `app-content-modal` and presentational `app-content-dialog`; prose styling pending  |
-| [training-progress.md](components/training-progress.md)     | implemented | Native progress, ordered log, disclosure preference and live milestones                       |
+| [training-progress.md](components/training-progress.md)     | implemented | Native progress, stopped-run recovery, ordered log, disclosure preference and live milestones |
 | [training-setup.md](components/training-setup.md)           | implemented | Training strategy definitions, paired fold inputs and accessible fold matrix                  |
-| [model-results.md](components/model-results.md)             | implemented | Connected `app-model-results`, its terms disclosure and eight presentational results elements |
+| [model-results.md](components/model-results.md)             | implemented | Numbered result, Training Details, terms and shared result elements                           |
 | [results-comparison.md](components/results-comparison.md)   | implemented | Connected comparison route, terms disclosure and presentational comparison elements           |
 | [card.md](components/card.md)                               | implemented | Presentational `app-dataset-card`, `app-model-card`                                           |
 | [virtual-table.md](components/virtual-table.md)             | implemented | Presentational `ui-virtual-table` (styled appearance pending)                                 |

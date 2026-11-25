@@ -1,6 +1,6 @@
-# Router Help-history ownership and dynamic Help topics
+# Dynamic Help topics
 
-**Status:** stub | **Updated:** 2026-11-20T07:59:44Z
+**Status:** stub | **Updated:** 2026-11-25T21:39:55Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-20T07:59:44Z
 **Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
@@ -8,23 +8,22 @@
 
 ## Goal
 
-**Current behaviour:** `src/router/router.ts` decides whether dismissing a reserved modal calls `history.back()` from a global `inAppHistoryCount` (declared L18, incremented L148 and L216, decremented L237–238, reset L446). Closing a pushed Help entry consumes the count, and Forward reopens the entry without restoring it, so a second Close replaces instead of going Back. The same defect affects a directly loaded `/about` followed by a sidebar push, Back and Close. Help pages are a closed list of fixed paths (`src/types/routes.ts` L5, `src/router/route-parser.ts` L35–43); each new page edits five files.
+**Current behaviour** — Help pages use a closed route registry and build-checked default content. The [model workflow](model-training-workflow.md) delivered entry-local ownership and exact wizard underlays for those fixed routes.
 
-**Target behaviour:** Each reserved entry records which document session pushed it, so Close and Escape go Back exactly when the entry was pushed in this document, however often it is revisited by Forward, and replace to the underlay otherwise (direct load, reload, explicit replace, legacy entries). Optionally, any single lowercase kebab-case `/help/{slug}` opens a Help page from `content/{locale}/pages/{slug}.md`, with an "unlisted topic" message distinct from delivery errors.
+**Target behaviour** — Decide whether a single lowercase kebab-case `/help/{slug}` should open a Help page from `content/{locale}/pages/{slug}.md`, with an unlisted-topic message distinct from delivery errors.
 
-**Why:** `specification/app-state-and-navigation.md` §5.2 requires a pushed entry to dismiss with Back, including after it is revisited. Split from `web-ml-phase-2-training-setup.md` (D8, 2026-11-20).
+This decision remains from [Training Setup Phase 2](archive/web-ml-phase-2-training-setup.md).
 
 ## Scope
 
 **In scope** (re-verify with `codebase-scout` when expanding)
 
-- Replace `inAppHistoryCount` with an optional `modalDocumentId` on `HistoryEntryState` and a per-router-initialisation ID. Pushes record the owner; topic switches keep the entry ID, underlay and owner; bootstrap of a reserved URL records an unowned entry over the resume path.
-- Tests: two Close/Forward and Escape/Forward cycles over one pushed Help entry; direct-load and reload dismissal; explicit `navigate(…, { replace: true })`; legacy ownerless entries.
-- Decision needed: whether to add dynamic `/help/{slug}` routing. If yes: slug validation at the parser and at `openReserved`/`navigate`, a finite build-checked map of required pages, a loader error subclass for a validated-index miss (`src/common/content/content-loader.ts` L281–287), an unlisted-topic message in `app-content-modal.ts`, and `app-content-modal.stories.ts` with cache isolation (`resetContentCache` L323–327).
+- If dynamic topics are approved, validate slugs at the parser and at `openReserved` or `navigate`. Preserve the build-checked map for required pages.
+- Distinguish an unlisted topic in the validated index from a delivery failure, with separate modal states and cache-isolated stories.
 
 **Out of scope**
 
-- Scroll restoration (`scroll-region-restoration.md`). Help article content.
+- Fixed-route history ownership, [scroll restoration](scroll-region-restoration.md) and Help article content.
 
 ## Risks and open questions
 

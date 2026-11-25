@@ -50,7 +50,7 @@ The Strategy select points to `#strategy-description`, which contains the select
 
 The first switch to Cross-Validation uses five folds or the supplied maximum, whichever is lower. The two CV counts in a committed setup are equal. With a saved value above the current maximum, the number and matrix keep the saved count and the slider clamps to the maximum. Submission requires a correction. Empty, unfinished or out-of-range input keeps the last valid matrix and leaves the store untouched. Switching to One-Shot clears the fold error.
 
-The builder keys the form by dataset ID, target name and model number. It checks the route, draft status and current eligible metadata before applying an intent. The same instance stays mounted during Help, retaining its invalid draft and link focus on return. Changing the dataset, target or model creates a fresh form for the current setup. Valid submission captures the setup and starts the protected training service. An accepted start opens Section 5. A start rejected before worker launch, or a cancelled or failed run, leaves the form available with a safe reason.
+The builder keys the form by dataset ID, target and model number. It checks the active route, draft status and eligible metadata before accepting an intent. Help retains the same form, including invalid inputs and invoker focus. A changed dataset, target or model creates a fresh form. Valid submission captures the setup and advances to Step 5 only after the matching protected start is acknowledged. A pre-start rejection keeps the form visible with a safe reason. A matching local cancellation or fitting failure shows Training Stopped with Train Model and Edit Training Setup.
 
 ## 5. Visual specification
 
@@ -65,7 +65,7 @@ Changes from mockup CSS follow [the deviation registers](../visual-design.md#5-d
 - A table caption names both the table and its focusable scroll region. The table uses scoped row and column headers and a visually hidden “Training” or “Validation” label per cell. Visible en dashes and check marks, dashed and solid borders, and matching legend swatches distinguish roles in forced colours. Keyboard focus is visible on the wrapper and Learn more.
 - Safari's accessibility tree exposed the Strategy select, both fold inputs, matrix headers, cell labels and the named Help dialog. The maintainer verified the corresponding spoken announcements with VoiceOver in Safari. NVDA and Orca were unavailable on the test host.
 
-- After an explicit accepted submit, the builder focuses the Section 5 heading. When failure or cancellation removes a focused local training control, the builder requests `restoreFocus` for the matching run. Section 4 presents the reason beside the form and consumes the request once the Train Model button is actionable. Leaving the step or superseding the run clears the request. Background runs and cross-tab updates preserve the current focus.
+- After an explicit acknowledged start, the builder focuses the Step 5 heading. When a matching local failure or cancellation removes a focused training control, the builder focuses the actionable stopped retry button. Edit Training Setup returns focus to the Step 4 heading. The form retains its `restoreFocus` API for a matching request to focus its actionable Train Model button. Leaving or superseding the route clears the request. Background runs and cross-tab updates preserve focus.
 
 ## 7. Internationalisation
 
@@ -79,7 +79,7 @@ The builder supplies labels and formatters through `TrainingSetupLabels`. This i
 4. `WML-P2-COMP-4` — Blocked and disabled forms suppress both intents. Only the blocked state presents a described alert.
 5. `WML-P2-COMP-5` — All ten component stories render and pass axe checks. Eight include play checks for form structure or events. `LongLabel` and `RTL` exercise wrapping and axe. The setup and builder stories check selection-specific hints, and the setup stories retain blocked and disabled coverage. `WML-P2-UI-2`, `-4`, `-5` and `-7` cover native invalid input, Help, forced colours, narrow/RTL scrolling and model isolation in the builder.
 
-`TERM-AC-4` checks the selected visible and accessible hint. `TERM-AC-5` checks both Help links and the training article. Saved summary expectations are exercised by the Training Setup and Models overview journeys.
+`TERM-AC-4` checks the selected visible and accessible hint. `TERM-AC-5` and `MW-HELP` check both Help links, the strategy trade-off table and return focus with form values preserved. Saved summaries are exercised by the Training Setup and Models overview journeys.
 
 ## 9. Stories
 
