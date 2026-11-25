@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import type { ClassifierId } from '../../../src/features/models/model-catalogue';
 import type {
 	TrainingStartRequest,
 	TrainingWorkerReply,
@@ -53,10 +54,24 @@ export async function configureDraft(
 ): Promise<Locator> {
 	await page.getByRole('button', { name: 'Train New Model' }).click();
 	await expect(page).toHaveURL(`/models/${modelNum}`);
+	return configureOpenDraft(page, modelNum, { saveConfiguration });
+}
 
+/** Configures the current draft after the caller has entered the workflow. */
+export async function configureOpenDraft(
+	page: Page,
+	modelNum: number,
+	{
+		saveConfiguration = true,
+		classifier = 'logistic-regression'
+	}: {
+		saveConfiguration?: boolean;
+		classifier?: ClassifierId;
+	} = {}
+): Promise<Locator> {
 	await page
 		.locator('app-model-builder-view')
-		.locator('app-model-card[model-id="logistic-regression"]')
+		.locator(`app-model-card[model-id="${classifier}"]`)
 		.getByRole('button', { name: 'Select Model' })
 		.click();
 	await page
