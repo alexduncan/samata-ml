@@ -1,9 +1,9 @@
 # Give The Dot one purpose in workflow navigation
 
-**Status:** ready-for-review | **Updated:** 2026-11-25T15:01:48Z
+**Status:** ready | **Updated:** 2026-11-25T15:06:39Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-25T10:57:56Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
-**Verified hash:** —
+**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-25T15:06:39Z | **Verification:** approved
+**Verified hash:** sha256:c2ea29a30096468c2a71c9871848b9c537c940fb272e4009759113109c848a54
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -171,6 +171,7 @@ None.
 | -------------------- | ------------- | ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-11-25T14:57:39Z | Codex (GPT-6) | changes-requested | MAJOR T1: synchronous component subscriptions conflict with COMPONENTS.md §5. Define a compliant transition owner behind StoreController, keep admission and trained counts in one acknowledged projection, and distinguish model-loss epochs from genuine dataset/target or full-discard resets. MAJOR navigation seam: compare the model workflow resolved effective path and specify same-underlay Help versus different-underlay history. Make the core visible in T1, target the exact /models/new anchors, and make the CSP test observe a real burst under the policy. Supply changed paths to the T3 format check. |
 | 2026-11-25T15:01:01Z | Codex (GPT-6) | changes-requested | MAJOR T1: invalidate pending Train Another when the last trained record is lost and gate incomplete first-attempt rearm on the epoch high-water mark, so demotion and recovery cannot reinsert and reanimate a previously armed cue (DOT-AC-3). Preserve each captured Nanostore publication in the reducer rather than rereading both live stores from a queued callback; add focused regression coverage.                                                                                                                                                                                                                |
+| 2026-11-25T15:06:39Z | Codex (GPT-6) | approved          | Verified T1–T3, captured Nanostores updates and no replay on loss or recovery, exact companion sidebar links and effective history path, and CSP-safe burst coverage across three browsers. No blockers.                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 ## Change log
 
