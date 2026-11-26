@@ -1,6 +1,6 @@
 import { html } from 'lit';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
-import { expect, waitFor } from 'storybook/test';
+import { expect, userEvent, waitFor } from 'storybook/test';
 import {
 	breastCancerOneShot,
 	irisCrossValidation
@@ -63,7 +63,7 @@ function seed(state: StoryState): () => void {
 			: [];
 	$appState.set({
 		...structuredClone(INITIAL_APP_STATE),
-		onboarding: { welcomeDismissed: true },
+		onboarding: { welcomeDismissed: true, betaTelemetryAccepted: false },
 		dataset: {
 			id: 'iris',
 			name: 'Iris',
@@ -126,37 +126,67 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
+async function comparisonTerms(canvasElement: HTMLElement): Promise<HTMLDetailsElement> {
+	const view = canvasElement.querySelector('app-results-view')!;
+	await waitFor(() => expect(view.shadowRoot!.querySelector('.terms-disclosure')).not.toBeNull());
+	return view.shadowRoot!.querySelector<HTMLDetailsElement>('.terms-disclosure')!;
+}
+
+async function expectTermsAbsent({ canvasElement }: { canvasElement: HTMLElement }) {
+	const view = canvasElement.querySelector('app-results-view')!;
+	await view.updateComplete;
+	expect(view.shadowRoot!.querySelector('.terms-disclosure')).toBeNull();
+}
+
 /** Two saved cross-validation evaluations. */
 export const Populated: Story = {
 	beforeEach: () => seed('ready'),
 	play: async ({ canvasElement }) => {
-		await waitFor(() =>
-			expect(
-				canvasElement
-					.querySelector('app-results-view')!
-					.shadowRoot!.querySelector('app-comparison-table')
-			).not.toBeNull()
-		);
+		const disclosure = await comparisonTerms(canvasElement);
+		expect(disclosure.previousElementSibling?.localName).toBe('app-comparison-table');
+		expect(disclosure.open).toBe(false);
+		const summary = disclosure.querySelector('summary')!;
+		await userEvent.click(summary);
+		expect(disclosure.open).toBe(true);
+		expect(disclosure.querySelector('dl')?.textContent).toContain('Pooled held-out score');
+		await userEvent.click(summary);
+		expect(disclosure.open).toBe(false);
 	}
 };
 /** Fewer than two models have been trained. */
-export const Blocked: Story = { beforeEach: () => seed('blocked') };
+export const Blocked: Story = { beforeEach: () => seed('blocked'), play: expectTermsAbsent };
 /** One-Shot results explain why paired-fold analysis is unavailable. */
 export const OneShot: Story = { beforeEach: () => seed('one-shot') };
 /** The saved evaluations are loading. */
-export const Loading: Story = { beforeEach: () => seed('loading') };
+export const Loading: Story = { beforeEach: () => seed('loading'), play: expectTermsAbsent };
 /** The saved evaluations predate detailed results. */
-export const Legacy: Story = { beforeEach: () => seed('legacy') };
+export const Legacy: Story = { beforeEach: () => seed('legacy'), play: expectTermsAbsent };
 /** The saved evaluations have been lost. */
-export const Lost: Story = { beforeEach: () => seed('lost') };
+export const Lost: Story = { beforeEach: () => seed('lost'), play: expectTermsAbsent };
 /** An evaluation could not be read. */
-export const ReadError: Story = { beforeEach: () => seed('error') };
+export const ReadError: Story = { beforeEach: () => seed('error'), play: expectTermsAbsent };
 /** Different evaluation rows cannot form a comparison. */
-export const Incompatible: Story = { beforeEach: () => seed('incompatible') };
+export const Incompatible: Story = {
+	beforeEach: () => seed('incompatible'),
+	play: expectTermsAbsent
+};
 /** Long class labels remain available in tables. */
-export const LongLabels: Story = { beforeEach: () => seed('long') };
+export const LongLabels: Story = {
+	beforeEach: () => seed('long'),
+	play: async ({ canvasElement }) => {
+		const disclosure = await comparisonTerms(canvasElement);
+		await userEvent.click(disclosure.querySelector('summary')!);
+		expect(disclosure.open).toBe(true);
+	}
+};
 /** The comparison in right-to-left layout. */
 export const RTL: Story = {
 	beforeEach: () => seed('ready'),
-	render: () => html`<div dir="rtl"><app-results-view></app-results-view></div>`
+	render: () => html`<div dir="rtl"><app-results-view></app-results-view></div>`,
+	play: async ({ canvasElement }) => {
+		const disclosure = await comparisonTerms(canvasElement);
+		await userEvent.click(disclosure.querySelector('summary')!);
+		expect(disclosure.open).toBe(true);
+		expect(getComputedStyle(disclosure).direction).toBe('rtl');
+	}
 };

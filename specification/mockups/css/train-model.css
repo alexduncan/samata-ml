@@ -19,7 +19,10 @@
 				align-items: center;
 
 				h2 {
+					display: flex;
 					flex: 1 1 auto;
+					justify-content: space-between;
+					align-items: center;
 					margin: 0;
 					padding: 0.75rem 1rem;
 					color: var(--stone-700);
@@ -32,6 +35,9 @@
 				}
 
 				.train-step-status {
+					display: inline-flex;
+					align-items: center;
+					gap: 0.5rem;
 					color: var(--green-700);
 				}
 			}
@@ -56,12 +62,6 @@
 				h2 {
 					color: var(--stone-900);
 					font-size: 1.25rem;
-
-					.help-link {
-						margin-left: 0.5rem;
-						font-weight: 400;
-						font-size: 0.875rem;
-					}
 				}
 			}
 		}
@@ -90,4 +90,20 @@
 	height: 1px;
 	overflow: hidden;
 	white-space: nowrap;
+}
+
+.help-link {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.25rem;
+	margin-left: 0.5rem;
+	border-radius: 0.375rem;
+	padding: 0.5rem 0.75rem;
+	color: var(--blue-700);
+	font-weight: 400;
+	font-size: 0.875rem;
+
+	&:hover {
+		background-color: var(--blue-100);
+	}
 }

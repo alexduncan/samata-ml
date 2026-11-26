@@ -262,7 +262,7 @@ export default {
 			name: 'compas_screening_date',
 			displayName: 'COMPAS Screening Date',
 			description: 'Date on which the pretrial COMPAS risk assessment was administered.',
-			dataType: 'datetime',
+			dataType: 'date',
 			role: 'identifier'
 		},
 		{
@@ -277,7 +277,7 @@ export default {
 			name: 'dob',
 			displayName: 'Date of Birth',
 			description: 'Defendant date of birth (YYYY-MM-DD).',
-			dataType: 'datetime',
+			dataType: 'date',
 			role: 'identifier'
 		},
 		{
@@ -378,7 +378,7 @@ export default {
 			name: 'c_offense_date',
 			displayName: 'Index Offense Date',
 			description: 'Recorded date of the index alleged offense.',
-			dataType: 'datetime',
+			dataType: 'date',
 			role: 'identifier'
 		},
 		{
@@ -386,7 +386,7 @@ export default {
 			displayName: 'Index Arrest Date',
 			description:
 				'Recorded arrest date when no offense date was filed (missing in 6,077 rows).',
-			dataType: 'datetime',
+			dataType: 'date',
 			role: 'identifier'
 		},
 		{
@@ -456,7 +456,7 @@ export default {
 			name: 'r_offense_date',
 			displayName: 'Recidivism Offense Date',
 			description: 'Date of subsequent rearrest offense.',
-			dataType: 'datetime',
+			dataType: 'date',
 			role: 'feature'
 		},
 		{
@@ -470,14 +470,14 @@ export default {
 			name: 'r_jail_in',
 			displayName: 'Recidivism Jail In Date',
 			description: 'Jail booking date for the subsequent rearrest.',
-			dataType: 'datetime',
+			dataType: 'date',
 			role: 'feature'
 		},
 		{
 			name: 'r_jail_out',
 			displayName: 'Recidivism Jail Out Date',
 			description: 'Jail release date for the subsequent rearrest.',
-			dataType: 'datetime',
+			dataType: 'date',
 			role: 'feature'
 		},
 		{
@@ -517,7 +517,7 @@ export default {
 			name: 'vr_offense_date',
 			displayName: 'Violent Recidivism Offense Date',
 			description: 'Date of post-screening violent offense.',
-			dataType: 'datetime',
+			dataType: 'date',
 			role: 'feature'
 		},
 		{
@@ -554,7 +554,7 @@ export default {
 			name: 'screening_date',
 			displayName: 'Screening Date (Join Copy)',
 			description: "Duplicate screening date column from ProPublica's SQLite join.",
-			dataType: 'datetime',
+			dataType: 'date',
 			role: 'identifier'
 		},
 		{
@@ -582,21 +582,21 @@ export default {
 			name: 'v_screening_date',
 			displayName: 'Violence Screening Date',
 			description: 'Date of COMPAS violent risk screening.',
-			dataType: 'datetime',
+			dataType: 'date',
 			role: 'identifier'
 		},
 		{
 			name: 'in_custody',
 			displayName: 'Subsequent Custody Start',
 			description: "Custody start date used in ProPublica's Cox survival table.",
-			dataType: 'datetime',
+			dataType: 'date',
 			role: 'feature'
 		},
 		{
 			name: 'out_custody',
 			displayName: 'Subsequent Custody End',
 			description: "Custody release date used in ProPublica's Cox survival table.",
-			dataType: 'datetime',
+			dataType: 'date',
 			role: 'feature'
 		},
 		{

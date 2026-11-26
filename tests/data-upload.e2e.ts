@@ -1,4 +1,9 @@
 import { expect, test } from '@playwright/test';
+import type { StorageRequest, StorageResponse } from '../src/features/data/ingestion/protocol';
+
+interface UploadTestWindow extends Window {
+	uploadCloseProbe: { closes: number; progressCancels: number; aborts: number };
+}
 
 test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
 	test.beforeEach(async ({ page }) => {
@@ -75,6 +80,123 @@ test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
 		await expect(uploadBtn).toBeFocused();
 	});
 
+	test('DLG-BACKDROP-1: upload user close aborts the owned operation once and progress Cancel leaves it open', async ({
+		page
+	}) => {
+		const component = page.locator('app-upload-dataset-dialog');
+		await component.waitFor({ state: 'attached' });
+		await component.evaluate((element) => {
+			const probe = { closes: 0, progressCancels: 0, aborts: 0 };
+			(window as unknown as UploadTestWindow).uploadCloseProbe = probe;
+			let heldRequest: number | undefined;
+			const abort = AbortController.prototype.abort;
+			const send = Worker.prototype.postMessage;
+			AbortController.prototype.abort = function (reason?: unknown) {
+				if (heldRequest !== undefined) probe.aborts++;
+				return abort.call(this, reason);
+			};
+			Worker.prototype.postMessage = function (
+				request: StorageRequest,
+				transfer?: Transferable[] | StructuredSerializeOptions
+			) {
+				if (request.type === 'ingest' && request.source.kind === 'file') {
+					heldRequest = request.requestId;
+					return;
+				}
+				if (
+					heldRequest !== undefined &&
+					request.type === 'cancel' &&
+					request.targetRequestId === heldRequest
+				) {
+					queueMicrotask(() => {
+						heldRequest = undefined;
+						this.dispatchEvent(
+							new MessageEvent('message', {
+								data: {
+									requestId: request.targetRequestId,
+									type: 'error',
+									error: {
+										code: 'CANCELLED',
+										message: 'Fixture acknowledges cancellation'
+									}
+								} satisfies StorageResponse
+							})
+						);
+					});
+					return;
+				}
+				Reflect.apply(send, this, transfer === undefined ? [request] : [request, transfer]);
+			};
+			element.addEventListener('app-upload-close', () => probe.closes++);
+			element.addEventListener('app-upload-cancel', () => probe.progressCancels++);
+		});
+
+		const invoker = page.getByRole('button', { name: 'Upload Dataset', exact: true });
+		const dialog = component.locator('dialog.modal');
+		const cancel = dialog.getByRole('button', { name: 'Cancel', exact: true });
+		const probe = () =>
+			page.evaluate(() => (window as unknown as UploadTestWindow).uploadCloseProbe);
+		const open = async () => {
+			await invoker.focus();
+			await invoker.press('Enter');
+			await expect(dialog).toBeVisible();
+		};
+		const holdUpload = async () => {
+			await dialog.locator('input[type=file]').setInputFiles({
+				name: 'held.csv',
+				mimeType: 'text/csv',
+				buffer: Buffer.from('Length,Class\n1,Plant\n2,Animal\n')
+			});
+			await expect(cancel).toBeVisible();
+		};
+		await open();
+		await page.mouse.click(2, 2);
+		await expect(dialog).toBeHidden();
+		await expect(invoker).toBeFocused();
+		await expect.poll(probe).toEqual({ closes: 1, progressCancels: 0, aborts: 0 });
+
+		await open();
+		await holdUpload();
+		await cancel.click();
+		await expect(cancel).toBeHidden();
+		await expect(dialog).toBeVisible();
+		expect(await probe()).toEqual({ closes: 1, progressCancels: 1, aborts: 1 });
+
+		const userCloses = [
+			() => dialog.getByRole('button', { name: 'Close modal' }).click(),
+			() => page.keyboard.press('Escape'),
+			() => page.mouse.click(2, 2)
+		];
+		for (const [index, close] of userCloses.entries()) {
+			if (index > 0) await open();
+			await holdUpload();
+			await close();
+			await expect(dialog).toBeHidden();
+			await expect(invoker).toBeFocused();
+			await expect
+				.poll(probe)
+				.toEqual({ closes: index + 2, progressCancels: 1, aborts: index + 2 });
+		}
+
+		await open();
+		await holdUpload();
+		await component.evaluate(async (node) => {
+			const element = node as HTMLElementTagNameMap['app-upload-dataset-dialog'];
+			element.open = false;
+			await element.updateComplete;
+		});
+		await expect(dialog).toBeHidden();
+		await component.evaluate(async (node) => {
+			const element = node as HTMLElementTagNameMap['app-upload-dataset-dialog'];
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+			element.open = true;
+			await element.updateComplete;
+			element.remove();
+			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+		});
+		expect(await probe()).toEqual({ closes: 4, progressCancels: 1, aborts: 4 });
+	});
+
 	test('DATA-UP-2: cancel and failure preserve prior dataset state', async ({ page }) => {
 		const uploadBtn = page.locator('header.page-header button:has-text("Upload Dataset")');
 		await uploadBtn.click();
@@ -138,5 +260,43 @@ test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
 
 		// Modal closes on successful load
 		await expect(dialog).not.toBeVisible({ timeout: 10000 });
+	});
+
+	test('TEMP-AC-14: date, time and datetime columns display at their own precision', async ({
+		page
+	}) => {
+		await page.locator('header.page-header button:has-text("Upload Dataset")').click();
+		const dialog = page.locator('app-upload-dataset-dialog dialog.modal');
+		await expect(dialog).toBeVisible();
+
+		const rows = Array.from({ length: 10 }, (_, index) => {
+			const day = `2013-08-${String(14 + index).padStart(2, '0')}`;
+			const clock = `${String(9 + index).padStart(2, '0')}:30`;
+			const moment = `2013-08-13 06:03:${String(42 + index).padStart(2, '0')}`;
+			return `${day},${clock},${moment},${index % 2 ? 'positive' : 'negative'}`;
+		});
+		await dialog.locator('input[type="file"]').setInputFiles({
+			name: 'temporal.csv',
+			mimeType: 'text/csv',
+			buffer: Buffer.from(['day,clock,moment,label', ...rows].join('\n'))
+		});
+		await expect(dialog).not.toBeVisible({ timeout: 10000 });
+
+		const preview = page.locator('app-dataset-preview');
+		const table = preview.locator('ui-virtual-table');
+		await expect(table).toContainText('2013-08-14', { timeout: 10000 });
+		await expect(table).toContainText('09:30');
+		await expect(table).toContainText('2013-08-13T06:03:42Z');
+
+		const aside = page.locator('app-column-details aside.overlay');
+		await table.locator('.header-btn[data-col-key="day"]').click();
+		await expect(aside).toBeVisible();
+		await expect(aside.getByRole('rowheader', { name: 'Earliest', exact: true })).toBeVisible();
+		await expect(aside.getByRole('rowheader', { name: 'Latest', exact: true })).toBeVisible();
+		await expect(aside).toContainText('2013-08-14');
+		await expect(aside).not.toContainText('UTC');
+
+		await table.locator('.header-btn[data-col-key="moment"]').click();
+		await expect(aside.getByRole('rowheader', { name: 'Earliest (UTC)' })).toBeVisible();
 	});
 });

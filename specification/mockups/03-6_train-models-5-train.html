@@ -39,9 +39,19 @@
 				<line x1="6" y1="6" x2="18" y2="18" />
 			</symbol>
 
+			<symbol id="alert" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M13.3 2c1 .4 1.5 1.5 2.5 3.6l5 10c1 2 1.5 2.9 1.3 3.8a3 3 0 0 1-1.2 2q-1 .8-4 .6H7.1q-3.1.1-4-.5a3 3 0 0 1-1.3-2c-.2-1 .3-2 1.3-4l5-9.9q1.3-3 2.5-3.6a3 3 0 0 1 2.6 0M12 16.8a1.3 1.3 0 1 0 0 2.5 1.3 1.3 0 0 0 0-2.6m0-10.3a1 1 0 0 0-.9.5L11 8.1v4.8l.1 1a1 1 0 0 0 1.8 0l.1-1V8.1l-.1-1a1 1 0 0 0-.9-.6" />
+			</symbol>
+
 			<symbol id="check" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
 				<path
 					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m5.73 5.29a1 1 0 0 0-1.41 0L10 14.6l-2.31-2.32a1 1 0 1 0-1.42 1.42l3.02 3.02a1 1 0 0 0 1.42 0l7.02-7.03a1 1 0 0 0 0-1.41" />
+			</symbol>
+
+			<symbol id="error" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m0 12.75a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5M12 5.5a1 1 0 0 0-.891.546C11 6.26 11 6.54 11 7.1v4.8c0 .56 0 .84.109 1.054a1 1 0 0 0 1.782 0C13 12.74 13 12.46 13 11.9V7.1c0-.56 0-.84-.109-1.054A1 1 0 0 0 12 5.5" />
 			</symbol>
 
 			<symbol id="question" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
@@ -88,14 +98,28 @@
 					<li class="step">
 						<div class="step-link">
 							<span class="step-num">3</span>
-							<span class="step-label-small">Models</span>
-							<ul class="step-models">
+							<a href="/models" class="step-link-small">All Trained Models</a>
+							<ol class="step-models">
+								<li class="step-model">
+									<a href="/models/1" class="step-model-link step-trained-model"
+										><span class="swatch swatch-amber">1</span>
+										<span class="step-model-name">Logisitic Regression</span>
+										<span class="chiclet">7 features</span></a
+									>
+								</li>
+								<li class="step-model">
+									<a href="/models/2" class="step-model-link step-trained-model"
+										><span class="swatch swatch-blue">2</span>
+										<span class="step-model-name">Decision Tree</span>
+										<span class="chiclet">5 features</span></a
+									>
+								</li>
 								<li class="step-model">
 									<div class="step-model-link" aria-current="step">
 										Training New Model...
 									</div>
 								</li>
-							</ul>
+							</ol>
 						</div>
 					</li>
 					<li class="step">
@@ -129,17 +153,16 @@
 						<section class="train-step-panel" aria-labelledby="step-1-title">
 							<header class="train-step-header">
 								<h2 id="step-1-title">1. {Model Name}</h2>
-
 								<span class="train-step-action train-step-status">
+									<button
+										type="button"
+										class="btn btn-small"
+										aria-label="Edit Configure Model">
+										Edit
+									</button>
 									<span class="visually-hidden">Completed</span>
-									<svg
-										aria-hidden="true"
-										width="20"
-										height="20"
-										viewBox="0 0 24 24"
-										fill="currentColor">
-										<path
-											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									<svg class="icon" aria-hidden="true">
+										<use href="#check" />
 									</svg>
 								</span>
 							</header>
@@ -159,17 +182,16 @@
 						<section class="train-step-panel" aria-labelledby="step-2-title">
 							<header class="train-step-header">
 								<h2 id="step-2-title">2. {number_of_features} Features Selected</h2>
-
 								<span class="train-step-action train-step-status">
+									<button
+										type="button"
+										class="btn btn-small"
+										aria-label="{edit step label}">
+										Edit
+									</button>
 									<span class="visually-hidden">Completed</span>
-									<svg
-										aria-hidden="true"
-										width="20"
-										height="20"
-										viewBox="0 0 24 24"
-										fill="currentColor">
-										<path
-											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									<svg class="icon" aria-hidden="true">
+										<use href="#check" />
 									</svg>
 								</span>
 							</header>
@@ -197,17 +219,16 @@
 						<section class="train-step-panel" aria-labelledby="step-3-title">
 							<header class="train-step-header">
 								<h2 id="step-3-title">3. Model Configured</h2>
-
 								<span class="train-step-action train-step-status">
+									<button
+										type="button"
+										class="btn btn-small"
+										aria-label="Edit Configure Model">
+										Edit
+									</button>
 									<span class="visually-hidden">Completed</span>
-									<svg
-										aria-hidden="true"
-										width="20"
-										height="20"
-										viewBox="0 0 24 24"
-										fill="currentColor">
-										<path
-											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									<svg class="icon" aria-hidden="true">
+										<use href="#check" />
 									</svg>
 								</span>
 							</header>
@@ -220,18 +241,19 @@
 					<li class="train-step">
 						<section class="train-step-panel" aria-labelledby="step-4-title">
 							<header class="train-step-header">
-								<h2 id="step-4-title">4. Training Setup</h2>
-
+								<h2 id="step-4-title">
+									4. {# Fold Cross Validation|One-Shot Training}
+								</h2>
 								<span class="train-step-action train-step-status">
+									<button
+										type="button"
+										class="btn btn-small"
+										aria-label="Edit Configure Model">
+										Edit
+									</button>
 									<span class="visually-hidden">Completed</span>
-									<svg
-										aria-hidden="true"
-										width="20"
-										height="20"
-										viewBox="0 0 24 24"
-										fill="currentColor">
-										<path
-											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									<svg class="icon" aria-hidden="true">
+										<use href="#check" />
 									</svg>
 								</span>
 							</header>
@@ -253,121 +275,323 @@
 							</header>
 
 							<div class="train-step-content">
-								<!-- One-Shot Model Training -->
-								<div class="progress training-active">
-									<div class="progress-header">
-										<label for="model-train-bar">Overall progress</label>
-										<!-- Visual percentage only; <progress> already exposes the value to assistive tech -->
-										<span class="progress-percent" aria-hidden="true">62%</span>
-									</div>
-									<!-- Determinate: set value (0–99 while running, 100 on completed).
+								<!-- Determinate: set value (0–99 while running, 100 on completed).
          							Indeterminate (queued, SVC/SVR training): remove the value attribute entirely. -->
-									<progress
-										id="model-train-bar"
-										max="100"
-										value="62"
-										class="progress-bar"></progress>
-								</div>
-								<!-- Plain text for current step (not a live region, so screen readers aren't spammed) -->
-								<p class="phase-message">Learning from your data…</p>
-								<!-- Polite live region: populate ONLY on completion or cancellation -->
-								<p class="outcome-message" role="status"></p>
-								<!-- Assertive alert: populate ONLY on 'failed' -->
-								<div class="error-banner" role="alert" hidden>
-									<p class="error-summary"></p>
-									<button type="button" class="retry-button">Try again</button>
-									<details class="error-details">
-										<summary>Technical details</summary>
-										<p class="error-raw"></p>
-									</details>
-								</div>
 
-								<hr />
-
-								<!-- Cross-validate Model training -->
+								<!-- Training Progress Bar: Pre-Training -->
 								<div class="progress training-active">
-									<div class="progress-header">
-										<label for="cv-bar">Overall progress</label>
-										<span class="progress-percent" aria-hidden="true">64%</span>
-									</div>
-									<!-- Omit value before first fold-start or while queued/SVC native fit -->
 									<progress
-										id="cv-bar"
-										max="100"
-										value="64"
+										id="{currentStatusId}"
 										class="progress-bar"></progress>
 								</div>
-								<p class="phase-message">Running check 4 of 5…</p>
-								<!-- Optional visual step tracker (e.g. dots or pills in CSS);
-       						add a final <li> only when request.refit === true -->
-								<ol class="step-list" aria-label="Progress steps">
-									<li data-status="complete">Check 1</li>
-									<li data-status="complete">Check 2</li>
-									<li data-status="complete">Check 3</li>
-									<li data-status="active" aria-current="step">Check 4</li>
-									<li data-status="pending">Check 5</li>
-									<li data-status="pending">Final model</li>
-								</ol>
-								<!-- Populate ONLY on final completion or cancellation -->
-								<p class="outcome-message" role="status"></p>
-								<div class="error-banner" role="alert" hidden>
-									<p class="error-summary"></p>
-									<button type="button" class="retry-button">Try again</button>
-								</div>
+								<!-- / Training Progress Bar: Pre-Training -->
 
 								<hr />
 
-								<!-- Nested Cross-validation Model training -->
-								<div class="progress training-active progress--primary">
-									<div class="progress-header">
-										<label for="nested-overall-bar">Overall progress</label>
-										<span class="progress-percent" aria-hidden="true">46%</span>
-									</div>
-									<!-- Omit value before the first outer-fold-start -->
+								<!-- Training Progress Bar: Training -->
+								<div class="progress training-active">
 									<progress
-										id="nested-overall-bar"
+										id="{currentStatusId}"
 										max="100"
-										value="46"
+										value="100"
 										class="progress-bar"></progress>
+									<span class="progress-percent" aria-hidden="true">64%</span>
 								</div>
-								<!-- Secondary bar: activity inside the current round -->
-								<div class="progress training-active progress--secondary">
-									<div class="progress-header">
-										<label for="nested-round-bar">Current round (3 of 5)</label>
-										<span class="progress-counter" aria-hidden="true"
-											>3 of 10 checked</span
-										>
-									</div>
-									<!-- Omit value while queued, loading data, or finalizing the round -->
-									<progress
-										id="nested-round-bar"
-										max="10"
-										value="3"
-										class="progress-bar"></progress>
-								</div>
-								<p class="phase-message">Round 3 of 5 · Testing settings…</p>
-								<!-- Polite live region: update on each outer-fold-complete (e.g. "Completed round 2 of 5")
-       						and on final completion/cancellation -->
-								<p class="outcome-message" role="status"></p>
-								<div class="error-banner" role="alert" hidden>
-									<p class="error-summary"></p>
-									<button type="button" class="retry-button">Try again</button>
-								</div>
+								<!-- / Training Progress Bar: Training -->
 
 								<hr />
-								<!-- Training Cancelled -->
+
+								<!-- Training Progress Bar: Failed / Cancelled -->
 								<div class="progress training-stopped">
-									<div class="progress-header">
-										<label for="cv-bar">Overall progress</label>
-										<span class="progress-percent" aria-hidden="true">64%</span>
-									</div>
-									<!-- Omit value before first fold-start or while queued/SVC native fit -->
 									<progress
-										id="cv-bar"
+										id="{currentStatusId}"
 										max="100"
-										value="64"
-										class="progress-bar"></progress>
+										value="25"
+										class="progress-bar progress-bar-red"></progress>
+									<span class="progress-percent" aria-hidden="true">25%</span>
 								</div>
+								<!-- / Training Progress Bar: Failed / Cancelled -->
+
+								<hr />
+
+								<!-- Training Progress Bar: Completed -->
+								<div class="progress training-complete">
+									<progress
+										id="{currentStatusId}"
+										max="100"
+										value="100"
+										class="progress-bar progress-bar-green"></progress>
+									<span class="progress-percent" aria-hidden="true">100%</span>
+								</div>
+								<!-- / Training Progress Bar: Completed -->
+
+								<hr />
+
+								<!-- Example 1 Closed Training Log -->
+								<details class="log">
+									<summary class="log-status" for="progress-bar">
+										Starting fold 1 of 5
+									</summary>
+									<ul class="log-history">
+										<li>Preparing data</li>
+										<li>Starting fold 1 of 5</li>
+										<li>Fold 1 complete</li>
+										<li>Starting fold 2 of 5</li>
+									</ul>
+								</details>
+								<!-- / Example 1 Closed Training Log -->
+
+								<hr />
+
+								<!-- Example 2 Open Training Log -->
+								<details class="log" open="">
+									<summary class="log-status">Starting fold 1 of 5</summary>
+									<ul class="log-history">
+										<li>Preparing data</li>
+										<li>Starting fold 1 of 5</li>
+										<li>Fold 1 complete</li>
+										<li>Starting fold 2 of 5</li>
+									</ul>
+								</details>
+								<!-- / Example 2 Open Training Log -->
+
+								<hr />
+
+								<!-- Example 3 Refitting Training Log -->
+								<details class="log" open="">
+									<summary class="log-status">
+										Refitting the model on all eligible rows
+									</summary>
+									<ul class="log-history">
+										<li>Preparing data</li>
+										<li>Starting fold 1 of 5</li>
+										<li>Fold 1 complete</li>
+										<li>Starting fold 2 of 5</li>
+										<li>Fold 2 complete</li>
+										<li>Starting fold 3 of 5</li>
+										<li>Fold 3 complete</li>
+										<li>Starting fold 4 of 5</li>
+										<li>Fold 4 complete</li>
+										<li>Starting fold 5 of 5</li>
+										<li>Fold 5 complete</li>
+										<li>Refitting the model on all eligible rows</li>
+									</ul>
+								</details>
+								<!-- / Example 3 Refitting Training Log -->
+
+								<hr />
+
+								<!-- Example 4 Completed Training Run -->
+								<details class="log">
+									<summary class="log-status log-status-complete">
+										<svg class="icon" aria-hidden="true">
+											<use href="#check"></use>
+										</svg>
+										Training complete
+									</summary>
+									<ul class="log-history">
+										<li>Preparing data</li>
+										<li>Starting fold 1 of 5</li>
+										<li>Fold 1 complete</li>
+										<li>Starting fold 2 of 5</li>
+										<li>Fold 2 complete</li>
+										<li>Starting fold 3 of 5</li>
+										<li>Fold 3 complete</li>
+										<li>Starting fold 4 of 5</li>
+										<li>Fold 4 complete</li>
+										<li>Starting fold 5 of 5</li>
+										<li>Fold 5 complete</li>
+									</ul>
+								</details>
+								<!-- / Example 4 Completed Training Run -->
+
+								<!-- Alternative states, each replacing the active panel above. -->
+								<!-- Waiting for Worker -->
+								<!-- This will display before the training Web Worker reports its first progress event. -->
+								<template id="waiting-for-worker">
+									<progress aria-label="Training progress" max="100"></progress>
+									<details>
+										<summary>Waiting for the training worker</summary>
+										<ol></ol>
+									</details>
+									<p class="visually-hidden" role="status" aria-live="polite"></p>
+								</template>
+								<!-- / Waiting for Worker -->
+
+								<!-- Remote Training Active -->
+								<!-- This will display when another browser tab is currently running training for the project. -->
+								<template id="remote-training">
+									<progress aria-label="Training progress" max="100"></progress>
+									<details>
+										<summary>Training in another tab</summary>
+										<ol></ol>
+									</details>
+									<p class="visually-hidden" role="status" aria-live="polite"></p>
+									<button type="button" class="btn" disabled>View Results</button>
+								</template>
+								<!-- / Remote Training Active -->
+
+								<!-- Training Publication Pending -->
+								<!-- This will display when training results are saved but final progress publication failed and can be retried. -->
+								<template id="training-publication-pending">
+									<button type="button" class="btn" disabled>
+										Cancel Training
+									</button>
+									<button type="button" class="btn" disabled>View Results</button>
+									<progress
+										aria-label="Training progress"
+										max="100"
+										value="95"></progress>
+									<details>
+										<summary>Saving results</summary>
+										<ol>
+											<li>Preparing data</li>
+											<li>Fitting the model</li>
+										</ol>
+									</details>
+									<p class="visually-hidden" role="status" aria-live="polite"></p>
+									<div class="notification notification-alert">
+										<p class="notification-text" role="alert">
+											The result is saved, but progress could not be saved.
+											Retry saving.
+										</p>
+										<button type="button" class="btn">Retry saving</button>
+									</div>
+								</template>
+								<!-- / Training Publication Pending -->
+
+								<!-- Training Complete -->
+								<!-- This will display when model training finishes and results are ready to inspect. -->
+								<template id="training-complete">
+									<button type="button" class="btn">View Results</button>
+									<progress
+										aria-label="Training progress"
+										max="100"
+										value="100"></progress>
+									<details>
+										<summary>Training complete</summary>
+										<ol>
+											<li>Preparing data</li>
+											<li>Fitting the model</li>
+											<li>Saving results</li>
+											<li>Training complete</li>
+										</ol>
+									</details>
+									<p>Elapsed time 2.1 sec</p>
+									<p class="visually-hidden" role="status" aria-live="polite"></p>
+								</template>
+								<!-- / Training Complete -->
+
+								<!-- Training Error -->
+								<!-- This will display when model training fails with an error and the user can retry. -->
+								<template id="training-error">
+									<div class="notification notification-alert">
+										<p class="notification-text" role="alert">
+											Training could not finish. Check your setup and try
+											again.
+										</p>
+									</div>
+									<button type="submit" class="btn btn-primary">
+										Train Model
+									</button>
+								</template>
+								<!-- / Training Error -->
+
+								<!-- Training Cancelled -->
+								<!-- This will display after the user cancels an in-progress training run. -->
+								<template id="training-cancelled">
+									<div class="notification notification-alert">
+										<p class="notification-text" role="alert">
+											Training was cancelled. You can start again.
+										</p>
+									</div>
+									<button type="submit" class="btn btn-primary">
+										Train Model
+									</button>
+								</template>
+								<!-- / Training Cancelled -->
+
+								<!-- Training Runtime Unavailable -->
+								<!-- This will display when the browser tab lacks cross-origin isolation or worker support required for training. -->
+								<template id="training-runtime-unavailable">
+									<div class="notification notification-alert">
+										<p class="notification-text" role="alert">
+											This page cannot start training. Open it in a browser
+											tab that supports isolated training and try again.
+										</p>
+									</div>
+									<button type="submit" class="btn btn-primary">
+										Train Model
+									</button>
+								</template>
+								<!-- / Training Runtime Unavailable -->
+
+								<!-- Retry Training -->
+								<!-- This will display when a browser tab crashed or reloaded during training. -->
+								<section>
+									<h2>Retry Training</h2>
+									<p class="notification notification-error" role="alert">
+										<svg class="icon" aria-hidden="true">
+											<use href="#error"></use>
+										</svg>
+										<strong>Error:</strong>
+										Your training session was interrupted.
+									</p>
+									<button type="button" class="btn btn-primary">
+										Retry Training Model
+									</button>
+								</section>
+								<!-- / Retry Training -->
+
+								<!-- Restore Saved Work -->
+								<!-- This will display on reload when previously saved training state could not be restored. -->
+								<section>
+									<h2>Restore saved work</h2>
+									<p class="notification notification-alert" role="alert">
+										<svg class="icon" aria-hidden="true">
+											<use href="#alert"></use>
+										</svg>
+										Your saved work could not be restored. Retry saving.
+									</p>
+									<button type="button" class="btn btn-primary">
+										Retry saving
+									</button>
+								</section>
+								<!-- / Restore Saved Work -->
+
+								<!-- Confirmed Change Awaiting Publication -->
+								<!-- This will display when a confirmed project change is saved locally but publication is still pending. -->
+								<section>
+									<h2>Confirmed change awaiting publication</h2>
+									<p class="notification notification-alert" role="alert">
+										<svg class="icon" aria-hidden="true">
+											<use href="#alert"></use>
+										</svg>
+										The change is saved, but finishing is pending. Retry saving.
+									</p>
+									<button type="button" class="btn" disabled>Cancel</button>
+									<button type="button" class="btn btn-primary">
+										Retry saving
+									</button>
+								</section>
+								<!-- / Confirmed Change Awaiting Publication -->
+
+								<!-- Cross-Tab Training Conflict -->
+								<!-- This will display when the user attempts a destructive change while another tab is actively training. -->
+								<section>
+									<h2>Training in another tab</h2>
+									<p class="notification notification-alert" role="alert">
+										<svg class="icon" aria-hidden="true">
+											<use href="#alert"></use>
+										</svg>
+										Training in another tab
+									</p>
+									<button type="button" class="btn">Cancel</button>
+									<button type="button" class="btn btn-primary">
+										Change Target
+									</button>
+								</section>
+								<!-- / Cross-Tab Training Conflict -->
 							</div>
 						</section>
 					</li>
@@ -385,144 +609,6 @@
 				</ol>
 			</section>
 			<!-- / Active Training Progress -->
-
-			<!-- Alternative states, each replacing the active panel above. -->
-			<!-- Waiting for Worker -->
-			<!-- This will display before the training Web Worker reports its first progress event. -->
-			<template id="waiting-for-worker">
-				<progress aria-label="Training progress" max="100"></progress>
-				<details>
-					<summary>Waiting for the training worker</summary>
-					<ol></ol>
-				</details>
-				<p class="visually-hidden" role="status" aria-live="polite"></p>
-			</template>
-			<!-- / Waiting for Worker -->
-
-			<!-- Remote Training Active -->
-			<!-- This will display when another browser tab is currently running training for the project. -->
-			<template id="remote-training">
-				<progress aria-label="Training progress" max="100"></progress>
-				<details>
-					<summary>Training in another tab</summary>
-					<ol></ol>
-				</details>
-				<p class="visually-hidden" role="status" aria-live="polite"></p>
-				<button type="button" class="btn" disabled>View Results</button>
-			</template>
-			<!-- / Remote Training Active -->
-
-			<!-- Training Publication Pending -->
-			<!-- This will display when training results are saved but final progress publication failed and can be retried. -->
-			<template id="training-publication-pending">
-				<button type="button" class="btn" disabled>Cancel Training</button>
-				<button type="button" class="btn" disabled>View Results</button>
-				<progress aria-label="Training progress" max="100" value="95"></progress>
-				<details>
-					<summary>Saving results</summary>
-					<ol>
-						<li>Preparing data</li>
-						<li>Fitting the model</li>
-					</ol>
-				</details>
-				<p class="visually-hidden" role="status" aria-live="polite"></p>
-				<div class="notification notification-alert">
-					<p class="notification-text" role="alert">
-						The result is saved, but progress could not be saved. Retry saving.
-					</p>
-					<button type="button" class="btn">Retry saving</button>
-				</div>
-			</template>
-			<!-- / Training Publication Pending -->
-
-			<!-- Training Complete -->
-			<!-- This will display when model training finishes and results are ready to inspect. -->
-			<template id="training-complete">
-				<button type="button" class="btn">View Results</button>
-				<progress aria-label="Training progress" max="100" value="100"></progress>
-				<details>
-					<summary>Training complete</summary>
-					<ol>
-						<li>Preparing data</li>
-						<li>Fitting the model</li>
-						<li>Saving results</li>
-						<li>Training complete</li>
-					</ol>
-				</details>
-				<p>Elapsed time 2.1 sec</p>
-				<p class="visually-hidden" role="status" aria-live="polite"></p>
-			</template>
-			<!-- / Training Complete -->
-
-			<!-- Training Error -->
-			<!-- This will display when model training fails with an error and the user can retry. -->
-			<template id="training-error">
-				<div class="notification notification-alert">
-					<p class="notification-text" role="alert">
-						Training could not finish. Check your setup and try again.
-					</p>
-				</div>
-				<button type="submit" class="btn btn-primary">Train Model</button>
-			</template>
-			<!-- / Training Error -->
-
-			<!-- Training Cancelled -->
-			<!-- This will display after the user cancels an in-progress training run. -->
-			<template id="training-cancelled">
-				<div class="notification notification-alert">
-					<p class="notification-text" role="alert">
-						Training was cancelled. You can start again.
-					</p>
-				</div>
-				<button type="submit" class="btn btn-primary">Train Model</button>
-			</template>
-			<!-- / Training Cancelled -->
-
-			<!-- Training Runtime Unavailable -->
-			<!-- This will display when the browser tab lacks cross-origin isolation or worker support required for training. -->
-			<template id="training-runtime-unavailable">
-				<div class="notification notification-alert">
-					<p class="notification-text" role="alert">
-						This page cannot start training. Open it in a browser tab that supports
-						isolated training and try again.
-					</p>
-				</div>
-				<button type="submit" class="btn btn-primary">Train Model</button>
-			</template>
-			<!-- / Training Runtime Unavailable -->
-
-			<!-- Restore Saved Work -->
-			<!-- This will display on reload when previously saved training state could not be restored. -->
-			<section>
-				<h2>Restore saved work</h2>
-				<p class="notification notification-alert" role="alert">
-					Your saved work could not be restored. Retry saving.
-				</p>
-				<button type="button" class="btn btn-primary">Retry saving</button>
-			</section>
-			<!-- / Restore Saved Work -->
-
-			<!-- Confirmed Change Awaiting Publication -->
-			<!-- This will display when a confirmed project change is saved locally but publication is still pending. -->
-			<section>
-				<h2>Confirmed change awaiting publication</h2>
-				<p class="notification notification-alert" role="alert">
-					The change is saved, but finishing is pending. Retry saving.
-				</p>
-				<button type="button" class="btn" disabled>Cancel</button>
-				<button type="button" class="btn btn-primary">Retry saving</button>
-			</section>
-			<!-- / Confirmed Change Awaiting Publication -->
-
-			<!-- Cross-Tab Training Conflict -->
-			<!-- This will display when the user attempts a destructive change while another tab is actively training. -->
-			<section>
-				<h2>Training in another tab</h2>
-				<p class="notification notification-alert" role="alert">Training in another tab</p>
-				<button type="button" class="btn">Cancel</button>
-				<button type="button" class="btn btn-primary">Change Target</button>
-			</section>
-			<!-- / Cross-Tab Training Conflict -->
 		</main>
 	</body>
 </html>

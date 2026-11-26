@@ -205,9 +205,7 @@ export const parityMap: ParityEntry[] = [
 		([id, selector, properties, fixture, axes]): ParityEntry => ({
 			id: `sidebar-${id}`,
 			mockupPage:
-				fixture === 'empty'
-					? '01-1_select-data.html'
-					: '03-2_train-models-1-choose-model.html',
+				fixture === 'empty' ? '01-1_select-data.html' : '03-7_train-models-5-results.html',
 			mockupSelector: `.sidebar ${selector}`,
 			appRoute: '/data',
 			appSelector: `app-sidebar ${selector.replace('.project h4', '.project h2')}`,
@@ -573,7 +571,8 @@ export const parityMap: ParityEntry[] = [
 		mockupSelector: '.file-picker-button',
 		appRoute: '/data',
 		appSelector: 'app-upload-dataset-dialog .file-picker-button',
-		properties: ['display', 'border-radius', 'background-color', 'color', 'font-weight']
+		properties: ['display', 'border-radius', 'background-color', 'color', 'font-weight'],
+		deviations: { color: { value: 'rgb(109, 96, 86)', register: 'A11Y-03' } }
 	},
 	{
 		id: 'preview-header',
@@ -709,7 +708,8 @@ export const parityMap: ParityEntry[] = [
 		mockupPage: '03-2_train-models-1-choose-model.html',
 		mockupSelector: 'article.card',
 		appRoute: '/models/1',
-		appSelector: 'app-model-builder-view app-model-card article.card',
+		appSelector:
+			'app-model-builder-view app-model-card[model-id="logistic-regression"] article.card',
 		properties: ['display', 'flex-direction', 'border-radius', 'background-color']
 	},
 	{

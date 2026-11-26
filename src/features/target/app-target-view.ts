@@ -121,38 +121,6 @@ export class AppTargetView extends LitElement {
 				padding-block: 1rem;
 				color: var(--red-700);
 			}
-
-			dialog.confirm-dialog {
-				box-shadow: var(--shadow-deep);
-				border: 1.5px solid var(--stone-200);
-				border-radius: 1rem;
-				background-color: var(--surface);
-				padding: 1.5rem;
-				inline-size: min(32rem, calc(100% - 2rem));
-				max-inline-size: none;
-				max-block-size: calc(100dvh - 2rem);
-				overflow: auto;
-				color: var(--stone-800);
-			}
-
-			.modal-header h2 {
-				margin: 0;
-				color: var(--stone-900);
-				font-weight: 600;
-				font-size: 1.25rem;
-			}
-
-			.modal-body {
-				margin-block: 1rem;
-				color: var(--stone-700);
-				line-height: 1.5;
-			}
-
-			.modal-footer {
-				display: flex;
-				justify-content: flex-end;
-				gap: 0.75rem;
-			}
 		`
 	];
 
@@ -541,26 +509,25 @@ export class AppTargetView extends LitElement {
 			<dialog
 				class="confirm-dialog"
 				aria-labelledby="confirm-target-title"
+				closedby=${this.targetChanging || this.targetPublicationPending
+					? 'none'
+					: 'closerequest'}
 				@cancel=${this.handleDialogCancel}
 				@close=${this.handleDialogClose}>
-				<div class="modal-header">
+				<div class="confirm-header">
 					<h2 id="confirm-target-title">Change Target</h2>
 				</div>
-				<div class="modal-body">
-					<p class="notification notification-alert">
-						Changing the target will reset all existing models.
-					</p>
+				<div class="confirm-body">
+					<p>Changing the target will reset all existing models.</p>
 					<p>
 						Confirmation: discard all models and set ${this.pendingTarget ?? ''} as the
 						target?
 					</p>
 					${this.targetChangeError
-						? html`<p class="notification notification-alert" role="alert">
-								${this.targetChangeError}
-							</p>`
+						? html`<p role="alert">${this.targetChangeError}</p>`
 						: nothing}
 				</div>
-				<div class="modal-footer">
+				<div class="confirm-footer">
 					<button
 						type="button"
 						class="btn"

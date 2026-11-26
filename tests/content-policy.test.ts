@@ -71,6 +71,7 @@ describe('Content policy, locales and reserved-route map', () => {
 			'/privacy',
 			'/help',
 			'/help/configure-model',
+			'/help/select-features',
 			'/help/training-setup'
 		];
 		expect(Object.keys(RESERVED_CONTENT).sort()).toEqual(expectedPaths.sort());
@@ -78,6 +79,7 @@ describe('Content policy, locales and reserved-route map', () => {
 		expect(RESERVED_CONTENT['/privacy']).toBe('privacy-policy');
 		expect(RESERVED_CONTENT['/help']).toBe('help');
 		expect(RESERVED_CONTENT['/help/configure-model']).toBe('configure-model');
+		expect(RESERVED_CONTENT['/help/select-features']).toBe('select-features');
 		expect(RESERVED_CONTENT['/help/training-setup']).toBe('training-setup');
 	});
 

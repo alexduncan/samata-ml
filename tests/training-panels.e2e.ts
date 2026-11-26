@@ -1,7 +1,12 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import type { PersistedAppState } from '../src/types/state';
-import { configureDraft, controlTraining, openSetup } from './fixtures/training/browser';
+import { DEFAULT_ONE_SHOT_SETUP, type PersistedAppState } from '../src/types/state';
+import {
+	controlTraining,
+	openLegacyModel,
+	openLegacyTrainingSetup,
+	openSetup
+} from './fixtures/training/browser';
 import { fixtureTrainingResult } from './fixtures/training/results';
 
 function training(page: Page) {
@@ -9,10 +14,14 @@ function training(page: Page) {
 }
 
 async function revisitTraining(page: Page): Promise<void> {
-	await page.locator('app-sidebar a[href="/models"]').click();
+	const help = page.locator('app-sidebar a[href="/help"]');
+	await help.click();
+	await expect(page.getByRole('dialog', { name: 'Help' })).toBeVisible();
+	await page.evaluate(() => history.go(-2));
 	await expect(page).toHaveURL('/models');
-	await page.locator('app-sidebar a[href="/models/1"]').click();
-	await expect(page).toHaveURL('/models/1');
+	await expect(page.locator('app-model-builder-view')).toHaveCount(0);
+	await page.goForward();
+	await expect(page).toHaveURL('/models/new');
 }
 
 async function assertPanelAccessibility(page: Page): Promise<void> {
@@ -92,7 +101,7 @@ async function succeed(page: Page): Promise<string> {
 	}, json);
 }
 
-test('starts once, keeps native controls stable and announces milestones across progress updates', async ({
+test('MW-PROGRESS-1: starts once, keeps native controls stable and announces milestones across progress updates', async ({
 	page
 }) => {
 	await controlTraining(page);
@@ -122,25 +131,37 @@ test('starts once, keeps native controls stable and announces milestones across 
 	await expect(panel.locator('ol li').last()).toHaveText('Fitting the model');
 	await fitProgress(page, 37, false);
 	await expect(progress).toHaveAttribute('value', '37');
+	await expect(panel.locator('.progress-percent')).toHaveText('37%');
+	await expect(panel.locator('.progress-percent')).toHaveAttribute('aria-hidden', 'true');
 	expect(await progress.evaluate((node, previous) => node === previous, progressNode)).toBe(true);
 	expect(await summary.evaluate((node, previous) => node === previous, summaryNode)).toBe(true);
 	await expect(status).toHaveText('Fitting the model');
 	await expect(status).toHaveAttribute('data-announcements', '1');
 	await expect(summary).toBeFocused();
 	await assertPanelAccessibility(page);
+	await page.setViewportSize({ width: 320, height: 800 });
+	await page.emulateMedia({ forcedColors: 'active' });
+	await expect(progress).toBeVisible();
+	await expect(summary).toBeVisible();
+	await expect(panel.locator('ol li').last()).toBeVisible();
+	expect(await panel.evaluate((element) => element.scrollWidth <= element.clientWidth + 1)).toBe(
+		true
+	);
 
-	await page.locator('app-sidebar a[href="/target"]').click();
-	await expect(page).toHaveURL('/target');
+	await page.locator('app-sidebar a[href="/help"]').click();
+	const close = page.getByRole('button', { name: 'Close', exact: true });
+	await expect(close).toBeFocused();
 	const runId = await succeed(page);
 	await expect
 		.poll(() => page.evaluate(() => window.__appState!.get().models[0]?.status))
 		.toBe('trained');
-	await page.locator('app-sidebar a[href="/models/1"]').click();
+	await expect(close).toBeFocused();
+	await close.click();
 	await expect(panel.getByRole('button', { name: 'View Results' })).toBeEnabled();
 	await expect(progress).toHaveAttribute('value', '100');
 	await expect(panel.getByText(/^Elapsed time/)).toBeVisible();
 	await expect(panel.locator('details')).toHaveAttribute('open', '');
-	await expect(status).toBeEmpty();
+	await expect(panel.locator('ol li').last()).toHaveText('Training complete');
 	expect(await page.evaluate(() => window.__appState!.get().models[0]?.resultRevision)).toBe(
 		runId
 	);
@@ -149,12 +170,23 @@ test('starts once, keeps native controls stable and announces milestones across 
 });
 
 for (const outcome of ['cancelled', 'invalid-request', 'worker-crashed'] as const) {
-	test(`${outcome} restores the Training Setup button with a safe localised reason`, async ({
+	test(`MW-PROGRESS-2 / BETA-ERR-4: ${outcome} restores the stopped action with a safe localised reason`, async ({
 		page
 	}) => {
 		await controlTraining(page);
-		const setup = await start(page);
-		const cancel = training(page).getByRole('button', { name: 'Cancel Training' });
+		await start(page);
+		const panel = training(page);
+		const autofocusWarnings: string[] = [];
+		page.on('console', (message) => {
+			if (message.text().includes('Autofocus processing was blocked'))
+				autofocusWarnings.push(message.text());
+		});
+		if (outcome === 'cancelled') {
+			await fitProgress(page, 40, true);
+			await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '40');
+			await panel.locator('summary').press('Enter');
+		}
+		const cancel = panel.getByRole('button', { name: 'Cancel Training' });
 		await cancel.focus();
 		await expect(cancel).toBeFocused();
 		if (outcome === 'cancelled') {
@@ -168,24 +200,117 @@ for (const outcome of ['cancelled', 'invalid-request', 'worker-crashed'] as cons
 				outcome
 			);
 		}
-		await expect(setup.getByRole('button', { name: 'Train Model' })).toBeFocused();
-		await expect(
-			page.locator('section[aria-labelledby="step-4-title"]').getByRole('alert')
-		).toHaveText(
+		await expect(panel.getByRole('heading', { name: '5. Training Stopped' })).toBeVisible();
+		const stoppedAction = panel.getByRole('button', { name: 'Train Model', exact: true });
+		await expect(stoppedAction).toBeFocused();
+		await expect(stoppedAction).not.toHaveAttribute('autofocus');
+		await expect(panel.locator('.notification')).toHaveText(
 			outcome === 'cancelled'
 				? /Training was cancelled/
 				: outcome === 'invalid-request'
 					? /The training library rejected this setup/
 					: /Training could not finish/
 		);
-		await expect(training(page)).toHaveCount(0);
+		await expect(panel.getByRole('alert')).toHaveCount(0);
+		await expect(panel.getByRole('status')).toHaveText(
+			outcome === 'cancelled'
+				? 'Training was cancelled. You can start again.'
+				: 'Training could not finish. Check your setup and try again.'
+		);
+		if (outcome === 'cancelled') {
+			await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '40');
+			await expect(panel.locator('.training-stopped')).toBeVisible();
+			await expect(panel.locator('details')).toHaveAttribute('open', '');
+		} else await expect(panel.getByRole('progressbar')).toHaveCount(0);
+		await expect(panel.getByRole('button', { name: 'View Results' })).toHaveCount(0);
+		await page.locator('app-sidebar a[href="/help"]').click();
+		await page
+			.getByRole('dialog', { name: 'Help' })
+			.getByRole('button', { name: 'Close' })
+			.click();
+		await expect(panel.getByRole('heading', { name: '5. Training Stopped' })).toBeVisible();
+		await assertPanelAccessibility(page);
 		await revisitTraining(page);
+		await expect(panel).toHaveCount(0);
 		await expect(
 			page.locator('section[aria-labelledby="step-4-title"]').getByRole('alert')
 		).toBeVisible();
 		await assertPanelAccessibility(page);
+		expect(autofocusWarnings).toEqual([]);
 	});
 }
+
+test('MW-PROGRESS-2: blocked retry keeps recovery, and a new run and edit clear the old bar', async ({
+	page
+}) => {
+	await controlTraining(page);
+	await start(page);
+	const panel = training(page);
+	await fitProgress(page, 50, true);
+	await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '50');
+	await page.evaluate(() =>
+		window.__trainingFixture!.reply({ kind: 'failed', code: 'worker-crashed' })
+	);
+	const retry = panel.getByRole('button', { name: 'Train Model', exact: true });
+	await expect(retry).toBeEnabled();
+	await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '50');
+	await page.evaluate(() => {
+		window.__trainingFixture!.blockRead = true;
+	});
+	await retry.click();
+	await expect(panel.getByRole('alert')).toHaveText(/Training progress could not be saved/);
+	await expect(panel.getByRole('heading', { name: '5. Training Stopped' })).toBeVisible();
+	await expect(panel.getByRole('progressbar')).toHaveCount(0);
+	expect(await requestCount(page)).toBe(1);
+	await page.evaluate(() => {
+		window.__trainingFixture!.blockRead = false;
+	});
+	await retry.click();
+	await expect.poll(() => requestCount(page)).toBe(2);
+	const attempts = await page.evaluate(() =>
+		window.__trainingFixture!.requests.filter((request) => request.kind === 'start')
+	);
+	expect(attempts[1]?.identity.runId).not.toBe(attempts[0]?.identity.runId);
+	expect(attempts[1]?.setup).toEqual(attempts[0]?.setup);
+	await expect(panel.getByRole('progressbar')).not.toHaveAttribute('value');
+	await page.evaluate(() =>
+		window.__trainingFixture!.reply({ kind: 'failed', code: 'worker-crashed' })
+	);
+	await panel.getByRole('button', { name: 'Edit Training Setup' }).click();
+	await expect(panel).toHaveCount(0);
+	await expect(page.locator('#step-4-title')).toBeFocused();
+	await expect(page.locator('app-training-setup').getByRole('combobox')).toHaveValue('one_shot');
+});
+
+test('BETA-ERR-4b: a result arriving after leaving training does not steal normal route focus', async ({
+	page
+}) => {
+	await controlTraining(page);
+	const setup = await openLegacyTrainingSetup(page);
+	await setup.getByRole('button', { name: 'Train Model' }).press('Enter');
+	await expect.poll(() => requestCount(page)).toBe(1);
+	const autofocusWarnings: string[] = [];
+	page.on('console', (message) => {
+		if (message.text().includes('Autofocus processing was blocked'))
+			autofocusWarnings.push(message.text());
+	});
+	await page.locator('app-sidebar a[href="/models"]').click();
+	const overviewHeading = page.locator('app-models-view .page-header h1');
+	await expect(overviewHeading).toBeFocused();
+	await page.evaluate(() =>
+		window.__trainingFixture!.reply({ kind: 'failed', code: 'worker-crashed' })
+	);
+	await expect
+		.poll(() => page.evaluate(() => window.__appState!.get().models[0]?.status))
+		.toBe('draft');
+	await expect(overviewHeading).toBeFocused();
+	await openLegacyModel(page, 1);
+	await expect(page.locator('app-model-builder-view .page-header h1')).toBeFocused();
+	await expect(
+		page.locator('app-training-setup').getByRole('button', { name: 'Train Model' })
+	).not.toBeFocused();
+	expect(autofocusWarnings).toEqual([]);
+});
 
 test('rejects a non-isolated start before constructing a worker and keeps the form usable', async ({
 	page
@@ -202,6 +327,26 @@ test('rejects a non-isolated start before constructing a worker and keeps the fo
 	await expect(training(page)).toHaveCount(0);
 	expect(await requestCount(page)).toBe(0);
 	await assertPanelAccessibility(page);
+});
+
+test('MW-GUARD-2: confirmed departure waits for the matching local cancellation', async ({
+	page
+}) => {
+	await controlTraining(page);
+	await start(page);
+	await page.locator('app-sidebar a[href="/target"]').press('Enter');
+	const dialog = page.getByRole('dialog', { name: 'Leave this model?' });
+	await expect(dialog.getByRole('button', { name: 'Stay' })).toBeFocused();
+	await dialog.getByRole('button', { name: 'Leave', exact: true }).click();
+	await expect.poll(() => requestCount(page, 'cancel')).toBe(1);
+	await expect(dialog.getByRole('status')).toHaveText('Leaving the model…');
+	await page.keyboard.press('Escape');
+	await expect(dialog).toBeVisible();
+	await expect(page).toHaveURL('/models/new');
+	await page.evaluate(() => window.__trainingFixture!.reply({ kind: 'cancelled' }));
+	await expect(page).toHaveURL('/target');
+	await expect(dialog).toBeHidden();
+	expect(await page.evaluate(() => window.__appState!.get().models)).toEqual([]);
 });
 
 test('a committed start awaiting publication returns to a draft without launching a worker', async ({
@@ -234,13 +379,14 @@ test('WML-P3-UI-1/5: retries only publication and preserves a disclosure changed
 }) => {
 	await controlTraining(page);
 	await start(page);
+	await fitProgress(page, 72, true);
 	await page.evaluate(() => (window.__trainingFixture!.blockPublication = 'finish'));
 	const runId = await succeed(page);
 	const panel = training(page);
 	await expect(panel.getByRole('alert')).toHaveText(
 		'The result is saved, but progress could not be saved. Retry saving.'
 	);
-	await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '95');
+	await expect(panel.getByRole('progressbar')).toHaveAttribute('value', '72');
 	await expect(panel.getByRole('button', { name: 'View Results' })).toBeDisabled();
 	await expect(panel.getByRole('button', { name: 'Cancel Training' })).toBeDisabled();
 	const blockedWrites = await page.evaluate(() => window.__trainingFixture!.blockedWrites);
@@ -274,9 +420,14 @@ test('WML-P3-UI-2: each stopped model retries its own repair and preserves the r
 	page
 }) => {
 	await controlTraining(page);
-	await start(page);
-	await page.locator('app-sidebar a[href="/models"]').click();
-	const secondSetup = await configureDraft(page, 2);
+	const firstSetup = await openLegacyTrainingSetup(page, [
+		DEFAULT_ONE_SHOT_SETUP,
+		DEFAULT_ONE_SHOT_SETUP
+	]);
+	await firstSetup.getByRole('button', { name: 'Train Model' }).press('Enter');
+	await expect.poll(() => requestCount(page)).toBe(1);
+	await openLegacyModel(page, 2);
+	const secondSetup = page.locator('app-training-setup');
 	await secondSetup.getByRole('button', { name: 'Train Model' }).press('Enter');
 	await expect.poll(() => requestCount(page)).toBe(2);
 	const generation = await page.evaluate(() => window.__appState!.get().trainingDomainGeneration);
@@ -290,7 +441,7 @@ test('WML-P3-UI-2: each stopped model retries its own repair and preserves the r
 	const panel = training(page);
 	const retry = panel.getByRole('button', { name: 'Retry saving' });
 	await expect(retry).toBeVisible();
-	await page.locator('app-sidebar a[href="/models/1"]').click();
+	await openLegacyModel(page, 1);
 	await expect(retry).toBeVisible();
 	await expect(panel.getByRole('alert')).toHaveText(/Training has stopped/);
 	await expect(panel.getByRole('button', { name: 'Cancel Training' })).toBeDisabled();
@@ -316,7 +467,7 @@ test('WML-P3-UI-2: each stopped model retries its own repair and preserves the r
 		generation + 1
 	);
 
-	await page.locator('app-sidebar a[href="/models/2"]').click();
+	await openLegacyModel(page, 2);
 	await expect(retry).toBeVisible();
 	await retry.press('Enter');
 	await expect(stoppedNotice).toHaveText(/The training library rejected this setup/);
@@ -446,8 +597,8 @@ for (const [outcome, recovery] of [
 	}) => {
 		await controlTraining(page);
 		const setup = await start(page);
-		const submit = setup.getByRole('button', { name: 'Train Model' });
-		const retry = training(page).getByRole('button', { name: 'Retry saving' });
+		const panel = training(page);
+		const retry = panel.getByRole('button', { name: 'Retry saving' });
 		const generation = (await savedRun(page)).generation + 1;
 		const reason =
 			outcome === 'invalid-request'
@@ -513,7 +664,8 @@ for (const [outcome, recovery] of [
 					'training'
 				);
 				if (recovery === 'later storage event') {
-					await other.locator('app-sidebar a[href="/models"]').click();
+					// A document navigation keeps the unfinished draft for the original tab.
+					await other.goto('/models');
 					await expect(other).toHaveURL('/models');
 				}
 			} else {
@@ -530,13 +682,14 @@ for (const [outcome, recovery] of [
 				});
 			}
 			if (recovery !== 'later storage event') await retry.press('Enter');
-			const notice = page
-				.locator('section[aria-labelledby="step-4-title"]')
-				.getByRole('alert');
-			await expect(submit).toBeEnabled();
-			await expect(notice).toHaveText(reason);
+			await expect(panel.getByRole('heading', { name: '5. Training Stopped' })).toBeVisible();
+			await expect(
+				panel.getByRole('button', { name: 'Train Model', exact: true })
+			).toBeEnabled();
+			await expect(panel.locator('.notification')).toHaveText(reason);
+			await expect(panel.getByRole('alert')).toHaveCount(0);
 			await expect(page.getByText('Private worker details')).toHaveCount(0);
-			await expect(training(page)).toHaveCount(0);
+			await expect(panel.getByRole('progressbar')).toHaveCount(0);
 			await expect(page.getByRole('button', { name: 'Retry saving' })).toHaveCount(0);
 			expect(await storedStop(page)).toEqual({
 				generation,
@@ -553,8 +706,11 @@ for (const [outcome, recovery] of [
 			expect(await requestCount(page)).toBe(1);
 			if (other) expect(await requestCount(other)).toBe(0);
 			await page.reload();
-			await expect(submit).toBeEnabled();
-			await expect(notice).toHaveText(reason);
+			await expect(panel).toHaveCount(0);
+			await expect(setup.getByRole('button', { name: 'Train Model' })).toBeEnabled();
+			await expect(
+				page.locator('section[aria-labelledby="step-4-title"]').getByRole('alert')
+			).toHaveText(reason);
 			expect(await storedStop(page)).toMatchObject({
 				logOpen: openLog,
 				reason: outcome,
@@ -643,7 +799,7 @@ for (const recovery of [
 			await expect(viewResults).toBeEnabled();
 			await expect(retry).toBeHidden();
 			await expect(owner.getByRole('progressbar')).toHaveAttribute('value', '100');
-			await expect(page).toHaveURL('/models/1');
+			await expect(page).toHaveURL('/models/new');
 			expect(await ownerState()).toEqual(trained);
 			expect(await savedRun(page)).toEqual(trained);
 			expect(await requestCount(page)).toBe(1);

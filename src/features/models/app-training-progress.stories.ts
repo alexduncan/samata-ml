@@ -7,7 +7,13 @@ import './app-training-progress';
 type ProgressArgs = Partial<
 	Pick<
 		AppTrainingProgress,
-		'progress' | 'logEntries' | 'logOpen' | 'announcement' | 'durationText' | 'labels'
+		| 'progress'
+		| 'variant'
+		| 'logEntries'
+		| 'logOpen'
+		| 'announcement'
+		| 'durationText'
+		| 'labels'
 	>
 > & {
 	dir?: 'ltr' | 'rtl';
@@ -39,6 +45,7 @@ const meta = {
 	},
 	argTypes: {
 		progress: { control: 'object' },
+		variant: { control: 'radio', options: ['active', 'stopped', 'complete'] },
 		logEntries: { control: 'object' },
 		logOpen: { control: 'boolean' },
 		announcement: { control: 'text' },
@@ -94,6 +101,8 @@ export const Determinate: Story = {
 		expect(root.querySelector('progress')).toBe(bar);
 		expect(root.querySelector('details')).toBe(details);
 		expect(bar).toHaveAttribute('value', '49');
+		expect(root.querySelector('.progress-percent')).toHaveTextContent('49%');
+		expect(root.querySelector('.progress-percent')).toHaveAttribute('aria-hidden', 'true');
 		expect(root.querySelector('[role=status]')).toBeEmptyDOMElement();
 	}
 };
@@ -169,7 +178,7 @@ export const Remote: Story = {
 	args: { progress: { ...determinate, percent: null, statusMessage: 'Training in another tab' } }
 };
 
-/** The bar stays at 95 percent until the model state is published. */
+/** The last measured percentage stays visible until the model state is published. */
 export const PublicationPending: Story = {
 	args: {
 		progress: { percent: 95, stage: 'saving', phase: null, statusMessage: 'Saving results' },
@@ -180,6 +189,7 @@ export const PublicationPending: Story = {
 /** Completion shows the elapsed time and the full bar. */
 export const Complete: Story = {
 	args: {
+		variant: 'complete',
 		progress: {
 			percent: 100,
 			stage: 'saving',
@@ -191,6 +201,88 @@ export const Complete: Story = {
 			{ id: 3, timestamp: 3, level: 'status', message: { key: 'completed' } }
 		],
 		durationText: 'Elapsed time 2.1 sec'
+	}
+};
+
+/** Shows the last measured proportion of an acknowledged stopped attempt. */
+export const StoppedWithProgress: Story = {
+	args: {
+		variant: 'stopped',
+		progress: { ...determinate, statusMessage: 'Training stopped' },
+		logEntries,
+		logOpen: true
+	},
+	play: async ({ canvasElement }) => {
+		const component = canvasElement.querySelector('app-training-progress')!;
+		await component.updateComplete;
+		expect(component.shadowRoot!.querySelector('.training-stopped progress')).toHaveAttribute(
+			'value',
+			'36'
+		);
+	}
+};
+
+/** A stopped attempt can still show its log if no proportion was reported. */
+export const StoppedWithoutProgress: Story = {
+	args: {
+		variant: 'stopped',
+		progress: { ...determinate, percent: null, statusMessage: 'Training stopped' },
+		logEntries
+	},
+	play: async ({ canvasElement }) => {
+		const component = canvasElement.querySelector('app-training-progress')!;
+		await component.updateComplete;
+		expect(component.shadowRoot!.querySelector('progress')).toBeNull();
+		expect(component.shadowRoot!.querySelector('.log-status')).toHaveTextContent(
+			'Training stopped'
+		);
+	}
+};
+
+/** Send a milestone on demand for keyboard and screen reader checks at browser zoom. */
+export const ManualMilestones: Story = {
+	name: 'Manual milestones',
+	args: { progress: determinate, logEntries },
+	render: (args) => {
+		const wrapper = meta.render(args);
+		const progress = wrapper.querySelector('app-training-progress')!;
+		const next = document.createElement('button');
+		next.textContent = 'Report next milestone';
+		next.addEventListener('click', () => {
+			const fold = progress.logEntries.length - 1;
+			const nextId = progress.logEntries.length + 1;
+			progress.logEntries = [
+				...progress.logEntries,
+				{
+					id: nextId,
+					timestamp: nextId,
+					level: 'status',
+					message: { key: 'fold-complete', fold }
+				}
+			];
+			progress.progress = {
+				...determinate,
+				percent: Math.min(99, 36 + fold * 14),
+				statusMessage: `Fold ${fold} complete`
+			};
+			progress.announcement = progress.progress.statusMessage;
+		});
+		const stop = document.createElement('button');
+		stop.textContent = 'Report stopped';
+		stop.addEventListener('click', () => {
+			if (progress.variant === 'stopped') return;
+			const nextId = progress.logEntries.length + 1;
+			progress.logEntries = [
+				...progress.logEntries,
+				{ id: nextId, timestamp: nextId, level: 'status', message: { key: 'cancelled' } }
+			];
+			progress.variant = 'stopped';
+			progress.progress = { ...progress.progress!, statusMessage: 'Training stopped' };
+			progress.announcement = 'Training cancelled';
+			next.disabled = true;
+		});
+		wrapper.prepend(next, stop);
+		return wrapper;
 	}
 };
 

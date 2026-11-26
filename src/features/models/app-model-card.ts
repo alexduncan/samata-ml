@@ -1,6 +1,7 @@
-import { LitElement, html, type TemplateResult } from 'lit';
+import { LitElement, html, nothing, type TemplateResult } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { StoreController } from '@nanostores/lit';
+import { params } from '@nanostores/i18n';
 import { i18n } from '../../i18n';
 import { buttonStyles } from '../../styles/button.styles';
 import { cardStyles } from '../../styles/card.styles';
@@ -12,6 +13,8 @@ import { chicletStyles } from '../../styles/chiclet.styles';
 export const modelCardMessages = i18n('app-model-card', {
 	modelDescription: 'Model Description',
 	selectModel: 'Select Model',
+	actionForModel: params<{ action: string; name: string }>('{action}: {name}'),
+	selected: 'Selected',
 	classification: 'Classification',
 	regression: 'Regression',
 	clustering: 'Clustering'
@@ -23,6 +26,8 @@ export type ModelCardType = 'classification' | 'regression' | 'clustering';
 /**
  * Presentational model card rendering type badge, image slot, title, description and actions.
  * Follows specification/components/card.md and specification/plans/step-3-train-models-overview-and-setup.md D1, D3.
+ *
+ * @slot image - One decorative 5:3 img with empty alt text or one inline svg with viewBox 0 0 360 216.
  */
 @customElement('app-model-card')
 export class AppModelCard extends LitElement {
@@ -46,7 +51,15 @@ export class AppModelCard extends LitElement {
 	@property({ type: String })
 	accessor description = '';
 
-	private handleDescription(): void {
+	/** Whether this card is the current model choice. */
+	@property({ type: Boolean })
+	accessor selected = false;
+
+	private handleDescription(event: MouseEvent): void {
+		if (event.detail > 0 && event.currentTarget instanceof HTMLButtonElement) {
+			// WebKit can activate the button without focusing it before the dialog opens.
+			event.currentTarget.focus({ preventScroll: true });
+		}
 		this.dispatchEvent(
 			new CustomEvent<{ modelId: string; name: string }>('app-model-description-open', {
 				detail: { modelId: this.modelId, name: this.name },
@@ -87,23 +100,33 @@ export class AppModelCard extends LitElement {
 			<article class="card">
 				<span class="card-type ${chicletClass}">${typeLabel}</span>
 				<div class="card-image" aria-hidden="true"><slot name="image"></slot></div>
-				<h3 class="card-title" id="title">${this.name}</h3>
+				<h3 class="card-title">${this.name}</h3>
 				<p class="card-text">${this.description}</p>
 				<div class="card-actions">
 					<button
 						type="button"
 						class="btn"
-						aria-describedby="title"
+						aria-label=${this.name
+							? t.actionForModel({ action: t.modelDescription, name: this.name })
+							: nothing}
 						@click=${this.handleDescription}>
 						${t.modelDescription}
 					</button>
-					<button
-						type="button"
-						class="btn btn-primary"
-						aria-describedby="title"
-						@click=${this.handleSelect}>
-						${t.selectModel}
-					</button>
+					<div class="card-selection">
+						<button
+							type="button"
+							class="btn btn-primary"
+							aria-label=${this.name
+								? t.actionForModel({ action: t.selectModel, name: this.name })
+								: nothing}
+							aria-current=${this.selected ? 'true' : nothing}
+							@click=${this.handleSelect}>
+							${t.selectModel}
+						</button>
+						${this.selected
+							? html`<span aria-hidden="true">${t.selected}</span>`
+							: nothing}
+					</div>
 				</div>
 			</article>
 		`;

@@ -1,6 +1,8 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { buttonStyles } from '../../styles/button.styles';
+import { observeDialogHeader } from '../../common/dom/dialog-header';
+import { installBackdropDismiss } from '../../common/dom/dialog-backdrop';
 import { dialogStyles } from '../../styles/dialog.styles';
 
 /**
@@ -36,69 +38,7 @@ export class AppModelDescriptionDialog extends LitElement {
 		dialogStyles,
 		buttonStyles,
 		css`
-			dialog.modal {
-				box-shadow: var(--shadow-deep);
-				border: 1.5px solid var(--stone-200);
-				border-radius: 1rem;
-				background-color: var(--surface);
-				padding: 1.5rem;
-				inline-size: min(40rem, calc(100% - 2rem));
-				max-inline-size: none;
-				max-block-size: calc(100dvh - 2rem);
-				overflow: auto;
-				color: var(--stone-800);
-			}
-
-			.modal-header {
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				margin-block-end: 1rem;
-				border-block-end: 1px solid var(--stone-200);
-				padding-block-end: 1rem;
-
-				.header-titles {
-					display: flex;
-					flex-direction: column;
-					gap: 0.25rem;
-				}
-
-				.header-subtitle {
-					color: var(--stone-700);
-					font-weight: 500;
-					font-size: 0.875rem;
-				}
-
-				h2 {
-					margin: 0;
-					color: var(--stone-900);
-					font-weight: 600;
-					font-size: 1.5rem;
-				}
-			}
-
-			.close-btn {
-				cursor: pointer;
-				border: none;
-				border-radius: 0.375rem;
-				background: none;
-				padding: 0.5rem;
-				color: var(--stone-600);
-				font-size: 1.25rem;
-				line-height: 1;
-
-				&:hover {
-					background-color: var(--stone-100);
-					color: var(--stone-900);
-				}
-
-				&:focus-visible {
-					outline: 2px solid var(--focus-ring);
-					outline-offset: 2px;
-				}
-			}
-
-			.modal-content {
+			.description-article {
 				color: var(--stone-900);
 				line-height: 1.6;
 
@@ -138,7 +78,7 @@ export class AppModelDescriptionDialog extends LitElement {
 				padding-block: 1rem;
 
 				.missing-notice {
-					color: var(--stone-600);
+					color: var(--stone-700);
 					font-style: italic;
 				}
 
@@ -162,6 +102,19 @@ export class AppModelDescriptionDialog extends LitElement {
 	}
 
 	private invokerElement: HTMLElement | null = null;
+	private stopHeaderObservation?: () => void;
+	private stopBackdropDismiss?: () => void;
+	private synchronisedCloses = 0;
+
+	override disconnectedCallback(): void {
+		this.stopHeaderObservation?.();
+		this.stopBackdropDismiss?.();
+		if (this.dialogElement?.open) {
+			this.synchronisedCloses++;
+			this.dialogElement.close();
+		}
+		super.disconnectedCallback();
+	}
 
 	/** Whether the modal dialog is open. */
 	@property({ type: Boolean })
@@ -202,7 +155,14 @@ export class AppModelDescriptionDialog extends LitElement {
 				} catch {
 					if (this.dialogElement) this.dialogElement.open = true;
 				}
+				if (this.dialogElement?.open) {
+					this.stopHeaderObservation?.();
+					this.stopHeaderObservation = observeDialogHeader(this.dialogElement);
+					this.stopBackdropDismiss?.();
+					this.stopBackdropDismiss = installBackdropDismiss(this.dialogElement);
+				}
 			} else if (!this.open && this.dialogElement?.open) {
+				this.synchronisedCloses++;
 				this.dialogElement.returnValue = '';
 				this.dialogElement.close();
 				this.invokerElement?.focus?.();
@@ -210,29 +170,28 @@ export class AppModelDescriptionDialog extends LitElement {
 		}
 	}
 
-	private handleCancel(e: Event): void {
-		e.preventDefault();
-		this.handleClose();
+	private handleNativeClose(): void {
+		const dialog = this.dialogElement;
+		if (!dialog) return;
+		if (this.synchronisedCloses > 0) {
+			this.synchronisedCloses--;
+			return;
+		}
+		if (dialog.open || !this.open || !this.isConnected) return;
+		dialog.returnValue = '';
+		this.open = false;
+		this.invokerElement?.focus({ preventScroll: true });
+		this.dispatchEvent(
+			new CustomEvent('app-model-description-close', {
+				detail: {},
+				bubbles: false,
+				composed: false
+			})
+		);
 	}
 
 	private handleClose(): void {
-		if (this.dialogElement) {
-			this.dialogElement.returnValue = '';
-			if (this.dialogElement.open) {
-				this.dialogElement.close();
-			}
-		}
-		if (this.open) {
-			this.open = false;
-			this.invokerElement?.focus?.();
-			this.dispatchEvent(
-				new CustomEvent('app-model-description-close', {
-					detail: {},
-					bubbles: false,
-					composed: false
-				})
-			);
-		}
+		this.dialogElement?.close();
 	}
 
 	private handleRetry(): void {
@@ -289,7 +248,7 @@ export class AppModelDescriptionDialog extends LitElement {
 		if (this.status === 'ready' && this.content) {
 			return html`
 				<section
-					class="modal-content"
+					class="description-article"
 					lang=${this.lang || nothing}
 					dir=${this.dir || nothing}>
 					${this.content}
@@ -316,9 +275,9 @@ export class AppModelDescriptionDialog extends LitElement {
 		return html`
 			<dialog
 				class="modal"
-				aria-modal="true"
+				closedby="any"
 				aria-labelledby="model-dialog-title"
-				@cancel=${this.handleCancel}>
+				@close=${this.handleNativeClose}>
 				<header class="modal-header">
 					<div class="header-titles">
 						<span class="header-subtitle">Model Description</span>
@@ -326,13 +285,24 @@ export class AppModelDescriptionDialog extends LitElement {
 					</div>
 					<button
 						type="button"
-						class="close-btn"
+						class="btn-icon"
 						aria-label=${this.labels.close || 'Close modal'}
 						@click=${this.handleClose}>
-						✕
+						<svg
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="1.5"
+							aria-hidden="true"
+							focusable="false">
+							<line x1="18" y1="6" x2="6" y2="18"></line>
+							<line x1="6" y1="6" x2="18" y2="18"></line>
+						</svg>
 					</button>
 				</header>
-				${this.renderContent()}
+				<div class="modal-content">${this.renderContent()}</div>
 			</dialog>
 		`;
 	}

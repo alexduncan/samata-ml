@@ -1,8 +1,10 @@
 import { afterEach, beforeEach, expect, test } from 'bun:test';
+import type { GlobalWindow } from 'happy-dom';
 import { INGESTION_LOCK, deleteDatasetsExcept, openSamataDb } from '../src/common/storage/db';
 import {
 	clearPendingTrainingCheckpoint,
 	commitTrainingCheckpoint,
+	protectedDomainSnapshot,
 	readTrainingCheckpoint
 } from '../src/common/storage/training-domain';
 import type { ClassifierId } from '../src/features/models/model-catalogue';
@@ -15,9 +17,11 @@ import type {
 	TrainingWorkerReply,
 	TrainingWorkerRequest
 } from '../src/features/models/training/protocol';
+import { decodeResultEnvelope } from '../src/features/models/training/result-validation';
 import {
 	$appState,
 	dismissWelcome,
+	modelSwatchAssignments,
 	reduceCreateModel,
 	reduceTrainingStart,
 	setHyperparameters,
@@ -50,9 +54,21 @@ import {
 	DEFAULT_ONE_SHOT_SETUP,
 	INITIAL_APP_STATE,
 	STATE_STORAGE_KEY,
+	type ModelRecord,
 	type PersistedAppState
 } from '../src/types/state';
 import { headlineMetrics } from '../src/common/evaluation/headline-metrics';
+import {
+	onWorkerFailure,
+	resetWorkerFailuresForTests,
+	type WorkerFailureCode
+} from '../src/common/release/worker-failures';
+import {
+	initBetaTelemetry,
+	resetBetaTelemetryForTests,
+	syncBetaRoute
+} from '../src/common/telemetry/telemetry-client';
+import './fixtures/umami-fake-tracker.js';
 import { fixtureLegacyTrainingResult, fixtureTrainingResult } from './fixtures/training/results';
 import { installFakeIndexedDB } from './helpers/fake-indexeddb';
 import { createTrainingTestLocks } from './helpers/training-locks';
@@ -64,6 +80,7 @@ import {
 } from '../src/stores/comparison.store';
 import { $modelResults, currentResultIdentity } from '../src/stores/model-results.store';
 import { irisCrossValidation } from './fixtures/results/evaluations';
+import { $scrollState, recordScroll } from '../src/stores/scroll.store';
 
 const metadata: DatasetMetadata = {
 	id: 'training-dataset',
@@ -192,6 +209,33 @@ afterEach(() => {
 	$appState.set(INITIAL_APP_STATE);
 });
 
+function storeFixture(state: PersistedAppState): void {
+	$appState.set(state);
+	storage.setItem(
+		STATE_STORAGE_KEY,
+		JSON.stringify({
+			...state,
+			models: state.models.map((model) => ({
+				...model,
+				trainingSetup:
+					model.trainingSetup?.type === 'one_shot'
+						? { ...model.trainingSetup, type: 'train_test_split' }
+						: model.trainingSetup
+			}))
+		})
+	);
+}
+
+function configuredModel(model: ModelRecord, modelId: ClassifierId = 'gaussian-nb'): ModelRecord {
+	return {
+		...model,
+		modelId,
+		features: ['measurement'],
+		trainingSetup: DEFAULT_ONE_SHOT_SETUP,
+		completedSteps: ['choose-model', 'select-features', 'configure-model']
+	};
+}
+
 function seed(count = 1, modelId: ClassifierId = 'gaussian-nb'): PersistedAppState {
 	let state: PersistedAppState = {
 		...INITIAL_APP_STATE,
@@ -206,27 +250,297 @@ function seed(count = 1, modelId: ClassifierId = 'gaussian-nb'): PersistedAppSta
 	}
 	state = {
 		...state,
-		models: state.models.map((model) => ({
-			...model,
-			modelId,
-			features: ['measurement'],
-			trainingSetup: DEFAULT_ONE_SHOT_SETUP,
-			completedSteps: ['choose-model', 'select-features', 'configure-model']
-		}))
+		models: state.models.map((model) => configuredModel(model, modelId))
 	};
-	$appState.set(state);
-	storage.setItem(
-		STATE_STORAGE_KEY,
-		JSON.stringify({
-			...state,
-			models: state.models.map((model) => ({
-				...model,
-				trainingSetup: { ...DEFAULT_ONE_SHOT_SETUP, type: 'train_test_split' }
-			}))
-		})
-	);
+	storeFixture(state);
 	return state;
 }
+
+test('MW-STEP-1: precommit failure leaves the original draft and a committed save replays once', async () => {
+	const initial = seed(0);
+	const draft = reduceCreateModel(initial, 10);
+	if (!draft) throw new Error('Missing test draft');
+	storeFixture(draft);
+	const submission = {
+		section: 'choose-model',
+		modelId: 'gaussian-nb',
+		defaultFeatures: ['measurement']
+	} as const;
+	const save = () =>
+		service.saveWizardStep(1, { ...submission, defaultFeatures: ['measurement'] });
+	storage.denyRead = true;
+	expect(await save()).toMatchObject({ ok: false });
+	expect(await readTrainingCheckpoint(db)).toMatchObject({ checkpoint: null });
+	expect($appState.get()).toBe(draft);
+	storage.denyRead = false;
+	storage.reject = (state) => state.models[0]?.completedSteps.includes('choose-model') === true;
+	const [pending, duplicate] = await Promise.all([save(), save()]);
+	expect(duplicate).toMatchObject({ ok: false, code: 'busy' });
+	if (pending.ok || !pending.operationId) throw new Error('Missing pending save operation');
+	expect(pending.pending).toBe('recover');
+	expect($appState.get()).toBe(draft);
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: {
+			generation: 1,
+			pending: {
+				operationId: pending.operationId,
+				kind: 'recover',
+				domain: {
+					models: [
+						{
+							modelId: 'gaussian-nb',
+							features: ['measurement'],
+							completedSteps: ['choose-model'],
+							ui: { featureSelectionInitialised: true }
+						}
+					]
+				}
+			}
+		}
+	});
+	expect(await service.retryWizardStep(1, 'different-operation')).toMatchObject({
+		ok: false,
+		code: 'conflict'
+	});
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: { generation: 1, pending: { operationId: pending.operationId } }
+	});
+	expect(JSON.parse(storage.getItem(STATE_STORAGE_KEY)!).trainingDomainGeneration).toBe(0);
+	const again = await service.retryWizardStep(1, pending.operationId);
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: { generation: 1, pending: { operationId: pending.operationId } }
+	});
+	expect(again).toMatchObject({
+		ok: false,
+		operationId: pending.operationId
+	});
+	storage.reject = () => false;
+	expect(await service.retryWizardStep(1, pending.operationId)).toEqual({
+		ok: true,
+		value: undefined
+	});
+	expect($appState.get().models[0]).toMatchObject({
+		modelId: 'gaussian-nb',
+		features: ['measurement'],
+		completedSteps: ['choose-model'],
+		ui: { featureSelectionInitialised: true }
+	});
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: { generation: 1, pending: null }
+	});
+	expect(await service.retryWizardStep(1, pending.operationId)).toMatchObject({
+		ok: false,
+		code: 'conflict'
+	});
+});
+
+test('MW-STEP-2: a stale draft from another tab cannot commit its wizard step', async () => {
+	const captured = seed();
+	const prior = { ...captured.models[0]!, completedSteps: ['choose-model'] as const };
+	storeFixture({
+		...captured,
+		models: [{ ...prior, completedSteps: [...prior.completedSteps] }]
+	});
+	const raw = JSON.parse(storage.getItem(STATE_STORAGE_KEY)!);
+	storage.setItem(
+		STATE_STORAGE_KEY,
+		JSON.stringify({ ...raw, models: [{ ...raw.models[0], features: [] }] })
+	);
+	expect(await service.saveWizardStep(1, { section: 'select-features' })).toMatchObject({
+		ok: false,
+		code: 'conflict'
+	});
+	expect(await readTrainingCheckpoint(db)).toMatchObject({ checkpoint: null });
+	expect($appState.get().models[0]?.completedSteps).toEqual(['choose-model']);
+});
+
+test('MW-STATE-1: provisional opens share one acknowledged model through retry and remote training', async () => {
+	const start = seed(0);
+	const captured = {
+		datasetId: metadata.id,
+		target: 'species',
+		comparisonContextEpoch: start.comparisonContextEpoch
+	};
+	expect(await service.openNewModel({ ...captured, comparisonContextEpoch: 1 })).toMatchObject({
+		ok: false,
+		code: 'conflict'
+	});
+	expect(await service.openNewModel({ ...captured, target: 'unavailable' })).toMatchObject({
+		ok: false,
+		code: 'conflict'
+	});
+	expect(await service.openNewModel(captured, false)).toMatchObject({
+		ok: false,
+		code: 'conflict'
+	});
+	await db.delete('metadata', metadata.id);
+	expect(await service.openNewModel(captured)).toMatchObject({ ok: false, code: 'conflict' });
+	await db.put('metadata', metadata);
+	expect(await readTrainingCheckpoint(db)).toEqual({ ok: true, checkpoint: null });
+
+	storage.reject = (state) => state.newModelNum === 1;
+	expect(await service.openNewModel(captured)).toMatchObject({
+		ok: false,
+		reason: 'security',
+		pending: 'recover'
+	});
+	expect($appState.get().newModelNum).toBeNull();
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: { generation: 1, pending: { domain: { newModelNum: 1, nextModelNum: 2 } } }
+	});
+	storage.reject = () => false;
+
+	const remote = createTrainingService({
+		locks,
+		persistence: { storage },
+		isIsolated: () => true
+	});
+	const [localOpen, remoteOpen] = await Promise.all([
+		service.openNewModel(captured),
+		remote.openNewModel(captured, false)
+	]);
+	expect(localOpen).toMatchObject({ ok: true, value: { ...captured, modelNum: 1 } });
+	expect(remoteOpen).toEqual(localOpen);
+	expect(await readTrainingCheckpoint(db)).toMatchObject({ checkpoint: { generation: 1 } });
+	const draft = $appState.get();
+	storeFixture({ ...draft, models: draft.models.map((model) => configuredModel(model)) });
+	const run = service.start(1);
+	const worker = await workerAt(0);
+	expect(await remote.openNewModel(captured)).toEqual(localOpen);
+	expect($appState.get().models).toHaveLength(1);
+	expect($appState.get().models[0]?.status).toBe('training');
+	expect(workers).toHaveLength(1);
+	worker.reply({ kind: 'cancelled', identity: worker.identity });
+	await run;
+	expect($appState.get().newModelNum).toBe(1);
+});
+
+test('MW-STATE-2: legacy colours fill in model order and new colours follow commit order', async () => {
+	const state = seed(4);
+	const [first, second, third, fourth] = state.models;
+	const historical: PersistedAppState = {
+		...state,
+		nextModelColorIndex: 8,
+		models: [
+			{ ...second!, status: 'trained' },
+			{ ...first!, status: 'trained' },
+			third!,
+			fourth!
+		]
+	};
+	storeFixture(historical);
+	expect([...modelSwatchAssignments(historical).colours]).toEqual([
+		[1, 'olive'],
+		[2, 'neutral']
+	]);
+	const thirdRun = service.start(3);
+	const thirdWorker = await workerAt(0);
+	const fourthRun = service.start(4);
+	const fourthWorker = await workerAt(1);
+	fourthWorker.succeed();
+	expect(await fourthRun).toMatchObject({ ok: true });
+	thirdWorker.succeed();
+	expect(await thirdRun).toMatchObject({ ok: true });
+	expect($appState.get().models.map(({ num, modelColor }) => [num, modelColor])).toEqual([
+		[2, 'neutral'],
+		[1, 'olive'],
+		[3, 'blue'],
+		[4, 'amber']
+	]);
+	expect($appState.get().nextModelColorIndex).toBe(2);
+	expect(await service.discardTarget(metadata.id, 'species', 'measurement')).toMatchObject({
+		ok: true
+	});
+	expect($appState.get()).toMatchObject({ newModelNum: null, nextModelColorIndex: 0 });
+});
+
+test('MW-STATE-3: first provisional finish pins its result atomically and cannot be replaced by a rerun', async () => {
+	const initial = seed(0);
+	const opened = await service.openNewModel({
+		datasetId: metadata.id,
+		target: 'species',
+		comparisonContextEpoch: initial.comparisonContextEpoch
+	});
+	expect(opened).toMatchObject({ ok: true, value: { modelNum: 1 } });
+	const draft = $appState.get();
+	storeFixture({ ...draft, models: draft.models.map((model) => configuredModel(model)) });
+	const firstRun = service.start(1);
+	const first = await workerAt(0);
+	storage.reject = (state) => state.newModelNum === null;
+	first.succeed();
+	expect(await firstRun).toMatchObject({ ok: false, pending: 'finish' });
+	expect($appState.get()).toMatchObject({ newModelNum: 1, nextModelColorIndex: 0 });
+	expect(await readTrainingCheckpoint(db)).toMatchObject({
+		checkpoint: {
+			pending: {
+				domain: {
+					newModelNum: null,
+					nextModelColorIndex: 1,
+					models: [
+						{
+							provisionalCompletedRunId: first.identity.runId,
+							modelColor: 'amber',
+							modelLabel: null
+						}
+					]
+				}
+			}
+		}
+	});
+	const saved = await db.get('model_results', [metadata.id, 1]);
+	expect(saved).toMatchObject({ ...first.identity, modelLabel: null });
+	storage.reject = () => false;
+	expect(await service.retry(first.identity)).toMatchObject({ ok: true });
+	expect(await service.retry(first.identity)).toMatchObject({ ok: true });
+	expect($appState.get()).toMatchObject({
+		newModelNum: null,
+		nextModelColorIndex: 1,
+		models: [
+			{
+				provisionalCompletedRunId: first.identity.runId,
+				metrics: headlineMetrics(fixtureTrainingResult().evaluation)
+			}
+		]
+	});
+
+	if (!saved || !('schemaVersion' in saved)) throw new Error('Missing result row');
+	expect(decodeResultEnvelope({ ...saved, modelLabel: 42 }, first.identity)).toMatchObject({
+		modelLabel: null,
+		evaluation: fixtureTrainingResult().evaluation
+	});
+	await db.put('model_results', { ...saved, modelLabel: '  Trial A  ' });
+	expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({ ok: true });
+	expect($appState.get().models[0]?.modelLabel).toBe('Trial A');
+	await db.delete('model_results', [metadata.id, 1]);
+	expect(await reconcileProtectedStartup({ storage }, locks)).toMatchObject({ ok: true });
+	expect($appState.get()).toMatchObject({
+		newModelNum: null,
+		nextModelColorIndex: 1,
+		models: [
+			{
+				status: 'draft',
+				provisionalCompletedRunId: first.identity.runId,
+				modelColor: 'amber'
+			}
+		]
+	});
+	const rerun = service.start(1);
+	const second = await workerAt(1);
+	second.succeed();
+	expect(await rerun).toMatchObject({ ok: true });
+	expect(second.identity.runId).not.toBe(first.identity.runId);
+	expect($appState.get()).toMatchObject({
+		nextModelColorIndex: 1,
+		models: [
+			{
+				resultRevision: second.identity.runId,
+				provisionalCompletedRunId: first.identity.runId,
+				modelColor: 'amber',
+				modelLabel: null
+			}
+		]
+	});
+});
 
 async function workerAt(index: number): Promise<ScriptedWorker> {
 	for (let attempt = 0; attempt < 150; attempt++) {
@@ -235,6 +549,117 @@ async function workerAt(index: number): Promise<ScriptedWorker> {
 		await new Promise<void>((resolve) => setTimeout(resolve, 2));
 	}
 	throw new Error('Training worker did not start');
+}
+
+test('MW-GUARD-2: abandonment retries one committed draft removal and releases only its scroll key', async () => {
+	const initial = seed();
+	const opened = await service.openNewModel({
+		datasetId: metadata.id,
+		target: 'species',
+		comparisonContextEpoch: initial.comparisonContextEpoch
+	});
+	if (!opened.ok) throw new Error('The provisional fixture did not open');
+	const binding = opened.value;
+	const generation = $appState.get().trainingDomainGeneration;
+	const formerScroll = $scrollState.get();
+	try {
+		for (const num of [1, 2])
+			recordScroll(`models/${num}`, { top: 50, savedAt: 1, viewportWidth: 900 });
+		expect(
+			await service.abandonNewModel({
+				...binding,
+				modelCreatedAt: binding.modelCreatedAt - 1
+			})
+		).toMatchObject({ ok: false, code: 'conflict' });
+		const remote = Promise.withResolvers<void>();
+		const entered = Promise.withResolvers<void>();
+		const holding = locks.request('samata-ml:training:2', () => {
+			entered.resolve();
+			return remote.promise;
+		});
+		await entered.promise;
+		try {
+			expect(await service.abandonNewModel(binding)).toMatchObject({
+				ok: false,
+				code: 'busy'
+			});
+			expect($appState.get().newModelNum).toBe(2);
+		} finally {
+			remote.resolve();
+			await holding;
+		}
+		storage.reject = (state) => state.trainingDomainGeneration > generation;
+		expect(await service.abandonNewModel(binding)).toMatchObject({
+			ok: false,
+			pending: 'discard'
+		});
+		expect($appState.get().newModelNum).toBe(2);
+		expect($scrollState.get().snapshots['models/2']).toBeDefined();
+		expect(await readTrainingCheckpoint(db)).toMatchObject({
+			checkpoint: { generation: generation + 1, pending: { kind: 'discard' } }
+		});
+		storage.reject = () => false;
+		expect(await service.abandonNewModel(binding, true)).toMatchObject({ ok: true });
+		expect($appState.get()).toMatchObject({
+			newModelNum: null,
+			nextModelNum: 3,
+			models: initial.models
+		});
+		expect($scrollState.get().snapshots['models/2']).toBeUndefined();
+		expect($scrollState.get().snapshots['models/1']).toBeDefined();
+		expect(await service.abandonNewModel(binding)).toMatchObject({
+			ok: false,
+			code: 'conflict'
+		});
+		expect(await readTrainingCheckpoint(db)).toMatchObject({
+			checkpoint: { generation: generation + 1, pending: null }
+		});
+	} finally {
+		$scrollState.set(formerScroll);
+	}
+});
+
+for (const outcome of ['cancel', 'save'] as const) {
+	test(`MW-GUARD-2: a local ${outcome} settles before abandonment`, async () => {
+		const initial = seed(0);
+		const opened = await service.openNewModel({
+			datasetId: metadata.id,
+			target: 'species',
+			comparisonContextEpoch: initial.comparisonContextEpoch
+		});
+		if (!opened.ok) throw new Error('The provisional fixture did not open');
+		const draft = $appState.get();
+		storeFixture({ ...draft, models: draft.models.map((model) => configuredModel(model)) });
+		const started = service.start(1);
+		const worker = await workerAt(0);
+		if (outcome === 'save') {
+			worker.succeed();
+			await Promise.resolve();
+		}
+		const leave = service.abandonNewModel(opened.value);
+		expect(await service.abandonNewModel(opened.value)).toMatchObject({
+			ok: false,
+			code: 'busy'
+		});
+		expect(await leave).toMatchObject({ ok: true });
+		if (outcome === 'cancel') {
+			expect(worker.posted.filter(({ kind }) => kind === 'cancel')).toHaveLength(1);
+			expect(await started).toMatchObject({ ok: false, code: 'cancelled' });
+			expect($appState.get().models).toEqual([]);
+		} else {
+			expect(await started).toMatchObject({ ok: true });
+			expect(worker.posted.filter(({ kind }) => kind === 'cancel')).toHaveLength(0);
+			expect($appState.get().models[0]).toMatchObject({
+				status: 'trained',
+				resultRevision: worker.identity.runId
+			});
+			expect(await db.get('model_results', [metadata.id, 1])).toMatchObject({
+				runId: worker.identity.runId
+			});
+		}
+		expect($appState.get().newModelNum).toBeNull();
+		expect($appState.get().nextModelNum).toBe(2);
+	});
 }
 
 test('WML-P5-STATE-2: a stale ordinary write cannot overwrite a reused context', async () => {
@@ -264,14 +689,14 @@ test('WML-P5-STATE-2: a stale ordinary write cannot overwrite a reused context',
 			}
 		}
 	};
-	const { dataset, target, data, models, nextModelNum, comparisonContextEpoch } = replacement;
+	const { models } = replacement;
 	const committed = await commitTrainingCheckpoint(
 		db,
 		0,
 		{
 			operationId: 'foreign',
 			kind: 'recover',
-			domain: { dataset, target, data, models, nextModelNum, comparisonContextEpoch }
+			domain: protectedDomainSnapshot(replacement)
 		},
 		{ type: 'none' }
 	);
@@ -634,7 +1059,7 @@ test('WML-P3-TRAIN-6: persistent result pending recovers after reload without re
 	worker.succeed();
 	expect(await run).toMatchObject({ ok: false, reason: 'security', pending: 'finish' });
 	expect($appState.get().models[0]?.status).toBe('training');
-	expect(getTrainingSession(worker.identity)?.progress.percent).toBe(95);
+	expect(getTrainingSession(worker.identity)?.progress.percent).toBeNull();
 	expect(await db.get('model_results', [metadata.id, 1])).toMatchObject({
 		runId: worker.identity.runId
 	});
@@ -1097,7 +1522,7 @@ test.each(['add model', 'replace model', 'replace target', 'replace revision'] a
 						]
 					};
 			if (!next) throw new Error('Could not advance the remote model domain');
-			const { dataset, target, data, models, nextModelNum } = next;
+			const { models } = next;
 			const operationId = 'remote-advance-before-retry';
 			const advance = locks.request(TRAINING_STATE_LOCK, async () => {
 				expect(
@@ -1107,14 +1532,7 @@ test.each(['add model', 'replace model', 'replace target', 'replace revision'] a
 						{
 							operationId,
 							kind: 'recover',
-							domain: {
-								dataset,
-								target,
-								data,
-								models,
-								nextModelNum,
-								comparisonContextEpoch: next.comparisonContextEpoch
-							}
+							domain: protectedDomainSnapshot(next)
 						},
 						{ type: 'none' }
 					)
@@ -1143,7 +1561,7 @@ test.each(['add model', 'replace model', 'replace target', 'replace revision'] a
 				expect(await retry).toMatchObject({ ok: true });
 				expect($appState.get()).toMatchObject({
 					trainingDomainGeneration: 3,
-					nextModelNum
+					nextModelNum: next.nextModelNum
 				});
 				expect($appState.get().models[0]?.resultRevision).toBe(worker.identity.runId);
 				expect(getTrainingSession(worker.identity)?.status).toBe('complete');
@@ -1312,7 +1730,7 @@ test.each([
 							]
 						};
 				if (!next) throw new Error('Could not advance the remote model domain');
-				const { dataset, data, target, models, nextModelNum } = next;
+				const { models } = next;
 				const operationId = 'remote-advance';
 				const committed = await commitTrainingCheckpoint(
 					db,
@@ -1320,14 +1738,7 @@ test.each([
 					{
 						operationId,
 						kind: 'recover',
-						domain: {
-							dataset,
-							data,
-							target,
-							models,
-							nextModelNum,
-							comparisonContextEpoch: next.comparisonContextEpoch
-						}
+						domain: protectedDomainSnapshot(next)
 					},
 					{ type: 'none' }
 				);
@@ -1808,7 +2219,6 @@ test.each([
 								]
 							};
 			if (!next) throw new Error('Missing revised state');
-			const { dataset, data, target, models, nextModelNum } = next;
 			const remote = locks.request(TRAINING_STATE_LOCK, async () => {
 				expect(
 					await commitTrainingCheckpoint(
@@ -1817,14 +2227,7 @@ test.each([
 						{
 							operationId: 'remote-change',
 							kind: 'recover',
-							domain: {
-								dataset,
-								data,
-								target,
-								models,
-								nextModelNum,
-								comparisonContextEpoch: next.comparisonContextEpoch
-							}
+							domain: protectedDomainSnapshot(next)
 						},
 						{ type: 'none' }
 					)
@@ -1841,10 +2244,7 @@ test.each([
 			}
 			expect($publicationPending.get()).toBeNull();
 			expect(storedState()).toMatchObject({
-				dataset,
-				target,
-				models,
-				nextModelNum,
+				...protectedDomainSnapshot(next),
 				trainingDomainGeneration: 3
 			});
 			expect($appState.get()).toEqual(storedState());
@@ -2043,5 +2443,140 @@ test('WML-P4-STATE-1: a stale preference write merges field by field with anothe
 	} finally {
 		stopPersister();
 		await locks.request(TRAINING_STATE_LOCK, () => {});
+	}
+});
+
+test('REL-STALE-1: reports training worker crash, protocol and startup failures without altering settlement codes', async () => {
+	seed(3);
+	const reported: WorkerFailureCode[] = [];
+	const unsubscribe = onWorkerFailure((code) => reported.push(code));
+	try {
+		const crashRun = service.start(1);
+		const crashWorker = await workerAt(0);
+		crashWorker.onerror?.call(crashWorker as unknown as Worker, new ErrorEvent('error'));
+		await crashRun;
+		expect(getTrainingSession(crashWorker.identity)?.status).toBe('failed');
+		expect($appState.get().models[0]?.error).toMatchObject({
+			code: 'TRAINING_FAILED',
+			details: 'worker-crashed'
+		});
+
+		const protocolRun = service.start(2);
+		const protocolWorker = await workerAt(1);
+		protocolWorker.onmessageerror?.call(
+			protocolWorker as unknown as Worker,
+			new MessageEvent('messageerror')
+		);
+		await protocolRun;
+		expect(getTrainingSession(protocolWorker.identity)?.status).toBe('failed');
+		expect($appState.get().models[1]?.error).toMatchObject({
+			code: 'TRAINING_FAILED',
+			details: 'worker-protocol-error'
+		});
+
+		const startupService = createTrainingService({
+			locks,
+			persistence: { storage },
+			isIsolated: () => true,
+			createWorker: () => {
+				throw new Error('spawn failed');
+			}
+		});
+		await startupService.start(3);
+		expect($appState.get().models[2]?.error).toMatchObject({
+			code: 'TRAINING_FAILED',
+			details: 'worker-startup-failed'
+		});
+
+		expect(reported).toEqual([
+			'training-worker-crashed',
+			'training-worker-protocol-error',
+			'training-worker-startup-failed'
+		]);
+	} finally {
+		unsubscribe();
+		resetWorkerFailuresForTests();
+	}
+});
+
+test('REL-TELEM-4: emits owner-only training telemetry events and suppresses observePublishedStops and retry recovery', async () => {
+	const previousTelemetry = (globalThis as Record<string, unknown>).BETA_TELEMETRY_ENABLED;
+	const previousUrl = window.location.href;
+	const sentEvents: Array<string | undefined> = [];
+	const onDocLoad = (event: Event) => {
+		const target = event.target as HTMLElement | null;
+		if (
+			target?.tagName === 'SCRIPT' &&
+			target.getAttribute('src') === 'https://cloud.umami.is/script.js'
+		) {
+			(
+				globalThis as unknown as {
+					installFakeUmami: (
+						el: Element,
+						send: (body: { payload?: { name?: string } }) => void
+					) => void;
+				}
+			).installFakeUmami(target, (body) => {
+				sentEvents.push(body.payload?.name);
+			});
+		}
+	};
+	document.addEventListener('load', onDocLoad, true);
+	try {
+		(globalThis as Record<string, unknown>).BETA_TELEMETRY_ENABLED = true;
+		(window as unknown as GlobalWindow).happyDOM.setURL('https://beta.samata.ml/models/1');
+		resetBetaTelemetryForTests();
+		initBetaTelemetry(() => true);
+		syncBetaRoute({ kind: 'workflow', path: '/models/1', section: 3, modelNum: 1 });
+
+		seed(3);
+		// 1. Complete run -> training_started + training_completed.
+		const okRun = service.start(1);
+		const worker1 = await workerAt(0);
+		worker1.succeed();
+		expect(await okRun).toMatchObject({ ok: true });
+
+		// 2. Worker crash -> training_failed once; subsequent retry must NOT emit again.
+		const failRun = service.start(2);
+		const worker2 = await workerAt(1);
+		storage.denyRead = true;
+		worker2.onerror?.call(worker2 as unknown as Worker, new ErrorEvent('error'));
+		expect(await failRun).toMatchObject({ ok: false, pending: 'recover' });
+		storage.denyRead = false;
+		// Repair fails before ack above, so settleStopped did NOT emit yet; retry calls repairStopped('recover'), not settleStopped.
+		expect(await service.retry()).toMatchObject({ ok: true });
+
+		// 3. Direct settleStopped failure -> training_failed once.
+		const failRun2 = service.start(3);
+		const worker3 = await workerAt(2);
+		worker3.onerror?.call(worker3 as unknown as Worker, new ErrorEvent('error'));
+		await failRun2;
+
+		// 4. Start checkpoint ack failure (not committed) -> training_failed once.
+		storage.denyRead = true;
+		const startAckFail = await service.start(3);
+		expect(startAckFail).toMatchObject({ ok: false });
+		storage.denyRead = false;
+
+		// 5. observePublishedStops must never emit training events.
+		service.observePublishedStops();
+
+		expect(sentEvents).toEqual([
+			undefined, // initial pageview /models
+			'training_started',
+			'training_completed',
+			'training_started',
+			'training_started',
+			'training_failed',
+			'training_failed'
+		]);
+	} finally {
+		document.removeEventListener('load', onDocLoad, true);
+		document.querySelectorAll('script[src*="umami"]').forEach((el) => el.remove());
+		delete (globalThis as Record<string, unknown>).umami;
+		delete (window as unknown as Record<string, unknown>).umami;
+		resetBetaTelemetryForTests();
+		(globalThis as Record<string, unknown>).BETA_TELEMETRY_ENABLED = previousTelemetry;
+		(window as unknown as GlobalWindow).happyDOM.setURL(previousUrl);
 	}
 });

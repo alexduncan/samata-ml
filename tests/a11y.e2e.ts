@@ -7,12 +7,15 @@ import { seedComparablePair, seedTrainedModel, type SeedName } from './helpers/s
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
-test('WML-P5-UI-12: populated comparison has no unexpected accessibility findings', async ({
+test('TERM-AC-9: WML-P5-UI-12 populated comparison and open terms have no unexpected findings', async ({
 	page
 }) => {
 	await seedComparablePair(page);
 	await page.goto('/results');
 	await expect(page.locator('app-results-view app-comparison-table')).toBeVisible();
+	const terms = page.locator('app-results-view details.terms-disclosure');
+	await terms.locator('summary').press('Enter');
+	await expect(terms.locator('dl')).toBeVisible();
 	await assertNoUnexpectedViolations(page);
 });
 
@@ -24,8 +27,8 @@ async function createDraftForAxe(page: Page) {
 	await expect(target.getByTestId('target-ready')).toBeVisible();
 	await target.locator('tbody tr:has(th:has-text("class")) button').click();
 	await target.locator('header a[href="/models"]').click();
-	await page.getByRole('button', { name: 'Train New Model' }).click();
-	await expect(page).toHaveURL('/models/1');
+	await page.locator('app-models-view').getByRole('link', { name: 'Train New Model' }).click();
+	await expect(page).toHaveURL('/models/new');
 	return page.locator('app-model-builder-view');
 }
 
@@ -33,15 +36,13 @@ async function openTrainingSetupForAxe(page: Page) {
 	const builder = await createDraftForAxe(page);
 	await builder
 		.locator('app-model-card[model-id="logistic-regression"]')
-		.getByRole('button', { name: 'Select Model' })
+		.getByRole('button', { name: 'Select Model: Logistic Regression', exact: true })
 		.click();
-	for (const step of [0, 1]) {
-		await builder
-			.locator('.train-step')
-			.nth(step)
-			.getByRole('button', { name: 'Continue', exact: true })
-			.click();
-	}
+	await builder
+		.locator('.train-step')
+		.nth(1)
+		.getByRole('button', { name: 'Continue', exact: true })
+		.click();
 	await builder.getByRole('button', { name: 'Save & Continue' }).click();
 	await expect(builder.locator('app-training-setup')).toBeVisible();
 	return builder;
@@ -219,13 +220,16 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 				.waitFor({ state: 'hidden', timeout: 2000 });
 		} catch {}
 
-		const changeBtn = page.locator('app-dataset-preview button:has-text("Change Dataset")');
-		if (await changeBtn.isVisible()) {
-			await changeBtn.click();
-			await page.locator('dialog.change-dataset-modal button.btn-danger').click();
-		}
-
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
+		await irisCard.getByRole('button', { name: 'Load Dataset' }).click();
+		await page
+			.locator('app-dataset-preview')
+			.getByRole('button', { name: 'Change Dataset', exact: true })
+			.click();
+		await page
+			.getByRole('dialog', { name: 'Change Dataset' })
+			.getByRole('button', { name: 'Change Dataset', exact: true })
+			.click();
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button:has-text("Datasheet")').click();
 
@@ -323,9 +327,13 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		await classRow.locator('button').click();
 		await expect(classRow.locator('button')).toHaveText('Current Target');
 		await targetView.locator('header a[href="/models"]').click();
-		await page.getByRole('button', { name: 'Train New Model' }).click();
-		await expect(page).toHaveURL('/models/1');
-		await page.locator('app-sidebar a[href="/target"]').click();
+		await page
+			.locator('app-models-view')
+			.getByRole('link', { name: 'Train New Model' })
+			.click();
+		await expect(page).toHaveURL('/models/new');
+		await expect(page.locator('app-model-builder-view')).toHaveAttribute('model-num', '1');
+		await page.goto('/target');
 
 		// Click different target to open confirm dialog
 		const sepalLengthRow = targetView.locator('tbody tr:has(th:has-text("sepal length"))');
@@ -388,7 +396,7 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 
 	test('A11Y-E2E-12: Route /models in populated state', async ({ page }) => {
 		await openSetup(page, false);
-		await page.locator('app-sidebar a[href="/models"]').click();
+		await page.goto('/models');
 		const modelsView = page.locator('app-models-view');
 		await expect(modelsView.locator('table.table')).toBeVisible({ timeout: 10000 });
 
@@ -408,21 +416,21 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		const builder = await createDraftForAxe(page);
 		await builder
 			.locator('app-model-card[model-id="logistic-regression"]')
-			.getByRole('button', { name: 'Select Model' })
-			.click();
-		await builder
-			.locator('.train-step')
-			.first()
-			.getByRole('button', { name: 'Continue', exact: true })
+			.getByRole('button', { name: 'Select Model: Logistic Regression', exact: true })
 			.click();
 		await expect(builder.locator('table.table')).toBeVisible({ timeout: 10000 });
+		await expect(builder.locator('#step-2-title')).toBeFocused();
+		await page.reload();
+		await expect(builder.locator('.step-active #step-2-title')).toBeVisible();
 
 		await assertNoUnexpectedViolations(page);
 	});
 
 	test('A11Y-E2E-15: Route /models/:num with model description dialog open', async ({ page }) => {
 		const builder = await createDraftForAxe(page);
-		const descBtn = builder.locator('app-model-card button:has-text("Model Description")');
+		const descBtn = builder.locator(
+			'app-model-card[model-id="logistic-regression"] button:has-text("Model Description")'
+		);
 		await expect(descBtn).toBeVisible({ timeout: 10000 });
 		await descBtn.click();
 
@@ -442,16 +450,18 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 			.getByRole('button', { name: 'Train Model' })
 			.click();
 		const setup = builder.locator(trainingPanel(4));
-		await expect(setup.getByRole('heading', { name: '4. One-Shot (80% / 20%)' })).toBeVisible();
+		await expect(setup.getByRole('heading', { name: '4. One-Shot Training' })).toBeVisible();
 		const training = builder.locator(trainingPanel(5));
 		await expect(
 			training.getByRole('progressbar', { name: 'Training progress' })
 		).toBeVisible();
 		await expect(training.getByRole('button', { name: 'Cancel Training' })).toBeEnabled();
 		await expect(training.getByRole('button', { name: 'View Results' })).toBeDisabled();
-		await page.locator('app-sidebar a[href="/models"]').click();
+		await page.locator('app-sidebar a[href="/help"]').click();
+		await expect(page.getByRole('dialog', { name: 'Help' })).toBeVisible();
+		await page.evaluate(() => history.go(-2));
 		await expect(page).toHaveURL('/models');
-		await page.locator('app-sidebar a[href="/models/1"]').click();
+		await page.locator('app-models-view').getByRole('link', { name: 'Continue' }).click();
 		await expect(
 			training.getByRole('progressbar', { name: 'Training progress' })
 		).toBeVisible();
@@ -480,7 +490,7 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		['A11Y-E2E-18', 'breast-cancer', 'binary'],
 		['A11Y-E2E-19', 'iris', 'multiclass']
 	] as const satisfies readonly (readonly [string, SeedName, string])[]) {
-		test(`WML-P4-UI-12 / ${id}: populated ${label} Section 6 with every data table open`, async ({
+		test(`WML-P4-UI-12 / ${id}: numbered ${label} result with every data table open`, async ({
 			page
 		}) => {
 			await seedTrainedModel(page, seed);
@@ -501,13 +511,9 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 				};
 				open(document);
 			});
+			await expect(results.locator('.terms-disclosure dl')).toBeVisible();
 			const audit = await new AxeBuilder({ page })
-				.include({
-					fromShadowDom: [
-						'app-model-builder-view',
-						'section[aria-labelledby="step-6-title"]'
-					]
-				})
+				.include('app-model-builder-view')
 				.options({
 					runOnly: { type: 'tag', values: [...AXE_TAGS, 'wcag21a'] },
 					rules: { 'color-contrast': { enabled: true } }

@@ -5,6 +5,7 @@ import {
 	openSamataDb,
 	getMetadata
 } from '../common/storage/db';
+import { protectedDomainSnapshot } from '../common/storage/training-domain';
 import {
 	INITIAL_APP_STATE,
 	isModelEligibleColumnType,
@@ -37,11 +38,6 @@ import { emptyComparisonResults, ownedComparisonResults } from './comparison-pre
 
 function isTrainingSetupOrLater(step: ModelSectionId): boolean {
 	return step === 'configure-training' || step === 'training' || step === 'results';
-}
-
-function protectedDomain(state: PersistedAppState) {
-	const { dataset, data, target, models, nextModelNum, comparisonContextEpoch } = state;
-	return { dataset, data, target, models, nextModelNum, comparisonContextEpoch };
 }
 
 function restoreModelDomain(
@@ -85,6 +81,7 @@ function restoreModelDomain(
 				metrics: envelope.schemaVersion === 2 ? headlineMetrics(envelope.evaluation) : null,
 				timings: null,
 				durationMs: envelope.durationMs,
+				modelLabel: envelope.schemaVersion === 2 ? (envelope.modelLabel ?? null) : null,
 				completedSteps: completedSteps.includes('training')
 					? completedSteps
 					: [...completedSteps, 'training']
@@ -146,7 +143,7 @@ export async function reconcileProtectedStartup(
 			pending: {
 				operationId: crypto.randomUUID(),
 				kind: 'recover' as const,
-				domain: protectedDomain(state)
+				domain: protectedDomainSnapshot(state)
 			},
 			mutation: { type: 'none' as const }
 		};
@@ -197,6 +194,8 @@ export async function reconcileProtectedStartup(
 							...(!validTarget && {
 								target: null,
 								models: [],
+								newModelNum: null,
+								nextModelColorIndex: 0,
 								comparisonContextEpoch:
 									state.comparisonContextEpoch + (state.target !== null ? 1 : 0),
 								results: emptyComparisonResults()
@@ -260,10 +259,23 @@ export async function reconcileProtectedStartup(
 									if (next.status !== 'trained') restored.result = null;
 									if (JSON.stringify(next) === JSON.stringify(current))
 										return null;
+									const finishedProvisional =
+										state.newModelNum === current.num &&
+										restored.result !== null;
 									return recovery({
 										...state,
+										...(finishedProvisional && { newModelNum: null }),
 										models: state.models.map((entry) =>
-											entry === current ? next : entry
+											entry === current
+												? {
+														...next,
+														...(finishedProvisional && {
+															provisionalCompletedRunId:
+																next.provisionalCompletedRunId ??
+																restored.result?.runId
+														})
+													}
+												: entry
 										)
 									});
 								},
@@ -400,6 +412,8 @@ export async function reconcileStartupState(
 				dataset: null,
 				target: null,
 				models: [],
+				newModelNum: null,
+				nextModelColorIndex: 0,
 				comparisonContextEpoch: state.comparisonContextEpoch + 1,
 				results: emptyComparisonResults(),
 				data: {
@@ -439,6 +453,8 @@ export async function reconcileStartupState(
 				...state,
 				target: null,
 				models: [],
+				newModelNum: null,
+				nextModelColorIndex: 0,
 				comparisonContextEpoch: state.comparisonContextEpoch + 1,
 				results: emptyComparisonResults()
 			};
@@ -449,6 +465,8 @@ export async function reconcileStartupState(
 					...state,
 					target: null,
 					models: [],
+					newModelNum: null,
+					nextModelColorIndex: 0,
 					comparisonContextEpoch: state.comparisonContextEpoch + 1,
 					results: emptyComparisonResults()
 				};
@@ -460,7 +478,7 @@ export async function reconcileStartupState(
 	const trainingSetupRepairs: boolean[] = [];
 	if (state.dataset === null || state.target === null) {
 		if (state.models.length > 0) {
-			state = { ...state, models: [] };
+			state = { ...state, models: [], newModelNum: null, nextModelColorIndex: 0 };
 		}
 	} else {
 		const eligibleColumns = new Set(

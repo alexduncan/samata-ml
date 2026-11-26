@@ -1,8 +1,9 @@
-import { expect, type Page } from '@playwright/test';
+import { expect, type Locator, type Page } from '@playwright/test';
 import type { StoredEvaluation } from '../../src/types/model-evaluation';
 import type { TrainingResultPayload } from '../../src/types/model-result';
 import {
 	breastCancerOneShot,
+	divergentBinaryCrossValidation,
 	irisCrossValidation,
 	manyClasses,
 	svcBinaryNoProbabilities
@@ -11,14 +12,29 @@ import { withPooledConfusion } from '../fixtures/results/variants';
 import { configureDraft, controlTraining, openSetup } from '../fixtures/training/browser';
 
 /** Hand-written evaluations that can be saved as the result of a trained model. */
-export type SeedName = 'iris' | 'breast-cancer' | 'svc-no-probabilities' | 'many-classes';
+export type SeedName =
+	| 'iris'
+	| 'breast-cancer'
+	| 'svc-no-probabilities'
+	| 'many-classes'
+	| 'divergent-binary-cv';
 
 const evaluations: Record<SeedName, () => StoredEvaluation> = {
 	iris: irisCrossValidation,
 	'breast-cancer': breastCancerOneShot,
 	'svc-no-probabilities': svcBinaryNoProbabilities,
-	'many-classes': manyClasses
+	'many-classes': manyClasses,
+	'divergent-binary-cv': divergentBinaryCrossValidation
 };
+
+async function selectEvaluationSetup(setup: Locator, evaluation: StoredEvaluation): Promise<void> {
+	if (evaluation.protocol.kind !== 'cross_validation') return;
+	await setup.getByRole('combobox', { name: 'Training Strategy' }).selectOption('nested_cv');
+	const folds = setup.getByRole('spinbutton');
+	await folds.fill(String(evaluation.protocol.folds));
+	await folds.blur();
+	await expect(folds).toHaveValue(String(evaluation.protocol.folds));
+}
 
 /**
  * Builds the worker success payload for a stored evaluation. The retained rows are every row
@@ -59,28 +75,33 @@ export function payloadFor(evaluation: StoredEvaluation): TrainingResultPayload 
 		};
 	}
 	const report = pooled.test;
+	const folds = partitions.map((part) => {
+		const validationIndices = Uint32Array.from(
+			Array.from(outputs.partitionIndex, (partition, row) => [partition, row] as const)
+				.filter(([partition]) => partition === part.index)
+				.map(([, row]) => row)
+		);
+		return {
+			foldIndex: part.index,
+			score: part.test.accuracy,
+			durationMs: part.durationMs,
+			validationSampleCount: validationIndices.length,
+			validationIndices
+		};
+	});
+	const meanScore = folds.reduce((sum, fold) => sum + fold.score, 0) / folds.length;
+	// The fixture describes the full set of supplied folds, using population spread.
+	const variance =
+		folds.reduce((sum, fold) => sum + (fold.score - meanScore) ** 2, 0) / folds.length;
+	const macroPrecision =
+		report.precisionPerClass.reduce((sum, value) => sum + value, 0) /
+		report.precisionPerClass.length;
 	return {
 		...base,
 		sourceRowIndices: Array.from(outputs.sourceRowIndex),
 		strategy: 'cross_validation',
 		crossValidation: {
-			folds: partitions.map((part) => {
-				const validationIndices = Uint32Array.from(
-					Array.from(
-						outputs.partitionIndex,
-						(partition, row) => [partition, row] as const
-					)
-						.filter(([partition]) => partition === part.index)
-						.map(([, row]) => row)
-				);
-				return {
-					foldIndex: part.index,
-					score: part.test.accuracy,
-					durationMs: part.durationMs,
-					validationSampleCount: validationIndices.length,
-					validationIndices
-				};
-			}),
+			folds,
 			diagnostics: {
 				task: 'classification' as const,
 				sampleCount: outputs.sourceRowIndex.length,
@@ -89,15 +110,15 @@ export function payloadFor(evaluation: StoredEvaluation): TrainingResultPayload 
 				support: report.support,
 				predictedCount: report.predictedCount,
 				accuracy: report.accuracy,
-				precision: report.balancedAccuracy,
+				precision: macroPrecision,
 				recall: report.balancedAccuracy,
 				f1: report.macroF1,
 				precisionPerClass: report.precisionPerClass,
 				recallPerClass: report.recallPerClass,
 				f1PerClass: report.f1PerClass
 			},
-			meanScore: report.accuracy,
-			standardDeviation: 0.01
+			meanScore,
+			standardDeviation: Math.sqrt(variance)
 		}
 	} as TrainingResultPayload;
 }
@@ -134,10 +155,7 @@ export async function seedTrainedModel(
 	const evaluation = evaluations[name]();
 	await controlTraining(page);
 	const setup = await openSetup(page);
-	if (evaluation.protocol.kind === 'cross_validation') {
-		await setup.getByRole('combobox', { name: 'Training Strategy' }).selectOption('nested_cv');
-		await expect(setup.getByRole('spinbutton')).toHaveValue(String(evaluation.protocol.folds));
-	}
+	await selectEvaluationSetup(setup, evaluation);
 	await setup.getByRole('button', { name: 'Train Model' }).click();
 	await expect
 		.poll(() =>
@@ -147,6 +165,18 @@ export async function seedTrainedModel(
 			)
 		)
 		.toBe(1);
+	await replyWithEvaluation(page, name);
+	const training = page.getByTestId('training-step');
+	const viewResults = training.getByRole('button', { name: 'View Results' });
+	await expect(viewResults).toBeEnabled({ timeout: 15_000 });
+	if (options.acknowledge === false) return;
+	await viewResults.click();
+	await expect(page).toHaveURL('/models/1');
+	await expect(page.getByRole('heading', { level: 1, name: /Results$/ })).toBeFocused();
+}
+
+/** Completes the currently owned worker attempt with a matching fixture evaluation. */
+export async function replyWithEvaluation(page: Page, name: SeedName): Promise<void> {
 	await page.evaluate(
 		(json) => {
 			const result = JSON.parse(json, (_key, value) => {
@@ -160,14 +190,8 @@ export async function seedTrainedModel(
 			});
 			window.__trainingFixture!.reply({ kind: 'success', result });
 		},
-		encode(payloadFor(evaluation))
+		encode(payloadFor(evaluations[name]()))
 	);
-	const training = page.getByTestId('training-step');
-	const viewResults = training.getByRole('button', { name: 'View Results' });
-	await expect(viewResults).toBeEnabled({ timeout: 15_000 });
-	if (options.acknowledge === false) return;
-	await viewResults.click();
-	await expect(page.getByRole('heading', { name: '6. Model Results' })).toBeFocused();
 }
 
 /** Reads the stored result envelope of Model 1, or null when none exists. */
@@ -217,9 +241,7 @@ async function seedAdditionalModel(
 ): Promise<void> {
 	await page.locator('app-sidebar a[href="/models"]').click();
 	const setup = await configureDraft(page, num);
-	if (evaluation.protocol.kind === 'cross_validation') {
-		await setup.getByRole('combobox', { name: 'Training Strategy' }).selectOption('nested_cv');
-	}
+	await selectEvaluationSetup(setup, evaluation);
 	await setup.getByRole('button', { name: 'Train Model' }).click();
 	await expect
 		.poll(
@@ -313,8 +335,8 @@ export function downgradeEnvelope(page: Page): Promise<void> {
 
 /**
  * Installs a hook on result reads for Model 1. After `after` reads succeed, the next read either
- * finds no envelope (as if it had been deleted in between) or fails. Call before View Results,
- * which itself reads the result once to validate the acknowledgement.
+ * finds no envelope (as if it had been deleted in between) or fails. Call before View Results
+ * to count its separate verification and acknowledgement reads.
  */
 export function interceptResultReads(
 	page: Page,

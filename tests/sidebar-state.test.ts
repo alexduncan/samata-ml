@@ -45,14 +45,32 @@ test('SIDE-STATE-1: exact workflow, model parent/detail and reserved link states
 	}
 	$route.set(parseRoute('/models/2'));
 	expect($sidebarState.get().current.models).toBe('true');
-	expect($sidebarState.get().models.map((model) => model.current)).toEqual([
-		undefined,
-		'page',
-		undefined
-	]);
+	expect($sidebarState.get().models.map((model) => model.current)).toEqual([undefined, 'page']);
 	$route.set(parseRoute('/about'));
 	expect(Object.values($sidebarState.get().current).every((value) => value === undefined)).toBe(
 		true
 	);
 	expect($sidebarState.get().models.every((model) => model.current === undefined)).toBe(true);
+});
+
+test('MW-MODEL-1: trained model names, colours and feature counts keep their numeric order', () => {
+	const state = createSidebarFixture('models');
+	const shuffled = { ...state, models: [...state.models].reverse() };
+	$appState.set(shuffled);
+	$route.set(parseRoute('/models/new'));
+	expect($sidebarState.get()).toMatchObject({
+		canTrain: true,
+		provisionalVisible: true,
+		models: [
+			{ num: 1, name: 'Logistic Regression', colour: 'amber', featureCount: 1 },
+			{ num: 2, name: 'Decision Tree', colour: 'blue', featureCount: 2 }
+		],
+		current: { models: 'true', provisional: 'page' }
+	});
+	$route.set({ kind: 'reserved', path: '/help', underlayPath: '/models/new' });
+	expect($sidebarState.get()).toMatchObject({
+		provisionalVisible: true,
+		current: { models: undefined, provisional: undefined }
+	});
+	expect(shuffled.models.map(({ num }) => num)).toEqual([3, 2, 1]);
 });

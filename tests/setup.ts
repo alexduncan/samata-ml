@@ -1,6 +1,22 @@
 import { GlobalWindow } from 'happy-dom';
+import { TEST_BUILD_CONSTANTS } from '../scripts/build-constants';
 
-const window = new GlobalWindow({ url: 'http://localhost:3000' });
+Object.assign(globalThis, TEST_BUILD_CONSTANTS);
+const envGlobals = globalThis as unknown as Record<string, unknown>;
+if (envGlobals.WEB_ML_RUNTIME_URL === undefined) {
+	envGlobals.WEB_ML_RUNTIME_URL = '/web-ml/test/index.js';
+}
+if (envGlobals.WEB_ML_RUNTIME_REVISION === undefined) {
+	envGlobals.WEB_ML_RUNTIME_REVISION = 'test';
+}
+
+const window = new GlobalWindow({
+	url: 'http://localhost:3000',
+	settings: {
+		disableJavaScriptFileLoading: true,
+		handleDisabledFileLoadingAsSuccess: true
+	}
+});
 
 // Register DOM properties and classes onto globalThis
 for (const key of Object.getOwnPropertyNames(window)) {

@@ -3,12 +3,13 @@ import { readFile } from 'node:fs/promises';
 import {
 	BOOLEAN_LEXICON_PAIRS,
 	coerceCell,
-	headerSuggestsTime,
+	isDateOnly,
 	matchBoolean,
 	normaliseMissing,
 	parseDate,
 	parseEpoch,
 	parseNumber,
+	parseTime,
 	toEpochMs
 } from '../src/common/storage/cells';
 import {
@@ -64,6 +65,77 @@ describe('cell detectors', () => {
 		}
 	});
 
+	it('TEMP-AC-4: derives the epoch unit from the digit count', () => {
+		expect(parseEpoch('315532800')).toEqual({ ms: 315_532_800_000, unit: 's' });
+		expect(parseEpoch('999999999')?.unit).toBe('s');
+		expect(parseEpoch('2524607999')?.unit).toBe('s');
+		expect(parseEpoch('315532800000')?.unit).toBe('ms');
+		expect(parseEpoch('1700000000000')?.unit).toBe('ms');
+		expect(parseEpoch('315532800000000')?.unit).toBe('us');
+		expect(parseEpoch('1700000000000000')).toEqual({ ms: 1_700_000_000_000, unit: 'us' });
+		for (const value of [
+			'315532799',
+			'2524608000',
+			'99999999999',
+			'99999999999999',
+			'0315532800',
+			'1700000000.5'
+		]) {
+			expect(parseEpoch(value)).toBeNull();
+		}
+	});
+
+	it('TEMP-AC-5: parses 24-hour times of day to milliseconds since midnight', () => {
+		expect(parseTime('9:05')).toBe(32_700_000);
+		expect(parseTime('09:05:07')).toBe(32_707_000);
+		expect(parseTime('23:59:59.9999')).toBe(86_399_999);
+		expect(parseTime('00:00')).toBe(0);
+		for (const value of [
+			'24:00',
+			'12:60',
+			'12:30:60',
+			'12:30Z',
+			'12:30 PM',
+			'1:2',
+			'123:00',
+			'12',
+			'2024-01-15'
+		]) {
+			expect(parseTime(value)).toBeNull();
+		}
+	});
+
+	it('TEMP-AC-6: treats written midnights without an offset as date-only', () => {
+		for (const value of ['2024-01-15', '2024-01-15 00:00:00', '2024-01-15T00:00:00Z']) {
+			expect(isDateOnly(parseDate(value)!)).toBe(true);
+		}
+		for (const value of ['2024-01-15T00:00:00+01:00', '2024-01-15 00:00:01']) {
+			expect(isDateOnly(parseDate(value)!)).toBe(false);
+		}
+	});
+
+	it('TEMP-AC-7: coerces date and time columns', () => {
+		expect(
+			coerceCell('2013-08-13 00:00:00', 'date', {
+				kind: 'date',
+				order: 'ISO',
+				orderAssumed: false
+			})
+		).toBe(Date.UTC(2013, 7, 13));
+		expect(
+			coerceCell('2013-08-13 06:03:42', 'date', {
+				kind: 'date',
+				order: 'ISO',
+				orderAssumed: false
+			})
+		).toBeNull();
+		expect(
+			coerceCell('14/08/2013', 'date', { kind: 'date', order: 'DMY', orderAssumed: false })
+		).toBe(Date.UTC(2013, 7, 14));
+		expect(coerceCell('14/08/2013', 'date')).toBeNull();
+		expect(coerceCell('17:45:10', 'time')).toBe(63_910_000);
+	});
+
 	it('parses ISO, numeric and named dates with explicit calendar and time bounds', () => {
 		expect(parseDate('2024-02-29')?.form).toBe('iso');
 		expect(parseDate('2023-02-29')).toBeNull();
@@ -100,15 +172,6 @@ describe('cell detectors', () => {
 		expect(toEpochMs(parseDate('25/03/2024')!, 'MDY')).toBeNull();
 		expect(toEpochMs(ambiguous, 'ISO')).toBeNull();
 		expect(toEpochMs(parseDate('2024-01-15')!, 'MDY')).toBe(Date.UTC(2024, 0, 15));
-	});
-
-	it('uses whole timestamp words for the header gate', () => {
-		for (const name of ['created_at', 'eventTime', 'ts', 'Date']) {
-			expect(headerSuggestsTime(name)).toBe(true);
-		}
-		for (const name of ['counts', 'overtime', 'posts']) {
-			expect(headerSuggestsTime(name)).toBe(false);
-		}
 	});
 
 	it('normalises default, replacement and implicit missing values', () => {

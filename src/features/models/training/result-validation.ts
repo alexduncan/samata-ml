@@ -10,6 +10,7 @@ import type {
 	TrainingRunIdentity
 } from '../../../types/model-result';
 import {
+	sanitiseModelLabel,
 	TRAINING_DOMAIN_DATASET_ID,
 	type TrainingProgress,
 	type TrainingStage
@@ -427,7 +428,16 @@ export function decodeResultEnvelope(
 		return { ...value, schemaVersion, algorithm, durationMs, logEntries };
 	}
 	if (schemaVersion === 2 && isTrainingResultPayload(value)) {
-		return { ...value, schemaVersion, algorithm, durationMs, logEntries };
+		return {
+			...value,
+			schemaVersion,
+			algorithm,
+			durationMs,
+			logEntries,
+			...(Object.hasOwn(value, 'modelLabel') && {
+				modelLabel: sanitiseModelLabel(value.modelLabel)
+			})
+		};
 	}
 	return null;
 }

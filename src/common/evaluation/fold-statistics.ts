@@ -22,7 +22,7 @@ function quantile(sorted: readonly number[], p: number): number {
  * Summarises per-fold scores for display: unweighted mean, sample SD (n - 1) and type-7
  * quartiles. The values themselves come from `web-ml`.
  *
- * @throws {RangeError} For an empty array or a non-finite value.
+ * @throws `RangeError` for an empty array or a non-finite value.
  */
 export function foldSummary(values: readonly number[]): FoldSummary {
 	if (values.length === 0) throw new RangeError('foldSummary needs at least one value');

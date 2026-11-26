@@ -1,4 +1,9 @@
-import type { CellValue, DatetimeColumnStats, NumericColumnStats } from '../../types/dataset';
+import type {
+	CellValue,
+	DateColumnStats,
+	DatetimeColumnStats,
+	NumericColumnStats
+} from '../../types/dataset';
 import type { ColumnType } from '../../types/state';
 
 /** Default case-insensitive missing-value tokens. */
@@ -86,6 +91,7 @@ export type DateOrder = 'ISO' | 'DMY' | 'MDY';
 export type CellFormat =
 	| NumericColumnStats['format']
 	| DatetimeColumnStats['format']
+	| DateColumnStats['format']
 	| readonly [string, string]
 	| undefined;
 
@@ -172,15 +178,20 @@ export function parseNumber(cell: string): ParsedNumber | null {
 	};
 }
 
-const EPOCH_PATTERN = /^[1-9](?:\d{9}|\d{12}|\d{15})$/;
+const EPOCH_PATTERN = /^[1-9](?:\d{8,9}|\d{11,12}|\d{14,15})$/;
 const MIN_EPOCH_MS = 315_532_800_000;
 const MAX_EPOCH_MS = 2_524_608_000_000;
 
-/** Parses 10-, 13- or 16-digit epoch timestamps within the supported 1980–2050 window. */
+/**
+ * Parses epoch timestamps within the supported 1980–2050 window.
+ *
+ * The unit comes from the digit count: 9–10 digits are seconds, 12–13 milliseconds and 15–16
+ * microseconds. The three ranges cannot overlap inside the window.
+ */
 export function parseEpoch(cell: string): ParsedEpoch | null {
 	const value = cell.trim();
 	if (!EPOCH_PATTERN.test(value)) return null;
-	const unit = value.length === 10 ? 's' : value.length === 13 ? 'ms' : 'us';
+	const unit = value.length <= 10 ? 's' : value.length <= 13 ? 'ms' : 'us';
 	const numericValue = Number(value);
 	if (!Number.isSafeInteger(numericValue)) return null;
 	const ms =
@@ -450,25 +461,41 @@ export function toEpochMs(parts: DateParts, order: DateOrder): number | null {
 	return timestamp - (parts.offsetMin ?? 0) * 60_000;
 }
 
-/** Reports whether a column header contains a whole word commonly used for timestamps. */
-export function headerSuggestsTime(name: string): boolean {
-	const trimmed = name.trim().toLowerCase();
-	const words = name
-		.replace(/([a-z0-9])([A-Z])/g, '$1 $2')
-		.toLowerCase()
-		.split(/[\s_.-]+/)
-		.filter(Boolean);
-	const timeWords = new Set([
-		'time',
-		'timestamp',
-		'ts',
-		'epoch',
-		'created',
-		'updated',
-		'date',
-		'datetime'
-	]);
-	return words.some((word) => timeWords.has(word)) || trimmed.endsWith('_at');
+/**
+ * Reports whether parsed date parts denote a calendar date with no time of day.
+ *
+ * A written midnight counts as date-only when it is UTC or carries no offset, because that is
+ * how Excel and pandas export plain dates. A midnight with a non-zero offset is a different UTC
+ * instant and is not date-only.
+ */
+export function isDateOnly(parts: DateParts): boolean {
+	if (!parts.hasTime) return true;
+	return (
+		parts.h === 0 &&
+		parts.mi === 0 &&
+		parts.s === 0 &&
+		parts.ms === 0 &&
+		(parts.offsetMin === null || parts.offsetMin === 0)
+	);
+}
+
+const TIME_PATTERN = /^(\d{1,2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?$/;
+
+/**
+ * Parses a 24-hour time of day to milliseconds since midnight.
+ *
+ * Accepts `H:MM`, `HH:MM`, `HH:MM:SS` and `HH:MM:SS.fraction`. The fraction is cut to three
+ * digits. Zone suffixes, AM/PM markers and out-of-range fields return `null`.
+ */
+export function parseTime(cell: string): number | null {
+	const match = TIME_PATTERN.exec(cell.trim());
+	if (!match) return null;
+	const hour = Number(match[1]);
+	const minute = Number(match[2]);
+	const second = match[3] === undefined ? 0 : Number(match[3]);
+	if (hour > 23 || minute > 59 || second > 59) return null;
+	const ms = match[4] === undefined ? 0 : Number(match[4].slice(0, 3).padEnd(3, '0'));
+	return ((hour * 60 + minute) * 60 + second) * 1000 + ms;
 }
 
 /** Coerces a raw cell to a typed value using the selected column type and format. */
@@ -498,6 +525,12 @@ export function coerceCell(raw: string, type: ColumnType, format?: CellFormat): 
 		}
 		return parsed.value;
 	}
+	if (type === 'date') {
+		const dateFormat = format as DateColumnStats['format'] | undefined;
+		const parts = parseDate(raw);
+		return parts && isDateOnly(parts) ? toEpochMs(parts, dateFormat?.order ?? 'ISO') : null;
+	}
+	if (type === 'time') return parseTime(raw);
 	if (type === 'datetime') {
 		const dateFormat = format as DatetimeColumnStats['format'] | undefined;
 		if (dateFormat?.kind === 'epoch') {

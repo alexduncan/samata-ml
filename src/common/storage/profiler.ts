@@ -1,12 +1,13 @@
 import {
 	BOOLEAN_LEXICON_PAIRS,
 	DEFAULT_MISSING_VALUE_TOKENS,
-	headerSuggestsTime,
+	isDateOnly,
 	matchBoolean,
 	normaliseMissing,
 	parseDate,
 	parseEpoch,
 	parseNumber,
+	parseTime,
 	toEpochMs
 } from './cells';
 import type { DateOrder, DateParts, ParsedEpoch, ParsedNumber } from './cells';
@@ -39,7 +40,7 @@ export interface ElectedColumn {
 	name: string;
 	/** Inferred or overridden canonical type. */
 	type: ColumnType;
-	/** Numeric or datetime display/coercion format, otherwise null. */
+	/** Numeric, date or datetime display/coercion format, otherwise null. */
 	format: NumericColumnStats['format'] | DatetimeColumnStats['format'] | null;
 	/** Observed true/false tokens for boolean columns. */
 	lexicon: [string, string] | null;
@@ -81,12 +82,23 @@ interface ColumnProfile {
 	numericSequence: boolean;
 	numericSequenceCount: number;
 	lastNumeric: number | null;
+	/** Date-string counting latch. */
 	datetimeActive: boolean;
+	/** Epoch counting latch. */
+	epochActive: boolean;
+	/** Time-of-day counting latch. */
+	timeActive: boolean;
 	epochCounts: Map<'s' | 'ms' | 'us', number>;
+	/** Cells valid under each date order, with or without a time of day. */
 	dateOrderCounts: Map<DateOrder, number>;
-	dateMatches: number;
+	/** Cells valid under each date order that are date-only. */
+	dateOnlyOrderCounts: Map<DateOrder, number>;
+	/** Cells that parse as a date string in some order. */
 	datetimeMatches: number;
-	dateHasTime: boolean;
+	/** Cells that parse as an epoch in one of the three units. */
+	epochMatches: number;
+	/** Cells that parse as a time of day. */
+	timeMatches: number;
 	dmyForcing: number;
 	mdyForcing: number;
 	hasYearLastDate: boolean;
@@ -132,7 +144,11 @@ function makeProfile(): ColumnProfile {
 		invalidExamples.set(`numeric:${numericSignatureKey(signature)}`, new Set());
 	}
 	for (const unit of EPOCH_UNITS) invalidExamples.set(`epoch:${unit}`, new Set());
-	for (const order of DATE_ORDERS) invalidExamples.set(`date:${order}`, new Set());
+	for (const order of DATE_ORDERS) {
+		invalidExamples.set(`date:${order}`, new Set());
+		invalidExamples.set(`date-only:${order}`, new Set());
+	}
+	invalidExamples.set('time', new Set());
 	return {
 		values: 0,
 		missingCount: 0,
@@ -147,11 +163,14 @@ function makeProfile(): ColumnProfile {
 		numericSequenceCount: 0,
 		lastNumeric: null,
 		datetimeActive: true,
+		epochActive: true,
+		timeActive: true,
 		epochCounts: new Map(EPOCH_UNITS.map((unit) => [unit, 0])),
 		dateOrderCounts: new Map(DATE_ORDERS.map((order) => [order, 0])),
-		dateMatches: 0,
+		dateOnlyOrderCounts: new Map(DATE_ORDERS.map((order) => [order, 0])),
 		datetimeMatches: 0,
-		dateHasTime: false,
+		epochMatches: 0,
+		timeMatches: 0,
 		dmyForcing: 0,
 		mdyForcing: 0,
 		hasYearLastDate: false,
@@ -218,11 +237,22 @@ function trackDistinct(profile: ColumnProfile, value: string): void {
 	if (/\s/.test(value)) profile.textHasWhitespace = true;
 }
 
+function failsThreshold(profile: ColumnProfile, matches: number): boolean {
+	return (profile.values - matches) / profile.values > 1 - TYPE_MATCH_THRESHOLD;
+}
+
+/** Switches off each temporal latch whose non-matches exceed the tolerance at a checkpoint. */
 function checkDatetimeCheckpoint(profile: ColumnProfile, rowNumber: number): void {
-	if (!profile.datetimeActive || profile.values === 0) return;
+	if (profile.values === 0) return;
 	if (rowNumber !== DATETIME_FIRST_CHECKPOINT && rowNumber % CHECKPOINT_ROWS !== 0) return;
-	if ((profile.values - profile.datetimeMatches) / profile.values > 1 - TYPE_MATCH_THRESHOLD) {
+	if (profile.datetimeActive && failsThreshold(profile, profile.datetimeMatches)) {
 		profile.datetimeActive = false;
+	}
+	if (profile.epochActive && failsThreshold(profile, profile.epochMatches)) {
+		profile.epochActive = false;
+	}
+	if (profile.timeActive && failsThreshold(profile, profile.timeMatches)) {
+		profile.timeActive = false;
 	}
 }
 
@@ -300,7 +330,9 @@ function recordInvalidExamples(
 	numeric: ParsedNumber | null,
 	epoch: ParsedEpoch | null,
 	date: DateParts | null,
-	dateOrderValidity: Map<DateOrder, boolean>
+	dateOrderValidity: Map<DateOrder, boolean>,
+	dateOnlyValidity: Map<DateOrder, boolean>,
+	timeMatch: boolean
 ): void {
 	for (let pair = 0; pair < BOOLEAN_LEXICON_PAIRS.length; pair++) {
 		if (booleanMatch < 0 || Math.floor(booleanMatch / 2) !== pair) {
@@ -317,7 +349,9 @@ function recordInvalidExamples(
 	}
 	for (const order of DATE_ORDERS) {
 		if (!date || !dateOrderValidity.get(order)) addExample(profile, `date:${order}`, value);
+		if (!date || !dateOnlyValidity.get(order)) addExample(profile, `date-only:${order}`, value);
 	}
+	if (!timeMatch) addExample(profile, 'time', value);
 }
 
 function electColumn(
@@ -334,6 +368,10 @@ function electColumn(
 	const numericSignature = chooseNumericSignature(profile);
 	const dateOrder = chooseDateOrder(profile);
 	const bestBooleanPair = chooseBooleanPair(profile);
+	const epochSequence =
+		profile.numericSequence &&
+		profile.allNumericIntegers &&
+		profile.numericSequenceCount === profile.values;
 	const bestEpochUnit = EPOCH_UNITS.reduce((best, unit) =>
 		(profile.epochCounts.get(unit) ?? 0) > (profile.epochCounts.get(best) ?? 0) ? unit : best
 	);
@@ -347,7 +385,8 @@ function electColumn(
 			invalidCount = profile.values - profile.booleanCounts[bestBooleanPair]!;
 			invalidExamples = getExamples(profile, `boolean:${bestBooleanPair}`);
 		} else if (
-			profile.datetimeActive &&
+			profile.epochActive &&
+			!epochSequence &&
 			profile.epochCounts.get(bestEpochUnit)! / profile.values >= TYPE_MATCH_THRESHOLD
 		) {
 			type = 'datetime';
@@ -356,17 +395,36 @@ function electColumn(
 			invalidExamples = getExamples(profile, `epoch:${bestEpochUnit}`);
 		} else if (
 			profile.datetimeActive &&
+			profile.dateOnlyOrderCounts.get(dateOrder.order)! / profile.values >=
+				TYPE_MATCH_THRESHOLD
+		) {
+			type = 'date';
+			format = {
+				kind: 'date',
+				order: dateOrder.order,
+				orderAssumed: dateOrder.orderAssumed
+			};
+			invalidCount = profile.values - profile.dateOnlyOrderCounts.get(dateOrder.order)!;
+			invalidExamples = getExamples(profile, `date-only:${dateOrder.order}`);
+		} else if (
+			profile.datetimeActive &&
 			profile.dateOrderCounts.get(dateOrder.order)! / profile.values >= TYPE_MATCH_THRESHOLD
 		) {
 			type = 'datetime';
 			format = {
 				kind: 'date',
 				order: dateOrder.order,
-				orderAssumed: dateOrder.orderAssumed,
-				hasTime: profile.dateHasTime
+				orderAssumed: dateOrder.orderAssumed
 			};
 			invalidCount = profile.values - profile.dateOrderCounts.get(dateOrder.order)!;
 			invalidExamples = getExamples(profile, `date:${dateOrder.order}`);
+		} else if (
+			profile.timeActive &&
+			profile.timeMatches / profile.values >= TYPE_MATCH_THRESHOLD
+		) {
+			type = 'time';
+			invalidCount = profile.values - profile.timeMatches;
+			invalidExamples = getExamples(profile, 'time');
 		} else if (
 			numericValidCount(profile, numericSignature) / profile.values >=
 			TYPE_MATCH_THRESHOLD
@@ -424,6 +482,17 @@ function electColumn(
 			lexicon = [observedPair[0] ?? canonicalPair[0], observedPair[1] ?? canonicalPair[1]];
 			invalidCount = profile.values - profile.booleanCounts[bestBooleanPair]!;
 			invalidExamples = getExamples(profile, `boolean:${bestBooleanPair}`);
+		} else if (type === 'time') {
+			invalidCount = profile.values - profile.timeMatches;
+			invalidExamples = getExamples(profile, 'time');
+		} else if (type === 'date') {
+			format = {
+				kind: 'date',
+				order: dateOrder.order,
+				orderAssumed: dateOrder.orderAssumed
+			};
+			invalidCount = profile.values - profile.dateOnlyOrderCounts.get(dateOrder.order)!;
+			invalidExamples = getExamples(profile, `date-only:${dateOrder.order}`);
 		} else if (type === 'datetime') {
 			if (profile.epochCounts.get(bestEpochUnit)! > 0) {
 				format = { kind: 'epoch', unit: bestEpochUnit };
@@ -433,8 +502,7 @@ function electColumn(
 				format = {
 					kind: 'date',
 					order: dateOrder.order,
-					orderAssumed: dateOrder.orderAssumed,
-					hasTime: profile.dateHasTime
+					orderAssumed: dateOrder.orderAssumed
 				};
 				invalidCount = profile.values - profile.dateOrderCounts.get(dateOrder.order)!;
 				invalidExamples = getExamples(profile, `date:${dateOrder.order}`);
@@ -480,7 +548,6 @@ export class DatasetProfiler {
 	readonly skippedRows: ProfileRowSummary = { count: 0, rowNumbers: [] };
 	private readonly options: ProfileOptions;
 	private readonly columns: ColumnProfile[];
-	private readonly timestampHeaders: boolean[];
 	private rowsSeen = 0;
 	private keptRows = 0;
 	private paddedRows = 0;
@@ -496,7 +563,6 @@ export class DatasetProfiler {
 		this.header = normaliseHeaders(rawHeader);
 		this.options = options;
 		this.columns = this.header.map(() => makeProfile());
-		this.timestampHeaders = this.header.map(headerSuggestsTime);
 	}
 
 	/** Adds one parsed row, padding short rows and skipping long rows. */
@@ -572,58 +638,61 @@ export class DatasetProfiler {
 
 			let epoch: ParsedEpoch | null = null;
 			let date: DateParts | null = null;
+			let timeMatch = false;
 			const dateOrderValidity = new Map<DateOrder, boolean>();
-			if (profile.datetimeActive) {
-				let datetimeMatch = false;
-				if (this.timestampHeaders[index]) {
-					epoch = parseEpoch(value);
-					if (epoch) {
-						profile.epochCounts.set(
-							epoch.unit,
-							profile.epochCounts.get(epoch.unit)! + 1
-						);
-						datetimeMatch = true;
-					}
+			const dateOnlyValidity = new Map<DateOrder, boolean>();
+			if (profile.epochActive) {
+				epoch = parseEpoch(value);
+				if (epoch) {
+					profile.epochCounts.set(epoch.unit, profile.epochCounts.get(epoch.unit)! + 1);
+					profile.epochMatches++;
 				}
+			}
+			if (profile.timeActive) {
+				timeMatch = parseTime(value) !== null;
+				if (timeMatch) profile.timeMatches++;
+			}
+			if (profile.datetimeActive) {
 				date = parseDate(value);
 				if (date) {
-					datetimeMatch = true;
-					profile.dateMatches++;
-					profile.dateHasTime ||= date.hasTime;
+					profile.datetimeMatches++;
 					if (date.firstPart !== null && date.secondPart !== null) {
 						profile.hasYearLastDate = true;
 						if (date.firstPart > 12) profile.dmyForcing++;
 						if (date.secondPart > 12) profile.mdyForcing++;
 					}
 				}
+				const dateOnly = date !== null && isDateOnly(date);
 				for (const order of DATE_ORDERS) {
 					const valid = date !== null && toEpochMs(date, order) !== null;
 					dateOrderValidity.set(order, valid);
+					dateOnlyValidity.set(order, valid && dateOnly);
 					if (valid)
 						profile.dateOrderCounts.set(order, profile.dateOrderCounts.get(order)! + 1);
+					if (valid && dateOnly) {
+						profile.dateOnlyOrderCounts.set(
+							order,
+							profile.dateOnlyOrderCounts.get(order)! + 1
+						);
+					}
 				}
-				if (datetimeMatch) profile.datetimeMatches++;
-				recordInvalidExamples(
-					profile,
-					value,
-					booleanMatch,
-					numeric,
-					epoch,
-					date,
-					dateOrderValidity
-				);
 			} else {
-				for (const order of DATE_ORDERS) dateOrderValidity.set(order, false);
-				recordInvalidExamples(
-					profile,
-					value,
-					booleanMatch,
-					numeric,
-					epoch,
-					date,
-					dateOrderValidity
-				);
+				for (const order of DATE_ORDERS) {
+					dateOrderValidity.set(order, false);
+					dateOnlyValidity.set(order, false);
+				}
 			}
+			recordInvalidExamples(
+				profile,
+				value,
+				booleanMatch,
+				numeric,
+				epoch,
+				date,
+				dateOrderValidity,
+				dateOnlyValidity,
+				timeMatch
+			);
 
 			checkDatetimeCheckpoint(profile, this.rowsSeen);
 		}

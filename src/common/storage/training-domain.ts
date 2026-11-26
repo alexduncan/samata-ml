@@ -6,6 +6,9 @@ import {
 	FIXED_TRAINING_RANDOM_STATE,
 	MAX_CV_FOLDS,
 	MIN_CV_FOLDS,
+	MODEL_COLORS,
+	provisionalModelIn,
+	sanitiseModelLabel,
 	sanitiseModelResultsUi,
 	TRAINING_DOMAIN_DATASET_ID,
 	type ModelRecord,
@@ -22,13 +25,46 @@ export type TrainingSetupDecodeOutcome = 'valid' | 'explicit-null' | 'unusable';
 /** Dataset, models and selection needed to replay a committed domain update. */
 export type ProtectedDomainSnapshot = Pick<
 	PersistedAppState,
-	'dataset' | 'target' | 'models' | 'nextModelNum' | 'data' | 'comparisonContextEpoch'
+	| 'dataset'
+	| 'target'
+	| 'models'
+	| 'nextModelNum'
+	| 'newModelNum'
+	| 'nextModelColorIndex'
+	| 'data'
+	| 'comparisonContextEpoch'
 >;
+
+/** Projects the fields committed and replayed together by the protected journal. */
+export function protectedDomainSnapshot(state: PersistedAppState): ProtectedDomainSnapshot {
+	const {
+		dataset,
+		target,
+		models,
+		nextModelNum,
+		newModelNum,
+		nextModelColorIndex,
+		data,
+		comparisonContextEpoch
+	} = state;
+	return {
+		dataset,
+		target,
+		models,
+		nextModelNum,
+		newModelNum,
+		nextModelColorIndex,
+		data,
+		comparisonContextEpoch
+	};
+}
 
 const VALID_COLUMN_TYPES = new Set<string>([
 	'numeric',
 	'categorical',
 	'boolean',
+	'date',
+	'time',
 	'datetime',
 	'text'
 ]);
@@ -322,14 +358,23 @@ export function decodeProtectedDomain(
 		trainingSetupDecodeOutcomes.push(
 			setup ? 'valid' : rawSetup === null ? 'explicit-null' : 'unusable'
 		);
+		const { modelColor: rawModelColor, ...fields } = m;
+		const modelColor = MODEL_COLORS.find((colour) => colour === rawModelColor);
 		models.push({
-			...m,
+			...fields,
 			trainingSetup: setup,
 			progress,
 			resultRevision:
 				typeof m.resultRevision === 'string' && m.resultRevision.length > 0
 					? m.resultRevision
 					: null,
+			provisionalCompletedRunId:
+				typeof m.provisionalCompletedRunId === 'string' &&
+				m.provisionalCompletedRunId.trim().length > 0
+					? m.provisionalCompletedRunId
+					: null,
+			modelLabel: sanitiseModelLabel(m.modelLabel),
+			...(modelColor && { modelColor }),
 			ui: decodeModelUi(m.ui)
 		} as ModelRecord);
 	}
@@ -340,6 +385,17 @@ export function decodeProtectedDomain(
 			target: val.target,
 			models,
 			nextModelNum: val.nextModelNum,
+			newModelNum:
+				val.dataset && val.target
+					? (provisionalModelIn(models, val.newModelNum)?.num ?? null)
+					: null,
+			nextModelColorIndex:
+				val.dataset &&
+				val.target &&
+				nonnegativeInteger(val.nextModelColorIndex) &&
+				val.nextModelColorIndex < MODEL_COLORS.length
+					? val.nextModelColorIndex
+					: 0,
 			comparisonContextEpoch: nonnegativeInteger(val.comparisonContextEpoch)
 				? val.comparisonContextEpoch
 				: 0,

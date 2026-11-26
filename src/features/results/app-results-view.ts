@@ -21,6 +21,7 @@ import {
 import { pageHeaderStyles } from '../../styles/page-header.styles';
 import { notificationStyles } from '../../styles/notification.styles';
 import { buttonStyles } from '../../styles/button.styles';
+import { resultsStyles } from '../../styles/results.styles';
 import type { ComparisonColumn } from '../../types/state';
 import type {
 	ComparisonRowView,
@@ -49,8 +50,21 @@ import './app-class-error-bars';
 import './app-confusion-delta';
 import './app-rope-bar';
 import './app-instance-agreement';
+import { RESULT_TERM_COPY } from './result-term-copy';
+
+const resultTerms = Object.entries(RESULT_TERM_COPY).filter(
+	([, term]) => term.surface === 'both' || term.surface === 'comparison'
+);
+const resultTermMessages: Record<`term.${string}`, string> = {};
+for (const [id, term] of resultTerms) {
+	resultTermMessages[`term.${id}.name`] = term.term;
+	resultTermMessages[`term.${id}.definition`] = term.definition;
+	if ('expansion' in term) resultTermMessages[`term.${id}.expansion`] = term.expansion;
+}
 
 const messages = i18n('app-results-view', {
+	...resultTermMessages,
+	resultTermsSummary: 'What do these results terms mean?',
 	title: 'Compare Results',
 	description: 'Compare performance metrics across trained models.',
 	blocked: 'Train at least two models to compare their results.',
@@ -174,6 +188,7 @@ export class AppResultsView extends LitElement {
 		pageHeaderStyles,
 		notificationStyles,
 		buttonStyles,
+		resultsStyles,
 		css`
 			:host {
 				display: block;
@@ -206,6 +221,7 @@ export class AppResultsView extends LitElement {
 	};
 	private waiters = new Set<() => void>();
 	private analysisKey = '';
+	private pendingEffect: Promise<void> | null = null;
 
 	/** Focuses the route heading without waiting for results. */
 	async focusHeading(signal: AbortSignal): Promise<void> {
@@ -256,6 +272,9 @@ export class AppResultsView extends LitElement {
 					model.status
 				])
 			) !== runs;
+		await this.pendingEffect;
+		await this.updateComplete;
+		if (superseded()) return;
 		await new Promise<void>((resolve) => {
 			const done = () => {
 				this.waiters.delete(check);
@@ -265,9 +284,10 @@ export class AppResultsView extends LitElement {
 				initialPair ??= pairKey();
 				if (
 					superseded() ||
-					(!this.comparison.value.unavailableModels.some(
-						(item) => item.reason === 'loading'
-					) &&
+					(!this.pendingEffect &&
+						!this.comparison.value.unavailableModels.some(
+							(item) => item.reason === 'loading'
+						) &&
 						(!this.comparison.value.pairA ||
 							!this.comparison.value.pairB ||
 							!['idle', 'loading'].includes(this.analysis.value.status)))
@@ -302,6 +322,7 @@ export class AppResultsView extends LitElement {
 
 	override disconnectedCallback(): void {
 		super.disconnectedCallback();
+		this.pendingEffect = null;
 		clearRopeAnalysis();
 		this.analysisKey = '';
 		for (const check of [...this.waiters]) check();
@@ -312,14 +333,31 @@ export class AppResultsView extends LitElement {
 	}
 
 	override updated(): void {
+		const app = this.app.value;
+		const comparison = this.comparison.value;
+		const effect = Promise.resolve().then(() => {
+			if (this.pendingEffect !== effect) return;
+			this.pendingEffect = null;
+			if (
+				this.isConnected &&
+				app === this.app.value &&
+				comparison === this.comparison.value
+			) {
+				this.updateResultResources();
+			}
+			for (const check of [...this.waiters]) check();
+		});
+		this.pendingEffect = effect;
+	}
+
+	private updateResultResources(): void {
 		if (this.canCompare.value) {
 			void loadComparisonResults();
-			const current = this.comparison.value;
 			const owner = comparisonOwner(this.app.value);
-			if (owner && current.activeGroup && this.app.value.results.ui.fingerprint === null)
-				selectComparisonGroup(owner, current.activeGroup.fingerprint);
-			const a = current.pairA,
-				b = current.pairB;
+			const group = this.comparison.value.activeGroup;
+			if (owner && group && this.app.value.results.ui.fingerprint === null)
+				selectComparisonGroup(owner, group.fingerprint);
+			const { pairA: a, pairB: b } = this.comparison.value;
 			const key = JSON.stringify([
 				a?.num,
 				a?.evaluation.partitionFingerprint,
@@ -337,7 +375,6 @@ export class AppResultsView extends LitElement {
 			this.analysisKey = '';
 			clearRopeAnalysis();
 		}
-		for (const check of [...this.waiters]) check();
 	}
 
 	private buildViews(data: ComparisonData): Views {
@@ -500,6 +537,40 @@ export class AppResultsView extends LitElement {
 		void retryComparisonResults(Number((event.currentTarget as HTMLButtonElement).value));
 	}
 
+	private renderTerms() {
+		const text = this.text.value as typeof this.text.value & typeof resultTermMessages;
+		return html`
+			<details class="terms-disclosure">
+				<summary>${text.resultTermsSummary}</summary>
+				<dl>
+					${repeat(
+						resultTerms,
+						([id]) => id,
+						([id, term]) => {
+							const label = text[`term.${id}.name`];
+							const expansion =
+								'expansion' in term ? text[`term.${id}.expansion`] : undefined;
+							return html`
+								<dt>
+									${expansion
+										? html`<abbr title=${expansion}>${label}</abbr>`
+										: id === 'f1'
+											? label
+											: html`<dfn>${label}</dfn>`}
+								</dt>
+								<dd>
+									${expansion ? html`${expansion}. ` : nothing}${text[
+										`term.${id}.definition`
+									]}
+								</dd>
+							`;
+						}
+					)}
+				</dl>
+			</details>
+		`;
+	}
+
 	override render() {
 		const t = this.text.value,
 			data = this.comparison.value,
@@ -608,6 +679,7 @@ export class AppResultsView extends LitElement {
 												}}
 												@app-comparison-sort-change=${this
 													.sortChanged}></app-comparison-table>
+											${this.renderTerms()}
 											${data.baselines.mismatched.length
 												? html`<p>${t.baselineMismatch}</p>`
 												: nothing}

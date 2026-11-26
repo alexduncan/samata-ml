@@ -48,6 +48,31 @@
 				<path
 					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m0 13a1 1 0 1 0 0 2 1 1 0 0 0 0-2m0-10.2A3 3 0 0 0 8.8 9a.8.8 0 0 0 1.4 0q.2-1.6 1.8-1.7T13.8 9q0 .6-.8 1.5l-.3.3-1 1.2a4 4 0 0 0-.4 2 .7.7 0 1 0 1.4 0q0-1.2 1.1-2.2l.3-.3q1.2-1.2 1.2-2.5c0-2-1.4-3.2-3.3-3.2" />
 			</symbol>
+
+			<symbol
+				id="delete"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-linecap="round"
+				stroke-linejoin="round"
+				stroke-width="1.5">
+				<path
+					d="M4 7h16M10 11v6M14 11v6M5 7l1 12q.2 1.8 2 2h8a2 2 0 0 0 2-2l1-12M9 7V4q0-1 1-1h4q1 0 1 1v3" />
+			</symbol>
+
+			<symbol id="help">
+				<circle
+					cx="12"
+					cy="12"
+					r="9"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="1.5" />
+				<path
+					fill="currentColor"
+					d="M15.3 9.4q0 1.1-1.2 2.2l-.3.3q-1.1 1-1 2-.1.5-.8.6-.6 0-.7-.7 0-1 .4-1.7.3-.5 1-1.1l.3-.3q.9-.8.8-1.3 0-1.6-1.8-1.6-1.6.1-1.7 1.6-.1.6-.8.7t-.7-.7Q9 6.7 12 6.5q3.2.2 3.3 2.9M12 18a1 1 0 1 0 0-2 1 1 0 0 0 0 2" />
+			</symbol>
 		</svg>
 
 		<div class="sidebar">
@@ -58,7 +83,7 @@
 				<span class="project-name">New Project</span>
 				<button class="btn-icon project-settings" aria-label="Project settings">
 					<svg class="icon" aria-hidden="true" focusable="false">
-						<use href="#settings"></use>
+						<use href="#delete"></use>
 					</svg>
 				</button>
 			</section>
@@ -88,14 +113,31 @@
 					<li class="step">
 						<div class="step-link">
 							<span class="step-num">3</span>
-							<span class="step-label-small">Models</span>
-							<ul class="step-models">
+							<a href="/models" class="step-link-small">All Trained Models</a>
+							<ol class="step-models">
 								<li class="step-model">
-									<div class="step-model-link" aria-current="step">
-										Training New Model...
-									</div>
+									<a href="/models/1" class="step-model-link step-trained-model"
+										><span class="swatch swatch-amber">1</span>
+										<span class="step-model-name">Logisitic Regression</span>
+										<span class="chiclet">7 features</span></a
+									>
 								</li>
-							</ul>
+								<li class="step-model">
+									<a href="/models/2" class="step-model-link step-trained-model"
+										><span class="swatch swatch-blue">2</span>
+										<span class="step-model-name">Decision Tree</span>
+										<span class="chiclet">5 features</span></a
+									>
+								</li>
+								<li class="step-model">
+									<a
+										href="/models/new"
+										class="step-model-link"
+										aria-current="step">
+										Train Another Model
+									</a>
+								</li>
+							</ol>
 						</div>
 					</li>
 					<li class="step">
@@ -117,548 +159,903 @@
 
 		<main>
 			<header class="page-header">
-				<h1>Train Models</h1>
-				<p>Choose a model to predict your target variable.</p>
+				<h1 class="model-results">
+					<span class="swatch swatch-large swatch-blue">2</span>
+					<span class="step-model-name">Decision Tree</span> Results
+				</h1>
+				<p>
+					The {modelName} was trained on {numFeatures} by {trainingMethod: one-shot |
+					cross-validation}.
+				</p>
+				<div class="page-actions">
+					<button class="btn btn-red">Delete Model</button>
+				</div>
 			</header>
 
-			<!-- Binary Results -->
-			<!-- This will display when a trained model with a binary target and probability estimates has saved results (One-Shot shown). -->
-			<section aria-labelledby="results-binary">
-				<h2 id="results-binary">6. Model Results</h2>
-				<p>Binary target, One-Shot, probabilities available.</p>
+			<!-- Model Training Results -->
+			<article class="results">
+				<details class="training-summary">
+					<summary>Training Details</summary>
+					<table>
+						<tr>
+							<th>Model</th>
+							<td>Decision Tree</td>
+						</tr>
+						<tr>
+							<th>Target</th>
+							<td>
+								{targetName}
+								<div class="chiclet">{targetType}</div>
+							</td>
+						</tr>
+						<tr>
+							<th>Features</th>
+							<td>
+								<p>{num_features} features</p>
+								<ul>
+									<li>
+										{featureName}
+										<div class="chiclet">
+											{type: numeric | categorical etc..}
+										</div>
+									</li>
+								</ul>
+							</td>
+						</tr>
+						<tr>
+							<th>Training rows</th>
+							<td>456</td>
+						</tr>
+						<tr>
+							<th>Held-out rows</th>
+							<td>114</td>
+						</tr>
+					</table>
+				</details>
 
-				<section aria-labelledby="binary-summary">
-					<h3 id="binary-summary">Scores on held-out rows</h3>
-					<p>
-						Logistic Regression on Breast Cancer Wisconsin, predicting diagnosis. One
-						test split. Held-out rows scored: 114.
-					</p>
-					<dl>
-						<dt>Balanced accuracy on held-out rows</dt>
-						<dd>94.6%</dd>
-						<dd>
-							One test split: no spread is available. Cross-Validation shows how
-							scores vary across folds.
-						</dd>
-						<dt>Accuracy</dt>
-						<dd>93.9%</dd>
-						<dd>
-							Always predicting the most frequent class scores 62.3%; the difference
-							is +31.6 percentage points.
-						</dd>
-					</dl>
-					<p>Fit time: 0.1 s</p>
-					<div class="notification notification-alert">
-						<p class="notification-text">
-							<strong>Large gap between training and held-out scores.</strong>
-							The model scored 99.1% on the rows it learned from but 86.0% on held-out
-							rows, 13.1 percentage points lower. This can mean it has memorised its
-							training data.
-						</p>
-					</div>
-					<details>
-						<summary>More metrics</summary>
-						<dl>
-							<dt>Macro-F1</dt>
-							<dd>93.8%</dd>
-							<dt>Matthews correlation coefficient (MCC)</dt>
-							<dd>0.874</dd>
-							<dt>ROC-AUC</dt>
-							<dd>0.989</dd>
-							<dt>Average precision</dt>
-							<dd>0.981</dd>
-							<dt>Log loss</dt>
-							<dd>0.153</dd>
-							<dt>Brier score</dt>
-							<dd>0.047</dd>
-							<dt>Expected calibration error (ECE)</dt>
-							<dd>0.041</dd>
-						</dl>
-					</details>
+				<section class="results-section">
+					<header class="results-header">
+						<h2>Accuracy</h2>
+						<a href="/help/{help-article-id}" class="help-link">
+							<span class="visual-hidden">Understand Accuracy</span>
+							<svg class="icon"><use href="#help"></use></svg>
+						</a>
+					</header>
 				</section>
 
-				<section aria-labelledby="binary-folds">
-					<h3 id="binary-folds">Score on the test split</h3>
-					<figure>
-						<figcaption>
-							Balanced accuracy on the test split. The model scored 94.6% on the
-							held-out test rows.
-						</figcaption>
-						<p>[Dot on a 0 to 100% scale with dashed baseline rules]</p>
-						<details>
-							<summary>Show data table</summary>
-							<div role="region" aria-labelledby="binary-folds-caption" tabindex="0">
-								<table>
-									<caption id="binary-folds-caption">
-										Held-out balanced accuracy by partition
-									</caption>
-									<thead>
-										<tr>
-											<th scope="col">Series</th>
-											<th scope="col">Balanced accuracy</th>
-											<th scope="col">Fit time</th>
-										</tr>
-									</thead>
-									<tbody>
-										<tr>
-											<th scope="row">Logistic Regression: Test split</th>
-											<td>94.6%</td>
-											<td>0.1 s</td>
-										</tr>
-										<tr>
-											<th scope="row">Logistic Regression: Mean</th>
-											<td>94.6%</td>
-											<td></td>
-										</tr>
-										<tr>
-											<th scope="row">Always the most frequent class</th>
-											<td>50.0%</td>
-											<td></td>
-										</tr>
-										<tr>
-											<th scope="row">Random guesses by class share</th>
-											<td>49.1%</td>
-											<td></td>
-										</tr>
-									</tbody>
-								</table>
-							</div>
-						</details>
-					</figure>
-				</section>
+				<!-- Binary Results -->
+				<!-- This will display when a trained model with a binary target and probability estimates has saved results (One-Shot shown). -->
+				<section class="results-section" aria-labelledby="results-binary">
+					<h2 id="results-binary">6. Model Results</h2>
+					<p>Binary target, One-Shot, probabilities available.</p>
 
-				<section aria-labelledby="binary-errors">
-					<h3 id="binary-errors">Where the model makes mistakes</h3>
-					<ul>
-						<li>
-							<p>Rows with diagnosis Benign: 71</p>
-							<p>[Proportional bar: correct solid, errors dashed]</p>
-							<ul>
-								<li>
-									68 rows with diagnosis Benign were predicted Benign (correct)
-								</li>
-								<li>
-									3 rows with diagnosis Benign were predicted Malignant
-									(incorrect)
-								</li>
-							</ul>
-						</li>
-						<li>
-							<p>Rows with diagnosis Malignant: 43</p>
-							<p>[Proportional bar: correct solid, errors dashed]</p>
-							<ul>
-								<li>
-									4 rows with diagnosis Malignant were predicted Benign
-									(incorrect)
-								</li>
-								<li>
-									39 rows with diagnosis Malignant were predicted Malignant
-									(correct)
-								</li>
-							</ul>
-						</li>
-					</ul>
-					<div role="region" aria-labelledby="binary-matrix-caption" tabindex="0">
-						<table>
-							<caption id="binary-matrix-caption">
-								Confusion matrix: 2 of 2 true classes, test rows only
-							</caption>
-							<thead>
-								<tr>
-									<td colspan="2"></td>
-									<th scope="colgroup" colspan="2">Predicted class</th>
-								</tr>
-								<tr>
-									<th scope="col">True class</th>
-									<th scope="col">Rows</th>
-									<th scope="col">Benign</th>
-									<th scope="col">Malignant</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr>
-									<th scope="row">Benign</th>
-									<td>71</td>
-									<td><strong>68</strong></td>
-									<td>3</td>
-								</tr>
-								<tr>
-									<th scope="row">Malignant</th>
-									<td>43</td>
-									<td>4</td>
-									<td><strong>39</strong></td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-					<div role="region" aria-labelledby="binary-classes-caption" tabindex="0">
-						<table>
-							<caption id="binary-classes-caption">
-								Precision, recall and F1 for each class on held-out rows
-							</caption>
-							<thead>
-								<tr>
-									<th scope="col">Class</th>
-									<th scope="col">Held-out rows</th>
-									<th scope="col">Precision</th>
-									<th scope="col">Recall</th>
-									<th scope="col">F1</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr>
-									<th scope="row">Benign</th>
-									<td>71</td>
-									<td>94.4%</td>
-									<td>95.8%</td>
-									<td>95.1%</td>
-								</tr>
-								<tr>
-									<th scope="row">Malignant</th>
-									<td>43</td>
-									<td>92.9%</td>
-									<td>90.7%</td>
-									<td>91.8%</td>
-								</tr>
-							</tbody>
-						</table>
-					</div>
-				</section>
-
-				<section aria-labelledby="binary-threshold">
-					<h3 id="binary-threshold">Probability threshold</h3>
-					<figure>
-						<figcaption>
-							Predicted probabilities by true class. Each bar counts held-out rows
-							whose predicted probability of Malignant falls in a five-point range;
-							the line marks the chosen threshold.
-						</figcaption>
+					<section aria-labelledby="binary-summary">
+						<h3 id="binary-summary">Scores on held-out rows</h3>
 						<p>
-							[Histogram of probabilities, one panel per true class, with a threshold
-							line]
+							Logistic Regression on Breast Cancer Wisconsin, predicting diagnosis.
+							One test split. Held-out rows scored: 114.
 						</p>
-					</figure>
-					<label for="threshold">Probability threshold</label>
-					<input id="threshold" type="range" min="0" max="100" step="1" value="50" />
-					<p>
-						Exploring thresholds is for understanding only: it does not change the
-						stored scores.
-					</p>
-					<dl>
-						<dt>Threshold</dt>
-						<dd>50%</dd>
-						<dt>Malignant rows predicted Malignant</dt>
-						<dd>39</dd>
-						<dt>Benign rows predicted Malignant</dt>
-						<dd>3</dd>
-						<dt>Benign rows predicted Benign</dt>
-						<dd>68</dd>
-						<dt>Malignant rows predicted Benign</dt>
-						<dd>4</dd>
-						<dt>Share of Malignant rows found</dt>
-						<dd>90.7%</dd>
-						<dt>Share of Benign rows wrongly flagged</dt>
-						<dd>4.2%</dd>
-					</dl>
-					<details>
-						<summary>Show data table</summary>
-						<div role="region" aria-labelledby="binary-threshold-caption" tabindex="0">
+						<dl>
+							<dt>Balanced accuracy on held-out rows</dt>
+							<dd>94.6%</dd>
+							<dd>
+								One test split: no spread is available. Cross-Validation shows how
+								scores vary across folds.
+							</dd>
+							<dt>Accuracy</dt>
+							<dd>93.9%</dd>
+							<dd>
+								Always predicting the most frequent class scores 62.3%; the
+								difference is +31.6 percentage points.
+							</dd>
+						</dl>
+						<p>Fit time: 0.1 s</p>
+						<div class="notification notification-alert">
+							<p class="notification-text">
+								<strong>Large gap between training and held-out scores.</strong>
+								The model scored 99.1% on the rows it learned from but 86.0% on
+								held-out rows, 13.1 percentage points lower. This can mean it has
+								memorised its training data.
+							</p>
+						</div>
+						<details>
+							<summary>More metrics</summary>
+							<dl>
+								<dt>Macro-F1</dt>
+								<dd>93.8%</dd>
+								<dt>Matthews correlation coefficient (MCC)</dt>
+								<dd>0.874</dd>
+								<dt>ROC-AUC</dt>
+								<dd>0.989</dd>
+								<dt>Average precision</dt>
+								<dd>0.981</dd>
+								<dt>Log loss</dt>
+								<dd>0.153</dd>
+								<dt>Brier score</dt>
+								<dd>0.047</dd>
+								<dt>Expected calibration error (ECE)</dt>
+								<dd>0.041</dd>
+							</dl>
+						</details>
+						<details>
+							<summary>What do these results terms mean?</summary>
+							<dl>
+								<dt><dfn>Held-out rows</dfn></dt>
+								<dd>
+									Rows left out of training for the model that made those
+									predictions.
+								</dd>
+								<dt><dfn>Balanced accuracy</dfn></dt>
+								<dd>
+									Find the share of rows correctly predicted within each class,
+									then average those shares so each class counts equally.
+								</dd>
+								<dt><dfn>Accuracy</dfn></dt>
+								<dd>
+									The share of rows for which the model predicted the correct
+									class.
+								</dd>
+								<dt><dfn>Baseline</dfn></dt>
+								<dd>
+									A reference score for judging how much the model improves on a
+									simple rule.
+								</dd>
+								<dt><dfn>Most frequent class</dfn></dt>
+								<dd>The baseline that always picks the commonest answer.</dd>
+								<dt><dfn>Random guesses by class share</dfn></dt>
+								<dd>
+									The baseline that guesses according to how common each class is.
+								</dd>
+								<dt><dfn>Percentage point</dfn></dt>
+								<dd>
+									A unit for the difference between percentages, such as the five
+									points from 75% to 80%.
+								</dd>
+								<dt><dfn>Train–test gap</dfn></dt>
+								<dd>
+									Training balanced accuracy minus held-out balanced accuracy for
+									the same split. For Cross-Validation, average those differences
+									across folds.
+								</dd>
+								<dt><dfn>Standard deviation</dfn></dt>
+								<dd>
+									Describes how far fold scores tend to spread around their mean.
+								</dd>
+								<dt><dfn>Interquartile range</dfn></dt>
+								<dd>The width of the middle half of the fold scores.</dd>
+								<dt><dfn>Precision</dfn></dt>
+								<dd>
+									Of the rows predicted to be in a class, the share that really
+									belong to it.
+								</dd>
+								<dt><dfn>Recall</dfn></dt>
+								<dd>
+									Of the rows that actually belong to a class, the share that the
+									model found.
+								</dd>
+								<dt>F1</dt>
+								<dd>
+									Combines precision and recall into one score that drops when
+									either is low.
+								</dd>
+								<dt><dfn>Macro-F1</dfn></dt>
+								<dd>Averages F1 equally across classes.</dd>
+								<dt><abbr title="Matthews correlation coefficient">MCC</abbr></dt>
+								<dd>
+									Matthews correlation coefficient. A score for how closely
+									predicted and actual classes agree across correct predictions
+									and errors. Higher values indicate stronger agreement.
+								</dd>
+								<dt>
+									<abbr
+										title="Area under the receiver operating characteristic curve"
+										>ROC-AUC</abbr
+									>
+								</dt>
+								<dd>
+									Area under the receiver operating characteristic curve.
+									Summarises how well the model ranks members of a class ahead of
+									other rows across possible cutoffs.
+								</dd>
+								<dt><dfn>Average precision</dfn></dt>
+								<dd>
+									Summarises how precise the model's predictions are as the score
+									cutoff changes and it finds more members of a class.
+								</dd>
+								<dt><dfn>Log loss</dfn></dt>
+								<dd>
+									Measures how much chance the model gave to the answers that
+									actually happened. Confident wrong answers increase the loss
+									sharply.
+								</dd>
+								<dt><dfn>Brier score</dfn></dt>
+								<dd>
+									Measures squared gaps between the model's predicted chances and
+									what happened. Smaller gaps give a lower score.
+								</dd>
+								<dt><dfn>Calibration</dfn></dt>
+								<dd>
+									Checks whether predicted chances match how often the events
+									happen.
+								</dd>
+								<dt><abbr title="Expected calibration error">ECE</abbr></dt>
+								<dd>
+									Expected calibration error. Averages the gaps between predicted
+									chances and observed outcomes across groups of predictions,
+									giving larger groups more weight.
+								</dd>
+								<dt><dfn>True class</dfn></dt>
+								<dd>The recorded answer for a row.</dd>
+								<dt><dfn>Predicted class</dfn></dt>
+								<dd>The model's answer for a row.</dd>
+								<dt><dfn>Confusion matrix</dfn></dt>
+								<dd>
+									A table that counts each pairing of recorded and predicted
+									answers.
+								</dd>
+								<dt><dfn>Positive class</dfn></dt>
+								<dd>
+									The category treated as the yes answer in a two-category check.
+								</dd>
+								<dt><dfn>False positive</dfn></dt>
+								<dd>
+									Predicting the positive answer when the actual answer is
+									negative.
+								</dd>
+								<dt><dfn>False negative</dfn></dt>
+								<dd>Missing the positive answer when it is present.</dd>
+								<dt><dfn>Probability threshold</dfn></dt>
+								<dd>
+									The cutoff that turns a predicted chance into a yes-or-no
+									decision for the positive class.
+								</dd>
+								<dt><dfn>Fit time</dfn></dt>
+								<dd>Time spent training the model.</dd>
+								<dt><dfn>Fit + score across folds</dfn></dt>
+								<dd>Time spent training and evaluating the folds.</dd>
+							</dl>
+						</details>
+					</section>
+
+					<section class="results-section" aria-labelledby="binary-folds">
+						<h3 id="binary-folds">Score on the test split</h3>
+						<figure>
+							<figcaption>
+								Balanced accuracy on the test split. The model scored 94.6% on the
+								held-out test rows.
+							</figcaption>
+							<p>[Dot on a 0 to 100% scale with dashed baseline rules]</p>
+							<details>
+								<summary>Show data table</summary>
+								<div
+									role="region"
+									aria-labelledby="binary-folds-caption"
+									tabindex="0">
+									<table>
+										<caption id="binary-folds-caption">
+											Held-out balanced accuracy by partition
+										</caption>
+										<thead>
+											<tr>
+												<th scope="col">Series</th>
+												<th scope="col">Balanced accuracy</th>
+												<th scope="col">Fit time</th>
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+												<th scope="row">Logistic Regression: Test split</th>
+												<td>94.6%</td>
+												<td>0.1 s</td>
+											</tr>
+											<tr>
+												<th scope="row">Logistic Regression: Mean</th>
+												<td>94.6%</td>
+												<td></td>
+											</tr>
+											<tr>
+												<th scope="row">Always the most frequent class</th>
+												<td>50.0%</td>
+												<td></td>
+											</tr>
+											<tr>
+												<th scope="row">Random guesses by class share</th>
+												<td>49.1%</td>
+												<td></td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</details>
+						</figure>
+					</section>
+
+					<section class="results-section" aria-labelledby="binary-errors">
+						<h3 id="binary-errors">Where the model makes mistakes</h3>
+						<ul>
+							<li>
+								<p>Rows with diagnosis Benign: 71</p>
+								<p>[Proportional bar: correct solid, errors dashed]</p>
+								<ul>
+									<li>
+										68 rows with diagnosis Benign were predicted Benign
+										(correct)
+									</li>
+									<li>
+										3 rows with diagnosis Benign were predicted Malignant
+										(incorrect)
+									</li>
+								</ul>
+							</li>
+							<li>
+								<p>Rows with diagnosis Malignant: 43</p>
+								<p>[Proportional bar: correct solid, errors dashed]</p>
+								<ul>
+									<li>
+										4 rows with diagnosis Malignant were predicted Benign
+										(incorrect)
+									</li>
+									<li>
+										39 rows with diagnosis Malignant were predicted Malignant
+										(correct)
+									</li>
+								</ul>
+							</li>
+						</ul>
+						<div role="region" aria-labelledby="binary-matrix-caption" tabindex="0">
 							<table>
-								<caption id="binary-threshold-caption">
-									Held-out rows by predicted probability and true class
+								<caption id="binary-matrix-caption">
+									Confusion matrix: 2 of 2 true classes, test rows only
 								</caption>
 								<thead>
 									<tr>
-										<th scope="col">Probability range</th>
-										<th scope="col">True class Benign</th>
-										<th scope="col">True class Malignant</th>
+										<td colspan="2"></td>
+										<th scope="colgroup" colspan="2">Predicted class</th>
+									</tr>
+									<tr>
+										<th scope="col">True class</th>
+										<th scope="col">Rows</th>
+										<th scope="col">Benign</th>
+										<th scope="col">Malignant</th>
 									</tr>
 								</thead>
 								<tbody>
 									<tr>
-										<th scope="row">0% to 5%</th>
-										<td>52</td>
-										<td>1</td>
+										<th scope="row">Benign</th>
+										<td>71</td>
+										<td><strong>68</strong></td>
+										<td>3</td>
 									</tr>
 									<tr>
-										<th scope="row">95% to 100%</th>
-										<td>0</td>
-										<td>31</td>
+										<th scope="row">Malignant</th>
+										<td>43</td>
+										<td>4</td>
+										<td><strong>39</strong></td>
 									</tr>
 								</tbody>
 							</table>
 						</div>
-					</details>
-				</section>
+						<div role="region" aria-labelledby="binary-classes-caption" tabindex="0">
+							<table>
+								<caption id="binary-classes-caption">
+									Precision, recall and F1 for each class on held-out rows
+								</caption>
+								<thead>
+									<tr>
+										<th scope="col">Class</th>
+										<th scope="col">Held-out rows</th>
+										<th scope="col">Precision</th>
+										<th scope="col">Recall</th>
+										<th scope="col">F1</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr>
+										<th scope="row">Benign</th>
+										<td>71</td>
+										<td>94.4%</td>
+										<td>95.8%</td>
+										<td>95.1%</td>
+									</tr>
+									<tr>
+										<th scope="row">Malignant</th>
+										<td>43</td>
+										<td>92.9%</td>
+										<td>90.7%</td>
+										<td>91.8%</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</section>
 
-				<section aria-labelledby="binary-reliability">
-					<h3 id="binary-reliability">Calibration</h3>
-					<figure>
-						<figcaption>
-							Reliability of predicted probabilities. Expected calibration error is
-							0.041. Lower is better; zero means predicted probabilities match
-							observed rates.
-						</figcaption>
+					<section class="results-section" aria-labelledby="binary-threshold">
+						<h3 id="binary-threshold">Probability threshold</h3>
+						<figure>
+							<figcaption>
+								Predicted probabilities by true class. Each bar counts held-out rows
+								whose predicted probability of Malignant falls in a five-point
+								range; the line marks the chosen threshold.
+							</figcaption>
+							<p>
+								[Histogram of probabilities, one panel per true class, with a
+								threshold line]
+							</p>
+						</figure>
+						<label for="threshold">Probability threshold</label>
+						<input id="threshold" type="range" min="0" max="100" step="1" value="50" />
 						<p>
-							[Observed against mean predicted probability, dashed diagonal, aligned
-							count histogram]
+							Exploring thresholds is for understanding only: it does not change the
+							stored scores.
 						</p>
+						<dl>
+							<dt>Threshold</dt>
+							<dd>50%</dd>
+							<dt>Malignant rows predicted Malignant</dt>
+							<dd>39</dd>
+							<dt>Benign rows predicted Malignant</dt>
+							<dd>3</dd>
+							<dt>Benign rows predicted Benign</dt>
+							<dd>68</dd>
+							<dt>Malignant rows predicted Benign</dt>
+							<dd>4</dd>
+							<dt>Share of Malignant rows found</dt>
+							<dd>90.7%</dd>
+							<dt>Share of Benign rows wrongly flagged</dt>
+							<dd>4.2%</dd>
+						</dl>
 						<details>
 							<summary>Show data table</summary>
 							<div
 								role="region"
-								aria-labelledby="binary-reliability-caption"
+								aria-labelledby="binary-threshold-caption"
 								tabindex="0">
 								<table>
-									<caption id="binary-reliability-caption">
-										Calibration by probability bin
+									<caption id="binary-threshold-caption">
+										Held-out rows by predicted probability and true class
 									</caption>
 									<thead>
 										<tr>
-											<th scope="col">Probability bin</th>
-											<th scope="col">Rows</th>
-											<th scope="col">Mean predicted</th>
-											<th scope="col">Observed</th>
+											<th scope="col">Probability range</th>
+											<th scope="col">True class Benign</th>
+											<th scope="col">True class Malignant</th>
 										</tr>
 									</thead>
 									<tbody>
 										<tr>
-											<th scope="row">0% to 10%</th>
-											<td>53</td>
-											<td>2.1%</td>
-											<td>1.9%</td>
+											<th scope="row">0% to 5%</th>
+											<td>52</td>
+											<td>1</td>
 										</tr>
 										<tr>
-											<th scope="row">40% to 50%</th>
+											<th scope="row">95% to 100%</th>
 											<td>0</td>
-											<td>No rows</td>
-											<td>No rows</td>
+											<td>31</td>
 										</tr>
 									</tbody>
 								</table>
 							</div>
 						</details>
-					</figure>
+					</section>
+
+					<section class="results-section" aria-labelledby="binary-reliability">
+						<h3 id="binary-reliability">Calibration</h3>
+						<figure>
+							<figcaption>
+								Reliability of predicted probabilities. Expected calibration error
+								is 0.041. Lower is better; zero means predicted probabilities match
+								observed rates.
+							</figcaption>
+							<p>
+								[Observed against mean predicted probability, dashed diagonal,
+								aligned count histogram]
+							</p>
+							<details>
+								<summary>Show data table</summary>
+								<div
+									role="region"
+									aria-labelledby="binary-reliability-caption"
+									tabindex="0">
+									<table>
+										<caption id="binary-reliability-caption">
+											Calibration by probability bin
+										</caption>
+										<thead>
+											<tr>
+												<th scope="col">Probability bin</th>
+												<th scope="col">Rows</th>
+												<th scope="col">Mean predicted</th>
+												<th scope="col">Observed</th>
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+												<th scope="row">0% to 10%</th>
+												<td>53</td>
+												<td>2.1%</td>
+												<td>1.9%</td>
+											</tr>
+											<tr>
+												<th scope="row">40% to 50%</th>
+												<td>0</td>
+												<td>No rows</td>
+												<td>No rows</td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</details>
+						</figure>
+					</section>
 				</section>
-			</section>
-			<!-- / Binary Results -->
+				<!-- / Binary Results -->
 
-			<!-- Multiclass Results -->
-			<!-- This will display when a trained model with a multiclass target has saved results (five-fold Cross-Validation shown). -->
-			<section aria-labelledby="results-multiclass">
-				<h2 id="results-multiclass">6. Model Results</h2>
-				<p>Multiclass target, five-fold Cross-Validation. Binary-only blocks are absent.</p>
-
-				<section aria-labelledby="multi-summary">
-					<h3 id="multi-summary">Scores on held-out rows</h3>
+				<!-- Multiclass Results -->
+				<!-- This will display when a trained model with a multiclass target has saved results (five-fold Cross-Validation shown). -->
+				<section class="results-section" aria-labelledby="results-multiclass">
+					<h2 id="results-multiclass">6. Model Results</h2>
 					<p>
-						Logistic Regression on Iris, predicting class. 5-fold cross-validation.
-						Held-out rows scored: 150.
+						Multiclass target, five-fold Cross-Validation. Binary-only blocks are
+						absent.
 					</p>
-					<dl>
-						<dt>Balanced accuracy on held-out rows</dt>
-						<dd>96.0% ± 2.5 points</dd>
-						<dd>
-							Standard deviation 2.5 points; interquartile range 3.3 points across 5
-							folds.
-						</dd>
-						<dt>Accuracy</dt>
-						<dd>96.0%</dd>
-						<dd>
-							Always predicting the most frequent class scores 33.3%; the difference
-							is +62.7 percentage points.
-						</dd>
-						<dt>Macro-F1</dt>
-						<dd>96.0%</dd>
-					</dl>
-					<p>Total fit and scoring time across folds: 0.7 s</p>
-					<details>
-						<summary>More metrics</summary>
+
+					<section aria-labelledby="multi-summary">
+						<h3 id="multi-summary">Scores on held-out rows</h3>
+						<p>
+							Logistic Regression on Iris, predicting class. 5-fold cross-validation.
+							Held-out rows scored: 150.
+						</p>
 						<dl>
-							<dt>Matthews correlation coefficient (MCC)</dt>
-							<dd>0.94</dd>
-							<dt>Log loss</dt>
+							<dt>Balanced accuracy on held-out rows</dt>
+							<dd>96.0% ± 2.5 points</dd>
 							<dd>
-								Unavailable because this model was trained without probability
-								estimates.
+								Standard deviation 2.5 points; interquartile range 3.3 points across
+								5 folds.
 							</dd>
+							<dt>Accuracy</dt>
+							<dd>96.0%</dd>
+							<dd>
+								Always predicting the most frequent class scores 33.3%; the
+								difference is +62.7 percentage points.
+							</dd>
+							<dt>Macro-F1</dt>
+							<dd>96.0%</dd>
 						</dl>
-					</details>
-				</section>
-
-				<section aria-labelledby="multi-folds">
-					<h3 id="multi-folds">Scores across folds</h3>
-					<figure>
-						<figcaption>
-							Balanced accuracy across folds. Fold scores ranged from 93.3% to 100%
-							across 5 folds, with a mean of 96.0%.
-						</figcaption>
-						<p>
-							[Five dots, a mean mark, a standard-deviation rule and dashed baselines]
-						</p>
+						<p>Total fit and scoring time across folds: 0.7 s</p>
 						<details>
-							<summary>Show data table</summary>
-							<div role="region" aria-labelledby="multi-folds-caption" tabindex="0">
-								<table>
-									<caption id="multi-folds-caption">
-										Held-out balanced accuracy by partition
-									</caption>
-									<thead>
-										<tr>
-											<th scope="col">Series</th>
-											<th scope="col">Balanced accuracy</th>
-											<th scope="col">Fit and scoring time</th>
-										</tr>
-									</thead>
-									<tbody>
-										<tr>
-											<th scope="row">Logistic Regression: Fold 1</th>
-											<td>96.7%</td>
-											<td>0.1 s</td>
-										</tr>
-										<tr>
-											<th scope="row">Logistic Regression: Mean</th>
-											<td>96.0%</td>
-											<td></td>
-										</tr>
-										<tr>
-											<th scope="row">
-												Logistic Regression: Standard deviation
-											</th>
-											<td>2.5%</td>
-											<td></td>
-										</tr>
-									</tbody>
-								</table>
-							</div>
+							<summary>More metrics</summary>
+							<dl>
+								<dt>Matthews correlation coefficient (MCC)</dt>
+								<dd>0.94</dd>
+								<dt>Log loss</dt>
+								<dd>
+									Unavailable because this model was trained without probability
+									estimates.
+								</dd>
+							</dl>
 						</details>
-					</figure>
-				</section>
-
-				<section aria-labelledby="multi-errors">
-					<h3 id="multi-errors">Where the model makes mistakes</h3>
-					<figure>
-						<figcaption>
-							Held-out errors by true class. 6 of 150 held-out rows were predicted
-							wrongly. The most common mistake was versicolor predicted as virginica,
-							4 times.
-						</figcaption>
-						<p>
-							[One row per true class: errors to the left, correct predictions to the
-							right]
-						</p>
 						<details>
-							<summary>Show data table</summary>
-							<div role="region" aria-labelledby="multi-classee-caption" tabindex="0">
-								<table>
-									<caption id="multi-classee-caption">
-										Held-out rows by true class and predicted class
-									</caption>
-									<thead>
-										<tr>
-											<th scope="col">True class</th>
-											<th scope="col">Predicted class</th>
-											<th scope="col">Rows</th>
-											<th scope="col">Outcome</th>
-										</tr>
-									</thead>
-									<tbody>
-										<tr>
-											<th scope="row">versicolor</th>
-											<td>virginica</td>
-											<td>4</td>
-											<td>Error</td>
-										</tr>
-									</tbody>
-								</table>
-							</div>
+							<summary>What do these results terms mean?</summary>
+							<dl>
+								<dt><dfn>Held-out rows</dfn></dt>
+								<dd>
+									Rows left out of training for the model that made those
+									predictions.
+								</dd>
+								<dt><dfn>Balanced accuracy</dfn></dt>
+								<dd>
+									Find the share of rows correctly predicted within each class,
+									then average those shares so each class counts equally.
+								</dd>
+								<dt><dfn>Mean across folds</dfn></dt>
+								<dd>
+									Score each held-out fold separately, then average the fold
+									scores.
+								</dd>
+								<dt><dfn>Accuracy</dfn></dt>
+								<dd>
+									The share of rows for which the model predicted the correct
+									class.
+								</dd>
+								<dt><dfn>Baseline</dfn></dt>
+								<dd>
+									A reference score for judging how much the model improves on a
+									simple rule.
+								</dd>
+								<dt><dfn>Most frequent class</dfn></dt>
+								<dd>The baseline that always picks the commonest answer.</dd>
+								<dt><dfn>Random guesses by class share</dfn></dt>
+								<dd>
+									The baseline that guesses according to how common each class is.
+								</dd>
+								<dt><dfn>Percentage point</dfn></dt>
+								<dd>
+									A unit for the difference between percentages, such as the five
+									points from 75% to 80%.
+								</dd>
+								<dt><dfn>Train–test gap</dfn></dt>
+								<dd>
+									Training balanced accuracy minus held-out balanced accuracy for
+									the same split. For Cross-Validation, average those differences
+									across folds.
+								</dd>
+								<dt><dfn>Standard deviation</dfn></dt>
+								<dd>
+									Describes how far fold scores tend to spread around their mean.
+								</dd>
+								<dt><dfn>Interquartile range</dfn></dt>
+								<dd>The width of the middle half of the fold scores.</dd>
+								<dt><dfn>Precision</dfn></dt>
+								<dd>
+									Of the rows predicted to be in a class, the share that really
+									belong to it.
+								</dd>
+								<dt><dfn>Recall</dfn></dt>
+								<dd>
+									Of the rows that actually belong to a class, the share that the
+									model found.
+								</dd>
+								<dt>F1</dt>
+								<dd>
+									Combines precision and recall into one score that drops when
+									either is low.
+								</dd>
+								<dt><dfn>Macro-F1</dfn></dt>
+								<dd>Averages F1 equally across classes.</dd>
+								<dt><abbr title="Matthews correlation coefficient">MCC</abbr></dt>
+								<dd>
+									Matthews correlation coefficient. A score for how closely
+									predicted and actual classes agree across correct predictions
+									and errors. Higher values indicate stronger agreement.
+								</dd>
+								<dt>
+									<abbr
+										title="Area under the receiver operating characteristic curve"
+										>ROC-AUC</abbr
+									>
+								</dt>
+								<dd>
+									Area under the receiver operating characteristic curve.
+									Summarises how well the model ranks members of a class ahead of
+									other rows across possible cutoffs.
+								</dd>
+								<dt><dfn>Average precision</dfn></dt>
+								<dd>
+									Summarises how precise the model's predictions are as the score
+									cutoff changes and it finds more members of a class.
+								</dd>
+								<dt><dfn>Log loss</dfn></dt>
+								<dd>
+									Measures how much chance the model gave to the answers that
+									actually happened. Confident wrong answers increase the loss
+									sharply.
+								</dd>
+								<dt><dfn>Brier score</dfn></dt>
+								<dd>
+									Measures squared gaps between the model's predicted chances and
+									what happened. Smaller gaps give a lower score.
+								</dd>
+								<dt><dfn>Calibration</dfn></dt>
+								<dd>
+									Checks whether predicted chances match how often the events
+									happen.
+								</dd>
+								<dt><abbr title="Expected calibration error">ECE</abbr></dt>
+								<dd>
+									Expected calibration error. Averages the gaps between predicted
+									chances and observed outcomes across groups of predictions,
+									giving larger groups more weight.
+								</dd>
+								<dt><dfn>True class</dfn></dt>
+								<dd>The recorded answer for a row.</dd>
+								<dt><dfn>Predicted class</dfn></dt>
+								<dd>The model's answer for a row.</dd>
+								<dt><dfn>Confusion matrix</dfn></dt>
+								<dd>
+									A table that counts each pairing of recorded and predicted
+									answers.
+								</dd>
+								<dt><dfn>Positive class</dfn></dt>
+								<dd>
+									The category treated as the yes answer in a two-category check.
+								</dd>
+								<dt><dfn>False positive</dfn></dt>
+								<dd>
+									Predicting the positive answer when the actual answer is
+									negative.
+								</dd>
+								<dt><dfn>False negative</dfn></dt>
+								<dd>Missing the positive answer when it is present.</dd>
+								<dt><dfn>Fit time</dfn></dt>
+								<dd>Time spent training the model.</dd>
+								<dt><dfn>Fit + score across folds</dfn></dt>
+								<dd>Time spent training and evaluating the folds.</dd>
+							</dl>
 						</details>
-					</figure>
-					<p>
-						<label for="true-class">Show true class</label>
-						<select id="true-class" name="true-class">
-							<option>The twenty largest classes</option>
-							<option>setosa</option>
-							<option>versicolor</option>
-							<option>virginica</option>
-						</select>
-					</p>
-					<p>The filter appears only with more than twenty classes.</p>
+					</section>
+
+					<section class="results-section" aria-labelledby="multi-folds">
+						<h3 id="multi-folds">Scores across folds</h3>
+						<figure>
+							<figcaption>
+								Balanced accuracy across folds. Fold scores ranged from 93.3% to
+								100% across 5 folds, with a mean of 96.0%.
+							</figcaption>
+							<p>
+								[Five dots, a mean mark, a standard-deviation rule and dashed
+								baselines]
+							</p>
+							<details>
+								<summary>Show data table</summary>
+								<div
+									role="region"
+									aria-labelledby="multi-folds-caption"
+									tabindex="0">
+									<table>
+										<caption id="multi-folds-caption">
+											Held-out balanced accuracy by partition
+										</caption>
+										<thead>
+											<tr>
+												<th scope="col">Series</th>
+												<th scope="col">Balanced accuracy</th>
+												<th scope="col">Fit and scoring time</th>
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+												<th scope="row">Logistic Regression: Fold 1</th>
+												<td>96.7%</td>
+												<td>0.1 s</td>
+											</tr>
+											<tr>
+												<th scope="row">Logistic Regression: Mean</th>
+												<td>96.0%</td>
+												<td></td>
+											</tr>
+											<tr>
+												<th scope="row">
+													Logistic Regression: Standard deviation
+												</th>
+												<td>2.5%</td>
+												<td></td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</details>
+						</figure>
+					</section>
+
+					<section class="results-section" aria-labelledby="multi-errors">
+						<h3 id="multi-errors">Where the model makes mistakes</h3>
+						<figure>
+							<figcaption>
+								Held-out errors by true class. 6 of 150 held-out rows were predicted
+								wrongly. The most common mistake was versicolor predicted as
+								virginica, 4 times.
+							</figcaption>
+							<p>
+								[One row per true class: errors to the left, correct predictions to
+								the right]
+							</p>
+							<details>
+								<summary>Show data table</summary>
+								<div
+									role="region"
+									aria-labelledby="multi-classee-caption"
+									tabindex="0">
+									<table>
+										<caption id="multi-classee-caption">
+											Held-out rows by true class and predicted class
+										</caption>
+										<thead>
+											<tr>
+												<th scope="col">True class</th>
+												<th scope="col">Predicted class</th>
+												<th scope="col">Rows</th>
+												<th scope="col">Outcome</th>
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+												<th scope="row">versicolor</th>
+												<td>virginica</td>
+												<td>4</td>
+												<td>Error</td>
+											</tr>
+										</tbody>
+									</table>
+								</div>
+							</details>
+						</figure>
+						<p>
+							<label for="true-class">Show true class</label>
+							<select id="true-class" name="true-class">
+								<option>The twenty largest classes</option>
+								<option>setosa</option>
+								<option>versicolor</option>
+								<option>virginica</option>
+							</select>
+						</p>
+						<p>The filter appears only with more than twenty classes.</p>
+					</section>
+
+					<section class="results-section" aria-labelledby="multi-reliability">
+						<h3 id="multi-reliability">Calibration</h3>
+						<p>
+							Reliability of the top predicted class: confidence against observed
+							accuracy, with the same table pattern as the binary diagram.
+						</p>
+					</section>
 				</section>
+				<!-- / Multiclass Results -->
 
-				<section aria-labelledby="multi-reliability">
-					<h3 id="multi-reliability">Calibration</h3>
+				<!-- Unavailable Sections -->
+				<!-- This will display when the trained classifier has no probability estimates, so log loss, the threshold explorer and the reliability diagram cannot be shown. -->
+				<section>
+					<h2>Unavailable sections</h2>
 					<p>
-						Reliability of the top predicted class: confidence against observed
-						accuracy, with the same table pattern as the binary diagram.
+						Log loss and the threshold explorer are unavailable because this Support
+						Vector Classifier was trained without probability estimates.
+					</p>
+					<p>
+						The reliability diagram is unavailable because this Support Vector
+						Classifier was trained without probability estimates.
 					</p>
 				</section>
-			</section>
-			<!-- / Multiclass Results -->
+				<!-- / Unavailable Sections -->
 
-			<!-- Unavailable Sections -->
-			<!-- This will display when the trained classifier has no probability estimates, so log loss, the threshold explorer and the reliability diagram cannot be shown. -->
-			<section>
-				<h2>Unavailable sections</h2>
-				<p>
-					Log loss and the threshold explorer are unavailable because this Support Vector
-					Classifier was trained without probability estimates.
-				</p>
-				<p>
-					The reliability diagram is unavailable because this Support Vector Classifier
-					was trained without probability estimates.
-				</p>
-			</section>
-			<!-- / Unavailable Sections -->
+				<!-- Loading Results -->
+				<!-- This will display when saved results are being read from this browser. -->
+				<section>
+					<h2>Loading</h2>
+					<progress aria-label="Loading results…"></progress>
+				</section>
+				<!-- / Loading Results -->
 
-			<!-- Loading Results -->
-			<!-- This will display when saved results are being read from this browser. -->
-			<section>
-				<h2>Loading</h2>
-				<progress aria-label="Loading results…"></progress>
-			</section>
-			<!-- / Loading Results -->
+				<!-- Empty Results -->
+				<!-- This will display when the selected model has not completed training. -->
+				<section>
+					<h2>Empty</h2>
+					<p>Train this model to see its results.</p>
+				</section>
+				<!-- / Empty Results -->
 
-			<!-- Empty Results -->
-			<!-- This will display when the selected model has not completed training. -->
-			<section>
-				<h2>Empty</h2>
-				<p>Train this model to see its results.</p>
-			</section>
-			<!-- / Empty Results -->
+				<!-- Legacy Result -->
+				<!-- This will display when the model was trained before detailed results were saved. -->
+				<section>
+					<h2>Legacy result</h2>
+					<p>
+						This model was trained before detailed results were saved. Train it again to
+						see them.
+					</p>
+					<p><a href="/models">Open Models and choose Train New Model</a></p>
+				</section>
+				<!-- / Legacy Result -->
 
-			<!-- Legacy Result -->
-			<!-- This will display when the model was trained before detailed results were saved. -->
-			<section>
-				<h2>Legacy result</h2>
-				<p>
-					This model was trained before detailed results were saved. Train it again to see
-					them.
-				</p>
-				<p><a href="/models">Open Models and choose Train New Model</a></p>
-			</section>
-			<!-- / Legacy Result -->
+				<!-- Lost Results -->
+				<!-- This will display when the saved results for the trained model are missing or no longer match its configuration. -->
+				<section>
+					<h2>Lost results</h2>
+					<p>
+						The saved results for this model are no longer available in this browser.
+						Train the model again to see them.
+					</p>
+					<p><a href="/models">Open Models and choose Train New Model</a></p>
+				</section>
+				<!-- / Lost Results -->
 
-			<!-- Lost Results -->
-			<!-- This will display when the saved results for the trained model are missing or no longer match its configuration. -->
-			<section>
-				<h2>Lost results</h2>
-				<p>
-					The saved results for this model are no longer available in this browser. Train
-					the model again to see them.
-				</p>
-				<p><a href="/models">Open Models and choose Train New Model</a></p>
-			</section>
-			<!-- / Lost Results -->
-
-			<!-- Result Error -->
-			<!-- This will display when the saved results cannot be read from browser storage. -->
-			<section>
-				<h2>Result error</h2>
-				<p role="alert">The saved results could not be read from this browser.</p>
-				<button class="btn" type="button">Retry</button>
-			</section>
-			<!-- / Result Error -->
+				<!-- Result Error -->
+				<!-- This will display when the saved results cannot be read from browser storage. -->
+				<section>
+					<h2>Result error</h2>
+					<p role="alert">The saved results could not be read from this browser.</p>
+					<button class="btn" type="button">Retry</button>
+				</section>
+				<!-- / Result Error -->
+			</article>
+			<!-- / Model Training Results -->
 		</main>
 	</body>
 </html>

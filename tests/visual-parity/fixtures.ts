@@ -2,7 +2,7 @@ import type { Page } from '@playwright/test';
 import { INITIAL_APP_STATE, type ModelRecord, type PersistedAppState } from '../../src/types/state';
 
 /** Deterministic in-memory sidebar states shared by stories and browser assertions. */
-export type SidebarFixture = 'empty' | 'dataset' | 'target' | 'models' | 'long';
+export type SidebarFixture = 'empty' | 'dataset' | 'target' | 'models' | 'provisional' | 'long';
 
 function model(num: number, status: ModelRecord['status']): ModelRecord {
 	return {
@@ -53,28 +53,58 @@ export function createSidebarFixture(fixture: SidebarFixture): PersistedAppState
 	if (fixture === 'dataset') return state;
 	state.target = 'species';
 	if (fixture === 'target') return state;
-	state.models = [model(1, 'draft'), model(2, 'training'), model(3, 'trained')];
+	state.models = [
+		model(1, 'trained'),
+		{
+			...model(2, 'trained'),
+			modelId: 'decision-tree-classifier',
+			modelLabel: 'Decision Tree',
+			modelColor: 'blue',
+			features: ['bill_length_mm', 'bill_depth_mm']
+		},
+		model(3, 'training')
+	];
+	state.newModelNum = 3;
 	state.nextModelNum = 4;
 	if (fixture === 'long') {
 		state.dataset.name =
 			'A long dataset name with UnbrokenDatasetNameThatMustWrapWithoutTruncation and additional descriptive words';
 		state.dataset.rowCount = 1234567;
+		state.models[1]!.modelLabel = 'Long trained model label with UnbrokenModelNameThatMustWrap';
 	}
 	return state;
 }
 
-/** Prepares a real mounted app using only the existing test atom and native route links. */
+/** Seeds the existing test atom before the sidebar connects, preventing a live cue transition. */
 export async function prepareSidebarFixture(page: Page, fixture: SidebarFixture): Promise<void> {
 	await page.emulateMedia({ reducedMotion: 'reduce' });
-	await page.goto('/data');
-	await page.locator('app-welcome-modal').evaluate(async (element) => {
-		await (element as HTMLElementTagNameMap['app-welcome-modal']).updateComplete;
-	});
-	const start = page.getByRole('button', { name: 'Get Started', exact: true });
-	if (await start.isVisible()) await start.click();
-	await page.evaluate((state) => window.__appState!.set(state), createSidebarFixture(fixture));
-	const path = fixture === 'models' ? '/models/2' : fixture === 'target' ? '/target' : '/data';
-	if (path !== '/data') await page.locator(`app-sidebar a[href="${path}"]`).click();
+	await page.addInitScript((state) => {
+		const define = CustomElementRegistry.prototype.define;
+		CustomElementRegistry.prototype.define = function (name, component, options) {
+			if (name === 'app-sidebar') {
+				const prototype = component.prototype as HTMLElementTagNameMap['app-sidebar'];
+				const connect = prototype.connectedCallback;
+				let seeded = false;
+				prototype.connectedCallback = function () {
+					if (!seeded) {
+						window.__appState!.set(state);
+						seeded = true;
+					}
+					connect.call(this);
+				};
+			}
+			define.call(this, name, component, options);
+		};
+	}, createSidebarFixture(fixture));
+	const path =
+		fixture === 'models'
+			? '/models/2'
+			: fixture === 'provisional'
+				? '/models/new'
+				: fixture === 'target'
+					? '/target'
+					: '/data';
+	await page.goto(path);
 	await page.locator('app-sidebar').evaluate(async (element) => {
 		await (element as HTMLElementTagNameMap['app-sidebar']).updateComplete;
 	});
@@ -87,12 +117,12 @@ export async function prepareSidebarFixture(page: Page, fixture: SidebarFixture)
 /** Normalises reference content and current state only, preserving its CSS and layout structure. */
 export async function prepareSidebarReference(
 	page: Page,
-	fixture: 'empty' | 'models'
+	fixture: 'empty' | 'models',
+	mockupsUrl: string
 ): Promise<void> {
-	const { MOCKUPS_URL } = await import('../../scripts/ports');
 	await page.emulateMedia({ reducedMotion: 'reduce' });
 	await page.goto(
-		`${MOCKUPS_URL}/${fixture === 'empty' ? '01-1_select-data.html' : '03-2_train-models-1-choose-model.html'}?clean=1`
+		`${mockupsUrl}/${fixture === 'empty' ? '01-1_select-data.html' : '03-7_train-models-5-results.html'}?clean=1`
 	);
 	await page.evaluate((populated) => {
 		const sidebar = document.querySelector('.sidebar')!;
@@ -108,16 +138,14 @@ export async function prepareSidebarReference(
 		sidebar.querySelectorAll('.step').forEach((step) => step.removeAttribute('aria-current'));
 		sidebar.querySelector('.step:nth-child(3)')!.setAttribute('aria-current', 'step');
 		const list = sidebar.querySelector('.step-models')!;
-		const item = list.firstElementChild!;
-		for (let num = 1; num <= 3; num++) {
-			const next = item.cloneNode(true) as HTMLElement;
-			const link = next.querySelector('.step-model-link')!;
-			link.textContent = `Model ${num}`;
-			if (num === 2) link.setAttribute('aria-current', 'step');
-			else link.removeAttribute('aria-current');
-			list.append(next);
-		}
-		item.remove();
+		const trained = list.querySelectorAll('.step-trained-model');
+		trained[0]!.querySelector('.step-model-name')!.textContent = 'Logistic Regression';
+		trained[0]!.querySelector('.chiclet')!.textContent = '1 feature';
+		trained[1]!.querySelector('.chiclet')!.textContent = '2 features';
+		list.querySelectorAll('[aria-current]').forEach((row) =>
+			row.removeAttribute('aria-current')
+		);
+		trained[1]!.setAttribute('aria-current', 'page');
 	}, fixture === 'models');
 	await page.evaluate(async () => {
 		await document.fonts.ready;

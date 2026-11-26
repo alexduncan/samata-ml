@@ -9,7 +9,10 @@ const datasheetPromises = new Map<string, Promise<string>>();
 export async function loadSampleCatalogue(signal?: AbortSignal): Promise<SampleDatasetIndex> {
 	if (!cataloguePromise) {
 		cataloguePromise = (async () => {
-			const response = await fetch('/datasets/index.json', { signal });
+			const suffix = DATASETS_INDEX_VERSION
+				? `?v=${encodeURIComponent(DATASETS_INDEX_VERSION)}`
+				: '';
+			const response = await fetch(`/datasets/index.json${suffix}`, { signal });
 			if (!response.ok)
 				throw new Error(`Sample catalogue request failed: ${response.status}`);
 			const value: unknown = await response.json();

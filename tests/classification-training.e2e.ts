@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { workerUrl } from './fixtures/release-assets';
 import type { TrainingRunIdentity } from '../src/types/model-result';
 import type {
 	TrainingStartRequest,
@@ -80,35 +81,39 @@ async function run(
 		runId: crypto.randomUUID()
 	};
 	const request: TrainingStartRequest = { kind: 'start', identity, classifier, setup, features };
+	const trainingWorkerUrl = await workerUrl(page, 'training');
 	return page
-		.evaluate(async (request) => {
-			const replies = await new Promise<TrainingWorkerReply[]>((resolve, reject) => {
-				const worker = new Worker('/training.worker.js', { type: 'module' });
-				const events: TrainingWorkerReply[] = [];
-				const timer = window.setTimeout(() => {
-					worker.terminate();
-					reject(new Error('Training worker did not reach a terminal state'));
-				}, 25_000);
-				worker.onerror = (error) => {
-					clearTimeout(timer);
-					worker.terminate();
-					reject(new Error(error.message));
-				};
-				worker.onmessage = ({ data }: MessageEvent<TrainingWorkerReply>) => {
-					events.push(data);
-					if (data.kind === 'progress') return;
-					clearTimeout(timer);
-					worker.terminate();
-					resolve(events);
-				};
-				worker.postMessage(request);
-			});
-			// Transfer typed arrays between the browser worker and page unchanged. The structured
-			// clone representation below is only for Playwright's Node-side assertions.
-			return JSON.stringify(replies, (_key, value: unknown) =>
-				ArrayBuffer.isView(value) ? Array.from(value as Uint32Array) : value
-			);
-		}, request)
+		.evaluate(
+			async ({ request, trainingWorkerUrl }) => {
+				const replies = await new Promise<TrainingWorkerReply[]>((resolve, reject) => {
+					const worker = new Worker(trainingWorkerUrl, { type: 'module' });
+					const events: TrainingWorkerReply[] = [];
+					const timer = window.setTimeout(() => {
+						worker.terminate();
+						reject(new Error('Training worker did not reach a terminal state'));
+					}, 25_000);
+					worker.onerror = (error) => {
+						clearTimeout(timer);
+						worker.terminate();
+						reject(new Error(error.message));
+					};
+					worker.onmessage = ({ data }: MessageEvent<TrainingWorkerReply>) => {
+						events.push(data);
+						if (data.kind === 'progress') return;
+						clearTimeout(timer);
+						worker.terminate();
+						resolve(events);
+					};
+					worker.postMessage(request);
+				});
+				// Transfer typed arrays between the browser worker and page unchanged. The structured
+				// clone representation below is only for Playwright's Node-side assertions.
+				return JSON.stringify(replies, (_key, value: unknown) =>
+					ArrayBuffer.isView(value) ? Array.from(value as Uint32Array) : value
+				);
+			},
+			{ request, trainingWorkerUrl }
+		)
 		.then((value) => JSON.parse(value) as TrainingWorkerReply[]);
 }
 
@@ -300,7 +305,7 @@ test.describe('Deployed Chromium classification worker', () => {
 		expect(second.result.featureNamesOut.join(' ')).not.toContain('validation-only');
 	});
 
-	test('an authoritative holdout partition rejection reopens the real builder', async ({
+	test('an authoritative holdout partition rejection can reopen Training Setup from the stopped panel', async ({
 		page
 	}) => {
 		const labels = ['cedar', 'maple', 'beech', 'ash'];
@@ -315,9 +320,10 @@ test.describe('Deployed Chromium classification worker', () => {
 		await page.locator('app-target-view header a[href="/models"]').click();
 		const setup = await configureDraft(page, 1);
 		await setup.getByRole('button', { name: 'Train Model' }).click();
-		await expect(
-			page.getByRole('alert').filter({ hasText: 'The training library rejected this setup' })
-		).toBeVisible();
+		const stopped = page.getByTestId('training-step');
+		await expect(stopped.getByRole('heading', { name: '5. Training Stopped' })).toBeVisible();
+		await expect(stopped.getByText(/The training library rejected this setup/)).toBeVisible();
+		await stopped.getByRole('button', { name: 'Edit Training Setup' }).click();
 		await expect(setup.getByRole('button', { name: 'Train Model' })).toBeEnabled();
 		const model = await page.evaluate(() => window.__appState!.get().models[0]);
 		expect(model).toMatchObject({

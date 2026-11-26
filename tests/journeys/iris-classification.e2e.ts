@@ -1,6 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { acknowledgeDurableTraining, expectPopulatedResults, loadSampleDataset } from './helpers';
-import { configureDraft } from '../fixtures/training/browser';
+import {
+	acknowledgeDurableTraining,
+	expectPopulatedResults,
+	loadSampleDataset,
+	viewNumberedTrainingResult
+} from './helpers';
+import { configureOpenDraft, openSidebarDraft } from '../fixtures/training/browser';
 
 test('JOURNEY-IRIS-COMPARE: train two cross-validation models and analyse their paired folds', async ({
 	page
@@ -11,17 +16,20 @@ test('JOURNEY-IRIS-COMPARE: train two cross-validation models and analyse their 
 	await page.locator('app-sidebar a[href="/target"]').click();
 	await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
 	await page.locator('app-sidebar a[href="/models"]').click();
-	for (const num of [1, 2]) {
-		const setup = await configureDraft(page, num);
+	for (const [expectedNumber, label] of [
+		[1, 'Train New Model'],
+		[2, 'Train Another Model']
+	] as const) {
+		const num = await openSidebarDraft(page, label);
+		expect(num).toBe(expectedNumber);
+		const setup = await configureOpenDraft(page, num);
 		await setup.getByRole('combobox', { name: 'Training Strategy' }).selectOption('nested_cv');
 		await setup.getByRole('spinbutton').fill('4');
 		await setup.getByRole('button', { name: 'Train Model' }).click();
-		const results = page
-			.getByTestId('training-step')
-			.getByRole('button', { name: 'View Results' });
-		await expect(results).toBeEnabled({ timeout: 45_000 });
-		await results.click();
-		await page.locator('app-sidebar a[href="/models"]').click();
+		await viewNumberedTrainingResult(page, num, 'Logistic Regression');
+		await expect(
+			page.locator('app-model-results summary').filter({ hasText: 'Training Details' })
+		).toBeVisible();
 	}
 	await page.locator('app-sidebar a[href="/results"]').click();
 	await expect(page.locator('app-results-view app-comparison-table')).toBeVisible();
@@ -174,11 +182,11 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		// Verify empty state text
 		await expect(modelsView).toContainText('No models yet. Train a new model to get started.');
 
-		// 3. Train New Model -> navigates to /models/1
-		const trainNewBtn = modelsView.locator('button.btn-primary:has-text("Train New Model")');
+		// 3. Train New Model -> navigates to /models/new
+		const trainNewBtn = modelsView.locator('a.btn-primary[href="/models/new"]');
 		await expect(trainNewBtn).toBeVisible();
 		await trainNewBtn.click();
-		await expect(page).toHaveURL(/\/models\/1$/);
+		await expect(page).toHaveURL(/\/models\/new$/);
 
 		const builder = page.locator('app-model-builder-view');
 		await expect(builder).toBeVisible();
@@ -193,17 +201,12 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		const selectLrBtn = lrCard.locator('button.btn-primary');
 		await selectLrBtn.click();
 
-		// Click Continue in Section 1
-		const continueStep1Btn = step1.locator('.section-actions button:has-text("Continue")');
-		await expect(continueStep1Btn).toBeEnabled();
-		await continueStep1Btn.click();
-
 		// 5. Section 2 (Select Features) is now active
 		const step2 = builder.locator('.train-step').nth(1);
 		await expect(step2).toHaveAttribute('aria-current', 'step');
 		// Section 1 is now completed
 		await expect(step1).not.toHaveAttribute('aria-current', 'step');
-		await expect(step1).toContainText('Selected model: Logistic Regression');
+		await expect(step1.locator('h2')).toHaveText('1. Logistic Regression');
 
 		// 6. Verify feature rows for Iris:
 		// Target class has Target chiclet and no checkbox
@@ -233,7 +236,7 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 
 		// 7. Section 2 is complete and Section 3 is active.
 		await expect(step2).not.toHaveAttribute('aria-current', 'step');
-		await expect(step2).toContainText('Selected features (4):');
+		await expect(step2.locator('h2')).toHaveText('2. 4 Features Selected');
 
 		const step3 = builder.locator('.train-step').nth(2);
 		await expect(step3).toHaveAttribute('aria-current', 'step');
@@ -251,10 +254,10 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 			)
 			.toContain('select-features');
 		await page.reload();
-		await expect(page).toHaveURL(/\/models\/1$/);
+		await expect(page).toHaveURL(/\/models\/new$/);
 		await expect(builder).toBeVisible();
-		await expect(step1).toContainText('Selected model: Logistic Regression');
-		await expect(step2).toContainText('Selected features (4):');
+		await expect(step1.locator('h2')).toHaveText('1. Logistic Regression');
+		await expect(step2.locator('h2')).toHaveText('2. 4 Features Selected');
 		await expect(step3).toHaveAttribute('aria-current', 'step');
 		await expect(step3.locator('app-model-configuration form')).toBeVisible();
 		await expect(step3.locator('h2')).toContainText('3. Configure Model');
@@ -266,8 +269,10 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		await setup.getByRole('spinbutton').fill('4');
 		await setup.getByRole('button', { name: 'Train Model' }).click();
 		const summary = 'Cross-Validation (4 folds)';
-		await expect(builder.getByRole('heading', { name: `4. ${summary}` })).toBeVisible();
-		expect(await acknowledgeDurableTraining(page)).toMatchObject({
+		await expect(
+			builder.getByRole('heading', { name: '4. 4 Fold Cross-Validation', exact: true })
+		).toBeVisible();
+		expect(await acknowledgeDurableTraining(page, 1, 'Logistic Regression')).toMatchObject({
 			strategy: 'cross_validation',
 			rows: 150,
 			foldCount: 4,

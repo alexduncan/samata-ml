@@ -13,6 +13,8 @@ import {
 	loadPreviewRows,
 	startDatasetLoad
 } from '../../stores/dataset.store';
+import { isTemporalColumnType } from '../../types/state';
+import { formatTemporalValue, type TemporalColumnStats } from './temporal-format';
 import { loadSampleCatalogue, loadSampleDatasheet } from './sample-datasets';
 import { getTrainingService } from '../models/training/training-service';
 import type { SampleDatasetIndex } from '../../types/sample-dataset';
@@ -62,8 +64,8 @@ function formatPreviewRows(
 				return '—';
 			}
 			const col = columns[idx];
-			if (col?.type === 'datetime' && typeof val === 'number') {
-				return new Date(val).toISOString();
+			if (col && isTemporalColumnType(col.type) && typeof val === 'number') {
+				return formatTemporalValue(val, col as TemporalColumnStats);
 			}
 			if (typeof val === 'number') {
 				return format.number(val, { useGrouping: true, maximumFractionDigits: 20 });
@@ -166,43 +168,6 @@ export class AppDataView extends LitElement {
 				padding-block: 1rem;
 				color: var(--stone-700);
 			}
-
-			dialog.change-dataset-modal {
-				box-shadow: var(--shadow-deep);
-				border: 1.5px solid var(--stone-200);
-				border-radius: 1rem;
-				background-color: var(--surface);
-				padding: 1.5rem;
-				inline-size: min(32rem, calc(100% - 2rem));
-				max-inline-size: none;
-				max-block-size: calc(100dvh - 2rem);
-				overflow: auto;
-				color: var(--stone-800);
-			}
-
-			.modal-header h2 {
-				margin: 0;
-				color: var(--stone-900);
-				font-weight: 600;
-				font-size: 1.25rem;
-			}
-
-			.modal-body {
-				margin-block: 1rem;
-				color: var(--stone-700);
-				line-height: 1.5;
-			}
-
-			.modal-footer {
-				display: flex;
-				justify-content: flex-end;
-				gap: 0.75rem;
-			}
-
-			.error-notice {
-				margin-block-start: 0.5rem;
-				color: var(--red-700);
-			}
 		`
 	];
 
@@ -230,10 +195,12 @@ export class AppDataView extends LitElement {
 	private readonly changeMessagesController = new StoreController(this, changeMessages);
 	private readonly noticeMessagesController = new StoreController(this, noticeMessages);
 
-	private cataloguePromise: Promise<SampleDatasetIndex> | null = null;
+	private cataloguePromise: Promise<void> | null = null;
+	private catalogueSelection: AbortController | null = null;
 	private activeDatasheetId: string | null = null;
 	private datasheetInvoker: HTMLElement | null = null;
 	private uploadInvoker: HTMLElement | null = null;
+	private ownedUpload: Promise<boolean> | null = null;
 	private changeDatasetInvoker: HTMLElement | null = null;
 	private datasheetSeq = 0;
 	private abortController = new AbortController();
@@ -260,6 +227,7 @@ export class AppDataView extends LitElement {
 
 	override connectedCallback(): void {
 		super.connectedCallback();
+		if (this.abortController.signal.aborted) this.abortController = new AbortController();
 		const appState = this.appStateController.value;
 		if (appState.dataset && appState.data.mode === 'preview') {
 			const datasetId = appState.dataset.id;
@@ -278,14 +246,14 @@ export class AppDataView extends LitElement {
 			}
 		} else {
 			this.tableScrollRestored = false;
-			if (!this.catalogue && this.catalogueStatus === 'idle') {
-				this.fetchCatalogue();
-			}
+			this.startCatalogueSelection();
 		}
 	}
 
 	override disconnectedCallback(): void {
 		super.disconnectedCallback();
+		this.stopCatalogueSelection();
+		this.datasheetSeq++;
 		this.abortController.abort();
 	}
 
@@ -307,6 +275,7 @@ export class AppDataView extends LitElement {
 
 		const appState = this.appStateController.value;
 		if (appState.dataset && appState.data.mode === 'preview') {
+			this.stopCatalogueSelection();
 			const datasetId = appState.dataset.id;
 			const resources = this.resourcesController.value;
 			if (resources.datasetId !== datasetId && resources.status !== 'loading') {
@@ -323,6 +292,7 @@ export class AppDataView extends LitElement {
 			}
 		} else {
 			this.tableScrollRestored = false;
+			this.startCatalogueSelection();
 		}
 	}
 
@@ -363,22 +333,62 @@ export class AppDataView extends LitElement {
 		await this.updateComplete;
 	}
 
-	private fetchCatalogue(): void {
-		this.catalogueStatus = 'loading';
-		this.catalogueError = null;
-		const promise = loadSampleCatalogue(this.abortController.signal);
-		this.cataloguePromise = promise;
+	private startCatalogueSelection(): void {
+		this.catalogueSelection ??= new AbortController();
+		if (this.catalogueStatus === 'idle') this.fetchCatalogue();
+	}
 
-		promise
-			.then((index) => {
-				this.catalogue = index;
-				this.catalogueStatus = 'ready';
+	private stopCatalogueSelection(): void {
+		if (!this.catalogueSelection) return;
+		this.catalogueSelection.abort();
+		this.catalogueSelection = null;
+		this.cataloguePromise = null;
+		queueMicrotask(() => {
+			if (!this.cataloguePromise && this.catalogueStatus !== 'ready') {
+				this.catalogueStatus = 'idle';
+				this.catalogueError = null;
+			}
+		});
+	}
+
+	private fetchCatalogue(): void {
+		const selection = this.catalogueSelection;
+		if (!selection || this.cataloguePromise) return;
+		const current = () => {
+			const { dataset, data } = this.appStateController.value;
+			return (
+				this.isConnected &&
+				this.catalogueSelection === selection &&
+				(!dataset || data.mode === 'select')
+			);
+		};
+		const promise = Promise.resolve()
+			.then(async () => {
+				if (!current()) return;
+				this.catalogueStatus = 'loading';
+				this.catalogueError = null;
+				try {
+					const index = await loadSampleCatalogue(selection.signal);
+					if (!current()) return;
+					this.catalogue = index;
+					this.catalogueStatus = 'ready';
+				} catch (error) {
+					if (!current()) return;
+					// A newly connected view can briefly share an aborted loader request.
+					if (error instanceof DOMException && error.name === 'AbortError') {
+						this.cataloguePromise = null;
+						this.catalogueStatus = 'idle';
+						return;
+					}
+					this.catalogue = null;
+					this.catalogueStatus = 'error';
+					this.catalogueError = error instanceof Error ? error.message : String(error);
+				}
 			})
-			.catch((err) => {
-				this.catalogue = null;
-				this.catalogueStatus = 'error';
-				this.catalogueError = err instanceof Error ? err.message : String(err);
+			.finally(() => {
+				if (this.cataloguePromise === promise) this.cataloguePromise = null;
 			});
+		this.cataloguePromise = promise;
 	}
 
 	private handleUploadClick(e: MouseEvent): void {
@@ -387,22 +397,24 @@ export class AppDataView extends LitElement {
 	}
 
 	private async handleUploadFileSelect(e: CustomEvent<{ file: File }>): Promise<void> {
-		const ok = await startDatasetLoad({ kind: 'file', file: e.detail.file });
-		if (ok) {
-			this.uploadOpen = false;
-		}
+		if ($datasetLoad.get().busy) return;
+		const upload = startDatasetLoad({ kind: 'file', file: e.detail.file });
+		this.ownedUpload = upload;
+		const ok = await upload;
+		if (this.ownedUpload !== upload) return;
+		this.ownedUpload = null;
+		if (ok) this.uploadOpen = false;
 	}
 
 	private handleUploadCancel(): void {
+		if (!this.ownedUpload) return;
+		this.ownedUpload = null;
 		cancelDatasetLoad();
 	}
 
 	private handleUploadClose(): void {
 		this.uploadOpen = false;
-		const loadState = this.loadController.value;
-		if (loadState.busy) {
-			cancelDatasetLoad();
-		}
+		this.handleUploadCancel();
 	}
 
 	private handleCardSelect(e: CustomEvent<{ datasetId: string; name: string }>): void {
@@ -668,23 +680,26 @@ export class AppDataView extends LitElement {
 				@app-column-details-close=${this.handleColumnDetailsClose}></app-column-details>
 
 			<dialog
-				class="modal change-dataset-modal"
+				class="confirm-dialog change-dataset-modal"
 				aria-labelledby="change-dataset-title"
+				closedby=${this.changeDatasetBusy || this.changeDatasetPending
+					? 'none'
+					: 'closerequest'}
 				@cancel=${this.handleChangeDatasetDialogNativeClose}
 				@close=${this.handleChangeDatasetDialogNativeClose}>
-				<div class="modal-header">
+				<div class="confirm-header">
 					<h2 id="change-dataset-title">Change Dataset</h2>
 				</div>
-				<div class="modal-body">
+				<div class="confirm-body">
 					<p>
 						Are you sure you want to change the dataset? Any configured target or models
 						will be discarded.
 					</p>
 					${this.changeDatasetError
-						? html`<p role="alert" class="error-notice">${this.changeDatasetError}</p>`
+						? html`<p role="alert">${this.changeDatasetError}</p>`
 						: nothing}
 				</div>
-				<div class="modal-footer">
+				<div class="confirm-footer">
 					<button
 						type="button"
 						class="btn"

@@ -9,7 +9,7 @@ All functionality must be created alongside a comprehensive test setup. Code sub
 - **Non-component units:** `bun:test` runs `*.test.ts` store, routing, storage and utility tests. `tests/setup.ts` supplies happy-dom for non-component DOM utilities; it does not establish Lit lifecycle, focus, dialog or layout behaviour.
 - **Component acceptance:** Playwright runs `tests/**/*.e2e.ts` in Chromium, Firefox and WebKit. Acceptance IDs map to browser tests independently of stories. Test visible output, native events, computed styles and accessibility rather than private state.
 - **Story smoke:** `bun run test:stories` generates the CEM and runs only co-located CSF stories through the Storybook Vitest addon and Playwright provider in all three engines. Every story runs interactions/hooks and axe with violations failing the command. Vitest does not collect unit/E2E files; Bun does not collect stories or Playwright files.
-- **Coverage boundary:** Button, Chiclet, Dialog, Page Header and shell stories use production modules. Existing data/target/model/virtual-table story migration is follow-up work. Successful smoke tests do not replace acceptance criteria, real app navigation or manual accessibility checks.
+- **Coverage boundary:** Button, Chiclet, Dialog, Page Header, shell, model card and chooser stories use production modules. The model card covers all three type labels, both decorative image forms, current selection, a grid, long labels, narrow layout and RTL. The chooser covers categorical and Boolean targets, a saved current choice and an unsupported numeric target. Remaining data, target, model and virtual-table story migration is follow-up work. Successful smoke tests do not replace acceptance criteria, real app navigation or manual accessibility checks.
 
 ## End-to-End (E2E) Testing
 
@@ -17,6 +17,7 @@ All functionality must be created alongside a comprehensive test setup. Code sub
 - Playwright is mandatory for verifying features that cannot be perfectly mocked in a terminal, specifically:
     - Writing raw CSV data to the actual browser IndexedDB.
     - Verifying Web Worker initialisation and the application's typed request/response protocol.
+- The model-card and builder suites cover image decoding, reserved space on image failure, accessible action names, native focus restoration, selection persistence and catalogue eligibility in the connected browser workflow.
 - The shell suite covers cancellable component-owned heading focus independently of scroll restoration, native modal intent/history, responsive/RTL layouts and reduced-motion/forced-colours emulation. Real browser zoom and screen-reader observations are recorded separately from emulation.
 - `tests/visual-parity.e2e.ts` compares clean reference/app styles and relative geometry at Chromium 1440×900, with reviewed Empty/Models sidebar screenshot baselines and a negative layout probe. Parity is intentionally Chromium-only; component acceptance remains three-browser. No mapped surface has a drift exemption.
 - Shell-scoped axe scans allow no rule exclusions. Broad app audits accept only the exact separately owned feature findings in `tests/a11y-feature-findings.ts`, including measured colours/type and canonical node identity; unlisted elements or rules fail. These existing findings do not constitute a whole-app WCAG pass.

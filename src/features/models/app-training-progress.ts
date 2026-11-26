@@ -1,6 +1,7 @@
 import { LitElement, css, html, nothing, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
+import { BASE_LOCALE, isLocale } from '../../config/locales';
 import { trainModelStyles } from '../../styles/train-model.styles';
 import type { TrainingLogEntry } from '../../types/model-result';
 import type { TrainingProgress } from '../../types/state';
@@ -61,9 +62,99 @@ export class AppTrainingProgress extends LitElement {
 			:host([hidden]) {
 				display: none;
 			}
-			progress {
-				display: block;
+			.progress {
+				--progress-fill: var(--blue-600);
+				--progress-track: var(--neutral-100);
+				--progress-border: var(--blue-700);
+				--progress-outline: var(--blue-200);
+				--progress-stripes: none;
+				display: flex;
+				align-items: center;
+				gap: 0.5rem;
+				margin-block-end: 0.75rem;
+			}
+			.training-active {
+				--progress-stripes: repeating-linear-gradient(
+					-45deg,
+					color-mix(in srgb, var(--surface) 15%, transparent) 0 0.75rem,
+					color-mix(in srgb, var(--surface) 25%, transparent) 0.75rem 1.5rem
+				);
+			}
+			.training-stopped {
+				--progress-fill: var(--red-600);
+				--progress-track: var(--red-100);
+				--progress-border: var(--red-800);
+				--progress-outline: var(--red-200);
+			}
+			.training-complete {
+				--progress-fill: var(--green-700);
+				--progress-track: var(--green-100);
+				--progress-border: var(--green-800);
+				--progress-outline: var(--green-200);
+			}
+			.progress-bar {
+				flex: 1 1 auto;
+				appearance: none;
+				margin-block: 0.5rem;
+				box-shadow: 0 0 0 3px var(--progress-outline);
+				border: 1.5px solid var(--progress-border);
+				border-radius: 0.5rem;
+				background: var(--progress-track);
 				inline-size: 100%;
+				min-inline-size: 0;
+				block-size: 1.25rem;
+				overflow: clip;
+			}
+			.progress-bar::-webkit-progress-bar {
+				background: transparent;
+			}
+			.progress-bar::-webkit-progress-value {
+				background: var(--progress-stripes) var(--progress-fill);
+			}
+			.progress-bar::-moz-progress-bar {
+				background: var(--progress-stripes) var(--progress-fill);
+			}
+			.progress-bar:indeterminate {
+				background: var(--progress-stripes) var(--progress-fill);
+			}
+			.progress-percent {
+				min-inline-size: 4ch;
+				font-variant-numeric: tabular-nums;
+				text-align: end;
+			}
+			.log {
+				border: 1px solid var(--stone-300);
+				border-radius: 0.5rem;
+				background: var(--stone-50);
+				padding: 0.75rem;
+			}
+			.log-status {
+				color: var(--stone-800);
+				font-weight: 700;
+				overflow-wrap: anywhere;
+			}
+			.log-status-complete {
+				color: var(--green-700);
+			}
+			.log-history {
+				margin-block: 0.5rem 0;
+				padding-inline-start: 1.5rem;
+				font: 0.75rem/1.5 var(--font-mono);
+				overflow-wrap: anywhere;
+			}
+			@media (forced-colors: active) {
+				.progress {
+					--progress-fill: Highlight;
+					--progress-track: Canvas;
+					--progress-border: CanvasText;
+					--progress-stripes: none;
+				}
+				.progress-bar {
+					box-shadow: none;
+				}
+				.progress-bar:indeterminate {
+					background: Canvas;
+				}
 			}
 			summary:focus {
 				outline: 2px solid var(--focus-ring);
@@ -74,6 +165,8 @@ export class AppTrainingProgress extends LitElement {
 
 	/** Latest labelled training progress; a null percent makes the bar indeterminate. */
 	@property({ attribute: false }) accessor progress: TrainingProgress | null = null;
+	/** Visual treatment of the acknowledged state presented by the owning builder. */
+	@property({ attribute: false }) accessor variant: 'active' | 'stopped' | 'complete' = 'active';
 	/** Stable entries supplied in chronological order. */
 	@property({ attribute: false }) accessor logEntries: readonly TrainingLogEntry[] = [];
 	/** Persisted open state of the native disclosure. */
@@ -87,9 +180,19 @@ export class AppTrainingProgress extends LitElement {
 
 	private emittedOpen = false;
 	private pendingAnnouncement: number | undefined;
+	private percentText = '';
 
 	override willUpdate(changed: PropertyValues<this>): void {
 		if (changed.has('logOpen')) this.emittedOpen = this.logOpen;
+		const percent = this.progress?.percent ?? null;
+		const lang = this.ownerDocument.documentElement.lang;
+		this.percentText =
+			percent === null
+				? ''
+				: (percent / 100).toLocaleString(isLocale(lang) ? lang : BASE_LOCALE, {
+						style: 'percent',
+						maximumFractionDigits: 1
+					});
 	}
 
 	override updated(changed: PropertyValues<this>): void {
@@ -126,14 +229,28 @@ export class AppTrainingProgress extends LitElement {
 	}
 
 	override render() {
+		const percent = this.progress?.percent ?? null;
 		return html`
-			<progress
-				max="100"
-				value=${this.progress?.percent ?? nothing}
-				aria-label=${this.labels.progress}></progress>
-			<details ?open=${this.logOpen} @toggle=${this.handleLogToggle}>
-				<summary>${this.progress?.statusMessage ?? this.labels.waiting}</summary>
-				<ol>
+			${this.variant === 'stopped' && percent === null
+				? nothing
+				: html` <div class="progress training-${this.variant}">
+						<progress
+							class="progress-bar"
+							max="100"
+							value=${percent ?? nothing}
+							aria-label=${this.labels.progress}></progress>
+						${percent === null
+							? nothing
+							: html`<span class="progress-percent" aria-hidden="true"
+									>${this.percentText}</span
+								>`}
+					</div>`}
+			<details class="log" ?open=${this.logOpen} @toggle=${this.handleLogToggle}>
+				<summary
+					class="log-status ${this.variant === 'complete' ? 'log-status-complete' : ''}">
+					${this.progress?.statusMessage ?? this.labels.waiting}
+				</summary>
+				<ol class="log-history">
 					${repeat(
 						this.logEntries,
 						(entry) => entry.id,

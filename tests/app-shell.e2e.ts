@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { buttonStyles } from '../src/styles/button.styles';
 import { chicletStyles } from '../src/styles/chiclet.styles';
 import { dialogStyles } from '../src/styles/dialog.styles';
-import { loadSampleDataset } from './journeys/helpers';
+import { dismissWelcomeModal, loadSampleDataset } from './journeys/helpers';
 import { MOCKUPS_URL } from '../scripts/ports';
 
 type FocusableView = HTMLElement & { focusHeading(signal: AbortSignal): Promise<void> };
@@ -15,6 +15,7 @@ interface FocusTestWindow extends Window {
 	__releaseHeadingFocus?: () => void;
 	__detachedFocusView?: FocusableView;
 	__releaseMetadata?: () => void;
+	__releaseProvisional?: () => void;
 }
 
 async function mountPrimitiveFixture(page: Page): Promise<void> {
@@ -86,8 +87,25 @@ async function createIrisModel(page: Page): Promise<void> {
 	await keyboardNavigate(page, '/target');
 	await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
 	await keyboardNavigate(page, '/models');
-	await page.locator('app-models-view button:has-text("Train New Model")').click();
-	await expect(page).toHaveURL(/\/models\/1$/);
+	await page.locator('app-models-view a[href="/models/new"]').click();
+	await expect(page).toHaveURL(/\/models\/new$/);
+	await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
+}
+
+async function holdProvisionalPublication(page: Page): Promise<void> {
+	await page.evaluate(
+		() =>
+			new Promise<void>((entered) => {
+				void navigator.locks.request(
+					'samata-ml:training-state',
+					() =>
+						new Promise<void>((release) => {
+							(window as FocusTestWindow).__releaseProvisional = release;
+							entered();
+						})
+				);
+			})
+	);
 }
 
 async function delayHeadingFocus(page: Page, tag: string): Promise<void> {
@@ -122,6 +140,91 @@ async function outline(heading: Locator) {
 		};
 	});
 }
+
+test('DLG-HARM-1: welcome focuses Get Started without a browser autofocus diagnostic', async ({
+	page
+}) => {
+	const diagnostics: string[] = [];
+	page.on('console', (message) => {
+		if (message.text().includes('Autofocus processing was blocked')) {
+			diagnostics.push(message.text());
+		}
+	});
+	await page.goto('/data');
+	const dialog = page.locator('app-welcome-modal dialog.modal');
+	await expect(dialog).toBeVisible();
+	await expect(
+		dialog.locator('.modal-content').getByRole('button', { name: 'Get Started' })
+	).toBeFocused();
+	await dismissWelcomeModal(page);
+	expect(diagnostics).toEqual([]);
+});
+
+test('DLG-BACKDROP-1/2: datasheet and model description light-dismiss while Reopen Section requires a button or Escape', async ({
+	page
+}) => {
+	await page.goto('/data');
+	await dismissWelcomeModal(page);
+	const showDatasheet = page
+		.locator('app-dataset-card[dataset-id="iris"]')
+		.getByRole('button', { name: 'Datasheet' });
+	await showDatasheet.focus();
+	await showDatasheet.press('Enter');
+	const datasheet = page.locator('app-datasheet-dialog dialog.modal');
+	await expect(datasheet).toBeVisible();
+	await page.mouse.click(2, 2);
+	await expect(datasheet).toBeHidden();
+	await expect(showDatasheet).toBeFocused();
+
+	await createIrisModel(page);
+	const builder = page.locator('app-model-builder-view');
+	const choose = builder.locator('.train-step').nth(0);
+	const features = builder.locator('.train-step').nth(1);
+	const card = choose.locator('app-model-card[model-id="logistic-regression"]');
+	const about = card.getByRole('button', { name: 'Model Description: Logistic Regression' });
+	const description = builder.locator('app-model-description-dialog');
+	const modal = description.locator('dialog.modal');
+	await description.evaluate((element) => {
+		element.addEventListener('app-model-description-close', () => {
+			element.dataset.userCloses = String(Number(element.dataset.userCloses ?? 0) + 1);
+		});
+	});
+	await about.focus();
+	await about.press('Enter');
+	await expect(modal).toBeVisible();
+	await page.mouse.click(2, 2);
+	await expect(modal).toBeHidden();
+	await expect(about).toBeFocused();
+	await expect(description).toHaveAttribute('data-user-closes', '1');
+
+	const modelsLink = page.locator('app-sidebar a[href="/models"]');
+	await modelsLink.focus();
+	await expect(modelsLink).toBeFocused();
+	await about.click();
+	await expect(modal).toBeVisible();
+	await page.mouse.click(2, 2);
+	await expect(modal).toBeHidden();
+	await expect(about).toBeFocused();
+	await expect(description).toHaveAttribute('data-user-closes', '2');
+
+	await card.getByRole('button', { name: 'Select Model' }).click();
+	await features.getByRole('button', { name: 'Continue', exact: true }).click();
+	await expect(builder.locator('#step-3-title')).toBeFocused();
+	const reopen = choose.getByRole('button', { name: 'Edit Choose Model' });
+	const confirmation = builder.locator('dialog[data-confirm="reopen-section"]');
+	await reopen.focus();
+	await reopen.press('Enter');
+	await page.mouse.click(2, 2);
+	await expect(confirmation).toBeVisible();
+	await page.keyboard.press('Escape');
+	await expect(confirmation).toBeHidden();
+	await expect(reopen).toBeFocused();
+	await expect(features.getByRole('button', { name: 'Edit Select Features' })).toBeVisible();
+	await reopen.press('Enter');
+	await confirmation.getByRole('button', { name: 'Edit Section', exact: true }).click();
+	await expect(confirmation).toBeHidden();
+	await expect(choose).toHaveAttribute('aria-current', 'step');
+});
 
 test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 	test.beforeEach(async ({ page }) => {
@@ -183,6 +286,13 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		// Navigate to /target
 		await page.locator('app-sidebar a[href="/target"]').click();
 		await expect(page.locator('#content h1')).toHaveText('Set Target');
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => JSON.parse(localStorage.getItem('samata-ml:state') ?? '{}').resumePath
+				)
+			)
+			.toBe('/target');
 
 		// Visiting root / should resolve to resumePath (/target)
 		await page.goto('/');
@@ -220,8 +330,9 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await expect(page.locator('#content h1')).toHaveText('Train Models');
 	});
 
-	test('NAV-E2E-9: Deep link to /models/1 loads cleanly with root-absolute assets', async ({
-		page
+	test('NAV-E2E-9 / MW-ROUTE-2: a provisional numeric deep link canonicalises with root-absolute assets', async ({
+		page,
+		context
 	}) => {
 		// Persist a real model so startup reconciliation retains the deep-linked record.
 		await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
@@ -229,28 +340,246 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await page.locator('app-sidebar a[href="/target"]').click();
 		await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
 		await page.locator('app-sidebar a[href="/models"]').click();
-		await page.locator('app-models-view button:has-text("Train New Model")').click();
-		await expect(page).toHaveURL(/\/models\/1$/);
-		await page.locator('app-sidebar a[href="/data"]').click();
+		await page.locator('app-models-view a[href="/models/new"]').click();
+		await expect(page).toHaveURL(/\/models\/new$/);
+		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
+		const deepLink = await context.newPage();
 
 		const failedRequests: string[] = [];
-		page.on('requestfailed', (req) => {
+		deepLink.on('requestfailed', (req) => {
 			failedRequests.push(req.url());
 		});
 
-		await page.goto('/models/1');
+		await deepLink.goto('/models/1');
+		await expect(deepLink).toHaveURL('/models/new');
 
 		// Check heading
-		await expect(page.locator('#content h1')).toHaveText('Model 1');
+		await expect(deepLink.locator('#content h1')).toHaveText('Model 1');
 
 		// Sidebar should render steps
-		await expect(page.locator('app-sidebar nav.workflow')).toBeVisible();
+		await expect(deepLink.locator('app-sidebar nav.workflow')).toBeVisible();
 
 		// No stylesheet or script asset requests should have failed
 		const assetFailures = failedRequests.filter(
 			(url) => url.endsWith('.css') || url.endsWith('.js')
 		);
 		expect(assetFailures).toEqual([]);
+		await deepLink.close();
+	});
+
+	for (const dismiss of ['plain', 'Back', 'Close'] as const) {
+		test(`MW-ROUTE-1/2: provisional acknowledgement preserves entry and focus with ${dismiss}`, async ({
+			page
+		}) => {
+			await loadSampleDataset(page, 'iris');
+			await keyboardNavigate(page, '/target');
+			await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
+			await keyboardNavigate(page, '/models');
+			await expect(page.locator('app-models-view a[href="/models/new"]')).toBeVisible();
+			await holdProvisionalPublication(page);
+			const train = page.locator('app-models-view a[href="/models/new"]');
+			await train.press('Enter');
+			const placeholder = page.getByRole('heading', { name: 'Train New Model' });
+			await expect(placeholder).toBeFocused();
+			await expect(page.locator('app-model-builder-view')).toHaveCount(0);
+			const source = await page.evaluate(() => history.state.entryId);
+			const close = page.getByRole('button', { name: 'Close', exact: true });
+			if (dismiss !== 'plain') {
+				await page.locator('app-sidebar a[href="/help"]').click();
+				await expect(close).toBeFocused();
+				expect(await page.evaluate(() => history.state.underlayEntryId)).toBe(source);
+			}
+			await page.evaluate(() => (window as FocusTestWindow).__releaseProvisional!());
+			const model = page.locator('app-model-builder-view h1');
+			await expect(model).toHaveText('Model 1');
+			if (dismiss === 'plain') {
+				await expect(model).toBeFocused();
+			} else {
+				await expect(page).toHaveURL('/help');
+				await expect(close).toBeFocused();
+				if (dismiss === 'Back') await page.goBack();
+				else await close.click();
+				await expect(close).toBeHidden();
+			}
+			await expect(page).toHaveURL('/models/new');
+			expect(await page.evaluate(() => history.state.entryId)).toBe(source);
+			await page.reload();
+			await expect(model).toHaveText('Model 1');
+			expect(
+				await page.evaluate(() => window.__appState!.get().models.map(({ num }) => num))
+			).toEqual([1]);
+		});
+	}
+
+	test('MW-ROUTE-1: an explicit deep link can allocate once while inferred resume cannot', async ({
+		page
+	}) => {
+		await page.goto('/models/new');
+		await expect(
+			page.getByTestId('provisional-route').getByRole('link', { name: 'Load a dataset' })
+		).toBeVisible();
+		await page.goto('/data');
+		await loadSampleDataset(page, 'iris');
+		await keyboardNavigate(page, '/target');
+		await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
+		await expect(page.getByRole('button', { name: 'Current Target' })).toBeVisible();
+		await page.goto('/models/new');
+		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
+		await page.goto('/');
+		await expect(page).toHaveURL('/models/new');
+		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
+		expect(
+			await page.evaluate(() => window.__appState!.get().models.map(({ num }) => num))
+		).toEqual([1]);
+	});
+
+	test('MW-ROUTE-1: reloading an unacknowledged entry never allocates again', async ({
+		page,
+		context
+	}) => {
+		await loadSampleDataset(page, 'iris');
+		await keyboardNavigate(page, '/target');
+		await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
+		await keyboardNavigate(page, '/models');
+		const holder = await context.newPage();
+		try {
+			await holder.goto('/models');
+			await expect(holder.locator('app-models-view a[href="/models/new"]')).toBeVisible();
+			await holdProvisionalPublication(holder);
+			await page.locator('app-models-view a[href="/models/new"]').press('Enter');
+			await expect(
+				page.getByRole('status').filter({ hasText: 'Opening your model' })
+			).toBeVisible();
+			await page.reload({ waitUntil: 'commit' });
+			await holder.evaluate(() => (window as FocusTestWindow).__releaseProvisional!());
+			const retry = page.getByRole('button', { name: 'Retry saving', exact: true });
+			await expect(retry).toBeEnabled();
+			await retry.click();
+			await expect(retry).toBeEnabled();
+			await expect(page.locator('app-model-builder-view')).toHaveCount(0);
+			expect(await page.evaluate(() => window.__appState!.get().models)).toEqual([]);
+		} finally {
+			await holder.close();
+		}
+	});
+
+	test('MW-GUARD-1/2: Stay and Escape retain the draft while Leave follows the original link', async ({
+		page
+	}) => {
+		await createIrisModel(page);
+		const source = await page.evaluate(() => history.state.entryId);
+		await page.setViewportSize({ width: 900, height: 420 });
+		await page.evaluate(() => window.scrollTo({ top: 160, behavior: 'instant' }));
+		const startingScroll = await page.evaluate(() => window.scrollY);
+		expect(startingScroll).toBeGreaterThan(0);
+		const target = page.locator('app-sidebar a[href="/target"]');
+		const dialog = page.getByRole('dialog', { name: 'Leave this model?' });
+		const stay = dialog.getByRole('button', { name: 'Stay', exact: true });
+		await target.press('Enter');
+		await expect(stay).toBeFocused();
+		await expect(page).toHaveURL('/models/new');
+		await stay.click();
+		await expect(dialog).toBeHidden();
+		await expect(target).toBeFocused();
+		expect(await page.evaluate(() => history.state.entryId)).toBe(source);
+		expect(await page.evaluate(() => window.scrollY)).toBe(startingScroll);
+
+		await target.press('Enter');
+		await expect(stay).toBeFocused();
+		await page.keyboard.press('Escape');
+		await expect(dialog).toBeHidden();
+		await expect(target).toBeFocused();
+		expect(await page.evaluate(() => window.__appState!.get().newModelNum)).toBe(1);
+
+		await target.press('Enter');
+		await dialog.getByRole('button', { name: 'Leave', exact: true }).click();
+		await expect(page).toHaveURL('/target');
+		await expect(page.locator('app-target-view h1')).toBeFocused();
+		expect(await page.evaluate(() => window.__appState!.get().models)).toEqual([]);
+		await keyboardNavigate(page, '/models');
+		await page.locator('app-models-view a[href="/models/new"]').click();
+		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 2');
+	});
+
+	test('MW-GUARD-1/2: Back restores the draft before prompting and replays once after Leave', async ({
+		page
+	}) => {
+		await createIrisModel(page);
+		const initial = await page.evaluate(() => ({
+			entryId: history.state.entryId,
+			length: history.length
+		}));
+		const dialog = page.getByRole('dialog', { name: 'Leave this model?' });
+		await page.evaluate(() => history.back());
+		await expect(dialog.getByRole('button', { name: 'Stay' })).toBeFocused();
+		await expect(page).toHaveURL('/models/new');
+		await page.evaluate(() => history.back());
+		await expect(page).toHaveURL('/models/new');
+		await dialog.getByRole('button', { name: 'Stay' }).click();
+		await expect(dialog).toBeHidden();
+		expect(
+			await page.evaluate(() => ({ entryId: history.state.entryId, length: history.length }))
+		).toEqual(initial);
+		expect(await page.evaluate(() => window.__appState!.get().newModelNum)).toBe(1);
+
+		await page.evaluate(() => history.back());
+		await expect(dialog).toBeVisible();
+		await dialog.getByRole('button', { name: 'Leave', exact: true }).click();
+		await expect(page).toHaveURL('/models');
+		await expect(page.locator('app-models-view h1')).toBeFocused();
+		expect(await page.evaluate(() => history.length)).toBe(initial.length);
+		await page.goForward();
+		await expect(page).toHaveURL('/models/new');
+		await expect(
+			page.getByTestId('provisional-route').getByRole('link', { name: 'Back to Models' })
+		).toBeVisible();
+		expect(await page.evaluate(() => window.__appState!.get().models)).toEqual([]);
+	});
+
+	test('MW-GUARD-1: forward visits close Help through Back and covered departures preserve the draft', async ({
+		page
+	}) => {
+		await createIrisModel(page);
+		const origin = await page.evaluate(() => history.state.entryId);
+		const help = page.locator('app-sidebar a[href="/help"]');
+		await help.press('Enter');
+		const close = page.getByRole('button', { name: 'Close', exact: true });
+		await expect(close).toBeFocused();
+		const historyLength = await page.evaluate(() => history.length);
+		await page.goBack();
+		await expect(page).toHaveURL('/models/new');
+		await page.goForward();
+		await expect(close).toBeFocused();
+		await close.click();
+		await expect(page).toHaveURL('/models/new');
+		expect(await page.evaluate(() => history.state.entryId)).toBe(origin);
+		expect(await page.evaluate(() => history.length)).toBe(historyLength);
+		await page.goForward();
+		await expect(close).toBeVisible();
+		await page.evaluate(() => history.go(-2));
+		await expect(page).toHaveURL('/models');
+		await expect(page.getByRole('dialog', { name: 'Leave this model?' })).toHaveCount(0);
+		await page.goForward();
+		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
+		expect(await page.evaluate(() => window.__appState!.get().newModelNum)).toBe(1);
+	});
+
+	test('MW-GUARD-1: Back to a legacy unindexed entry preserves the provisional draft', async ({
+		page
+	}) => {
+		await loadSampleDataset(page, 'iris');
+		await keyboardNavigate(page, '/target');
+		await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
+		await keyboardNavigate(page, '/models');
+		await page.evaluate(() =>
+			history.replaceState({ v: 1, entryId: 'legacy-overview' }, '', '/models')
+		);
+		await page.locator('app-models-view a[href="/models/new"]').click();
+		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
+		await page.goBack();
+		await expect(page).toHaveURL('/models');
+		await expect(page.getByRole('dialog', { name: 'Leave this model?' })).toHaveCount(0);
+		expect(await page.evaluate(() => window.__appState!.get().newModelNum)).toBe(1);
 	});
 
 	test('NAV-E2E-2d: Sidebar link aria-current conforms to SEM-03', async ({ page }) => {
@@ -295,9 +624,14 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		const modal = page.locator('app-content-modal dialog');
 		await expect(modal).toBeVisible();
 
-		await page.keyboard.press('Escape');
+		await page.mouse.click(2, 2);
 		await expect(modal).not.toBeVisible();
 		await expect(page.locator('#content h1')).not.toBeFocused();
+		await expect(page.locator('app-sidebar footer a[href="/about"]')).toBeFocused();
+		await keyboardNavigate(page, '/about');
+		await expect(modal).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(modal).not.toBeVisible();
 		await expect(page.locator('app-sidebar footer a[href="/about"]')).toBeFocused();
 	});
 
@@ -418,9 +752,13 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
 		await expect(page.locator('app-model-builder-view h1')).toBeFocused();
 		await keyboardNavigate(page, '/data');
+		await page
+			.getByRole('dialog', { name: 'Leave this model?' })
+			.getByRole('button', { name: 'Leave', exact: true })
+			.click();
 		await expect(page.locator('app-dataset-preview h1')).toBeFocused();
 		await page.goBack();
-		await expect(page.locator('app-model-builder-view h1')).toBeFocused();
+		await expect(page.getByRole('heading', { name: 'Train New Model' })).toBeFocused();
 		await page.goForward();
 		await expect(page.locator('app-dataset-preview h1')).toBeFocused();
 	});
@@ -479,6 +817,23 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await page.keyboard.press('Escape');
 		await expect(page).toHaveURL(/\/data$/);
 		await expect(modal).not.toBeVisible();
+		await expect(about).toBeFocused();
+	});
+
+	test('DLG-BACKDROP-1: pointer activation of About restores focus to the link on backdrop dismissal', async ({
+		page
+	}) => {
+		const modelsLink = page.locator('app-sidebar a[href="/models"]');
+		const about = page.locator('app-sidebar a[href="/about"]');
+		const modal = page.locator('app-content-modal dialog');
+		await modelsLink.focus();
+		await expect(modelsLink).toBeFocused();
+		await about.click();
+		await expect(page).toHaveURL(/\/about$/);
+		await expect(modal).toBeVisible();
+		await page.mouse.click(2, 2);
+		await expect(modal).toBeHidden();
+		await expect(page).toHaveURL(/\/data$/);
 		await expect(about).toBeFocused();
 	});
 
@@ -623,6 +978,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 			offset: '2px'
 		});
 		await createIrisModel(page);
+		await page.goto('/models');
 		for (const path of ['/data', '/target', '/models', '/results']) {
 			await keyboardNavigate(page, path);
 			const heading = page.locator('#content h1');
@@ -634,7 +990,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 			});
 		}
 		await page.goBack();
-		await keyboardNavigate(page, '/models/1');
+		await keyboardNavigate(page, '/models/new');
 		await expect(page.locator('#content h1')).toBeFocused();
 		expect(await outline(page.locator('#content h1'))).toMatchObject({
 			width: '2px',
@@ -927,6 +1283,128 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await expect(page.locator('main')).toHaveCSS('margin-inline-start', '0px');
 		await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
 		await expect.poll(() => page.evaluate(() => window.__appState!.get().target)).toBe('class');
+	});
+
+	test('REL-STALE-1..3: worker load failure shows reload notice only on build mismatch, passes axe and preserves state across reload', async ({
+		page,
+		browserName
+	}) => {
+		let failStorageWorker = false;
+		if (browserName === 'webkit') {
+			await page.addInitScript(() => {
+				const NativeWorker = window.Worker;
+				window.Worker = new Proxy(NativeWorker, {
+					construct(target, args, newTarget) {
+						const nextArgs = [...args];
+						if (
+							String(nextArgs[0]).endsWith('/storage.worker.js') &&
+							sessionStorage.getItem('samata-fail-storage-worker') === '1'
+						) {
+							nextArgs[0] = '/__html-storage-worker';
+						}
+						return Reflect.construct(target, nextArgs, newTarget);
+					}
+				});
+			});
+			await page.route('**/__html-storage-worker', (route) =>
+				route.fulfill({
+					status: 200,
+					contentType: 'text/html; charset=utf-8',
+					headers: {
+						'Cross-Origin-Opener-Policy': 'same-origin',
+						'Cross-Origin-Embedder-Policy': 'require-corp',
+						'Cross-Origin-Resource-Policy': 'same-origin'
+					},
+					body: '<!doctype html><html><body>Not a worker</body></html>'
+				})
+			);
+		} else {
+			await page.route('**/storage.worker.js', (route) => {
+				if (failStorageWorker) {
+					return route.fulfill({
+						status: 200,
+						contentType: 'text/html; charset=utf-8',
+						headers: {
+							'Cross-Origin-Opener-Policy': 'same-origin',
+							'Cross-Origin-Embedder-Policy': 'require-corp',
+							'Cross-Origin-Resource-Policy': 'same-origin'
+						},
+						body: '<!doctype html><html><body>Not a worker</body></html>'
+					});
+				}
+				return route.continue();
+			});
+		}
+
+		// 1. Matching build in /release.json must not show the stale-release notice.
+		await page.goto('/');
+		await dismissWelcomeModal(page);
+		failStorageWorker = true;
+		await page.evaluate(() => sessionStorage.setItem('samata-fail-storage-worker', '1'));
+
+		let releaseRequests = 0;
+		page.on('request', (req) => {
+			if (new URL(req.url()).pathname === '/release.json') releaseRequests++;
+		});
+
+		await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
+		await expect.poll(() => releaseRequests).toBeGreaterThanOrEqual(1);
+		await expect(
+			page.locator('#content > div.notification.notification-alert[role="alert"]')
+		).toHaveCount(0);
+
+		// 2. Different build in /release.json shows the notice at the top of main, passes axe, and reloads cleanly.
+		await page.route('**/release.json', (route) =>
+			route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					version: '9.9.9',
+					build: 'newer-release-build',
+					workers: {
+						storage: '/storage.worker.js',
+						training: '/training.worker.js',
+						analysis: '/analysis.worker.js'
+					}
+				})
+			})
+		);
+
+		await page.reload();
+		await expect(page.locator('app-welcome-modal dialog')).toBeHidden();
+		await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
+
+		const notice = page.locator('#content > div.notification.notification-alert[role="alert"]');
+		await expect(notice).toBeVisible();
+		await expect(notice).toContainText(
+			'A newer version of samatā.ml is available. Reload to continue with your saved progress.'
+		);
+		const reloadButton = notice.getByRole('button', { name: 'Reload', exact: true });
+		await expect(reloadButton).toBeVisible();
+		await expect(reloadButton).not.toBeFocused();
+
+		const axe = await new AxeBuilder({ page })
+			.include('#content > div.notification.notification-alert[role="alert"]')
+			.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+			.analyze();
+		expect(axe.violations).toEqual([]);
+
+		// Clear failure flag and verify Reload reloads the document while keeping saved state.
+		failStorageWorker = false;
+		await page.evaluate(() => sessionStorage.removeItem('samata-fail-storage-worker'));
+		await reloadButton.focus();
+		await expect(reloadButton).toBeFocused();
+		const navigation = page.waitForEvent('load');
+		await reloadButton.click();
+		await navigation;
+		await expect(notice).toHaveCount(0);
+		await expect(page.locator('app-welcome-modal dialog')).toBeHidden();
+		expect(
+			await page.evaluate(() => {
+				const raw = localStorage.getItem('samata-ml:state');
+				return raw ? JSON.parse(raw).onboarding.welcomeDismissed : false;
+			})
+		).toBe(true);
 	});
 });
 

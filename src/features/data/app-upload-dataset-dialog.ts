@@ -1,6 +1,8 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { buttonStyles } from '../../styles/button.styles';
+import { observeDialogHeader } from '../../common/dom/dialog-header';
+import { installBackdropDismiss } from '../../common/dom/dialog-backdrop';
 import { dialogStyles } from '../../styles/dialog.styles';
 import type { IngestionProgress } from './ingestion/pipeline';
 import { INGESTION_PHASE_LABELS } from './ingestion/errors';
@@ -27,62 +29,6 @@ export class AppUploadDatasetDialog extends LitElement {
 		dialogStyles,
 		buttonStyles,
 		css`
-			dialog.modal {
-				box-shadow: var(--shadow-deep);
-				border: 1.5px solid var(--stone-200);
-				border-radius: 1rem;
-				background-color: var(--surface);
-				padding: 1.5rem;
-				inline-size: min(40rem, calc(100% - 2rem));
-				max-inline-size: none;
-				max-block-size: calc(100dvh - 2rem);
-				overflow: auto;
-				color: var(--stone-800);
-			}
-
-			.modal-header {
-				display: flex;
-				justify-content: space-between;
-				align-items: center;
-				padding-block-end: 1rem;
-			}
-
-			.modal-header h1,
-			.modal-header h2 {
-				margin: 0;
-				color: var(--stone-800);
-				font-weight: 500;
-				font-size: 1.5rem;
-			}
-
-			.btn-icon {
-				display: inline-flex;
-				justify-content: center;
-				align-items: center;
-				cursor: pointer;
-				border: none;
-				border-radius: 0.5rem;
-				background: transparent;
-				padding: 0.5rem;
-				color: var(--stone-600);
-			}
-
-			.btn-icon:hover {
-				background-color: var(--stone-150);
-				color: var(--stone-900);
-			}
-
-			.btn-icon:focus-visible {
-				outline: 3px solid;
-				outline-color: var(--blue-700);
-				outline-offset: 2px;
-			}
-
-			.icon {
-				width: 1.25rem;
-				height: 1.25rem;
-			}
-
 			.dropzone {
 				cursor: pointer;
 				border: 2px dashed;
@@ -121,7 +67,7 @@ export class AppUploadDatasetDialog extends LitElement {
 				background: var(--stone-150);
 				padding: 0.5rem 1rem;
 				min-height: 2.75rem;
-				color: var(--stone-600);
+				color: var(--stone-700);
 				font: inherit;
 				font-weight: 500;
 			}
@@ -147,7 +93,7 @@ export class AppUploadDatasetDialog extends LitElement {
 
 			.requirements {
 				margin: 0;
-				color: var(--stone-600);
+				color: var(--stone-700);
 			}
 
 			.requirements small {
@@ -184,6 +130,19 @@ export class AppUploadDatasetDialog extends LitElement {
 	}
 
 	private invokerElement: HTMLElement | null = null;
+	private stopHeaderObservation?: () => void;
+	private stopBackdropDismiss?: () => void;
+	private synchronisedCloses = 0;
+
+	override disconnectedCallback(): void {
+		this.stopHeaderObservation?.();
+		this.stopBackdropDismiss?.();
+		if (this.dialogElement?.open) {
+			this.synchronisedCloses++;
+			this.dialogElement.close();
+		}
+		super.disconnectedCallback();
+	}
 
 	@state() private accessor isDragging = false;
 
@@ -230,7 +189,14 @@ export class AppUploadDatasetDialog extends LitElement {
 				} catch {
 					if (this.dialogElement) this.dialogElement.open = true;
 				}
+				if (this.dialogElement?.open) {
+					this.stopHeaderObservation?.();
+					this.stopHeaderObservation = observeDialogHeader(this.dialogElement);
+					this.stopBackdropDismiss?.();
+					this.stopBackdropDismiss = installBackdropDismiss(this.dialogElement);
+				}
 			} else if (!this.open && this.dialogElement?.open) {
+				this.synchronisedCloses++;
 				this.dialogElement.close();
 				this.dialogElement.returnValue = '';
 				this.invokerElement?.focus?.();
@@ -239,38 +205,24 @@ export class AppUploadDatasetDialog extends LitElement {
 	}
 
 	private handleNativeClose(): void {
-		if (this.dialogElement) {
-			this.dialogElement.returnValue = '';
+		const dialog = this.dialogElement;
+		if (!dialog) return;
+		if (this.synchronisedCloses > 0) {
+			this.synchronisedCloses--;
+			return;
 		}
-		if (this.busy) {
-			this.dispatchEvent(
-				new CustomEvent('app-upload-cancel', { bubbles: false, composed: false })
-			);
-		}
-		if (this.open) {
-			this.open = false;
-			this.invokerElement?.focus?.();
-			this.dispatchEvent(
-				new CustomEvent('app-upload-close', { bubbles: false, composed: false })
-			);
-		}
-	}
-
-	private handleCloseClick(): void {
+		if (dialog.open || !this.open || !this.isConnected) return;
+		dialog.returnValue = '';
 		this.open = false;
-		if (this.busy) {
-			this.dispatchEvent(
-				new CustomEvent('app-upload-cancel', { bubbles: false, composed: false })
-			);
-		}
-		if (this.dialogElement?.open) {
-			this.dialogElement.close();
-			this.dialogElement.returnValue = '';
-		}
-		this.invokerElement?.focus?.();
+		this.isDragging = false;
+		this.invokerElement?.focus({ preventScroll: true });
 		this.dispatchEvent(
 			new CustomEvent('app-upload-close', { bubbles: false, composed: false })
 		);
+	}
+
+	private handleCloseClick(): void {
+		this.dialogElement?.close();
 	}
 
 	private handleCancel(): void {
@@ -369,10 +321,9 @@ export class AppUploadDatasetDialog extends LitElement {
 		return html`
 			<dialog
 				class="modal"
-				aria-modal="true"
+				closedby="any"
 				aria-labelledby="upload-dialog-title"
-				@close=${this.handleNativeClose}
-				@cancel=${this.handleNativeClose}>
+				@close=${this.handleNativeClose}>
 				<header class="modal-header">
 					<h2 id="upload-dialog-title">
 						${this.labels.heading || 'Upload Custom Dataset'}
@@ -383,7 +334,6 @@ export class AppUploadDatasetDialog extends LitElement {
 						aria-label=${this.labels.close || 'Close modal'}
 						@click=${this.handleCloseClick}>
 						<svg
-							class="icon"
 							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
@@ -396,31 +346,34 @@ export class AppUploadDatasetDialog extends LitElement {
 					</button>
 				</header>
 
-				${this.error ? html`<p role="alert">${this.error}</p>` : nothing}
-				${this.busy ? this.renderProgress() : nothing}
+				<div class="modal-content">
+					${this.error ? html`<p role="alert">${this.error}</p>` : nothing}
+					${this.busy ? this.renderProgress() : nothing}
 
-				<section
-					class="dropzone ${this.isDragging ? 'dragging' : ''}"
-					@dragover=${this.handleDragOver}
-					@dragleave=${this.handleDragLeave}
-					@drop=${this.handleDrop}>
-					<label for="dataset-file">
-						${this.labels.file || 'Click to upload or drag and drop your dataset here.'}
-					</label>
-					<label class="file-picker">
-						<span class="file-picker-button">Select file</span>
-						<input
-							type="file"
-							id="dataset-file"
-							name="dataset"
-							accept=".csv,text/csv"
-							?disabled=${this.busy}
-							@change=${this.handleFileChange} />
-					</label>
-					<p class="requirements">
-						<small>${this.labels.requirements || 'Must be .csv format.'}</small>
-					</p>
-				</section>
+					<section
+						class="dropzone ${this.isDragging ? 'dragging' : ''}"
+						@dragover=${this.handleDragOver}
+						@dragleave=${this.handleDragLeave}
+						@drop=${this.handleDrop}>
+						<label for="dataset-file">
+							${this.labels.file ||
+							'Click to upload or drag and drop your dataset here.'}
+						</label>
+						<label class="file-picker">
+							<span class="file-picker-button">Select file</span>
+							<input
+								type="file"
+								id="dataset-file"
+								name="dataset"
+								accept=".csv,text/csv"
+								?disabled=${this.busy}
+								@change=${this.handleFileChange} />
+						</label>
+						<p class="requirements">
+							<small>${this.labels.requirements || 'Must be .csv format.'}</small>
+						</p>
+					</section>
+				</div>
 			</dialog>
 		`;
 	}

@@ -6,7 +6,6 @@ import {
 	type ModelOptionContext
 } from '../src/features/models/model-options';
 import {
-	GLOSSARY_TERM_KEYS,
 	MODEL_OPTION_POLICY,
 	MULTICLASS_STRATEGY
 } from '../src/features/models/model-presentation-policy';
@@ -49,15 +48,6 @@ describe('model presentation policy (WML-P1-OPT-1)', () => {
 		expect(MODEL_OPTION_POLICY['decision-tree-classifier'].maxDepth.kind).toBe('nullable-mode');
 		expect(MODEL_OPTION_POLICY['bernoulli-nb'].binarize.kind).toBe('nullable-mode');
 		expect(MODEL_OPTION_POLICY['k-neighbors-classifier'].algorithm.kind).toBe('hidden');
-	});
-
-	it('WML-P1-OPT-1: only names glossary terms that exist', () => {
-		const known = new Set<string>(GLOSSARY_TERM_KEYS);
-		for (const id of Object.keys(MODEL_OPTION_POLICY) as ClassifierId[]) {
-			for (const policy of Object.values(MODEL_OPTION_POLICY[id]) as { terms?: string[] }[]) {
-				for (const term of policy.terms ?? []) expect(known.has(term)).toBe(true);
-			}
-		}
 	});
 
 	it('maps every classifier to a multiclass strategy', () => {

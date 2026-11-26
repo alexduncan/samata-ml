@@ -1,7 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { acknowledgeDurableTraining, expectPopulatedResults, loadSampleDataset } from './helpers';
+import {
+	acknowledgeDurableTraining,
+	expectPopulatedResults,
+	loadSampleDataset,
+	viewNumberedTrainingResult
+} from './helpers';
 import { interceptSampleDownload } from '../fixtures/sample-dataset-downloads';
-import { configureDraft } from '../fixtures/training/browser';
+import { configureOpenDraft, openSidebarDraft } from '../fixtures/training/browser';
 
 test('JOURNEY-PENGUINS-COMPARE: train two One-Shot models and explain unavailable analysis', async ({
 	page
@@ -14,15 +19,18 @@ test('JOURNEY-PENGUINS-COMPARE: train two One-Shot models and explain unavailabl
 	await page.locator('app-sidebar a[href="/target"]').click();
 	await page.locator('app-target-view tbody tr:has(th:has-text("species")) button').click();
 	await page.locator('app-sidebar a[href="/models"]').click();
-	for (const num of [1, 2]) {
-		const setup = await configureDraft(page, num);
+	for (const [expectedNumber, label] of [
+		[1, 'Train New Model'],
+		[2, 'Train Another Model']
+	] as const) {
+		const num = await openSidebarDraft(page, label);
+		expect(num).toBe(expectedNumber);
+		const setup = await configureOpenDraft(page, num);
 		await setup.getByRole('button', { name: 'Train Model' }).click();
-		const results = page
-			.getByTestId('training-step')
-			.getByRole('button', { name: 'View Results' });
-		await expect(results).toBeEnabled({ timeout: 45_000 });
-		await results.click();
-		await page.locator('app-sidebar a[href="/models"]').click();
+		await viewNumberedTrainingResult(page, num, 'Logistic Regression');
+		await expect(
+			page.locator('app-model-results summary').filter({ hasText: 'Training Details' })
+		).toBeVisible();
 	}
 	await page.locator('app-sidebar a[href="/results"]').click();
 	await expect(page.locator('app-results-view app-comparison-table')).toBeVisible();
@@ -183,11 +191,11 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		const modelsView = page.locator('app-models-view');
 		await expect(modelsView).toBeVisible();
 
-		// 3. Train New Model -> navigates to /models/1
-		const trainNewBtn = modelsView.locator('button.btn-primary:has-text("Train New Model")');
+		// 3. Train New Model -> navigates to /models/new
+		const trainNewBtn = modelsView.locator('a.btn-primary[href="/models/new"]');
 		await expect(trainNewBtn).toBeVisible();
 		await trainNewBtn.click();
-		await expect(page).toHaveURL(/\/models\/1$/);
+		await expect(page).toHaveURL(/\/models\/new$/);
 
 		const builder = page.locator('app-model-builder-view');
 		await expect(builder).toBeVisible();
@@ -200,10 +208,6 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		const lrCard = step1.locator('app-model-card[model-id="logistic-regression"]');
 		await expect(lrCard).toBeVisible();
 		await lrCard.locator('button.btn-primary').click();
-
-		// Click Continue in Section 1
-		const continueStep1Btn = step1.locator('.section-actions button:has-text("Continue")');
-		await continueStep1Btn.click();
 
 		// 5. Section 2 (Select Features) is now active
 		const step2 = builder.locator('.train-step').nth(1);
@@ -237,9 +241,9 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 			)
 			.toContain('select-features');
 		await page.reload();
-		await expect(page).toHaveURL(/\/models\/1$/);
+		await expect(page).toHaveURL(/\/models\/new$/);
 		await expect(builder).toBeVisible();
-		await expect(step1).toContainText('Selected model: Logistic Regression');
+		await expect(step1.locator('h2')).toHaveText('1. Logistic Regression');
 		await expect(step3).toHaveAttribute('aria-current', 'step');
 		await expect(step3.locator('app-model-configuration form')).toBeVisible();
 		await expect(step3.locator('h2')).toContainText('3. Configure Model');
@@ -251,8 +255,10 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		);
 		await setup.getByRole('button', { name: 'Train Model' }).click();
 		const summary = 'One-Shot (80% / 20%)';
-		await expect(builder.getByRole('heading', { name: `4. ${summary}` })).toBeVisible();
-		expect(await acknowledgeDurableTraining(page)).toMatchObject({
+		await expect(
+			builder.getByRole('heading', { name: '4. One-Shot Training', exact: true })
+		).toBeVisible();
+		expect(await acknowledgeDurableTraining(page, 1, 'Logistic Regression')).toMatchObject({
 			strategy: 'one_shot',
 			rows: 344,
 			trainCount: 275,

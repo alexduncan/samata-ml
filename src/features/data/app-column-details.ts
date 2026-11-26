@@ -6,10 +6,11 @@ import type {
 	NumericColumnStats,
 	CategoricalColumnStats,
 	BooleanColumnStats,
-	DatetimeColumnStats,
 	TextColumnStats
 } from '../../types/dataset';
 import { $format } from '../../i18n';
+import { isTemporalColumnType } from '../../types/state';
+import { formatTemporalValue, type TemporalColumnStats } from './temporal-format';
 
 /** Labels for column details text. */
 export interface ColumnDetailsLabels {
@@ -26,6 +27,8 @@ export interface ColumnDetailsLabels {
 	count: string;
 	category: string;
 	frequency: string;
+	/** Expansion for a supplied abbreviated categorical frequency label. */
+	frequencyExpansion?: string;
 	percentage: string;
 	showAll: string;
 	showFewer: string;
@@ -364,6 +367,9 @@ export class AppColumnDetails extends LitElement {
 		});
 
 		const displayEntries = this.expanded ? entries : entries.slice(0, 50);
+		const customFrequency = this.labels.frequency?.trim() ? this.labels.frequency : '';
+		const frequency = customFrequency || 'Freq.';
+		const expansion = customFrequency ? this.labels.frequencyExpansion?.trim() : 'Frequency';
 
 		return html`
 			<p>
@@ -375,7 +381,11 @@ export class AppColumnDetails extends LitElement {
 				<thead>
 					<tr>
 						<th scope="col">${this.labels.category || 'Category'}</th>
-						<th scope="col">${this.labels.frequency || 'Freq.'}</th>
+						<th scope="col" aria-label=${expansion || nothing}>
+							${expansion
+								? html`<abbr title=${expansion}>${frequency}</abbr>`
+								: frequency}
+						</th>
 						<th scope="col">${this.labels.percentage || '%'}</th>
 					</tr>
 				</thead>
@@ -438,19 +448,20 @@ export class AppColumnDetails extends LitElement {
 		`;
 	}
 
-	private renderDatetimeStats(col: DatetimeColumnStats): TemplateResult {
-		const earliestStr = new Date(col.min).toISOString();
-		const latestStr = new Date(col.max).toISOString();
+	private renderTemporalStats(col: TemporalColumnStats): TemplateResult {
+		const earliestStr = formatTemporalValue(col.min, col);
+		const latestStr = formatTemporalValue(col.max, col);
+		const utc = col.type === 'datetime' ? ' (UTC)' : '';
 
 		return html`
 			<table class="table">
 				<tbody>
 					<tr>
-						<th scope="row">${this.labels.earliest || 'Earliest (UTC)'}</th>
+						<th scope="row">${this.labels.earliest || `Earliest${utc}`}</th>
 						<td>${earliestStr}</td>
 					</tr>
 					<tr>
-						<th scope="row">${this.labels.latest || 'Latest (UTC)'}</th>
+						<th scope="row">${this.labels.latest || `Latest${utc}`}</th>
 						<td>${latestStr}</td>
 					</tr>
 				</tbody>
@@ -517,7 +528,9 @@ export class AppColumnDetails extends LitElement {
 				${col.type === 'numeric' ? this.renderNumericStats(col) : nothing}
 				${col.type === 'categorical' ? this.renderCategoricalStats(col) : nothing}
 				${col.type === 'boolean' ? this.renderBooleanStats(col) : nothing}
-				${col.type === 'datetime' ? this.renderDatetimeStats(col) : nothing}
+				${isTemporalColumnType(col.type)
+					? this.renderTemporalStats(col as TemporalColumnStats)
+					: nothing}
 				${col.type === 'text' ? this.renderTextStats(col) : nothing}
 			</aside>
 		`;

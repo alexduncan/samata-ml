@@ -13,7 +13,34 @@ export const SCROLL_STORAGE_KEY = 'samata-ml:scroll';
 export const STORAGE_VERSION = 1;
 
 /** Canonical column type vocabulary across UI, worker, and state. */
-export type ColumnType = 'numeric' | 'categorical' | 'boolean' | 'datetime' | 'text';
+export type ColumnType =
+	| 'numeric'
+	| 'categorical'
+	| 'boolean'
+	| 'date'
+	| 'time'
+	| 'datetime'
+	| 'text';
+
+/** Column types that hold calendar dates, times of day or instants. */
+export const TEMPORAL_COLUMN_TYPES = [
+	'date',
+	'time',
+	'datetime'
+] as const satisfies readonly ColumnType[];
+
+/** Temporal subset of {@link ColumnType}. */
+export type TemporalColumnType = (typeof TEMPORAL_COLUMN_TYPES)[number];
+
+/**
+ * Checks whether a column type is one of the temporal types.
+ *
+ * @param type - Canonical column type to check.
+ * @returns Whether the type is `date`, `time` or `datetime`.
+ */
+export function isTemporalColumnType(type: ColumnType): type is TemporalColumnType {
+	return (TEMPORAL_COLUMN_TYPES as readonly ColumnType[]).includes(type);
+}
 
 /** Column types that can be used as a model target or feature. */
 export const MODEL_ELIGIBLE_COLUMN_TYPES = ['numeric', 'categorical', 'boolean'] as const;
@@ -55,7 +82,13 @@ export interface DatasetSummary {
 }
 
 /** Valid workflow navigation paths. */
-export type WorkflowPath = '/data' | '/target' | '/models' | `/models/${number}` | '/results';
+export type WorkflowPath =
+	| '/data'
+	| '/target'
+	| '/models'
+	| '/models/new'
+	| `/models/${number}`
+	| '/results';
 
 /** Identifier for each step in configuring and training a model. */
 export type ModelSectionId =
@@ -149,6 +182,36 @@ export interface TrainingTimings {
 /** Execution status of a configured model. */
 export type ModelStatus = 'draft' | 'training' | 'trained';
 
+/** Model swatch suffixes in the order assigned by acknowledged finishes. */
+export const MODEL_COLORS = [
+	'amber',
+	'blue',
+	'teal',
+	'purple',
+	'red',
+	'green',
+	'pink',
+	'sky',
+	'olive',
+	'neutral'
+] as const;
+
+/** Colour of a model swatch, independent of the training algorithm. */
+export type ModelColor = (typeof MODEL_COLORS)[number];
+
+/** Project context captured before opening a provisional model. */
+export interface ProvisionalModelContext {
+	readonly datasetId: string;
+	readonly target: string;
+	readonly comparisonContextEpoch: number;
+}
+
+/** Acknowledged model identity bound to a new-workflow history entry. */
+export interface ProvisionalModelIdentity extends ProvisionalModelContext {
+	readonly modelNum: number;
+	readonly modelCreatedAt: number;
+}
+
 /** Record representing a single configured or trained machine learning model. */
 export interface ModelRecord {
 	/** Sequential integer model number (e.g. 1 in /models/1). */
@@ -177,6 +240,12 @@ export interface ModelRecord {
 	progress: TrainingProgress | null;
 	/** Current run identity during training and after its result has been saved. */
 	resultRevision: string | null;
+	/** First successful provisional run, retained across result recovery and reruns. */
+	provisionalCompletedRunId?: string | null;
+	/** Saved presentation label mirrored from the durable result. */
+	modelLabel?: string | null;
+	/** Swatch assigned by the first acknowledged finish in the current context. */
+	modelColor?: ModelColor;
 	/** Section 5: Error information if training ended in failure. */
 	error: TrainingError | null;
 	/** Section 5: Timing breakdown. */
@@ -189,6 +258,25 @@ export interface ModelRecord {
 
 	/** Section 6: UI selections (chart tab, etc.). */
 	ui: Record<string, unknown> & { trainingLogOpen?: boolean; results?: Partial<ModelResultsUi> };
+}
+
+/** Normalises a persisted label independently of the validity of its saved result. */
+export function sanitiseModelLabel(value: unknown): string | null {
+	return typeof value === 'string' ? value.trim() || null : null;
+}
+
+/** Resolves an unfinished provisional record from an app snapshot or wire pointer. */
+export function provisionalModelIn(
+	models: readonly ModelRecord[],
+	pointer: unknown
+): ModelRecord | undefined {
+	if (typeof pointer !== 'number' || !Number.isSafeInteger(pointer) || pointer < 1) return;
+	return models.find(
+		(model) =>
+			model.num === pointer &&
+			model.status !== 'trained' &&
+			model.provisionalCompletedRunId == null
+	);
 }
 
 /** Per-model display preferences for Section 6. Absent fields use `DEFAULT_MODEL_RESULTS_UI`. */
@@ -295,7 +383,7 @@ export interface PersistedAppState {
 	/** Monotonic identity for the current comparison context. */
 	comparisonContextEpoch: number;
 
-	onboarding: { welcomeDismissed: boolean };
+	onboarding: { welcomeDismissed: boolean; betaTelemetryAccepted: boolean };
 
 	/** Path resolved when navigating to /. Always a workflow path. */
 	resumePath: WorkflowPath;
@@ -314,6 +402,10 @@ export interface PersistedAppState {
 	models: ModelRecord[];
 	/** Monotonic counter for allocating unique model numbers. */
 	nextModelNum: number;
+	/** Current provisional model, until its first result or an acknowledged discard. */
+	newModelNum: number | null;
+	/** Index within the palette for the next acknowledged model finish. */
+	nextModelColorIndex: number;
 
 	/** UI selections for /results page. */
 	results: { owner: ComparisonOwner | null; ui: ComparisonUi };
@@ -344,13 +436,15 @@ export const INITIAL_APP_STATE: PersistedAppState = {
 	updatedAt: Date.now(),
 	trainingDomainGeneration: 0,
 	comparisonContextEpoch: 0,
-	onboarding: { welcomeDismissed: false },
+	onboarding: { welcomeDismissed: false, betaTelemetryAccepted: false },
 	resumePath: '/data',
 	dataset: null,
 	data: { mode: 'select', selectedColumn: null },
 	target: null,
 	models: [],
 	nextModelNum: 1,
+	newModelNum: null,
+	nextModelColorIndex: 0,
 	results: { owner: null, ui: { ...DEFAULT_COMPARISON_UI, selected: [] } }
 };
 

@@ -46,15 +46,11 @@ export const trainModelStyles: CSSResult = css`
 		margin: 0;
 		padding-inline: 1rem;
 		padding-block: 0.75rem;
+		min-inline-size: 0;
 		color: var(--stone-700);
 		font-weight: 500;
 		font-size: 1.125rem;
-	}
-
-	.train-step-header h2 .help-link {
-		margin-inline-start: 0.5rem;
-		font-weight: 400;
-		font-size: 0.875rem;
+		overflow-wrap: anywhere;
 	}
 
 	.train-step-header .train-step-action {
@@ -71,6 +67,33 @@ export const trainModelStyles: CSSResult = css`
 
 	.train-step-content {
 		padding: 1rem;
+	}
+
+	.train-step-content.step-sizing {
+		box-sizing: border-box;
+		overflow: clip;
+		@media (prefers-reduced-motion: no-preference) {
+			transition:
+				block-size 180ms ease,
+				padding-block 180ms ease;
+		}
+	}
+
+	.train-step-content.step-collapsed {
+		padding-block: 0;
+	}
+
+	.wizard-icons {
+		position: absolute;
+		inline-size: 0;
+		block-size: 0;
+		overflow: hidden;
+	}
+
+	.train-step-status > .icon {
+		flex: none;
+		inline-size: 1.25rem;
+		block-size: 1.25rem;
 	}
 
 	.train-step.train-step-pending {

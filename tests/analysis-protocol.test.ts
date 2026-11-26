@@ -1,4 +1,9 @@
 import { expect, test } from 'bun:test';
+import {
+	onWorkerFailure,
+	resetWorkerFailuresForTests,
+	type WorkerFailureCode
+} from '../src/common/release/worker-failures';
 import { AnalysisClient } from '../src/features/results/analysis-client';
 import { isRopeReply, isRopeRequest } from '../src/features/results/analysis-protocol';
 import { $appState, reduceCreateModel, setComparisonUi } from '../src/stores/app.store';
@@ -226,5 +231,43 @@ test('WML-P5-ROPE-2: width debounce and invalidation suppress late worker replie
 		$modelResults.set({});
 		$appState.set(INITIAL_APP_STATE);
 		Object.defineProperty(globalThis, 'Worker', { configurable: true, value: previous });
+	}
+});
+
+test('REL-STALE-1: reports analysis-worker-failed on worker errors but never on dispose', async () => {
+	class FakeWorker {
+		onmessage: ((event: MessageEvent<unknown>) => void) | null = null;
+		onerror: (() => void) | null = null;
+		onmessageerror: (() => void) | null = null;
+		postMessage() {}
+		terminate() {}
+	}
+	const reported: WorkerFailureCode[] = [];
+	const unsubscribe = onWorkerFailure((code) => reported.push(code));
+	try {
+		const workers: FakeWorker[] = [];
+		const client = new AnalysisClient(() => {
+			const worker = new FakeWorker();
+			workers.push(worker);
+			return worker as unknown as Worker;
+		});
+		const { id: _id, type: _type, ...input } = request;
+
+		const first = client.requestRope(input, new AbortController().signal);
+		workers[0]!.onerror?.();
+		await expect(first).rejects.toThrow('Analysis worker failed');
+
+		const second = client.requestRope(input, new AbortController().signal);
+		workers[1]!.onmessageerror?.();
+		await expect(second).rejects.toThrow('Analysis worker failed');
+
+		const third = client.requestRope(input, new AbortController().signal);
+		client.dispose();
+		await expect(third).rejects.toThrow('Analysis worker failed');
+
+		expect(reported).toEqual(['analysis-worker-failed', 'analysis-worker-failed']);
+	} finally {
+		unsubscribe();
+		resetWorkerFailuresForTests();
 	}
 });

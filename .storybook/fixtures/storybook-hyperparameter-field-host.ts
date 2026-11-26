@@ -37,10 +37,7 @@ class StorybookHyperparameterFieldHost extends LitElement {
 				</select>
 				<div class="field-description">
 					<div id="kernel-help">
-						<p>
-							The <abbr title="The shape of boundary the model can draw">kernel</abbr>
-							sets the boundary shape.
-						</p>
+						<p>The kernel sets the boundary shape.</p>
 						<p class="field-dependent">Degree applies only to the polynomial kernel.</p>
 					</div>
 				</div>

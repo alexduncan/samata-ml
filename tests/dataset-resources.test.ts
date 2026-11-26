@@ -472,7 +472,7 @@ describe('clear and change dataset actions (DATA-RES-2)', () => {
 	async function seed() {
 		const state = {
 			...INITIAL_APP_STATE,
-			onboarding: { welcomeDismissed: true },
+			onboarding: { welcomeDismissed: true, betaTelemetryAccepted: false },
 			dataset: {
 				id: 'ds-1',
 				name: 'Iris',

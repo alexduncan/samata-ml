@@ -2,23 +2,34 @@ import { LitElement, css, html, nothing, type PropertyValues, type TemplateResul
 import { customElement, property, state } from 'lit/decorators.js';
 import { keyed } from 'lit/directives/keyed.js';
 import { ref } from 'lit/directives/ref.js';
+import { repeat } from 'lit/directives/repeat.js';
 import { StoreController } from '@nanostores/lit';
 import { computed } from 'nanostores';
 import { ContentLoadError, loadContentEntry } from '../../common/content/content-loader';
-import { $route } from '../../router/router';
+import {
+	$leaveConfirmation,
+	$route,
+	getEffectiveModelNum,
+	getEffectiveWorkflowRoute,
+	getWorkflowEntryId,
+	ownsWizardLeave,
+	provisionalResultIdentity,
+	provisionalRouteModel,
+	promoteProvisionalResult,
+	resolveWizardLeave,
+	retireWizardOwner
+} from '../../router/router';
 import {
 	$appState,
-	chooseModel,
-	completeSection,
-	initialiseFeatureSelection,
+	modelSwatchAssignments,
 	reopenSection,
 	SECTION_ORDER,
 	setFeatures,
 	setHyperparameters,
-	setMulticlassStrategy,
 	setTrainingLogOpen,
 	setTrainingSetup,
-	toggleFeature
+	toggleFeature,
+	type WizardStepSubmission
 } from '../../stores/app.store';
 import { params } from '@nanostores/i18n';
 import { $format, i18n } from '../../i18n';
@@ -29,7 +40,11 @@ import {
 } from '../../stores/dataset.store';
 import { blockedReason } from '../../stores/predicates';
 import { flushNow } from '../../stores/persister';
-import { $trainingSession, type TrainingSession } from '../../stores/training.store';
+import {
+	$trainingSession,
+	getTrainingSession,
+	type TrainingSession
+} from '../../stores/training.store';
 import { buttonStyles } from '../../styles/button.styles';
 import { cardStyles } from '../../styles/card.styles';
 import { chicletStyles } from '../../styles/chiclet.styles';
@@ -38,16 +53,20 @@ import { notificationStyles } from '../../styles/notification.styles';
 import { tableStyles } from '../../styles/table.styles';
 import { trainModelStyles } from '../../styles/train-model.styles';
 import { headingFocusStyles } from '../../styles/heading-focus.styles';
+import { helpLinkStyles } from '../../styles/help-link.styles';
+import { modelSwatchStyles } from '../../styles/model-swatch.styles';
 import type { ColumnStats } from '../../types/dataset';
 import type { TrainingLogEntry, TrainingRunIdentity } from '../../types/model-result';
 import {
 	DEFAULT_ONE_SHOT_SETUP,
 	FIXED_ONE_SHOT_TEST_RATIO,
 	FIXED_TRAINING_RANDOM_STATE,
+	MODEL_COLORS,
 	type ColumnType,
 	type ModelRecord,
 	type ModelSectionId,
 	type PersistedAppState,
+	type ProvisionalModelIdentity,
 	type TrainingProgress,
 	type ValidationMethodology
 } from '../../types/state';
@@ -55,7 +74,9 @@ import { buildFeatureRows, formatFeatureNote, type FeatureRow } from './feature-
 import {
 	isClassifierId,
 	modelsForTarget,
+	savedModelName,
 	SUPERVISED_MODELS,
+	type ClassifierId,
 	type ModelCatalogueEntry
 } from './model-catalogue';
 import type { ModelDescriptionStatus } from './app-model-description-dialog';
@@ -66,7 +87,7 @@ import './app-training-setup';
 import './app-training-progress';
 import '../results/app-model-results';
 import type { AppModelResults } from '../results/app-model-results';
-import type { TrainingSetupLabels } from './app-training-setup';
+import type { AppTrainingSetup, TrainingSetupLabels } from './app-training-setup';
 import type {
 	ConfigurationLabels,
 	ModelConfigurationChangeDetail,
@@ -93,11 +114,36 @@ import {
 	getTrainingService,
 	type TrainingCommandFailure
 } from './training/training-service';
+import { sameTrainingRun } from './training/result-validation';
+
+const MODEL_ART: Readonly<Record<ClassifierId, string>> = {
+	'bernoulli-nb': '/assets/bernoulli-naive-bayes.svg',
+	'decision-tree-classifier': '/assets/decision-tree-classifier.svg',
+	'gaussian-nb': '/assets/gaussian-naive-bayes.svg',
+	'k-neighbors-classifier': '/assets/k-nearest-neighbours-classifier.svg',
+	'logistic-regression': '/assets/logistic-regression.svg',
+	'mlp-classifier': '/assets/mlp-classifier.svg',
+	'multinomial-nb': '/assets/multinomial-naive-bayes.svg',
+	'support-vector-classifier': '/assets/support-vector-classifier.svg'
+};
 
 const messages = i18n('app-model-builder-view', {
+	logisticCardTitle: 'Logistic Regression',
+	logisticCardDescription:
+		'A classification tool used to predict a binary outcome by estimating the exact probability of an event happening. Highly reliable for clear-cut, two-option decisions.',
 	noModelHeading: 'No classification model available',
 	noModelText: 'This target is numeric. Regression will be added later.',
 	noModelLink: 'Choose a categorical or boolean target',
+	chooseHeading: '1. Choose Model',
+	chosenHeading: params<{ name: string }>('1. {name}'),
+	featuresHeading: '2. Select Features',
+	featuresHelp: 'What are features?',
+	oneFeatureHeading: '2. 1 Feature Selected',
+	featuresSelectedHeading: params<{ count: string }>('2. {count} Features Selected'),
+	reopenChoose: 'Edit Choose Model',
+	reopenFeatures: 'Edit Select Features',
+	wizardPending: 'This step was saved. Retry saving to continue.',
+	wizardSaveFailed: 'This step could not be saved. Try again.',
 	configureHeading: '3. Configure Model',
 	configuredHeading: '3. Model Configured',
 	helpLink: 'What do these settings mean?',
@@ -108,6 +154,8 @@ const messages = i18n('app-model-builder-view', {
 	trainingSetupHelp: 'What is this?',
 	reopenTrainingSetup: 'Edit Training Setup',
 	completedTrainingSetup: params<{ summary: string }>('4. {summary}'),
+	oneShotHeading: 'One-Shot Training',
+	crossValidationHeading: params<{ folds: string }>('{folds} Fold Cross-Validation'),
 	selectedTrainingSetup: 'Selected training setup:',
 	oneShotSummary: 'One-Shot (80% / 20%)',
 	crossValidationSummary: params<{ folds: number }>('Cross-Validation ({folds} folds)'),
@@ -124,7 +172,9 @@ const messages = i18n('app-model-builder-view', {
 	strategyLabel: 'Training Strategy',
 	strategyOneShot: 'One-Shot',
 	strategyCrossValidation: 'Cross-Validation',
-	strategyHelp: 'How the rows are divided to train and evaluate the model.',
+	oneShotDefinition: 'Train once on one part of the data and test on the part set aside.',
+	crossValidationDefinition:
+		'Divide the data into groups, then train and check a model several times, using a different group for the check each time.',
 	learnMore: 'Learn more',
 	oneShotNote: 'Requests an 80% training and 20% held-out test split.',
 	foldsLabel: 'Cross-validation Folds',
@@ -146,7 +196,12 @@ const messages = i18n('app-model-builder-view', {
 	),
 	trainModel: 'Train Model',
 	trainingHeading: '5. Train Model',
+	trainingActiveHeading: '5. Training Model…',
+	trainingStoppedHeading: '5. Training Stopped',
+	trainingCompleteHeading: '5. Training Complete',
 	resultsHeading: '6. Model Results',
+	savedResultsHeading: params<{ name: string }>('{name} Results'),
+	savedModelFallback: params<{ num: string }>('Model {num}'),
 	trainingProgress: 'Training progress',
 	waitingToTrain: 'Waiting to train',
 	trainingPreparing: 'Preparing data',
@@ -167,6 +222,7 @@ const messages = i18n('app-model-builder-view', {
 	trainingReducedPerformance: 'Training is using reduced-performance mode',
 	trainingSaving: 'Saving results',
 	trainingComplete: 'Training complete',
+	trainingStopped: 'Training stopped',
 	trainingCancelling: 'Cancelling training',
 	trainingCancelled: 'Training was cancelled. You can start again.',
 	trainingFailed: 'Training could not finish. Check your setup and try again.',
@@ -185,6 +241,15 @@ const messages = i18n('app-model-builder-view', {
 	trainingPendingResultsView:
 		'The change is saved, but progress could not be saved. Retry saving.',
 	trainingResultUnavailable: 'The saved result could not be read.',
+	backToModels: 'Back to Models',
+	leaveTitle: 'Leave this model?',
+	leaveDescription: 'Leaving will discard this unfinished model and its settings.',
+	stay: 'Stay',
+	leave: 'Leave',
+	leaveWorking: 'Leaving the model…',
+	leavePending: 'The change is saved, but finishing is pending. Retry saving.',
+	leaveBusy: 'This model is busy. Try again when training in the other tab has finished.',
+	leaveError: 'The unfinished model could not be discarded. Try again.',
 	trainingElapsed: params<{ seconds: string }>('Elapsed time {seconds}'),
 	cancelTraining: 'Cancel Training',
 	viewResults: 'View Results',
@@ -271,6 +336,24 @@ function trainingSetupKey(appState: PersistedAppState, modelNum: number): string
 	return JSON.stringify([appState.dataset?.id, appState.target, modelNum]);
 }
 
+type WizardAdvance = {
+	key: string;
+	entryId: string | undefined;
+	from: number;
+	model: ModelRecord;
+	focusOwner: Element | null;
+	runId?: string;
+	advancing?: boolean;
+};
+
+const completedStepIcon = html`<svg class="icon" aria-hidden="true"><use href="#check" /></svg>`;
+const wizardIconSprite = html` <svg class="wizard-icons" aria-hidden="true" focusable="false">
+	<symbol id="check" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+		<path
+			d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m5.73 5.29a1 1 0 0 0-1.41 0L10 14.6l-2.31-2.32a1 1 0 1 0-1.42 1.42l3.02 3.02a1 1 0 0 0 1.42 0l7.02-7.03a1 1 0 0 0 0-1.41" />
+	</symbol>
+</svg>`;
+
 function belongsToModel(
 	identity: TrainingRunIdentity,
 	appState: PersistedAppState,
@@ -317,6 +400,8 @@ export class AppModelBuilderView extends LitElement {
 		tableStyles,
 		notificationStyles,
 		trainModelStyles,
+		helpLinkStyles,
+		modelSwatchStyles,
 		css`
 			:host {
 				display: block;
@@ -334,6 +419,13 @@ export class AppModelBuilderView extends LitElement {
 					color: var(--stone-900);
 					font-weight: 500;
 					font-size: 1.5rem;
+				}
+
+				> .model-results {
+					display: flex;
+					align-items: center;
+					gap: 0.875rem;
+					overflow-wrap: anywhere;
 				}
 
 				> p {
@@ -354,6 +446,12 @@ export class AppModelBuilderView extends LitElement {
 
 			code {
 				font-family: var(--font-mono);
+			}
+
+			#features-form fieldset {
+				margin: 0;
+				border: 0;
+				padding: 0;
 			}
 
 			/* Section Actions */
@@ -378,9 +476,15 @@ export class AppModelBuilderView extends LitElement {
 			/* Models list in Section 1 */
 			.cards-grid {
 				display: grid;
-				grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+				grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr));
 				gap: 1.5rem;
-				margin-block-start: 1rem;
+				margin-block: 1rem 0;
+				padding: 0;
+				list-style: none;
+
+				app-model-card {
+					block-size: 100%;
+				}
 			}
 
 			.no-model-notice {
@@ -394,51 +498,6 @@ export class AppModelBuilderView extends LitElement {
 				> p {
 					margin: 0 0 0.5rem;
 					color: var(--stone-700);
-				}
-			}
-
-			.text-model-entries {
-				display: grid;
-				gap: 1rem;
-				margin-block-start: 1.5rem;
-				padding: 0;
-				list-style: none;
-
-				&[hidden] {
-					display: none;
-				}
-
-				> li {
-					box-sizing: border-box;
-					border: 1px solid var(--stone-300);
-					border-radius: 0.5rem;
-					background-color: var(--surface);
-					padding: 1rem;
-
-					&.selected {
-						box-shadow: 0 0 0 1px var(--blue-500);
-						border-color: var(--blue-500);
-					}
-
-					h3 {
-						margin: 0 0 0.25rem 0;
-						color: var(--stone-900);
-						font-weight: 600;
-						font-size: 1.125rem;
-					}
-
-					p {
-						margin: 0 0 1rem 0;
-						color: var(--stone-700);
-						font-size: 0.875rem;
-						line-height: 1.4;
-					}
-
-					.entry-actions {
-						display: flex;
-						flex-wrap: wrap;
-						gap: 0.5rem;
-					}
 				}
 			}
 
@@ -469,38 +528,10 @@ export class AppModelBuilderView extends LitElement {
 				color: var(--neutral-700);
 				font-style: italic;
 			}
-
-			/* Reopen confirmation modal */
-			dialog.confirm-dialog {
-				box-shadow: var(--shadow-deep);
-				border: 1.5px solid var(--stone-200);
-				border-radius: 1rem;
-				background-color: var(--surface);
-				padding: 1.5rem;
-				inline-size: min(32rem, calc(100% - 2rem));
-				max-inline-size: none;
-				max-block-size: calc(100dvh - 2rem);
-				overflow: auto;
-				color: var(--stone-800);
-			}
-
-			.confirm-header h2 {
-				margin: 0;
-				color: var(--stone-900);
-				font-weight: 600;
-				font-size: 1.25rem;
-			}
-
-			.confirm-body {
-				margin-block: 1rem;
-				color: var(--stone-700);
-				line-height: 1.5;
-			}
-
-			.confirm-footer {
+			.stopped-actions {
 				display: flex;
-				justify-content: flex-end;
-				gap: 0.75rem;
+				flex-wrap: wrap;
+				gap: 0.5rem;
 			}
 		`
 	];
@@ -510,11 +541,18 @@ export class AppModelBuilderView extends LitElement {
 	private readonly trainingSetupResource = new StoreController(this, $trainingSetupResource);
 	private readonly trainingSessions = new StoreController(this, $trainingSession);
 	private readonly publication = new StoreController(this, $publicationPending);
+	private readonly departure = new StoreController(this, $leaveConfirmation);
+	private readonly routeController = new StoreController(this, $route);
 	private readonly translations = new StoreController(this, messages);
 
 	/** Monotonically allocated sequential model number (e.g. 1 for /models/1). */
 	@property({ type: Number, attribute: 'model-num' })
 	accessor modelNum = 0;
+
+	/** Last rendered provisional binding, retained until this wizard releases ownership. */
+	private provisionalBinding: ProvisionalModelIdentity | undefined;
+	/** A saved model opens its results directly on the corresponding numbered route. */
+	private numberedRoute = false;
 
 	// Description dialog state
 	@state() private accessor dialogOpen = false;
@@ -525,7 +563,7 @@ export class AppModelBuilderView extends LitElement {
 	@state() private accessor activeDescribeModelId: string | null = null;
 
 	// Reopening state
-	@state() private accessor pendingReopenSection: ModelSectionId | null = null;
+	private pendingReopenSection: ModelSectionId | null = null;
 	@state() private accessor trainingNotice:
 		| {
 				key: string;
@@ -534,8 +572,18 @@ export class AppModelBuilderView extends LitElement {
 		  }
 		| undefined;
 	@state() private accessor resultReadFailed = false;
+	@state() private accessor verifiedProvisional = false;
 	@state() private accessor showingResults = false;
 	@state() private accessor retryingPublication = false;
+	@state() private accessor retryingTraining = false;
+	@state() private accessor leavingModel = false;
+	@state() private accessor wizardAdvance: WizardAdvance | undefined;
+	@state() private accessor wizardNotice:
+		| { key: string; step: number; model: ModelRecord; operationId?: string }
+		| undefined;
+	private stepMotion: HTMLElement | undefined;
+	@state() private accessor leaveFailure: TrainingCommandFailure | undefined;
+	private openLeaveToken: number | undefined;
 
 	private loadPromise: Promise<void> | null = null;
 	private trainingSetupChild: { element: Element; key: string } | null = null;
@@ -543,18 +591,51 @@ export class AppModelBuilderView extends LitElement {
 	private checkedResultKey: string | null = null;
 	private logWatermark: { runId: string; id: number } | null = null;
 	private announcement = '';
-	private activeAttemptKey: string | null = null;
-	private restoreSubmitFocus = false;
+	private activeAttempt: TrainingRunIdentity | null = null;
+	private displayedRun:
+		| { key: string; entryId: string | undefined; identity: TrainingRunIdentity }
+		| undefined;
+	private stoppedRecovery: { key: string; entryId: string | undefined } | undefined;
+	private restoreSubmitFocus: TrainingRunIdentity | null = null;
 
 	private get currentModel(): ModelRecord | undefined {
+		if (this.provisionalBinding)
+			return provisionalRouteModel(this.provisionalBinding, this.appStateController.value);
 		return this.appStateController.value.models.find((m) => m.num === this.modelNum);
 	}
 
 	private get confirmDialogEl(): HTMLDialogElement | null {
-		return this.renderRoot?.querySelector('dialog.confirm-dialog') ?? null;
+		return this.renderRoot?.querySelector('dialog[data-confirm="reopen-section"]') ?? null;
+	}
+
+	private get leaveDialog(): HTMLDialogElement | null {
+		return this.renderRoot?.querySelector('dialog[data-confirm="leave-new-model"]') ?? null;
+	}
+
+	private get leaveIntent() {
+		const intent = this.departure.value;
+		const binding = this.provisionalBinding;
+		if (
+			intent &&
+			binding &&
+			intent.binding.modelNum === binding.modelNum &&
+			intent.binding.modelCreatedAt === binding.modelCreatedAt &&
+			intent.binding.datasetId === binding.datasetId &&
+			intent.binding.target === binding.target &&
+			intent.binding.comparisonContextEpoch === binding.comparisonContextEpoch
+		)
+			return intent;
 	}
 
 	override willUpdate(_changed: PropertyValues<this>): void {
+		const workflow = getEffectiveWorkflowRoute(this.routeController.value);
+		const provisional = workflow.kind === 'workflow' ? workflow.provisional : undefined;
+		this.provisionalBinding =
+			provisional?.kind === 'bound' && provisional.identity.modelNum === this.modelNum
+				? provisional.identity
+				: undefined;
+		this.numberedRoute = workflow.kind === 'workflow' && workflow.modelNum === this.modelNum;
+
 		const appState = this.appStateController.value;
 		const datasetId = appState.dataset?.id ?? null;
 
@@ -568,25 +649,57 @@ export class AppModelBuilderView extends LitElement {
 		const model = this.currentModel;
 		const session = model && displaySession(this.trainingSessions.value, appState, model);
 		const key = model && this.trainingNoticeKey(model);
-		const showingTraining =
-			model?.status === 'training' || (model?.status === 'draft' && session !== undefined);
-		this.restoreSubmitFocus = Boolean(
-			model?.status === 'draft' &&
-			!showingTraining &&
-			key === this.activeAttemptKey &&
-			this.shadowRoot?.activeElement?.closest('[data-testid="training-step"]')
-		);
-		this.activeAttemptKey = showingTraining && session ? (key ?? null) : null;
-		this.updateTrainingAnnouncement(session);
+		const showingTraining = model?.status === 'training';
+		this.rememberDisplayedRun(model, session, key);
+		const advance = this.wizardAdvance;
+		if (advance) {
+			if (!this.ownsWizardAdvance(advance)) {
+				this.clearStepMotion();
+				this.wizardAdvance = undefined;
+			} else if (this.routeController.value.kind === 'reserved' && this.stepMotion) {
+				this.clearStepMotion();
+			}
+			if (
+				this.wizardAdvance === advance &&
+				advance.runId &&
+				model?.resultRevision === advance.runId &&
+				session &&
+				['running', 'cancelling', 'saving', 'publication-pending', 'complete'].includes(
+					session.status
+				)
+			) {
+				void this.finishWizardAdvance(advance);
+			}
+		} else if (this.stepMotion && this.routeController.value.kind !== 'workflow')
+			this.clearStepMotion();
+		this.updateTrainingSubmitFocus(model, session, showingTraining);
+		this.updateTrainingAnnouncement(session ?? (model && this.stoppedSession(model)));
 
 		const resultKey =
 			model?.status === 'trained' && model.resultRevision
-				? JSON.stringify([key, model.resultRevision])
+				? JSON.stringify([key, model.resultRevision, this.provisionalBinding])
 				: null;
 		if (resultKey !== this.checkedResultKey) {
 			this.checkedResultKey = resultKey;
 			this.resultReadFailed = false;
-			if (model?.status === 'trained' && session?.status !== 'complete') {
+			this.verifiedProvisional = false;
+			if (this.provisionalBinding && model?.status === 'trained') {
+				const expected = provisionalResultIdentity(this.provisionalBinding);
+				if (!expected) this.resultReadFailed = true;
+				else
+					void getTrainingService()
+						.loadCompletedResult(model.num, expected)
+						.then((result) => {
+							if (this.checkedResultKey !== resultKey || !this.isConnected) return;
+							this.verifiedProvisional =
+								result !== null && sameTrainingRun(expected, result);
+							this.resultReadFailed = !this.verifiedProvisional;
+						});
+			} else if (
+				!this.numberedRoute &&
+				model?.status === 'trained' &&
+				session?.status !== 'complete'
+			) {
 				void getTrainingService()
 					.loadCompletedResult(model.num)
 					.then((result) => {
@@ -597,8 +710,115 @@ export class AppModelBuilderView extends LitElement {
 		}
 	}
 
+	private updateTrainingSubmitFocus(
+		model: ModelRecord | undefined,
+		session: TrainingSession | undefined,
+		showingTraining: boolean
+	): void {
+		const activeAttempt = this.activeAttempt;
+		this.activeAttempt = showingTraining ? (session?.identity ?? null) : null;
+		if (
+			!model ||
+			showingTraining ||
+			model.status !== 'draft' ||
+			getActiveStep(model) !== 4 ||
+			model.completedSteps.includes('configure-training') ||
+			!this.isCurrentTrainingRoute(this.trainingNoticeKey(model))
+		) {
+			this.restoreSubmitFocus = null;
+			return;
+		}
+
+		const appState = this.appStateController.value;
+		if (this.restoreSubmitFocus && !belongsToModel(this.restoreSubmitFocus, appState, model)) {
+			this.restoreSubmitFocus = null;
+		}
+		if (
+			activeAttempt &&
+			belongsToModel(activeAttempt, appState, model) &&
+			this.shadowRoot?.activeElement?.closest('[data-testid="training-step"]')
+		) {
+			this.restoreSubmitFocus = activeAttempt;
+		}
+	}
+
+	private rememberDisplayedRun(
+		model: ModelRecord | undefined,
+		session: TrainingSession | undefined,
+		key: string | undefined
+	): void {
+		const route = this.routeController.value;
+		const entryId = getWorkflowEntryId();
+		const owner = this.displayedRun ?? this.stoppedRecovery;
+		if (
+			!key ||
+			(route.kind !== 'workflow' && route.kind !== 'reserved') ||
+			getEffectiveModelNum(route) !== this.modelNum ||
+			(owner && (owner.key !== key || owner.entryId !== entryId))
+		) {
+			this.displayedRun = undefined;
+			this.stoppedRecovery = undefined;
+			return;
+		}
+		if (model?.status === 'trained') {
+			this.displayedRun = undefined;
+			this.stoppedRecovery = undefined;
+		} else if (model?.status === 'training' && session) {
+			const owned = getTrainingService().activeIdentity(model.num);
+			if (owned && sameTrainingRun(owned, session.identity)) {
+				this.displayedRun = { key, entryId, identity: session.identity };
+				this.stoppedRecovery = undefined;
+			}
+		}
+	}
+
+	private stoppedSession(model: ModelRecord): TrainingSession | undefined {
+		const run = this.displayedRun;
+		if (
+			!run ||
+			model.status !== 'draft' ||
+			run.key !== this.trainingNoticeKey(model) ||
+			(model.error?.code !== 'TRAINING_CANCELLED' && model.error?.code !== 'TRAINING_FAILED')
+		)
+			return;
+		return getTrainingSession(run.identity);
+	}
+
+	override updated(changed: PropertyValues<this>): void {
+		if (changed.has('modelNum') && changed.get('modelNum') !== undefined) {
+			this.handleCancelReopen();
+		}
+		this.syncLeaveDialog();
+		const model = this.currentModel;
+		const intent = this.restoreSubmitFocus;
+		const stopped = model && this.stoppedSession(model);
+		if (
+			intent &&
+			stopped &&
+			sameTrainingRun(intent, stopped.identity) &&
+			(stopped.status === 'cancelled' || stopped.status === 'failed')
+		) {
+			const button = this.renderRoot.querySelector<HTMLButtonElement>('[data-stopped-retry]');
+			if (button && !button.disabled) {
+				button.focus({ preventScroll: true });
+				this.restoreSubmitFocus = null;
+			}
+		}
+	}
+
 	override disconnectedCallback(): void {
+		this.handleCancelReopen();
+		if (this.provisionalBinding) retireWizardOwner(this.provisionalBinding);
+		this.provisionalBinding = undefined;
+		this.openLeaveToken = undefined;
+		this.leaveDialog?.close();
 		super.disconnectedCallback();
+		this.activeAttempt = null;
+		this.displayedRun = undefined;
+		this.stoppedRecovery = undefined;
+		this.restoreSubmitFocus = null;
+		this.clearStepMotion();
+		this.wizardAdvance = undefined;
 		this.contentAbortController.abort();
 	}
 
@@ -682,15 +902,6 @@ export class AppModelBuilderView extends LitElement {
 		void this.openModelDescription(e.detail.modelId, e.detail.name);
 	}
 
-	private handleTextDescriptionClick(e: MouseEvent): void {
-		const btn = e.currentTarget as HTMLElement;
-		const modelId = btn.dataset.modelId;
-		const name = btn.dataset.name;
-		if (modelId && name) {
-			void this.openModelDescription(modelId, name);
-		}
-	}
-
 	private handleDescriptionClose(): void {
 		this.dialogOpen = false;
 	}
@@ -706,38 +917,21 @@ export class AppModelBuilderView extends LitElement {
 	// ==========================================
 
 	private handleModelSelect(e: CustomEvent<{ modelId: string; name: string }>): void {
-		chooseModel(this.modelNum, e.detail.modelId);
-	}
-
-	private handleTextSelectClick(e: MouseEvent): void {
-		const btn = e.currentTarget as HTMLElement;
-		const modelId = btn.dataset.modelId;
-		if (modelId) {
-			chooseModel(this.modelNum, modelId);
-		}
-	}
-
-	private handleContinueChooseModel(): void {
-		const model = this.currentModel;
-		if (!model || !model.modelId) return;
-
-		// 1. Mark section 1 completed
-		completeSection(this.modelNum, 'choose-model');
-
-		// 2. Initialise feature selection ONCE only
 		const resources = this.resourcesController.value;
 		const appState = this.appStateController.value;
-		if (resources.metadata && appState.target) {
-			const featureRows = buildFeatureRows(
+		if (!resources.metadata || resources.datasetId !== appState.dataset?.id || !appState.target)
+			return;
+		void this.saveWizardStep(1, {
+			section: 'choose-model',
+			modelId: e.detail.modelId,
+			defaultFeatures: buildFeatureRows(
 				resources.metadata,
 				appState.target,
 				resources.descriptor
-			);
-			const defaultFeatures = featureRows
+			)
 				.filter((r) => r.initiallySelected)
-				.map((r) => r.name);
-			initialiseFeatureSelection(this.modelNum, defaultFeatures);
-		}
+				.map((r) => r.name)
+		});
 	}
 
 	// ==========================================
@@ -751,7 +945,172 @@ export class AppModelBuilderView extends LitElement {
 	private handleContinueSelectFeatures(): void {
 		const model = this.currentModel;
 		if (!model || model.features.length === 0) return;
-		completeSection(this.modelNum, 'select-features');
+		void this.saveWizardStep(2, { section: 'select-features' });
+	}
+
+	private beginWizardAdvance(from: number, model = this.currentModel): WizardAdvance | undefined {
+		if (!model || this.wizardAdvance || this.stepMotion || getActiveStep(model) !== from)
+			return;
+		const key = this.trainingNoticeKey(model);
+		if (!this.isCurrentTrainingRoute(key)) return;
+		const advance = {
+			key,
+			entryId: getWorkflowEntryId(),
+			from,
+			model,
+			focusOwner: this.shadowRoot?.activeElement ?? document.activeElement
+		};
+		this.wizardAdvance = advance;
+		return advance;
+	}
+
+	private ownsWizardAdvance(advance: WizardAdvance): boolean {
+		const route = this.routeController.value;
+		const model = this.currentModel;
+		return (
+			this.isConnected &&
+			(route.kind === 'workflow' || route.kind === 'reserved') &&
+			getEffectiveModelNum(route) === this.modelNum &&
+			getWorkflowEntryId() === advance.entryId &&
+			Boolean(model && this.trainingNoticeKey(model) === advance.key)
+		);
+	}
+
+	private async saveWizardStep(step: number, submission?: WizardStepSubmission): Promise<void> {
+		const notice = this.wizardNotice;
+		const operationId =
+			notice?.step === step &&
+			this.currentModel &&
+			notice.key === this.trainingNoticeKey(this.currentModel)
+				? notice.operationId
+				: undefined;
+		if (Boolean(submission) === Boolean(operationId)) return;
+		const advance = this.beginWizardAdvance(
+			step,
+			operationId ? notice?.model : this.currentModel
+		);
+		if (!advance) return;
+		const service = getTrainingService();
+		const result = submission
+			? await service.saveWizardStep(this.modelNum, submission)
+			: await service.retryWizardStep(this.modelNum, operationId!);
+		if (this.wizardAdvance !== advance) return;
+		if (result.ok) {
+			await this.finishWizardAdvance(advance);
+		} else {
+			this.wizardAdvance = undefined;
+			if (this.ownsWizardAdvance(advance))
+				this.wizardNotice = {
+					key: advance.key,
+					step,
+					model: advance.model,
+					operationId: result.operationId
+				};
+		}
+	}
+
+	private renderWizardNotice(model: ModelRecord, step: number): TemplateResult | typeof nothing {
+		const notice = this.wizardNotice;
+		if (notice?.step !== step || notice.key !== this.trainingNoticeKey(model)) return nothing;
+		const t = this.translations.value;
+		return html`<div class="notification notification-alert">
+			<p class="notification-text" role="alert">
+				${notice.operationId ? t.wizardPending : t.wizardSaveFailed}
+			</p>
+			${notice.operationId
+				? html`<button
+						type="button"
+						class="btn"
+						aria-disabled=${this.wizardAdvance ? 'true' : nothing}
+						@click=${() => this.saveWizardStep(step)}>
+						${t.retrySaving}
+					</button>`
+				: nothing}
+		</div>`;
+	}
+
+	private clearStepMotion(): void {
+		const content = this.stepMotion;
+		if (!content) return;
+		content.classList.remove('step-sizing', 'step-collapsed');
+		content.style.removeProperty('block-size');
+		content.inert = false;
+		this.stepMotion = undefined;
+	}
+
+	private async animateStep(content: HTMLElement, opening: boolean): Promise<boolean> {
+		const size = content.offsetHeight;
+		if (size === 0) return true;
+		this.stepMotion = content;
+		content.inert = true;
+		content.style.setProperty('block-size', opening ? '0px' : `${size}px`);
+		content.classList.toggle('step-collapsed', opening);
+		content.getBoundingClientRect();
+		content.classList.add('step-sizing');
+		content.classList.toggle('step-collapsed', !opening);
+		content.style.setProperty('block-size', opening ? `${size}px` : '0px');
+		await Promise.allSettled(content.getAnimations().map((item) => item.finished));
+		if (this.stepMotion !== content) return false;
+		if (opening) this.clearStepMotion();
+		return true;
+	}
+
+	private async finishWizardAdvance(advance: WizardAdvance): Promise<void> {
+		if (advance.advancing || this.wizardAdvance !== advance) return;
+		advance.advancing = true;
+		await this.updateComplete;
+		if (this.wizardAdvance !== advance) return;
+		const model = this.currentModel;
+		const motion = matchMedia('(prefers-reduced-motion: no-preference)');
+		const oldStep = this.renderRoot.querySelector('.step-active');
+		const oldContent = oldStep?.querySelector<HTMLElement>('.train-step-content');
+		let focusOwner = this.shadowRoot?.activeElement ?? document.activeElement;
+		const ownsFocus =
+			focusOwner === advance.focusOwner || Boolean(oldStep?.contains(focusOwner));
+		if (
+			model &&
+			getActiveStep(model) > advance.from &&
+			motion.matches &&
+			oldContent &&
+			this.isCurrentTrainingRoute(advance.key)
+		) {
+			if (ownsFocus) {
+				oldStep?.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
+				focusOwner = this.shadowRoot?.activeElement ?? document.activeElement;
+			}
+			await this.animateStep(oldContent, false);
+		}
+		if (this.wizardAdvance !== advance) return;
+		if (this.wizardNotice?.step === advance.from) this.wizardNotice = undefined;
+		this.wizardAdvance = undefined;
+		await this.updateComplete;
+		this.clearStepMotion();
+		if (
+			!this.ownsWizardAdvance(advance) ||
+			!this.isCurrentTrainingRoute(advance.key) ||
+			this.wizardAdvance
+		)
+			return;
+		const next = this.renderRoot.querySelector('.step-active');
+		if (
+			!next ||
+			next === oldStep ||
+			!this.currentModel ||
+			getActiveStep(this.currentModel) <= advance.from
+		)
+			return;
+		const content = next.querySelector<HTMLElement>('.train-step-content');
+		if (motion.matches && content && !(await this.animateStep(content, true))) return;
+		const focused = this.shadowRoot?.activeElement ?? document.activeElement;
+		if (
+			ownsFocus &&
+			(focused === focusOwner || (!motion.matches && focused === document.body)) &&
+			this.ownsWizardAdvance(advance) &&
+			this.isCurrentTrainingRoute(advance.key) &&
+			!this.wizardAdvance &&
+			next.matches('.step-active')
+		)
+			next.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
 	}
 
 	// ==========================================
@@ -760,7 +1119,15 @@ export class AppModelBuilderView extends LitElement {
 
 	private handleReopenClick(section: ModelSectionId): void {
 		const model = this.currentModel;
-		if (!model) return;
+		if (
+			!model ||
+			model.status !== 'draft' ||
+			(this.wizardAdvance && !this.wizardAdvance.advancing) ||
+			!this.isCurrentTrainingRoute(this.trainingNoticeKey(model))
+		)
+			return;
+		this.clearStepMotion();
+		this.wizardAdvance = undefined;
 
 		// A confirmation is needed only when a section after this one is complete
 		const completed = model.completedSteps;
@@ -777,14 +1144,18 @@ export class AppModelBuilderView extends LitElement {
 					this.confirmDialogEl.open = true;
 				}
 			}
-		} else {
-			reopenSection(this.modelNum, section);
+		} else if (reopenSection(this.modelNum, section)) {
+			this.displayedRun = undefined;
+			this.stoppedRecovery = undefined;
 		}
 	}
 
 	private handleConfirmReopen(): void {
 		if (this.pendingReopenSection) {
-			reopenSection(this.modelNum, this.pendingReopenSection);
+			if (reopenSection(this.modelNum, this.pendingReopenSection)) {
+				this.displayedRun = undefined;
+				this.stoppedRecovery = undefined;
+			}
 			this.pendingReopenSection = null;
 		}
 		if (this.confirmDialogEl?.open) {
@@ -801,221 +1172,115 @@ export class AppModelBuilderView extends LitElement {
 		}
 	}
 
+	private handleNativeReopenClose(): void {
+		const dialog = this.confirmDialogEl;
+		if (dialog?.open) return;
+		this.pendingReopenSection = null;
+		if (dialog) dialog.returnValue = '';
+		this.syncLeaveDialog();
+	}
+
+	private syncLeaveDialog(): void {
+		const dialog = this.leaveDialog;
+		const intent = this.leaveIntent;
+		if (!dialog) return;
+		if (dialog.open && this.openLeaveToken !== intent?.token) {
+			this.openLeaveToken = undefined;
+			dialog.close();
+		}
+		if (!intent || dialog.open || this.confirmDialogEl?.open || this.dialogOpen) return;
+		this.leaveFailure = undefined;
+		this.openLeaveToken = intent.token;
+		dialog.returnValue = '';
+		dialog.showModal();
+		dialog.querySelector<HTMLElement>('[data-stay]')?.focus({ preventScroll: true });
+	}
+
+	private handleNativeLeaveClose(): void {
+		const dialog = this.leaveDialog;
+		if (!dialog || dialog.open) return;
+		const token = this.openLeaveToken;
+		this.openLeaveToken = undefined;
+		dialog.returnValue = '';
+		if (token !== undefined) resolveWizardLeave(token, false);
+	}
+
+	private handleLeaveCancel(event: Event): void {
+		if (this.leavingModel || this.leaveFailure?.pending) {
+			event.preventDefault();
+			return;
+		}
+		this.stayWithModel();
+	}
+
+	private stayWithModel(): void {
+		const token = this.openLeaveToken;
+		this.openLeaveToken = undefined;
+		if (token !== undefined) resolveWizardLeave(token, false);
+	}
+
+	private async discardAndLeave(): Promise<void> {
+		const intent = this.leaveIntent;
+		if (!intent || this.leavingModel || !ownsWizardLeave(intent.token)) return;
+		const retry = Boolean(this.leaveFailure?.pending);
+		this.leavingModel = true;
+		this.leaveFailure = undefined;
+		try {
+			const result = await getTrainingService().abandonNewModel(intent.binding, retry);
+			if (!ownsWizardLeave(intent.token)) return;
+			if (!result.ok) {
+				this.leaveFailure = result;
+				return;
+			}
+			this.openLeaveToken = undefined;
+			this.leaveDialog?.close('leave');
+			resolveWizardLeave(intent.token, true);
+		} finally {
+			this.leavingModel = false;
+		}
+	}
+
+	private renderLeaveDialog(): TemplateResult {
+		const t = this.translations.value;
+		const pending = this.leaveFailure?.pending;
+		const busy = this.leavingModel || Boolean(pending);
+		const message = pending
+			? t.leavePending
+			: this.leaveFailure?.code === 'busy' || this.leaveFailure?.code === 'remote-training'
+				? t.leaveBusy
+				: t.leaveError;
+		return html` <dialog
+			class="confirm-dialog"
+			data-confirm="leave-new-model"
+			aria-labelledby="leave-new-model-title"
+			aria-describedby="leave-new-model-description"
+			closedby=${busy ? 'none' : 'closerequest'}
+			@cancel=${this.handleLeaveCancel}
+			@close=${this.handleNativeLeaveClose}>
+			<div class="confirm-header"><h2 id="leave-new-model-title">${t.leaveTitle}</h2></div>
+			<div class="confirm-body">
+				<p id="leave-new-model-description">${t.leaveDescription}</p>
+				${this.leavingModel ? html`<p role="status">${t.leaveWorking}</p>` : nothing}
+				${this.leaveFailure ? html`<p role="alert">${message}</p>` : nothing}
+			</div>
+			<form method="dialog" class="confirm-footer" @submit=${this.stayWithModel}>
+				<button class="btn" type="submit" value="stay" data-stay ?disabled=${busy}>
+					${t.stay}
+				</button>
+				<button
+					class="btn btn-primary"
+					type="button"
+					?disabled=${this.leavingModel}
+					@click=${this.discardAndLeave}>
+					${pending ? t.retrySaving : t.leave}
+				</button>
+			</form>
+		</dialog>`;
+	}
+
 	// ==========================================
 	// Render Sections
 	// ==========================================
-
-	private renderLogisticRegressionSvg(): TemplateResult {
-		return html`
-			<svg class="card-image" slot="image" viewBox="0 0 360 216" aria-hidden="true">
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(95 60)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(192 159)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(222 115)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(174 34)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(272 48)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(130 83)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(39 115)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(21 50)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(83 28)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(78 95)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(220 36)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(168 140)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(82 192)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(116 134)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(142 165)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(245 138)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(297 122)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(251 83)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(192 74)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(95 115)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(154 80)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(141 54)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(196 48)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(143 91)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(167 173)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(186 119)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--blue-200)"
-					fill-rule="evenodd"
-					transform="translate(208 101)" />
-				<circle
-					cx="6"
-					cy="6"
-					r="6"
-					fill="var(--amber-300)"
-					fill-rule="evenodd"
-					transform="translate(142 126)" />
-				<line
-					x1="10"
-					x2="350"
-					y1="185"
-					y2="10"
-					stroke="var(--stone-700)"
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="6" />
-			</svg>
-		`;
-	}
 
 	private renderChooseModelSection(
 		model: ModelRecord,
@@ -1035,6 +1300,7 @@ export class AppModelBuilderView extends LitElement {
 		}
 
 		const availableModels = modelsForTarget(targetType);
+		const t = this.translations.value;
 
 		let selectedModelName = '';
 		if (model.modelId) {
@@ -1050,33 +1316,32 @@ export class AppModelBuilderView extends LitElement {
 				aria-current=${isActive ? 'step' : nothing}>
 				<section class="train-step-panel" aria-labelledby="step-1-title">
 					<header class="train-step-header">
-						<h2 id="step-1-title">1. Choose Model</h2>
+						<h2 id="step-1-title" tabindex=${availableModels.length ? '-1' : nothing}>
+							${isCompleted && selectedModelName
+								? t.chosenHeading({ name: selectedModelName })
+								: t.chooseHeading}
+						</h2>
 						${isCompleted
 							? html`
 									<span class="train-step-action train-step-status">
-										<button
-											type="button"
-											class="btn reopen-btn"
-											aria-label="Edit Choose Model"
-											@click=${() => this.handleReopenClick('choose-model')}>
-											Edit
-										</button>
-										<span class="visually-hidden">Completed</span>
-										<svg
-											aria-hidden="true"
-											width="20"
-											height="20"
-											viewBox="0 0 24 24"
-											fill="currentColor">
-											<path
-												d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-										</svg>
+										${model.status === 'draft'
+											? html`<button
+													type="button"
+													class="btn reopen-btn"
+													aria-label=${t.reopenChoose}
+													@click=${() =>
+														this.handleReopenClick('choose-model')}>
+													${t.edit}
+												</button>`
+											: nothing}
+										<span class="visually-hidden">${t.completed}</span>
+										${completedStepIcon}
 									</span>
 								`
 							: nothing}
 					</header>
 
-					<div class="train-step-content" ?hidden=${!isActive && isCompleted}>
+					<div class="train-step-content" ?hidden=${!isActive}>
 						${isCompleted && !isActive
 							? html`
 									<div class="completed-summary">
@@ -1102,87 +1367,68 @@ export class AppModelBuilderView extends LitElement {
 												</div>
 											`
 										: nothing}
-
-									<!-- 1. Illustrated entry for Logistic Regression (if available for target) -->
-									${availableModels.some((m) => m.id === 'logistic-regression')
+									${availableModels.length &&
+									resources.status === 'ready' &&
+									resources.metadata
 										? html`
-												<div class="cards-grid">
-													<app-model-card
-														model-id="logistic-regression"
-														type="classification"
-														name="Logistic Regression"
-														description="A classification tool used to predict a binary outcome by estimating the exact probability of an event happening. Highly reliable for clear-cut, two-option decisions."
-														@app-model-description-open=${this
-															.handleModelDescriptionOpen}
-														@app-model-select=${this.handleModelSelect}>
-														${this.renderLogisticRegressionSvg()}
-													</app-model-card>
-												</div>
+												<ul class="cards-grid" role="list">
+													${repeat(
+														availableModels,
+														(entry) => entry.id,
+														(entry) => {
+															const isLogistic =
+																entry.id === 'logistic-regression';
+															return html`
+																<li>
+																	<app-model-card
+																		model-id=${entry.id}
+																		type=${entry.taskType}
+																		.name=${isLogistic
+																			? t.logisticCardTitle
+																			: entry.name}
+																		.description=${isLogistic
+																			? t.logisticCardDescription
+																			: entry.description}
+																		.selected=${model.modelId ===
+																		entry.id}
+																		@app-model-description-open=${this
+																			.handleModelDescriptionOpen}
+																		@app-model-select=${this
+																			.handleModelSelect}>
+																		<img
+																			slot="image"
+																			src=${MODEL_ART[
+																				entry.id
+																			]}
+																			alt=""
+																			width="360"
+																			height="216" />
+																	</app-model-card>
+																</li>
+															`;
+														}
+													)}
+												</ul>
 											`
-										: nothing}
-
-									<!-- 2. Native text entries fallback for remaining models -->
-									<ul
-										class="text-model-entries"
-										?hidden=${availableModels.length === 0}
-										aria-label="Available models text entries">
-										${availableModels
-											.filter((m) => m.id !== 'logistic-regression')
-											.map(
-												(entry) => html`
-													<li
-														class="text-model-entry ${model.modelId ===
-														entry.id
-															? 'selected'
-															: ''}">
-														<h3>${entry.name}</h3>
-														<p>${entry.description}</p>
-														<div class="entry-actions">
-															<button
-																type="button"
-																class="btn"
-																aria-label="Model Description: ${entry.name}"
-																data-model-id="${entry.id}"
-																data-name="${entry.name}"
-																@click=${this
-																	.handleTextDescriptionClick}>
-																Model Description
-															</button>
-															<button
-																type="button"
-																class="btn ${model.modelId ===
-																entry.id
-																	? 'btn-selected'
-																	: 'btn-primary'}"
-																aria-label="Select Model: ${entry.name}"
-																data-model-id="${entry.id}"
-																data-name="${entry.name}"
-																@click=${this
-																	.handleTextSelectClick}>
-																${model.modelId === entry.id
-																	? 'Selected'
-																	: 'Select Model'}
-															</button>
-														</div>
-													</li>
+										: availableModels.length
+											? html`
+													${resources.status === 'error'
+														? html` <p role="alert">
+																	${t.trainingSetupError}
+																</p>
+																<button
+																	type="button"
+																	class="btn"
+																	@click=${this
+																		.handleTrainingSetupRetry}>
+																	${t.retryTrainingSetup}
+																</button>`
+														: html`<p role="status">
+																${t.trainingSetupLoading}
+															</p>`}
 												`
-											)}
-									</ul>
-
-									<div class="section-actions">
-										<button
-											type="button"
-											class="btn btn-primary"
-											?disabled=${!model.modelId}
-											@click=${this.handleContinueChooseModel}>
-											Continue
-										</button>
-										${!model.modelId
-											? html`<p class="validation-hint">
-													Select a model to continue.
-												</p>`
 											: nothing}
-									</div>
+									${this.renderWizardNotice(model, 1)}
 								`}
 					</div>
 				</section>
@@ -1199,6 +1445,15 @@ export class AppModelBuilderView extends LitElement {
 		const resources = this.resourcesController.value;
 		const metadata = resources.metadata;
 		const dataset = appState.dataset;
+		const t = this.translations.value;
+		if (!isActive && !isCompleted)
+			return this.renderPendingSection(
+				t.featuresHeading,
+				'step-2-title',
+				'select-features',
+				0,
+				2
+			);
 
 		let featureRows: FeatureRow[] = [];
 		if (metadata && appState.target) {
@@ -1213,34 +1468,41 @@ export class AppModelBuilderView extends LitElement {
 				aria-current=${isActive ? 'step' : nothing}>
 				<section class="train-step-panel" aria-labelledby="step-2-title">
 					<header class="train-step-header">
-						<h2 id="step-2-title">2. Select Features</h2>
+						<h2 id="step-2-title" tabindex="-1">
+							${!isCompleted
+								? t.featuresHeading
+								: model.features.length === 1
+									? t.oneFeatureHeading
+									: t.featuresSelectedHeading({
+											count: $format.get().number(model.features.length)
+										})}
+							${isActive
+								? html`<a href="/help/select-features" class="help-link"
+										>${t.featuresHelp}</a
+									>`
+								: nothing}
+						</h2>
 						${isCompleted
 							? html`
 									<span class="train-step-action train-step-status">
-										<button
-											type="button"
-											class="btn reopen-btn"
-											aria-label="Edit Select Features"
-											@click=${() =>
-												this.handleReopenClick('select-features')}>
-											Edit
-										</button>
-										<span class="visually-hidden">Completed</span>
-										<svg
-											aria-hidden="true"
-											width="20"
-											height="20"
-											viewBox="0 0 24 24"
-											fill="currentColor">
-											<path
-												d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-										</svg>
+										${model.status === 'draft'
+											? html`<button
+													type="button"
+													class="btn reopen-btn"
+													aria-label=${t.reopenFeatures}
+													@click=${() =>
+														this.handleReopenClick('select-features')}>
+													${t.edit}
+												</button>`
+											: nothing}
+										<span class="visually-hidden">${t.completed}</span>
+										${completedStepIcon}
 									</span>
 								`
 							: nothing}
 					</header>
 
-					<div class="train-step-content" ?hidden=${!isActive && isCompleted}>
+					<div class="train-step-content" ?hidden=${!isActive}>
 						${isCompleted && !isActive
 							? html`
 									<div class="completed-summary">
@@ -1254,7 +1516,7 @@ export class AppModelBuilderView extends LitElement {
 									<form
 										id="features-form"
 										@submit=${(e: Event) => e.preventDefault()}>
-										<fieldset style="border: 0; padding: 0; margin: 0;">
+										<fieldset>
 											<legend>Features to include in model training</legend>
 
 											<div class="features-table-container">
@@ -1358,6 +1620,7 @@ export class AppModelBuilderView extends LitElement {
 										</fieldset>
 									</form>
 								`}
+						${isActive ? this.renderWizardNotice(model, 2) : nothing}
 					</div>
 				</section>
 			</li>
@@ -1412,12 +1675,11 @@ export class AppModelBuilderView extends LitElement {
 	): void {
 		const model = this.currentModel;
 		if (!model || !model.modelId || !isClassifierId(model.modelId)) return;
-		setHyperparameters(this.modelNum, event.detail.config);
-		setMulticlassStrategy(
-			this.modelNum,
-			this.targetClassCount() > 2 ? MULTICLASS_STRATEGY[model.modelId] : null
-		);
-		completeSection(this.modelNum, 'configure-model');
+		void this.saveWizardStep(3, {
+			section: 'configure-model',
+			config: event.detail.config,
+			strategy: this.targetClassCount() > 2 ? MULTICLASS_STRATEGY[model.modelId] : null
+		});
 	}
 
 	private renderConfigureModelSection(
@@ -1444,7 +1706,7 @@ export class AppModelBuilderView extends LitElement {
 				aria-current=${isActive ? 'step' : nothing}>
 				<section class="train-step-panel" aria-labelledby="step-3-title">
 					<header class="train-step-header">
-						<h2 id="step-3-title">
+						<h2 id="step-3-title" tabindex="-1">
 							${isCompleted ? t.configuredHeading : t.configureHeading}
 							${isActive
 								? html`<a href="/help/configure-model" class="help-link"
@@ -1455,24 +1717,18 @@ export class AppModelBuilderView extends LitElement {
 						${isCompleted
 							? html`
 									<span class="train-step-action train-step-status">
-										<button
-											type="button"
-											class="btn reopen-btn"
-											aria-label=${t.reopenConfigure}
-											@click=${() =>
-												this.handleReopenClick('configure-model')}>
-											${t.edit}
-										</button>
+										${model.status === 'draft'
+											? html`<button
+													type="button"
+													class="btn reopen-btn"
+													aria-label=${t.reopenConfigure}
+													@click=${() =>
+														this.handleReopenClick('configure-model')}>
+													${t.edit}
+												</button>`
+											: nothing}
 										<span class="visually-hidden">${t.completed}</span>
-										<svg
-											aria-hidden="true"
-											width="20"
-											height="20"
-											viewBox="0 0 24 24"
-											fill="currentColor">
-											<path
-												d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-										</svg>
+										${completedStepIcon}
 									</span>
 								`
 							: nothing}
@@ -1498,6 +1754,7 @@ export class AppModelBuilderView extends LitElement {
 										.handleConfigurationContinue}>
 								</app-model-configuration>`
 							: nothing}
+						${isActive ? this.renderWizardNotice(model, 3) : nothing}
 					</div>
 				</section>
 			</li>
@@ -1511,7 +1768,8 @@ export class AppModelBuilderView extends LitElement {
 			strategyLabel: t.strategyLabel,
 			strategyOneShot: t.strategyOneShot,
 			strategyCrossValidation: t.strategyCrossValidation,
-			strategyHelp: t.strategyHelp,
+			oneShotDefinition: t.oneShotDefinition,
+			crossValidationDefinition: t.crossValidationDefinition,
 			strategyHelpLinkText: t.learnMore,
 			strategyHelpHref: TRAINING_SETUP_HELP_PATH,
 			oneShotNote: t.oneShotNote,
@@ -1541,7 +1799,7 @@ export class AppModelBuilderView extends LitElement {
 		const child = this.trainingSetupChild;
 		if (
 			route.kind !== 'workflow' ||
-			route.modelNum !== this.modelNum ||
+			getEffectiveModelNum(route) !== this.modelNum ||
 			!child?.element.isConnected ||
 			child.element !== event.currentTarget
 		)
@@ -1597,7 +1855,8 @@ export class AppModelBuilderView extends LitElement {
 	private trainingNoticeKey(model: ModelRecord): string {
 		return JSON.stringify([
 			trainingSetupKey(this.appStateController.value, model.num),
-			model.createdAt
+			model.createdAt,
+			this.appStateController.value.comparisonContextEpoch
 		]);
 	}
 
@@ -1607,7 +1866,7 @@ export class AppModelBuilderView extends LitElement {
 		return (
 			this.isConnected &&
 			route.kind === 'workflow' &&
-			route.modelNum === this.modelNum &&
+			getEffectiveModelNum(route) === this.modelNum &&
 			Boolean(model && this.trainingNoticeKey(model) === key)
 		);
 	}
@@ -1637,12 +1896,15 @@ export class AppModelBuilderView extends LitElement {
 		)
 			return;
 		if (!setTrainingSetup(model.num, setup)) return;
+		const advance = this.beginWizardAdvance(4);
+		if (!advance) return;
 
 		this.trainingNotice = undefined;
 		const started = service.start(model.num);
-		if (service.activeIdentity(model.num)) void this.focusTrainingHeading(key, 5);
+		advance.runId = service.activeIdentity(model.num)?.runId;
 		const result = await started;
-		if (!result.ok && this.isCurrentTrainingRoute(key)) {
+		if (this.wizardAdvance === advance && !advance.advancing) this.wizardAdvance = undefined;
+		if (!result.ok && this.ownsWizardAdvance(advance)) {
 			this.trainingNotice = { key, code: result.code, pending: result.pending };
 		}
 	}
@@ -1757,17 +2019,26 @@ export class AppModelBuilderView extends LitElement {
 		model: ModelRecord,
 		identity?: TrainingRunIdentity
 	): Promise<void> {
-		if (this.retryingPublication) return;
+		if (this.retryingPublication || !this.isCurrentTrainingRoute(this.trainingNoticeKey(model)))
+			return;
 		const key = this.trainingNoticeKey(model);
 		this.retryingPublication = true;
 		try {
-			const result = await getTrainingService().retry(identity);
+			const resultIdentity =
+				this.provisionalBinding && !identity && this.verifiedProvisional
+					? provisionalResultIdentity(this.provisionalBinding)
+					: null;
+			const result = resultIdentity
+				? await promoteProvisionalResult(resultIdentity, true)
+				: await getTrainingService().retry(identity);
 			if (!this.isCurrentTrainingRoute(key)) return;
 			if (result.ok) {
 				this.trainingNotice = undefined;
 				const current = this.currentModel;
 				if (current?.completedSteps.includes('results'))
 					await this.focusTrainingHeading(key, 6);
+			} else if ('missingSavedResult' in result) {
+				this.resultReadFailed = true;
 			} else {
 				this.trainingNotice = { key, code: result.code, pending: result.pending };
 			}
@@ -1777,13 +2048,18 @@ export class AppModelBuilderView extends LitElement {
 	}
 
 	private async handleViewResults(model: ModelRecord, session: TrainingSession): Promise<void> {
-		if (this.showingResults) return;
+		if (this.showingResults || !this.isCurrentTrainingRoute(this.trainingNoticeKey(model)))
+			return;
 		const key = this.trainingNoticeKey(model);
 		this.showingResults = true;
 		try {
-			const result = await getTrainingService().viewResults(session.identity);
+			const result = this.provisionalBinding
+				? await promoteProvisionalResult(session.identity)
+				: await getTrainingService().viewResults(session.identity);
 			if (!this.isCurrentTrainingRoute(key)) return;
-			if (result.ok) await this.focusTrainingHeading(key, 6);
+			if (result.ok) {
+				if (!this.provisionalBinding) await this.focusTrainingHeading(key, 6);
+			} else if ('missingSavedResult' in result) this.resultReadFailed = true;
 			else this.trainingNotice = { key, code: result.code, pending: result.pending };
 		} finally {
 			this.showingResults = false;
@@ -1834,7 +2110,8 @@ export class AppModelBuilderView extends LitElement {
 			return this.renderTrainingNotice(
 				model,
 				this.translations.value.trainingPendingStart,
-				true
+				true,
+				pending.identity
 			);
 		}
 		const notice =
@@ -1855,6 +2132,64 @@ export class AppModelBuilderView extends LitElement {
 
 	private handleTrainingSetupReopen(): void {
 		this.handleReopenClick('configure-training');
+	}
+
+	private handleCancelTraining(event: Event, identity: TrainingRunIdentity): void {
+		const model = this.currentModel;
+		const service = getTrainingService();
+		const owned = model && service.activeIdentity(model.num);
+		if (
+			!model ||
+			!owned ||
+			!sameTrainingRun(owned, identity) ||
+			!this.isCurrentTrainingRoute(this.trainingNoticeKey(model))
+		)
+			return;
+		(event.currentTarget as HTMLButtonElement).focus({ preventScroll: true });
+		void service.cancel(model.num);
+	}
+
+	private async retryStoppedTraining(model: ModelRecord): Promise<void> {
+		const service = getTrainingService();
+		const key = this.trainingNoticeKey(model);
+		if (
+			this.retryingTraining ||
+			service.activeIdentity(model.num) ||
+			!this.isCurrentTrainingRoute(key)
+		)
+			return;
+		const recovery = { key, entryId: getWorkflowEntryId() };
+		this.displayedRun = undefined;
+		this.stoppedRecovery = recovery;
+		this.trainingNotice = undefined;
+		this.retryingTraining = true;
+		try {
+			const result = await service.start(model.num);
+			if (!result.ok && this.stoppedRecovery === recovery)
+				this.trainingNotice = { key, code: result.code, pending: result.pending };
+		} finally {
+			this.retryingTraining = false;
+		}
+	}
+
+	private async editStoppedTraining(model: ModelRecord): Promise<void> {
+		const key = this.trainingNoticeKey(model);
+		if (this.retryingTraining || !this.isCurrentTrainingRoute(key)) return;
+		this.displayedRun = undefined;
+		this.stoppedRecovery = undefined;
+		this.restoreSubmitFocus = null;
+		this.requestUpdate();
+		await this.updateComplete;
+		if (this.isCurrentTrainingRoute(key))
+			this.renderRoot
+				.querySelector<HTMLElement>('.step-active #step-4-title')
+				?.focus({ preventScroll: true });
+	}
+
+	private handleTrainingSetupFocus(event: FocusEvent): void {
+		if ((event.currentTarget as AppTrainingSetup).restoreFocus) {
+			this.restoreSubmitFocus = null;
+		}
 	}
 
 	private renderTrainingSetupForm(model: ModelRecord): TemplateResult {
@@ -1881,6 +2216,12 @@ export class AppModelBuilderView extends LitElement {
 		}
 
 		const key = trainingSetupKey(this.appStateController.value, model.num);
+		const stopped = this.restoreSubmitFocus && getTrainingSession(this.restoreSubmitFocus);
+		const restoreFocus =
+			stopped?.status === 'failed' ||
+			stopped?.status === 'cancelled' ||
+			stopped?.status === 'stopped-pending' ||
+			(stopped?.status === 'publication-pending' && this.publication.value?.kind === 'start');
 		return html`
 			${keyed(
 				key,
@@ -1892,10 +2233,11 @@ export class AppModelBuilderView extends LitElement {
 								this.trainingSetupChild = null;
 						})}
 						.value=${model.trainingSetup}
-						?autofocus=${this.restoreSubmitFocus}
+						.restoreFocus=${restoreFocus}
 						.maxFolds=${resource.bounds.maxFolds}
 						.blockedReason=${resource.bounds.blocked ? t.trainingSetupBlocked : ''}
 						.labels=${this.trainingSetupLabels()}
+						@focusin=${this.handleTrainingSetupFocus}
 						@app-training-setup-change=${this.handleTrainingSetupChange}
 						@app-training-setup-submit=${this.handleTrainingSetupSubmit}>
 					</app-training-setup>
@@ -1931,16 +2273,22 @@ export class AppModelBuilderView extends LitElement {
 					crossValidation: (folds) => t.crossValidationSummary({ folds })
 				})
 			: t.trainingSetupNotConfigured;
+		const strategy =
+			model.trainingSetup?.type === 'nested_cv'
+				? t.crossValidationHeading({
+						folds: $format.get().number(model.trainingSetup.outerFolds)
+					})
+				: t.oneShotHeading;
 		return html`
 			<li
 				class="train-step ${isActive ? 'step-active' : ''}"
 				aria-current=${isActive ? 'step' : nothing}>
 				<section class="train-step-panel" aria-labelledby="step-4-title">
 					<header class="train-step-header">
-						<h2 id="step-4-title">
+						<h2 id="step-4-title" tabindex="-1">
 							${showForm
 								? t.trainingSetupHeading
-								: t.completedTrainingSetup({ summary })}
+								: t.completedTrainingSetup({ summary: strategy })}
 							${showForm
 								? html`<a href=${TRAINING_SETUP_HELP_PATH} class="help-link"
 										>${t.trainingSetupHelp}</a
@@ -1962,15 +2310,7 @@ export class AppModelBuilderView extends LitElement {
 												`
 											: nothing}
 										<span class="visually-hidden">${t.completed}</span>
-										<svg
-											aria-hidden="true"
-											width="20"
-											height="20"
-											viewBox="0 0 24 24"
-											fill="currentColor">
-											<path
-												d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-										</svg>
+										${completedStepIcon}
 									</span>
 								`
 							: nothing}
@@ -1996,21 +2336,33 @@ export class AppModelBuilderView extends LitElement {
 	private renderTrainingSection(
 		model: ModelRecord,
 		isActive: boolean,
-		session: TrainingSession | undefined
+		session: TrainingSession | undefined,
+		stopped = false
 	): TemplateResult {
 		const t = this.translations.value;
 		if (!isActive && model.status !== 'trained') {
 			return this.renderPendingSection(t.trainingHeading, 'step-5-title', 'training', 0, 5);
 		}
 
-		const complete = model.status === 'trained' && session?.status === 'complete';
-		const viewed = model.completedSteps.includes('results');
+		const complete =
+			model.status === 'trained' &&
+			session?.status === 'complete' &&
+			(!this.provisionalBinding || this.verifiedProvisional);
+		const viewed = !this.provisionalBinding && model.completedSteps.includes('results');
 		const pending = this.publication.value;
 		const pendingRun = pending?.identity && pending.identity.runId === session?.identity.runId;
+		const pendingStart =
+			stopped &&
+			pending?.kind === 'start' &&
+			pending.identity &&
+			belongsToModel(pending.identity, this.appStateController.value, model)
+				? pending.identity
+				: undefined;
 		const stoppedPending = session?.status === 'stopped-pending';
 		const awaitingRun = session?.status === 'publication-pending' || stoppedPending;
+		const acknowledgedStop = stopped && this.stoppedSession(model) !== undefined;
 		const notice =
-			this.trainingNotice?.key === this.trainingNoticeKey(model)
+			!acknowledgedStop && this.trainingNotice?.key === this.trainingNoticeKey(model)
 				? this.trainingNotice
 				: undefined;
 		const viewingPending = notice?.pending === 'recover' && pending?.kind === 'recover';
@@ -2022,25 +2374,26 @@ export class AppModelBuilderView extends LitElement {
 		const cancelVisible = (owner && !complete && session?.status !== 'saving') || awaitingRun;
 		const remote = !session && model.status === 'training';
 		const entries = session?.logEntries ?? [];
-		const rawProgress: TrainingProgress = session?.progress ??
-			model.progress ?? {
-				percent: null,
-				stage: 'preparing',
-				phase: null,
-				statusMessage: 'preparing'
-			};
+		const rawProgress: TrainingProgress = session?.progress ?? {
+			percent: null,
+			stage: 'preparing',
+			phase: null,
+			statusMessage: 'preparing'
+		};
 		const latest = entries.at(-1);
-		const status = remote
-			? t.trainingRemote
-			: cancelling
-				? t.trainingCancelling
-				: complete
-					? t.trainingComplete
-					: awaitingRun || session?.status === 'saving'
-						? t.trainingSaving
-						: latest
-							? this.formatTrainingLogEntry(latest)
-							: this.trainingProgressMessage(rawProgress.statusMessage);
+		const status = stopped
+			? t.trainingStopped
+			: remote
+				? t.trainingRemote
+				: cancelling
+					? t.trainingCancelling
+					: complete
+						? t.trainingComplete
+						: awaitingRun || session?.status === 'saving'
+							? t.trainingSaving
+							: latest
+								? this.formatTrainingLogEntry(latest)
+								: this.trainingProgressMessage(rawProgress.statusMessage);
 		const duration =
 			complete && model.durationMs !== null
 				? t.trainingElapsed({
@@ -2051,6 +2404,19 @@ export class AppModelBuilderView extends LitElement {
 						})
 					})
 				: '';
+		const percent = complete
+			? 100
+			: rawProgress.percent === null
+				? null
+				: Math.min(99, rawProgress.percent);
+		const heading = complete
+			? t.trainingCompleteHeading
+			: stopped
+				? t.trainingStoppedHeading
+				: t.trainingActiveHeading;
+		const stoppedReason = this.trainingFailureMessage(
+			model.error?.details ?? model.error?.code
+		);
 
 		return html`
 			<li
@@ -2061,45 +2427,42 @@ export class AppModelBuilderView extends LitElement {
 					aria-labelledby="step-5-title"
 					data-testid="training-step">
 					<header class="train-step-header">
-						<h2 id="step-5-title" tabindex="-1">${t.trainingHeading}</h2>
+						<h2 id="step-5-title" tabindex="-1">${heading}</h2>
 						<span class="train-step-action train-step-status">
-							${cancelVisible
+							${cancelVisible && !stopped
 								? html`<button
 										type="button"
 										class="btn"
 										?disabled=${awaitingRun}
 										aria-disabled=${cancelling ? 'true' : nothing}
-										@click=${() =>
-											!cancelling && getTrainingService().cancel(model.num)}>
+										@click=${(event: Event) =>
+											!cancelling &&
+											session &&
+											this.handleCancelTraining(event, session.identity)}>
 										${t.cancelTraining}
 									</button>`
 								: nothing}
-							${viewed
-								? html` <span class="visually-hidden">${t.completed}</span>
-										<svg
-											aria-hidden="true"
-											width="20"
-											height="20"
-											viewBox="0 0 24 24"
-											fill="currentColor">
-											<path
-												d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-										</svg>`
-								: html`<button
-										type="button"
-										class="btn"
-										?disabled=${!complete ||
-										this.showingResults ||
-										viewingPending}
-										@click=${() =>
-											session && this.handleViewResults(model, session)}>
-										${t.viewResults}
-									</button>`}
+							${stopped
+								? nothing
+								: viewed
+									? html` <span class="visually-hidden">${t.completed}</span
+											>${completedStepIcon}`
+									: html`<button
+											type="button"
+											class="btn"
+											?disabled=${!complete ||
+											this.showingResults ||
+											viewingPending}
+											@click=${() =>
+												session && this.handleViewResults(model, session)}>
+											${t.viewResults}
+										</button>`}
 						</span>
 					</header>
 					<div class="train-step-content">
 						<app-training-progress
-							.progress=${{ ...rawProgress, statusMessage: status }}
+							.progress=${{ ...rawProgress, percent, statusMessage: status }}
+							.variant=${complete ? 'complete' : stopped ? 'stopped' : 'active'}
 							.logEntries=${entries}
 							.logOpen=${model.ui.trainingLogOpen ?? false}
 							.announcement=${this.announcement}
@@ -2114,34 +2477,70 @@ export class AppModelBuilderView extends LitElement {
 								event: CustomEvent<{ readonly open: boolean }>
 							) => this.handleLogToggle(model, event)}>
 						</app-training-progress>
-						${stoppedPending || (awaitingRun && pendingRun)
-							? this.renderTrainingNotice(
-									model,
-									stoppedPending
-										? t.trainingPendingStop
-										: t.trainingPendingResult,
-									true,
-									session?.identity
-								)
-							: viewingPending
-								? this.renderTrainingNotice(
-										model,
-										t.trainingPendingResultsView,
-										true
-									)
-								: this.resultReadFailed && !complete
-									? this.renderTrainingNotice(
-											model,
-											t.trainingResultUnavailable,
-											false
-										)
-									: notice && complete
+						${stopped
+							? html` ${pendingStart
 										? this.renderTrainingNotice(
 												model,
-												this.trainingFailureMessage(notice.code),
+												t.trainingPendingStart,
+												true,
+												pendingStart
+											)
+										: notice
+											? this.renderTrainingNotice(
+													model,
+													this.trainingFailureMessage(notice.code),
+													false
+												)
+											: html`<p class="notification notification-alert">
+													${stoppedReason}
+												</p>`}
+									<div class="section-actions stopped-actions">
+										<button
+											type="button"
+											class="btn btn-primary"
+											data-stopped-retry
+											?disabled=${this.retryingTraining ||
+											Boolean(pendingStart)}
+											@click=${() => this.retryStoppedTraining(model)}>
+											${t.trainModel}
+										</button>
+										<button
+											type="button"
+											class="btn"
+											?disabled=${this.retryingTraining ||
+											Boolean(pendingStart)}
+											@click=${() => this.editStoppedTraining(model)}>
+											${t.reopenTrainingSetup}
+										</button>
+									</div>`
+							: stoppedPending || (awaitingRun && pendingRun)
+								? this.renderTrainingNotice(
+										model,
+										stoppedPending
+											? t.trainingPendingStop
+											: t.trainingPendingResult,
+										true,
+										session?.identity
+									)
+								: viewingPending
+									? this.renderTrainingNotice(
+											model,
+											t.trainingPendingResultsView,
+											true
+										)
+									: this.resultReadFailed && !complete
+										? this.renderTrainingNotice(
+												model,
+												t.trainingResultUnavailable,
 												false
 											)
-										: nothing}
+										: notice && complete
+											? this.renderTrainingNotice(
+													model,
+													this.trainingFailureMessage(notice.code),
+													false
+												)
+											: nothing}
 					</div>
 				</section>
 			</li>
@@ -2151,7 +2550,11 @@ export class AppModelBuilderView extends LitElement {
 	/** Section 6: the shared results once the acknowledged trained model's results are shown. */
 	private renderResultsSection(model: ModelRecord, activeStep: number): TemplateResult {
 		const t = this.translations.value;
-		if (model.status !== 'trained' || !model.completedSteps.includes('results')) {
+		if (
+			this.provisionalBinding ||
+			model.status !== 'trained' ||
+			!model.completedSteps.includes('results')
+		) {
 			return this.renderPendingSection(
 				t.resultsHeading,
 				'step-6-title',
@@ -2222,15 +2625,68 @@ export class AppModelBuilderView extends LitElement {
 						</p>
 					</div>
 				</section>
+				${this.renderLeaveDialog()}
 			`;
 		}
 
 		const session = displaySession(this.trainingSessions.value, appState, model);
-		const activeStep = model.status === 'draft' && session ? 5 : getActiveStep(model);
-		const isStep1Completed = model.completedSteps.includes('choose-model');
-		const isStep2Completed = model.completedSteps.includes('select-features');
-		const isStep3Completed = model.completedSteps.includes('configure-model');
-		const isStep4Completed = model.completedSteps.includes('configure-training');
+		if (this.numberedRoute && model.status === 'trained') {
+			const t = this.translations.value;
+			const num = $format.get().number(model.num);
+			const name = savedModelName(model) ?? t.savedModelFallback({ num });
+			const colour =
+				modelSwatchAssignments(appState).colours.get(model.num) ?? MODEL_COLORS[0];
+			return html`
+				<header class="page-header">
+					<h1 tabindex="-1" class="model-results">
+						<span class="swatch swatch-large swatch-${colour}">${num}</span>
+						<span class="step-model-name">${t.savedResultsHeading({ name })}</span>
+					</h1>
+				</header>
+				<article class="page-body" data-testid="results-step">
+					<app-model-results
+						model-num=${model.num}
+						.headingLevel=${2}></app-model-results>
+				</article>
+			`;
+		}
+		if (this.provisionalBinding && model.status === 'trained' && this.resultReadFailed) {
+			const t = this.translations.value;
+			const num = $format.get().number(model.num);
+			return html`
+				<header class="page-header">
+					<h1 tabindex="-1">${t.savedModelFallback({ num })}</h1>
+				</header>
+				<section class="page-body" data-testid="provisional-route">
+					<p class="notification notification-alert" role="status">
+						${t.trainingResultUnavailable}
+					</p>
+					<a href="/models">${t.backToModels}</a>
+				</section>
+				${this.renderLeaveDialog()}
+			`;
+		}
+		const pending =
+			this.wizardNotice?.operationId &&
+			this.wizardNotice.key === this.trainingNoticeKey(model)
+				? this.wizardNotice
+				: undefined;
+		const wizard = this.wizardAdvance?.model ?? pending?.model ?? model;
+		const stoppedSession = this.stoppedSession(model);
+		const stopped =
+			model.status === 'draft' &&
+			(Boolean(stoppedSession) ||
+				this.stoppedRecovery?.key === this.trainingNoticeKey(model));
+		const activeStep =
+			this.wizardAdvance?.from ??
+			pending?.step ??
+			(stopped || (this.provisionalBinding && model.status === 'trained')
+				? 5
+				: getActiveStep(model));
+		const isStep1Completed = wizard.completedSteps.includes('choose-model');
+		const isStep2Completed = wizard.completedSteps.includes('select-features');
+		const isStep3Completed = wizard.completedSteps.includes('configure-model');
+		const isStep4Completed = wizard.completedSteps.includes('configure-training');
 
 		return html`
 			<div class="page-header">
@@ -2241,13 +2697,19 @@ export class AppModelBuilderView extends LitElement {
 			</div>
 
 			<section class="page-body" data-testid="model-builder">
+				${wizard.completedSteps.length > 0 ? wizardIconSprite : nothing}
 				<ol class="train-model" aria-label="Model training steps">
-					${this.renderChooseModelSection(model, activeStep === 1, isStep1Completed)}
-					${this.renderSelectFeaturesSection(model, activeStep === 2, isStep2Completed)}
-					${this.renderConfigureModelSection(model, activeStep === 3, isStep3Completed)}
-					${this.renderTrainingSetupSection(model, activeStep === 4, isStep4Completed)}
-					${this.renderTrainingSection(model, activeStep === 5, session)}
-					${this.renderResultsSection(model, activeStep)}
+					${this.renderChooseModelSection(wizard, activeStep === 1, isStep1Completed)}
+					${this.renderSelectFeaturesSection(wizard, activeStep === 2, isStep2Completed)}
+					${this.renderConfigureModelSection(wizard, activeStep === 3, isStep3Completed)}
+					${this.renderTrainingSetupSection(wizard, activeStep === 4, isStep4Completed)}
+					${this.renderTrainingSection(
+						wizard,
+						activeStep === 5,
+						stoppedSession ?? session,
+						stopped
+					)}
+					${this.renderResultsSection(wizard, activeStep)}
 				</ol>
 			</section>
 
@@ -2268,12 +2730,16 @@ export class AppModelBuilderView extends LitElement {
 			</app-model-description-dialog>
 
 			<!-- Reopen Confirmation Dialog -->
-			<dialog class="confirm-dialog" aria-labelledby="confirm-reopen-title">
+			<dialog
+				class="confirm-dialog"
+				data-confirm="reopen-section"
+				aria-labelledby="confirm-reopen-title"
+				@close=${this.handleNativeReopenClose}>
 				<div class="confirm-header">
 					<h2 id="confirm-reopen-title">Confirm Reopening Section</h2>
 				</div>
 				<div class="confirm-body">
-					<p class="notification notification-alert">
+					<p>
 						Reopening this section will clear downstream completed steps. Your
 						selections will be kept.
 					</p>
@@ -2291,6 +2757,7 @@ export class AppModelBuilderView extends LitElement {
 					</button>
 				</div>
 			</dialog>
+			${this.renderLeaveDialog()}
 		`;
 	}
 }

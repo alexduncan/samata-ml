@@ -1,4 +1,5 @@
 import type { ParsedRoute, ReservedPath, WorkflowPath } from '../types/routes';
+import { RESERVED_CONTENT } from './reserved-content';
 
 /**
  * Normalises and parses a URL pathname into a canonical ParsedRoute.
@@ -28,18 +29,16 @@ export function parseRoute(pathname: string): ParsedRoute {
 		return { kind: 'workflow', path: '/models', section: 3 };
 	}
 
+	if (normalised === '/models/new') {
+		return { kind: 'workflow', path: '/models/new', section: 3 };
+	}
+
 	if (normalised === '/results') {
 		return { kind: 'workflow', path: '/results', section: 4 };
 	}
 
 	// Reserved modal routes
-	if (
-		normalised === '/about' ||
-		normalised === '/privacy' ||
-		normalised === '/help' ||
-		normalised === '/help/configure-model' ||
-		normalised === '/help/training-setup'
-	) {
+	if (Object.hasOwn(RESERVED_CONTENT, normalised)) {
 		return { kind: 'reserved', path: normalised as ReservedPath };
 	}
 

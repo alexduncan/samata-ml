@@ -56,7 +56,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'Do: pass a typed model document, pre-translated labels and the dataset context, and persist the sparse configuration from the change event. Don’t: import stores here, add controls for options the presentation policy hides, or disable Save & Continue to signal validation errors.'
+					'Do: pass a typed model document, pre-translated labels with complete field descriptions and the dataset context. Persist the sparse configuration from the change event. Don’t: import stores here, add controls for options the presentation policy hides, or disable Save & Continue to signal validation errors.'
 			}
 		}
 	}
@@ -66,7 +66,17 @@ type Story = StoryObj<typeof meta>;
 
 /** Logistic Regression with the solver, penalty and notes. */
 export const Logistic: Story = {
-	render: () => form({ id: 'logistic-regression', multiclass: 'one-vs-rest' })
+	render: () => form({ id: 'logistic-regression', multiclass: 'one-vs-rest' }),
+	play: async ({ canvasElement }) => {
+		const element =
+			canvasElement.querySelector<AppModelConfiguration>('app-model-configuration')!;
+		await element.updateComplete;
+		const description = element.shadowRoot!.getElementById('solver-help')!;
+		expect(description.textContent).toContain(
+			'The solver is the method used to fit the model.'
+		);
+		expect(description.querySelector('abbr')).toBeNull();
+	}
 };
 /** The MLP layer editor with two layers. */
 export const MlpLayers: Story = {

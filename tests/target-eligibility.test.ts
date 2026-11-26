@@ -204,6 +204,46 @@ describe('Target Eligibility Unit Tests', () => {
 			});
 		});
 
+		it('TEMP-AC-2: disqualifies date and time columns like datetime', () => {
+			const summary = createDatasetSummary('ds-1', [
+				{ name: 'd', type: 'date', missingCount: 0 },
+				{ name: 't', type: 'time', missingCount: 0 }
+			]);
+			const meta = createMetadata('ds-1', [
+				{
+					name: 'd',
+					type: 'date',
+					missingCount: 0,
+					missingTokens: {},
+					invalidCount: 0,
+					invalidExamples: [],
+					count: 10,
+					min: 0,
+					max: 0,
+					format: { kind: 'date', order: 'ISO', orderAssumed: false }
+				},
+				{
+					name: 't',
+					type: 'time',
+					missingCount: 0,
+					missingTokens: {},
+					invalidCount: 0,
+					invalidExamples: [],
+					count: 10,
+					min: 0,
+					max: 0,
+					precision: 'minute'
+				}
+			]);
+
+			const rows = buildTargetRows(summary, null, meta, null);
+
+			expect(rows.map((row) => [row.type, row.eligible, row.reasonCodes])).toEqual([
+				['date', false, ['INELIGIBLE_DATETIME']],
+				['time', false, ['INELIGIBLE_DATETIME']]
+			]);
+		});
+
 		it('disqualifies all-missing numeric, categorical and boolean columns', () => {
 			const summary = createDatasetSummary('ds-1', [
 				{ name: 'num_empty', type: 'numeric', missingCount: 10 },

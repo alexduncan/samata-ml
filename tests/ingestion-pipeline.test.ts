@@ -90,7 +90,7 @@ describe('runIngestion', () => {
 			'numeric',
 			'boolean',
 			'categorical',
-			'datetime',
+			'date',
 			'text'
 		]);
 		expect(result.columns[0]).toMatchObject({
@@ -123,6 +123,37 @@ describe('runIngestion', () => {
 		const stored = (await db!.getAll('raw_records')) as RawRecord[];
 		expect(stored.map((row) => row.rowIndex)).toEqual([0, 1, 2, 3, 4, 5]);
 		expect(stored[0]!.values).toEqual([1, true, 'A', Date.UTC(2024, 0, 1), 'note-1']);
+	});
+
+	it('TEMP-AC-11: stores temporal values and computes precision', async () => {
+		const header = 'day,clock,moment,epoch';
+		const rows = Array.from({ length: 100 }, (_, i) => {
+			const day =
+				i === 0
+					? '2013-08-13 06:03:42'
+					: `2013-08-${String(10 + (i % 10)).padStart(2, '0')}`;
+			const clock = i % 2 ? '09:00' : '17:30';
+			const moment = `2013-08-13 06:0${i % 10}:${String(i % 60).padStart(2, '0')}`;
+			return `${day},${clock},${moment},${1_700_000_000_000 + i * 1000 + (i % 7)}`;
+		});
+		const result = await runIngestion(
+			{ kind: 'file', file: file([header, ...rows].join('\n')) },
+			{ db: db!, uuid: () => 'temporal' }
+		);
+		const [day, clock, moment, epoch] = result.columns;
+		expect(day).toMatchObject({
+			type: 'date',
+			invalidCount: 1,
+			count: 99,
+			min: Date.UTC(2013, 7, 10),
+			max: Date.UTC(2013, 7, 19)
+		});
+		expect(clock).toMatchObject({ type: 'time', precision: 'minute', min: 32_400_000 });
+		expect(moment).toMatchObject({ type: 'datetime', precision: 'second' });
+		expect(epoch).toMatchObject({ type: 'datetime', precision: 'millisecond' });
+		const stored = (await db!.getAll('raw_records')) as RawRecord[];
+		expect(stored[0]!.values[0]).toBeNull();
+		expect(stored[1]!.values[0]).toBe(Date.UTC(2013, 7, 11));
 	});
 
 	it('pads short rows and skips long rows while keeping contiguous row indexes', async () => {

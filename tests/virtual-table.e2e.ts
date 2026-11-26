@@ -19,7 +19,7 @@ test.describe('Virtual Table Component (VTB-AC-1 .. VTB-AC-6)', () => {
 		}
 	});
 
-	test('VTB-AC-1: DOM bound holds for 0, 1, 10,001, 10,000,000 and 10,000,001 rows; last permitted row reachable', async ({
+	test('BETA-ERR-2b / VTB-AC-1: DOM bound holds for 0, 1, 10,001, 10,000,000 and 10,000,001 rows; last permitted row reachable', async ({
 		page
 	}) => {
 		await page.evaluate(() => {
@@ -103,6 +103,14 @@ test.describe('Virtual Table Component (VTB-AC-1 .. VTB-AC-6)', () => {
 			const table = document.getElementById('test-table-large') as any;
 			await table.scrollToRow(5000);
 		});
+		const topSpacer = tableLarge.locator('.rail-spacer-top');
+		const bottomSpacer = tableLarge.locator('.rail-spacer-bottom');
+		expect(
+			await topSpacer.evaluate((element) => element.getBoundingClientRect().height)
+		).toBeGreaterThan(0);
+		expect(
+			await bottomSpacer.evaluate((element) => element.getBoundingClientRect().height)
+		).toBeGreaterThan(0);
 		count = await largeRows.count();
 		expect(count).toBeGreaterThan(0);
 		expect(count).toBeLessThanOrEqual(25);

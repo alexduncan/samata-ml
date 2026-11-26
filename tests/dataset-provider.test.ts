@@ -8,6 +8,8 @@ import {
 import type {
 	CategoricalColumnStats,
 	DatasetMetadata,
+	DateColumnStats,
+	TimeColumnStats,
 	NumericColumnStats,
 	RawRecord,
 	TextColumnStats,
@@ -254,6 +256,47 @@ describe('IndexedDBDatasetProvider', () => {
 		await expect(provider.load(new Float64Array(0))).rejects.toMatchObject({
 			code: 'BUFFER_TOO_SMALL'
 		});
+	});
+
+	it('TEMP-AC-2: rejects date features and time targets as unsupported columns', async () => {
+		const base = {
+			missingCount: 0,
+			missingTokens: {},
+			invalidCount: 0,
+			invalidExamples: [],
+			count: 1,
+			min: 0,
+			max: 0
+		};
+		const dateColumn: DateColumnStats = {
+			...base,
+			name: 'day',
+			type: 'date',
+			format: { kind: 'date', order: 'ISO', orderAssumed: false }
+		};
+		const timeColumn: TimeColumnStats = {
+			...base,
+			name: 'clock',
+			type: 'time',
+			precision: 'minute'
+		};
+		const meta = metadata([dateColumn, timeColumn, numeric('value')], 1);
+		await setUp(meta, [row('dataset', 0, [0, 0, 1])]);
+		await expect(
+			IndexedDBDatasetProvider.create({
+				db: db!,
+				datasetId: 'dataset',
+				featureColumns: ['day']
+			})
+		).rejects.toMatchObject({ code: 'UNSUPPORTED_COLUMN' });
+		await expect(
+			IndexedDBDatasetProvider.create({
+				db: db!,
+				datasetId: 'dataset',
+				featureColumns: ['value'],
+				targetColumns: ['clock']
+			})
+		).rejects.toMatchObject({ code: 'UNSUPPORTED_COLUMN' });
 	});
 
 	it('honours abort signals and reports progress after each fetched batch', async () => {

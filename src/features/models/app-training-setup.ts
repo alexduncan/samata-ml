@@ -22,7 +22,8 @@ export interface TrainingSetupLabels {
 	readonly strategyLabel: string;
 	readonly strategyOneShot: string;
 	readonly strategyCrossValidation: string;
-	readonly strategyHelp: string;
+	readonly oneShotDefinition: string;
+	readonly crossValidationDefinition: string;
 	readonly strategyHelpLinkText: string;
 	readonly strategyHelpHref: string;
 	readonly oneShotNote: string;
@@ -54,7 +55,9 @@ const DEFAULT_TRAINING_SETUP_LABELS: TrainingSetupLabels = {
 	strategyLabel: 'Training Strategy',
 	strategyOneShot: 'One-Shot',
 	strategyCrossValidation: 'Cross-Validation',
-	strategyHelp: 'How the rows are divided to train and evaluate the model.',
+	oneShotDefinition: 'Train once on one part of the data and test on the part set aside.',
+	crossValidationDefinition:
+		'Divide the data into groups, then train and check a model several times, using a different group for the check each time.',
 	strategyHelpLinkText: 'Learn more',
 	strategyHelpHref: '/help/training-setup',
 	oneShotNote: 'Requests an 80% training and 20% held-out test split.',
@@ -122,6 +125,8 @@ export class AppTrainingSetup extends LitElement {
 	@property({ attribute: false }) accessor blockedReason = '';
 	/** Whether the form's controls are read-only. */
 	@property({ attribute: false }) accessor disabled = false;
+	/** Requests focus on the submit control once it is actionable. */
+	@property({ attribute: false }) accessor restoreFocus = false;
 	/** Localised form text and formatters, with English defaults. */
 	@property({ attribute: false }) accessor labels: TrainingSetupLabels =
 		DEFAULT_TRAINING_SETUP_LABELS;
@@ -133,17 +138,12 @@ export class AppTrainingSetup extends LitElement {
 	@state() private accessor liveAnnouncement = '';
 	private lastEmittedSetup: ValidationMethodology | null = null;
 	private pendingNumberFocus = false;
+	private restoreFocusConsumed = false;
 	private controlsDisabled = false;
 	private sliderMax = MAX_CV_FOLDS;
 	private clampedSliderFolds = DEFAULT_CV_FOLDS;
 	private matrixFolds = DEFAULT_CV_FOLDS;
 	private displayText = String(DEFAULT_CV_FOLDS);
-
-	override firstUpdated(): void {
-		if (this.hasAttribute('autofocus') && !this.controlsDisabled) {
-			this.renderRoot.querySelector<HTMLButtonElement>('button[type="submit"]')?.focus();
-		}
-	}
 
 	override willUpdate(changed: PropertyValues<this>): void {
 		const externalSetupChanged = changed.has('value') && !this.matchesLastEmission();
@@ -183,6 +183,14 @@ export class AppTrainingSetup extends LitElement {
 		if (this.pendingNumberFocus) {
 			this.pendingNumberFocus = false;
 			this.renderRoot.querySelector<HTMLInputElement>('#folds-number')?.focus();
+		}
+		if (!this.restoreFocus) {
+			this.restoreFocusConsumed = false;
+		} else if (this.isConnected && !this.restoreFocusConsumed && !this.controlsDisabled) {
+			const submit =
+				this.renderRoot.querySelector<HTMLButtonElement>('button[type="submit"]');
+			submit?.focus();
+			this.restoreFocusConsumed = this.shadowRoot?.activeElement === submit;
 		}
 	}
 
@@ -466,7 +474,7 @@ export class AppTrainingSetup extends LitElement {
 						id="strategy"
 						name="strategy"
 						class="field-control"
-						aria-describedby="strategy-help"
+						aria-describedby="strategy-description"
 						.value=${live(this.strategy)}
 						?disabled=${this.controlsDisabled}
 						@change=${this.handleStrategyChange}>
@@ -474,13 +482,17 @@ export class AppTrainingSetup extends LitElement {
 						<option value="nested_cv">${t.strategyCrossValidation}</option>
 					</select>
 					<div id="strategy-help" class="field-description">
-						<p>
-							${t.strategyHelp}
-							<a href=${t.strategyHelpHref}>${t.strategyHelpLinkText}</a>
-						</p>
-						${this.strategy === 'one_shot'
-							? html`<p class="field-dependent">${t.oneShotNote}</p>`
-							: nothing}
+						<div id="strategy-description">
+							<p>
+								${this.strategy === 'one_shot'
+									? t.oneShotDefinition
+									: t.crossValidationDefinition}
+							</p>
+							${this.strategy === 'one_shot'
+								? html`<p class="field-dependent">${t.oneShotNote}</p>`
+								: nothing}
+						</div>
+						<p><a href=${t.strategyHelpHref}>${t.strategyHelpLinkText}</a></p>
 					</div>
 				</div>
 				${this.strategy === 'nested_cv' ? this.renderFolds() : nothing}

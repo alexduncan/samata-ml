@@ -1,7 +1,10 @@
 import { atom } from 'nanostores';
 import { headlineMetrics } from '../../../common/evaluation/headline-metrics';
+import { reportWorkerFailure } from '../../../common/release/worker-failures';
+import { trackBetaEvent } from '../../../common/telemetry/telemetry-client';
 import { INGESTION_LOCK, deleteDataset, getMetadata } from '../../../common/storage/db';
 import {
+	protectedDomainSnapshot,
 	readTrainingCheckpoint,
 	type PendingTrainingDomain,
 	type PersistenceFailure,
@@ -10,14 +13,17 @@ import {
 } from '../../../common/storage/training-domain';
 import {
 	$appState,
+	reduceAbandonProvisional,
 	reduceCreateModel,
 	reduceDatasetReplacement,
 	reduceTargetChange,
 	reduceTrainingOutcome,
 	reduceTrainingStart,
 	reduceViewResults,
+	reduceWizardStep,
 	updateTrainingProgress,
-	type TrainingOutcome
+	type TrainingOutcome,
+	type WizardStepSubmission
 } from '../../../stores/app.store';
 import {
 	commitProtectedTrainingChange,
@@ -26,6 +32,8 @@ import {
 	publishRecoveredTrainingSnapshot,
 	readGuardedTrainingSnapshot,
 	retryTrainingPublication,
+	sameDraft,
+	stageSubmittedDraft,
 	withTrainingStateLock,
 	TRAINING_STATE_LOCK,
 	type GuardedSnapshot,
@@ -50,9 +58,13 @@ import type {
 import type { DatasetMetadata } from '../../../types/dataset';
 import {
 	INITIAL_APP_STATE,
+	isModelEligibleColumnType,
+	provisionalModelIn,
 	type DatasetSummary,
 	type ModelRecord,
 	type PersistedAppState,
+	type ProvisionalModelContext,
+	type ProvisionalModelIdentity,
 	type TrainingError
 } from '../../../types/state';
 import { buildFeatureRows } from '../feature-eligibility';
@@ -82,6 +94,7 @@ export type TrainingCommandFailure = {
 		| 'cancelled';
 	reason?: PersistenceFailure['reason'];
 	pending?: PendingTrainingDomain['kind'];
+	operationId?: string;
 };
 
 /** Result of a training or protected state operation, after its storage acknowledgement. */
@@ -102,6 +115,13 @@ export type PublicationPending = {
 } & Partial<StopPublication>;
 
 type CommittedStop = PublicationPending & StopPublication;
+
+type CommittedWizardStep = {
+	operationId: string;
+	generation: number;
+	context: ProvisionalModelContext;
+	model: ModelRecord;
+};
 
 /** Route-independent notification for an operation whose state still needs to be published. */
 export const $publicationPending = atom<PublicationPending | null>(null);
@@ -142,7 +162,7 @@ const conflict = { ok: false, reason: 'conflict' } as const;
 
 function modelIn(
 	state: ProtectedDomainSnapshot,
-	identity: TrainingRunIdentity
+	identity: Pick<TrainingRunIdentity, 'datasetId' | 'target' | 'modelNum' | 'modelCreatedAt'>
 ): ModelRecord | undefined {
 	if (state.dataset?.id !== identity.datasetId || state.target !== identity.target)
 		return undefined;
@@ -279,23 +299,22 @@ function stoppedOutcome(
 	};
 }
 
-function domain(state: PersistedAppState) {
-	const { dataset, target, data, models, nextModelNum, comparisonContextEpoch } = state;
-	return { dataset, target, data, models, nextModelNum, comparisonContextEpoch };
-}
-
 /** Creates the route-independent service that owns resource locks and worker settlement. */
 export function createTrainingService(options: TrainingServiceOptions = {}) {
 	const active = new Map<number, ActiveAttempt>();
 	const stoppedRepairs = new Map<string, StoppedRepair>();
 	const committedStops = new Map<string, CommittedStop>();
 	const exclusiveIntents = new Set<string>();
+	const abandoning = new Set<number>();
+	const pendingAbandonments = new Map<string, string>();
+	const wizardSubmissions = new Set<number>();
+	const pendingWizardSteps = new Map<number, CommittedWizardStep>();
 	let pendingDatasetCleanup: { id: string; cleanup: () => Promise<void> } | null = null;
 	const newId = options.newId ?? (() => crypto.randomUUID());
 	const now = options.now ?? Date.now;
 	const elapsed = options.elapsedTime ?? (() => performance.now());
 	const makeWorker =
-		options.createWorker ?? (() => new Worker('/training.worker.js', { type: 'module' }));
+		options.createWorker ?? (() => new Worker(TRAINING_WORKER_URL, { type: 'module' }));
 	const isIsolated =
 		options.isIsolated ?? (() => typeof window !== 'undefined' && window.crossOriginIsolated);
 	const getLocks = () =>
@@ -317,21 +336,36 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		) =>
 			| { state: PersistedAppState; mutation: TrainingDomainMutation }
 			| PersistenceFailure
+			| null
 			| Promise<
 					| { state: PersistedAppState; mutation: TrainingDomainMutation }
 					| PersistenceFailure
+					| null
 			  >,
 		identity?: TrainingRunIdentity,
 		stopped?: StoppedRepair
-	): Promise<{ ack: PersistenceAck; committed: boolean }> {
+	): Promise<{
+		ack: PersistenceAck;
+		committed: boolean;
+		operationId: string;
+		committedGeneration: number | undefined;
+	}> {
 		const operationId = newId();
 		let committedGeneration: number | undefined;
 		const ack = await commitProtectedTrainingChange(
-			async (current, context): Promise<ProtectedTrainingChange | PersistenceFailure> => {
+			async (
+				current,
+				context
+			): Promise<ProtectedTrainingChange | PersistenceFailure | null> => {
 				const candidate = await prepare(current, context);
+				if (!candidate) return null;
 				if ('ok' in candidate) return candidate;
 				return {
-					pending: { operationId, kind, domain: domain(candidate.state) },
+					pending: {
+						operationId,
+						kind,
+						domain: protectedDomainSnapshot(candidate.state)
+					},
 					mutation: candidate.mutation
 				};
 			},
@@ -359,7 +393,148 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		} else if (ack.ok && $publicationPending.get()?.operationId === operationId) {
 			$publicationPending.set(null);
 		}
-		return { ack, committed: committedGeneration !== undefined };
+		return {
+			ack,
+			committed: committedGeneration !== undefined,
+			operationId,
+			committedGeneration
+		};
+	}
+
+	function wizardContextMatches(state: PersistedAppState, context: ProvisionalModelContext) {
+		return (
+			state.dataset?.id === context.datasetId &&
+			state.target === context.target &&
+			state.comparisonContextEpoch === context.comparisonContextEpoch
+		);
+	}
+
+	function wizardModel(state: PersistedAppState, model: ModelRecord) {
+		return state.models.find(
+			({ num, createdAt }) => num === model.num && createdAt === model.createdAt
+		);
+	}
+
+	/** Publishes the exact submitted wizard inputs and their completion in one checkpoint. */
+	async function saveWizardStep(
+		modelNum: number,
+		submission: WizardStepSubmission
+	): Promise<TrainingCommandResult> {
+		const captured = $appState.get();
+		const model = captured.models.find(({ num }) => num === modelNum);
+		if (!model || !captured.dataset || !captured.target || model.status !== 'draft')
+			return notice(conflict);
+		if (submission.section === 'choose-model' && !isClassifierId(submission.modelId))
+			return { ok: false, code: 'invalid-request' };
+		const context = {
+			datasetId: captured.dataset.id,
+			target: captured.target,
+			comparisonContextEpoch: captured.comparisonContextEpoch
+		};
+		const pending = pendingWizardSteps.get(modelNum);
+		if (
+			pending &&
+			wizardContextMatches(captured, pending.context) &&
+			wizardModel(captured, pending.model)
+		)
+			return { ...notice(conflict, 'recover'), operationId: pending.operationId };
+		if (wizardSubmissions.has(modelNum)) return { ok: false, code: 'busy' };
+		wizardSubmissions.add(modelNum);
+		try {
+			return await withResource(INGESTION_LOCK, 'shared', true, () =>
+				withResource(`samata-ml:training:${modelNum}`, 'exclusive', true, async () => {
+					let candidate: ModelRecord | undefined;
+					const { ack, operationId, committedGeneration } = await checkpoint(
+						'recover',
+						({ state }) => {
+							const visible = $appState.get();
+							const edited = wizardModel(visible, model);
+							if (
+								!state ||
+								!wizardContextMatches(visible, context) ||
+								!edited ||
+								edited.status !== 'draft' ||
+								!sameDraft(model, edited)
+							)
+								return conflict;
+							const staged = stageSubmittedDraft(state, captured, model);
+							if (!staged.ok) return staged;
+							const next = reduceWizardStep(staged.state, model, submission);
+							if (!next) return conflict;
+							candidate = wizardModel(next, model);
+							return { state: next, mutation: { type: 'none' } };
+						}
+					);
+					if (!ack.ok) {
+						if (!candidate || committedGeneration === undefined) return notice(ack);
+						pendingWizardSteps.set(modelNum, {
+							operationId,
+							generation: committedGeneration,
+							context,
+							model: candidate
+						});
+						return { ...notice(ack, 'recover'), operationId };
+					}
+					return { ok: true, value: undefined };
+				})
+			);
+		} finally {
+			wizardSubmissions.delete(modelNum);
+		}
+	}
+
+	/** Replays only the identified wizard save and verifies its exact committed draft. */
+	async function retryWizardStep(
+		modelNum: number,
+		operationId: string
+	): Promise<TrainingCommandResult> {
+		const pending = pendingWizardSteps.get(modelNum);
+		if (!pending || pending.operationId !== operationId) return notice(conflict);
+		const retried = await withResource(INGESTION_LOCK, 'shared', true, () =>
+			withResource(`samata-ml:training:${modelNum}`, 'exclusive', true, async () => {
+				const result = await withTrainingStateLock(
+					async (context): Promise<TrainingCommandResult> => {
+						const stored = await readTrainingCheckpoint(context.db);
+						if (!stored.ok) return { ...notice(stored, 'recover'), operationId };
+						if (
+							stored.checkpoint?.generation !== pending.generation ||
+							(stored.checkpoint.pending &&
+								stored.checkpoint.pending.operationId !== operationId)
+						) {
+							pendingWizardSteps.delete(modelNum);
+							return notice(conflict);
+						}
+						const snapshot = await readGuardedTrainingSnapshot(context);
+						if (!snapshot.ok) return { ...notice(snapshot, 'recover'), operationId };
+						const state = snapshot.state;
+						const model = state && wizardModel(state, pending.model);
+						if (
+							!state ||
+							snapshot.generation !== pending.generation ||
+							!wizardContextMatches(state, pending.context) ||
+							!model ||
+							model.status !== 'draft' ||
+							!sameDraft(model, pending.model)
+						) {
+							pendingWizardSteps.delete(modelNum);
+							return notice(conflict);
+						}
+						publishNewerTrainingSnapshot(state);
+						pendingWizardSteps.delete(modelNum);
+						if ($publicationPending.get()?.operationId === operationId)
+							$publicationPending.set(null);
+						return { ok: true, value: undefined };
+					},
+					persistence
+				);
+				return result.ok || 'code' in result
+					? result
+					: { ...notice(result, 'recover'), operationId };
+			})
+		);
+		return !retried.ok && pendingWizardSteps.get(modelNum) === pending
+			? { ...retried, pending: 'recover', operationId }
+			: retried;
 	}
 
 	async function withResource<Value>(
@@ -439,11 +614,17 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 					}
 					settle(reply);
 				};
-				port.onerror = () => settle({ kind: 'failed', identity, code: 'worker-crashed' });
-				port.onmessageerror = () =>
+				port.onerror = () => {
+					reportWorkerFailure('training-worker-crashed');
+					settle({ kind: 'failed', identity, code: 'worker-crashed' });
+				};
+				port.onmessageerror = () => {
+					reportWorkerFailure('training-worker-protocol-error');
 					settle({ kind: 'failed', identity, code: 'worker-protocol-error' });
+				};
 				port.postMessage(attempt.request);
 			} catch {
+				reportWorkerFailure('training-worker-startup-failed');
 				settle({ kind: 'failed', identity, code: 'worker-startup-failed' });
 			}
 		});
@@ -498,6 +679,9 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 			},
 			status === 'cancelled' ? 'cancel' : 'finish'
 		);
+		if (status === 'failed' && result.ok) {
+			trackBetaEvent('training_failed', attempt.request.identity.runId);
+		}
 		return result.ok ? { ok: false, code } : result;
 	}
 
@@ -535,6 +719,9 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		);
 		if (!ack.ok) {
 			setTrainingSessionStatus(identity, committed ? 'publication-pending' : 'failed');
+			if (!committed) {
+				trackBetaEvent('training_failed', identity.runId);
+			}
 			return invalidRequest
 				? { ok: false, code: 'invalid-request' }
 				: attempt.cancelled && !committed
@@ -543,6 +730,7 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		}
 		if (attempt.cancelled) return settleStopped(attempt, 'cancelled');
 		setTrainingSessionStatus(identity, 'running');
+		trackBetaEvent('training_started');
 		const reply = await runWorker(attempt);
 		if (attempt.cancelled || reply.kind === 'cancelled')
 			return settleStopped(attempt, 'cancelled');
@@ -570,7 +758,8 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 			schemaVersion: 2,
 			algorithm: attempt.request.classifier.algorithm,
 			durationMs,
-			logEntries: entries
+			logEntries: entries,
+			modelLabel: null
 		};
 		const finish = await checkpoint(
 			'finish',
@@ -586,7 +775,8 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 				const next = reduceTrainingOutcome(state, identity, {
 					kind: 'success',
 					durationMs,
-					metrics: headlineMetrics(envelope.evaluation)
+					metrics: headlineMetrics(envelope.evaluation),
+					modelLabel: envelope.modelLabel
 				});
 				return next
 					? { state: next, mutation: { type: 'insert-result', result: envelope } }
@@ -600,6 +790,7 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 			return notice(finish.ack, 'finish');
 		}
 		setTrainingSessionStatus(identity, 'complete', entries);
+		trackBetaEvent('training_completed');
 		return { ok: true, value: undefined };
 	}
 
@@ -609,7 +800,11 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		if (!isIsolated()) return { ok: false, code: 'environment-not-supported' };
 		if (!captured.dataset || !captured.target || !model || model.status !== 'draft')
 			return { ok: false, code: 'invalid-request' };
-		if (active.has(modelNum) || exclusiveIntents.has(captured.dataset.id))
+		if (
+			active.has(modelNum) ||
+			abandoning.has(modelNum) ||
+			exclusiveIntents.has(captured.dataset.id)
+		)
 			return { ok: false, code: 'busy' };
 		let config;
 		try {
@@ -651,8 +846,10 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		);
 		try {
 			const result = await attempt.done;
-			if (!result.ok && getTrainingSession(identity)?.status === 'pending')
+			if (!result.ok && getTrainingSession(identity)?.status === 'pending') {
 				setTrainingSessionStatus(identity, 'failed');
+				trackBetaEvent('training_failed', identity.runId);
+			}
 			return result;
 		} finally {
 			active.delete(modelNum);
@@ -938,6 +1135,108 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		return outcome.ok ? outcome.value : null;
 	}
 
+	/** Settles the exact draft's attempt before removing the acknowledged provisional record. */
+	async function abandonNewModel(
+		binding: ProvisionalModelIdentity,
+		retrySaving = false
+	): Promise<TrainingCommandResult> {
+		const { modelNum } = binding;
+		const captured = $appState.get();
+		if (
+			captured.dataset?.id !== binding.datasetId ||
+			captured.target !== binding.target ||
+			captured.comparisonContextEpoch !== binding.comparisonContextEpoch
+		)
+			return notice(conflict);
+		if (abandoning.has(modelNum)) return { ok: false, code: 'busy' };
+		abandoning.add(modelNum);
+		try {
+			const matchingRun = (identity?: TrainingRunIdentity): identity is TrainingRunIdentity =>
+				identity?.datasetId === binding.datasetId &&
+				identity.target === binding.target &&
+				identity.modelNum === modelNum &&
+				identity.modelCreatedAt === binding.modelCreatedAt;
+			const attempt = active.get(modelNum);
+			const current = modelIn(captured, binding);
+			if (
+				attempt &&
+				captured.newModelNum === modelNum &&
+				current &&
+				!current.provisionalCompletedRunId &&
+				matchingRun(attempt.request.identity)
+			) {
+				cancel(attempt);
+				await attempt.done;
+			}
+			const pending = $publicationPending.get();
+			const repair = [...stoppedRepairs.values()].find(({ identity }) =>
+				matchingRun(identity)
+			);
+			const ownedPending = matchingRun(pending?.identity) ? pending : null;
+			const recoverRun = ownedPending?.identity ?? repair?.identity;
+			if (recoverRun) {
+				if (!retrySaving) return notice(conflict, ownedPending?.kind ?? 'recover');
+				const settled = await retry(recoverRun);
+				if (!settled.ok) return settled;
+			}
+
+			const key = JSON.stringify([
+				binding.datasetId,
+				binding.target,
+				binding.comparisonContextEpoch,
+				modelNum,
+				binding.modelCreatedAt
+			]);
+			return await withResource(INGESTION_LOCK, 'shared', true, () =>
+				withResource(`samata-ml:training:${modelNum}`, 'exclusive', true, async () => {
+					let removed = false;
+					const awaiting = pendingAbandonments.get(key);
+					const { ack, committed, operationId } = await checkpoint(
+						'discard',
+						({ state }) => {
+							if (
+								!state ||
+								state.dataset?.id !== binding.datasetId ||
+								state.target !== binding.target ||
+								state.comparisonContextEpoch !== binding.comparisonContextEpoch
+							)
+								return conflict;
+							const model = modelIn(state, binding);
+							if (model?.status === 'trained') {
+								publishNewerTrainingSnapshot(state);
+								return null;
+							}
+							if (!model && pendingAbandonments.has(key)) {
+								removed = true;
+								publishNewerTrainingSnapshot(state);
+								return null;
+							}
+							const next = reduceAbandonProvisional(state, binding);
+							if (!next) return conflict;
+							removed = true;
+							return { state: next, mutation: { type: 'none' } };
+						}
+					);
+					if (!ack.ok) {
+						if (committed) pendingAbandonments.set(key, operationId);
+						return notice(ack, pendingAbandonments.has(key) ? 'discard' : undefined);
+					}
+					if (removed) {
+						clearScroll([`models/${modelNum}`]);
+						if (
+							pendingAbandonments.delete(key) &&
+							$publicationPending.get()?.operationId === awaiting
+						)
+							$publicationPending.set(null);
+					}
+					return { ok: true, value: undefined };
+				})
+			);
+		} finally {
+			abandoning.delete(modelNum);
+		}
+	}
+
 	async function destructive(
 		datasetId: string,
 		capturedTarget: string | null,
@@ -984,6 +1283,9 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 
 	return {
 		start,
+		saveWizardStep,
+		retryWizardStep,
+		abandonNewModel,
 		loadCompletedResult,
 		activeIdentity(modelNum: number): TrainingRunIdentity | undefined {
 			return active.get(modelNum)?.request.identity;
@@ -997,6 +1299,88 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 		retry,
 		observePublishedStops,
 		recoverStoppedPublication,
+		/** Reuses or allocates the current provisional model under the protected state lock. */
+		async openNewModel(
+			captured: ProvisionalModelContext,
+			allowAllocation = true,
+			expected?: ProvisionalModelIdentity
+		): Promise<
+			| { ok: true; value: ProvisionalModelIdentity }
+			| (TrainingCommandFailure & { candidate?: ProvisionalModelIdentity })
+		> {
+			let binding: ProvisionalModelIdentity | undefined;
+			const { ack, committed } = await checkpoint('recover', async ({ state }, { db }) => {
+				if (
+					state?.dataset?.id !== captured.datasetId ||
+					state.target !== captured.target ||
+					state.comparisonContextEpoch !== captured.comparisonContextEpoch
+				)
+					return conflict;
+				if (
+					expected &&
+					(expected.datasetId !== captured.datasetId ||
+						expected.target !== captured.target ||
+						expected.comparisonContextEpoch !== captured.comparisonContextEpoch)
+				)
+					return conflict;
+				const metadata = await getMetadata(db, captured.datasetId);
+				if (
+					!metadata?.columns.some(
+						(column) =>
+							column.name === captured.target &&
+							isModelEligibleColumnType(column.type)
+					)
+				)
+					return conflict;
+				if (expected) {
+					const finished = state.models.find(
+						(model) =>
+							model.num === expected.modelNum &&
+							model.createdAt === expected.modelCreatedAt
+					);
+					if (
+						finished?.status === 'trained' &&
+						finished.provisionalCompletedRunId &&
+						finished.provisionalCompletedRunId === finished.resultRevision
+					) {
+						binding = expected;
+						publishNewerTrainingSnapshot(state);
+						return null;
+					}
+				}
+				const existing = provisionalModelIn(state.models, state.newModelNum);
+				if (existing) {
+					if (
+						expected &&
+						(existing.num !== expected.modelNum ||
+							existing.createdAt !== expected.modelCreatedAt)
+					)
+						return conflict;
+					binding = {
+						...captured,
+						modelNum: existing.num,
+						modelCreatedAt: existing.createdAt
+					};
+					publishNewerTrainingSnapshot(state);
+					return null;
+				}
+				if (!allowAllocation || expected) return conflict;
+				const modelCreatedAt = now();
+				const next = reduceCreateModel(state, modelCreatedAt);
+				if (!next) return conflict;
+				binding = { ...captured, modelNum: state.nextModelNum, modelCreatedAt };
+				return {
+					state: { ...next, newModelNum: binding.modelNum },
+					mutation: { type: 'none' }
+				};
+			});
+			if (!ack.ok)
+				return {
+					...notice(ack, committed ? 'recover' : undefined),
+					candidate: committed ? binding : undefined
+				};
+			return binding ? { ok: true, value: binding } : notice(conflict);
+		},
 		async createModel(): Promise<TrainingCommandResult<number>> {
 			const captured = $appState.get();
 			let num = 0;
@@ -1106,6 +1490,7 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 								)
 									return conflict;
 								const next = reduceViewResults(state, identity.modelNum);
+								if (next === state) return null;
 								return next
 									? { state: next, mutation: { type: 'none' } }
 									: conflict;

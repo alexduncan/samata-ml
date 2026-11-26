@@ -117,6 +117,10 @@
 /* App additions (specification/visual-design.md §2) */
 :root {
 	--surface: #fff;
+	--pink-700: #be185d;
+	--sky-600: #0284c7;
+	--olive-700: #717a16;
+	--model-swatch-ink: #000;
 	--focus-ring: var(--blue-700);
 	--chart-1: var(--blue-700);
 	--chart-2: var(--amber-700);

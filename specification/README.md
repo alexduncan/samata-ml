@@ -31,43 +31,43 @@ These rules apply whenever a spec changes, whether in a plan's `Sync specificati
 | Spec                                                                 | Status      | Read when                                                                                                                |
 | -------------------------------------------------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------ |
 | [VISION.md](VISION.md)                                               | reference   | Planning a new feature (product intent, educational and ethical goals)                                                   |
-| [workflow-steps.md](workflow-steps.md)                               | partial     | Anything a user sees in the four workflow steps. **Wins over other specs on user-facing behaviour.**                     |
+| [workflow-steps.md](workflow-steps.md)                               | partial     | Four workflow steps, provisional model wizard, numbered results and comparison. **Wins on user-facing behaviour.**       |
 | [ARCHITECTURE.md](ARCHITECTURE.md)                                   | partial     | New directories or modules, routing, build, delivery, caching, Bun tooling                                               |
 | [COMPONENTS.md](COMPONENTS.md)                                       | partial     | Any Lit component, style primitive, store binding, a11y or i18n in UI                                                    |
 | [visual-design.md](visual-design.md)                                 | partial     | Anything a user sees: colours, type, spacing, tokens, mockup fidelity, contrast. Wins over the mockups on accessibility. |
-| [app-state-and-navigation.md](app-state-and-navigation.md)           | draft       | Router, URL/history, step behaviour, scroll memory, model lifecycle                                                      |
+| [app-state-and-navigation.md](app-state-and-navigation.md)           | draft       | Routes, provisional binding and departure, fixed Help history, scroll memory and model lifecycle                         |
 | [state-and-storage.md](state-and-storage.md)                         | draft       | Nanostores, persisted schema, `localStorage`, IndexedDB, multi-tab                                                       |
 | [data-ingestion.md](data-ingestion.md)                               | implemented | CSV upload/parsing, column statistics, IndexedDB dataset storage                                                         |
 | [sample-datasets.md](sample-datasets.md)                             | implemented | Typed sample descriptors, build-time validation, generated catalogue and datasheets                                      |
 | [publication-history.md](publication-history.md)                     | implemented | First-push dataset history audit and maintainer publication procedure                                                    |
 | [preview-dataset.md](preview-dataset.md)                             | implemented | Dataset preview table and column inspector                                                                               |
 | [machine-learning-orchestrator.md](machine-learning-orchestrator.md) | implemented | Browser worker, evaluation and durable classification training                                                           |
-| [content-and-i18n.md](content-and-i18n.md)                           | partial     | Markdown content pipeline, localisation                                                                                  |
+| [content-and-i18n.md](content-and-i18n.md)                           | partial     | Markdown content pipeline, localisation and contextual Help definitions                                                  |
 | [testing.md](testing.md)                                             | partial     | Writing or running tests                                                                                                 |
 | [mockup-review.md](mockup-review.md)                                 | implemented | Reviewing and promoting mockups, requesting markup changes and commissioning an app port                                 |
-| [standards-and-documentation.md](standards-and-documentation.md)     | partial     | Any exported TypeScript (TSDoc rules)                                                                                    |
+| [standards-and-documentation.md](standards-and-documentation.md)     | implemented | Any exported TypeScript (TSDoc rules)                                                                                    |
 
 ### Component specs (`components/`)
 
 Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only where it says so.
 
-| Spec                                                        | Status      | Tier                                                                                         |
-| ----------------------------------------------------------- | ----------- | -------------------------------------------------------------------------------------------- |
-| [button.md](components/button.md)                           | draft       | Style primitive `.btn`                                                                       |
-| [chiclet.md](components/chiclet.md)                         | implemented | Style primitive `.chiclet`                                                                   |
-| [dialog.md](components/dialog.md)                           | implemented | Shared native-dialog style primitive                                                         |
-| [page-header.md](components/page-header.md)                 | implemented | Page-header/focus style primitive                                                            |
-| [sidebar.md](components/sidebar.md)                         | implemented | Connected `app-sidebar`                                                                      |
-| [welcome-modal.md](components/welcome-modal.md)             | implemented | Connected `app-welcome-modal`                                                                |
-| [content-modal.md](components/content-modal.md)             | implemented | Connected `app-content-modal` and presentational `app-content-dialog`; prose styling pending |
-| [training-progress.md](components/training-progress.md)     | implemented | Native progress, ordered log, disclosure preference and live milestones                      |
-| [training-setup.md](components/training-setup.md)           | implemented | Training strategy form, paired fold inputs and accessible fold matrix                        |
-| [model-results.md](components/model-results.md)             | implemented | Connected `app-model-results` and eight presentational Section 6 results elements            |
-| [results-comparison.md](components/results-comparison.md)   | implemented | Connected comparison route and presentational comparison elements                            |
-| [card.md](components/card.md)                               | implemented | Presentational `app-dataset-card`, `app-model-card`                                          |
-| [virtual-table.md](components/virtual-table.md)             | implemented | Presentational `ui-virtual-table` (styled appearance pending)                                |
-| [sidepanel.md](components/sidepanel.md)                     | implemented | Presentational `app-column-details`                                                          |
-| [model-configuration.md](components/model-configuration.md) | implemented | Presentational `app-model-configuration` (Section 3 hyperparameter form)                     |
+| Spec                                                        | Status      | Tier                                                                                          |
+| ----------------------------------------------------------- | ----------- | --------------------------------------------------------------------------------------------- |
+| [button.md](components/button.md)                           | draft       | Style primitive `.btn`                                                                        |
+| [chiclet.md](components/chiclet.md)                         | implemented | Style primitive `.chiclet`                                                                    |
+| [dialog.md](components/dialog.md)                           | implemented | Shared native-dialog style primitive                                                          |
+| [page-header.md](components/page-header.md)                 | implemented | Page-header/focus style primitive                                                             |
+| [sidebar.md](components/sidebar.md)                         | implemented | Connected `app-sidebar`                                                                       |
+| [welcome-modal.md](components/welcome-modal.md)             | implemented | Connected `app-welcome-modal`                                                                 |
+| [content-modal.md](components/content-modal.md)             | implemented | Connected `app-content-modal` and presentational `app-content-dialog`; prose styling pending  |
+| [training-progress.md](components/training-progress.md)     | implemented | Native progress, stopped-run recovery, ordered log, disclosure preference and live milestones |
+| [training-setup.md](components/training-setup.md)           | implemented | Training strategy definitions, paired fold inputs and accessible fold matrix                  |
+| [model-results.md](components/model-results.md)             | implemented | Numbered result, Training Details, terms and shared result elements                           |
+| [results-comparison.md](components/results-comparison.md)   | implemented | Connected comparison route, terms disclosure and presentational comparison elements           |
+| [card.md](components/card.md)                               | implemented | Presentational `app-dataset-card`, `app-model-card`                                           |
+| [virtual-table.md](components/virtual-table.md)             | implemented | Presentational `ui-virtual-table` (styled appearance pending)                                 |
+| [sidepanel.md](components/sidepanel.md)                     | implemented | Presentational `app-column-details`                                                           |
+| [model-configuration.md](components/model-configuration.md) | implemented | Presentational `app-model-configuration` (Section 3 hyperparameter form)                      |
 
 ### Backlog
 
@@ -87,17 +87,17 @@ Known conflicts between specs, and between specs and code, as of 2026-11-16. A p
 
 1. _Resolved._
 2. _Resolved._
-3. **CSS inlining.** The production build inlines CSS as well as linking it (`scripts/build-assets.ts`, `scripts/html.ts`, README). ARCHITECTURE says "No Inlining".
+3. _Resolved._
 4. _Resolved._
 5. _Resolved._
 6. **Service worker specified but not installed.** ARCHITECTURE's offline-first service-worker caching remains target; no service worker is present. Worker tests exercise the application's own typed protocol, without Comlink.
-7. **Linting.** TSDoc lint/CI enforcement remains target. The plugin is installed, but there is no ESLint config, `lint` script or CI.
+7. _Resolved._
 8. _Resolved._
 9. _Resolved._
-10. **Product name.** VISION and `wrangler.jsonc` say `web-ml-app`; the repository and UI say `samata-ml`/`samatā.ml`.
+10. _Resolved._
 11. **`npx` vs Bun.** The vendored `modern-web-guidance` skill runs `npx`; this repo uses Bun only, so run its commands with `bunx`.
 12. _Resolved._
-13. **Remaining feature accessibility/style coverage.** Shell tokens, mockup layout, semantic translations and document CSS consolidation are verified without token/parity exemptions. Existing data/model contrast findings remain: 23 exact elements with measured ratios of 2.61:1 to 4.10:1 across five feature owners, measured in [a11y-feature-findings.ts](../tests/a11y-feature-findings.ts) and separately queued in HUMAN.md. Feature-story migration and wider private-style consolidation are follow-up work. The static literal-colour checker covers TypeScript declarations/fallbacks; direct CSS declaration scanning remains narrower than the normative prohibition, so passing it alone does not establish complete token use. Mockup accessibility defects remain governed by visual-design's registers; strict shell scans never inherit feature allowances.
+13. **Remaining feature accessibility/style coverage.** Shell tokens, mockup layout, semantic translations and document CSS consolidation are verified without token/parity exemptions. Existing data/model contrast findings remain: 23 exact elements with measured ratios of 2.61:1 to 4.10:1 across five feature owners, measured in [a11y-feature-findings.ts](../tests/a11y-feature-findings.ts) and separately queued in HUMAN.md. The model card and chooser have three-browser story coverage. Remaining feature-story migration and wider private-style consolidation are follow-up work. The static literal-colour checker covers TypeScript declarations/fallbacks; direct CSS declaration scanning remains narrower than the normative prohibition, so passing it alone does not establish complete token use. Mockup accessibility defects remain governed by visual-design's registers; strict shell scans never inherit feature allowances.
 14. **Remaining state and navigation scope.** Acknowledged training lifecycle, saved-result insertion and deletion, protected cross-tab state and storage recovery are implemented. Broader ordinary multi-tab synchronisation, general future-schema migrations and later results-state contracts remain target. Final shell manual display and assistive-technology checks remain in the delivery evidence.
 15. _Resolved._
 16. _Resolved._

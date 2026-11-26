@@ -129,23 +129,16 @@
 						<section class="train-step-panel" aria-labelledby="step-1-title">
 							<header class="train-step-header">
 								<h2 id="step-1-title">1. {Model Name}</h2>
-
 								<span class="train-step-action train-step-status">
 									<button
 										type="button"
-										class="btn reopen-btn"
-										aria-label="Edit Choose Model">
+										class="btn btn-small"
+										aria-label="{edit step label}">
 										Edit
 									</button>
 									<span class="visually-hidden">Completed</span>
-									<svg
-										aria-hidden="true"
-										width="20"
-										height="20"
-										viewBox="0 0 24 24"
-										fill="currentColor">
-										<path
-											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									<svg class="icon" aria-hidden="true">
+										<use href="#check" />
 									</svg>
 								</span>
 							</header>
@@ -165,23 +158,16 @@
 						<section class="train-step-panel" aria-labelledby="step-2-title">
 							<header class="train-step-header">
 								<h2 id="step-2-title">2. {number_of_features} Features Selected</h2>
-
 								<span class="train-step-action train-step-status">
 									<button
 										type="button"
-										class="btn reopen-btn"
-										aria-label="Edit Select Features">
+										class="btn btn-small"
+										aria-label="{edit step label}">
 										Edit
 									</button>
 									<span class="visually-hidden">Completed</span>
-									<svg
-										aria-hidden="true"
-										width="20"
-										height="20"
-										viewBox="0 0 24 24"
-										fill="currentColor">
-										<path
-											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									<svg class="icon" aria-hidden="true">
+										<use href="#check" />
 									</svg>
 								</span>
 							</header>
@@ -209,23 +195,16 @@
 						<section class="train-step-panel" aria-labelledby="step-3-title">
 							<header class="train-step-header">
 								<h2 id="step-3-title">3. Model Configured</h2>
-
 								<span class="train-step-action train-step-status">
 									<button
 										type="button"
-										class="btn reopen-btn"
-										aria-label="Edit Configure Model">
+										class="btn btn-small"
+										aria-label="{edit step label}">
 										Edit
 									</button>
 									<span class="visually-hidden">Completed</span>
-									<svg
-										aria-hidden="true"
-										width="20"
-										height="20"
-										viewBox="0 0 24 24"
-										fill="currentColor">
-										<path
-											d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path>
+									<svg class="icon" aria-hidden="true">
+										<use href="#check" />
 									</svg>
 								</span>
 							</header>
@@ -255,17 +234,35 @@
 											id="strategy"
 											name="strategy"
 											class="field-control"
-											aria-describedby="strategy-help">
+											aria-describedby="strategy-description">
 											<option value="one_shot">One-Shot</option>
 											<option value="nested_cv" selected>
 												Cross-Validation
 											</option>
 										</select>
 										<div id="strategy-help" class="field-description">
-											<p>
-												How the rows are divided to train and evaluate the
-												model. <a href="/help/training-setup">Learn more</a>
-											</p>
+											<div id="strategy-description">
+												<!-- One-Shot Description -->
+												<!-- This will display when One-Shot is selected. -->
+												<p>
+													Train once on one part of the data and test on
+													the part set aside.
+												</p>
+												<p class="field-dependent">
+													Requests an 80% training and 20% held-out test
+													split.
+												</p>
+												<!-- / One-Shot Description -->
+												<!-- Cross-Validation Description -->
+												<!-- This will display when Cross-Validation is selected. -->
+												<p>
+													Divide the data into groups, then train and
+													check a model several times, using a different
+													group for the check each time.
+												</p>
+												<!-- / Cross-Validation Description -->
+											</div>
+											<p><a href="/help/training-setup">Learn more</a></p>
 										</div>
 									</div>
 

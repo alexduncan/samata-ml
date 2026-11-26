@@ -1,14 +1,16 @@
 import { html } from 'lit';
 import type { Meta, StoryObj } from '@storybook/web-components-vite';
-import { expect, fn, waitFor } from 'storybook/test';
-import { $route } from '../../router/router';
-import { $appState } from '../../stores/app.store';
+import { expect, fn, userEvent, waitFor } from 'storybook/test';
+import { $route, initRouter, navigate, stopRouter } from '../../router/router';
+import { $appState, reduceWizardStep } from '../../stores/app.store';
 import { $modelResults, currentResultIdentity } from '../../stores/model-results.store';
 import { irisCrossValidation } from '../../../tests/fixtures/results/evaluations';
+import { fixtureTrainingResult } from '../../../tests/fixtures/training/results-v2';
 import { $datasetResources, type ResourceStatus } from '../../stores/dataset.store';
 import {
 	$trainingSession,
 	appendTrainingLog,
+	applyTrainingSessionUpdate,
 	createTrainingSession,
 	setTrainingSessionStatus
 } from '../../stores/training.store';
@@ -16,7 +18,8 @@ import {
 	DEFAULT_ONE_SHOT_SETUP,
 	INITIAL_APP_STATE,
 	type ModelRecord,
-	type PersistedAppState
+	type PersistedAppState,
+	type ProvisionalModelIdentity
 } from '../../types/state';
 import type { DatasetMetadata } from '../../types/dataset';
 import type { TrainingRunIdentity } from '../../types/model-result';
@@ -24,9 +27,11 @@ import { featureA11yFindings } from '../../../tests/a11y-feature-findings';
 import {
 	$publicationPending,
 	createTrainingService,
-	setTrainingServiceForTesting
+	setTrainingServiceForTesting,
+	type TrainingCommandResult
 } from './training/training-service';
 import './app-model-builder-view';
+import '../shell/app-content-modal';
 
 const builderFindings = featureA11yFindings.filter(
 	(f) => f.target[0]?.[0] === 'app-model-builder-view'
@@ -55,17 +60,24 @@ function model(overrides: Partial<ModelRecord>): ModelRecord {
 	};
 }
 
-function seed(targetType: 'categorical' | 'numeric', overrides: Partial<ModelRecord> = {}) {
-	const target = targetType === 'categorical' ? 'class' : 'sepal length';
+function seed(
+	targetType: 'categorical' | 'numeric' | 'boolean',
+	overrides: Partial<ModelRecord> = {}
+) {
+	const target = targetType === 'numeric' ? 'sepal length' : 'class';
 	const columns = [
 		{ name: 'sepal length', type: 'numeric', missingCount: 0 },
 		{ name: 'petal length', type: 'numeric', missingCount: 0 },
 		{ name: 'petal width', type: 'numeric', missingCount: 0 },
-		{ name: 'class', type: 'categorical', missingCount: 0 }
+		{
+			name: 'class',
+			type: targetType === 'boolean' ? 'boolean' : 'categorical',
+			missingCount: 0
+		}
 	] as const;
 	const state: PersistedAppState = {
 		...structuredClone(INITIAL_APP_STATE),
-		onboarding: { welcomeDismissed: true },
+		onboarding: { welcomeDismissed: true, betaTelemetryAccepted: false },
 		dataset: {
 			id: 'iris',
 			name: 'Iris',
@@ -101,7 +113,9 @@ function seed(targetType: 'categorical' | 'numeric', overrides: Partial<ModelRec
 							distinctCount: 3,
 							categoryCounts: { a: 50, b: 50, c: 50 }
 						}
-					: { ...c, count: 150, min: 0, max: 1, mean: 0, median: 0, integer: false }
+					: c.type === 'boolean'
+						? { ...c, trueCount: 75, falseCount: 75, lexicon: ['true', 'false'] }
+						: { ...c, count: 150, min: 0, max: 1, mean: 0, median: 0, integer: false }
 			)
 		} as unknown as DatasetMetadata
 	});
@@ -166,8 +180,28 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** Section 3 active with the Logistic Regression form. */
-export const ConfigureModel: Story = { beforeEach: () => seed('categorical') };
+/** Section 2 has an inline link to the feature selection article. */
+export const SelectFeaturesHelp: Story = {
+	beforeEach: () => seed('categorical', { completedSteps: ['choose-model'] }),
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const link = builder.shadowRoot!.querySelector('h2#step-2-title .help-link');
+		expect(link).toHaveTextContent('What are features?');
+		expect(link).toHaveAttribute('href', '/help/select-features');
+	}
+};
+/** Section 3 active with the Logistic Regression form and its inline Help link. */
+export const ConfigureModel: Story = {
+	beforeEach: () => seed('categorical'),
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const link = builder.shadowRoot!.querySelector('h2#step-3-title .help-link');
+		expect(link).toHaveTextContent('What do these settings mean?');
+		expect(link).toHaveAttribute('href', '/help/configure-model');
+	}
+};
 /** Sections 1 to 3 complete, so axe checks the Section 3 Edit button name. */
 export const ConfigureModelComplete: Story = {
 	beforeEach: () =>
@@ -175,10 +209,163 @@ export const ConfigureModelComplete: Story = {
 			completedSteps: ['choose-model', 'select-features', 'configure-model']
 		})
 };
+/** Editing an earlier completed section starts at the safe Cancel action. */
+export const ReopenSectionConfirmation: Story = {
+	beforeEach: () => seedTraining(),
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const root = builder.shadowRoot!;
+		await userEvent.click(
+			root.querySelector<HTMLButtonElement>('[aria-label="Edit Choose Model"]')!
+		);
+		const dialog = root.querySelector<HTMLDialogElement>(
+			'dialog[data-confirm="reopen-section"]'
+		)!;
+		await expect(dialog).toBeVisible();
+		await expect(dialog.querySelector('.confirm-body .notification-alert')).toBeNull();
+		expect(root.activeElement).toBe(dialog.querySelector('.confirm-footer button'));
+	}
+};
+
+const provisionalIdentity: ProvisionalModelIdentity = {
+	datasetId: 'iris',
+	target: 'class',
+	comparisonContextEpoch: INITIAL_APP_STATE.comparisonContextEpoch,
+	modelNum: 1,
+	modelCreatedAt: 1
+};
+
+function seedLeaveFixture(
+	result?: () => Promise<TrainingCommandResult>,
+	covered = false
+): () => void {
+	const restore = seedTraining();
+	const originalUrl = window.location.href;
+	const originalState = window.history.state;
+	const originalTitle = document.title;
+	$appState.set({ ...$appState.get(), newModelNum: 1 });
+	const state = {
+		v: 1,
+		entryId: 'leave-story-source',
+		provisional: { kind: 'bound', identity: provisionalIdentity },
+		...(covered ? { underlayPath: '/models/new' } : {})
+	};
+	window.history.replaceState(state, '', covered ? '/help' : '/models/new');
+	initRouter();
+	if (!covered) navigate('/target');
+	if (result)
+		setTrainingServiceForTesting({ ...createTrainingService(), abandonNewModel: result });
+	return () => {
+		setTrainingServiceForTesting();
+		stopRouter();
+		window.history.replaceState(originalState, '', originalUrl);
+		document.title = originalTitle;
+		restore();
+	};
+}
+
+/** Leaving an unfinished provisional wizard initially focuses the safe Stay action. */
+export const LeaveConfirmation: Story = {
+	beforeEach: () => seedLeaveFixture(),
+	play: async ({ canvasElement }) => {
+		const root = canvasElement.querySelector('app-model-builder-view')!.shadowRoot!;
+		await waitFor(() =>
+			expect(root.querySelector('dialog[data-confirm="leave-new-model"]')).toBeVisible()
+		);
+		expect(root.activeElement).toBe(root.querySelector('[data-stay]'));
+	}
+};
+
+/** A busy departure holds its dialog while the protected operation settles. */
+export const LeavePending: Story = {
+	beforeEach: () => {
+		const operation = Promise.withResolvers<TrainingCommandResult>();
+		const restore = seedLeaveFixture(() => operation.promise);
+		return () => {
+			restore();
+			operation.resolve({ ok: false, code: 'busy' });
+		};
+	},
+	play: async ({ canvasElement }) => {
+		const root = canvasElement.querySelector('app-model-builder-view')!.shadowRoot!;
+		await waitFor(() =>
+			expect(root.querySelector('dialog[data-confirm="leave-new-model"]')).toBeVisible()
+		);
+		await userEvent.click(
+			root.querySelector('dialog[data-confirm="leave-new-model"] button.btn-primary')!
+		);
+		await waitFor(() =>
+			expect(
+				root.querySelector('dialog[data-confirm="leave-new-model"] [role="status"]')
+			).toHaveTextContent('Leaving the model')
+		);
+		await expect(root.querySelector('[data-stay]')).toBeDisabled();
+	}
+};
+
+/** A protected leave failure keeps the draft and offers another attempt. */
+export const LeaveError: Story = {
+	beforeEach: () => seedLeaveFixture(async () => ({ ok: false, code: 'remote-training' })),
+	play: async ({ canvasElement }) => {
+		const root = canvasElement.querySelector('app-model-builder-view')!.shadowRoot!;
+		await waitFor(() =>
+			expect(root.querySelector('dialog[data-confirm="leave-new-model"]')).toBeVisible()
+		);
+		await userEvent.click(
+			root.querySelector('dialog[data-confirm="leave-new-model"] button.btn-primary')!
+		);
+		await waitFor(() =>
+			expect(
+				root.querySelector('dialog[data-confirm="leave-new-model"] [role="alert"]')
+			).toHaveTextContent('This model is busy')
+		);
+		await expect(root.querySelector('[data-stay]')).toBeEnabled();
+	}
+};
+
+/** The same provisional model remains mounted underneath Help without opening a leave confirmation. */
+export const LeaveCoveredByHelp: Story = {
+	beforeEach: () => seedLeaveFixture(undefined, true),
+	render: () => html`${meta.render()}<app-content-modal></app-content-modal>`,
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const dialog = canvasElement.querySelector('app-content-modal')!;
+		await waitFor(() =>
+			expect(
+				dialog
+					.shadowRoot!.querySelector('app-content-dialog')
+					?.shadowRoot?.querySelector('dialog')
+			).toBeVisible()
+		);
+		expect(builder.shadowRoot!.querySelector('h1')).toHaveTextContent('Model 1');
+		expect(
+			builder.shadowRoot!.querySelector('dialog[data-confirm="leave-new-model"]')
+		).not.toBeVisible();
+	}
+};
 /** WML-P2-UI-8: Section 4 ready for an eligible target. */
 export const ConfigureTraining: Story = {
 	name: 'WML-P2-UI-8: ConfigureTraining',
-	beforeEach: () => seedTraining()
+	beforeEach: () => seedTraining(),
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const link = builder.shadowRoot!.querySelector('h2#step-4-title .help-link');
+		expect(link).toHaveTextContent('What is this?');
+		expect(link).toHaveAttribute('href', '/help/training-setup');
+		const setup = builder.shadowRoot!.querySelector('app-training-setup')!;
+		await setup.updateComplete;
+		const root = setup.shadowRoot!;
+		const description = root.getElementById('strategy-description')!;
+		expect(description.textContent).toContain('Train once on one part of the data');
+		await userEvent.selectOptions(root.querySelector('select')!, 'nested_cv');
+		await builder.updateComplete;
+		await setup.updateComplete;
+		expect(description.textContent).toContain('Divide the data into groups');
+		expect(description.textContent).not.toContain('80%');
+	}
 };
 /** A saved draft from before training became available can reopen its setup. */
 export const TrainingSetupCompleted: Story = {
@@ -205,7 +392,7 @@ const identity: TrainingRunIdentity = {
 	runId: 'story-run'
 };
 
-function seedRun(status: 'training' | 'trained', completed: boolean) {
+function seedRun(status: 'training' | 'trained', completed: boolean, provisional = false) {
 	const restore = seedTraining('ready', true);
 	const state = $appState.get();
 	const previousSessions = $trainingSession.get();
@@ -213,11 +400,14 @@ function seedRun(status: 'training' | 'trained', completed: boolean) {
 	const record = state.models[0]!;
 	$appState.set({
 		...state,
+		newModelNum: provisional && status === 'training' ? identity.modelNum : null,
 		models: [
 			{
 				...record,
 				status,
 				resultRevision: identity.runId,
+				provisionalCompletedRunId:
+					provisional && status === 'trained' ? identity.runId : null,
 				durationMs: status === 'trained' ? 2100 : null,
 				completedSteps: completed
 					? [...record.completedSteps, 'training']
@@ -225,6 +415,14 @@ function seedRun(status: 'training' | 'trained', completed: boolean) {
 			}
 		]
 	});
+	if (provisional) {
+		$route.set({
+			kind: 'workflow',
+			path: '/models/new',
+			section: 3,
+			provisional: { kind: 'bound', identity: provisionalIdentity }
+		});
+	}
 	$trainingSession.set(new Map());
 	createTrainingSession(identity);
 	return () => {
@@ -271,9 +469,11 @@ const retryPublication = fn(async () => {
 	const state = $appState.get();
 	$appState.set({
 		...state,
+		newModelNum: null,
 		models: state.models.map((entry) => ({
 			...entry,
 			status: 'trained',
+			provisionalCompletedRunId: identity.runId,
 			durationMs: 2100,
 			completedSteps: [...entry.completedSteps, 'training']
 		}))
@@ -283,15 +483,24 @@ const retryPublication = fn(async () => {
 	return { ok: true, value: undefined } as const;
 });
 
+const loadProvisionalResult = (async (_num, expected) =>
+	expected ? { ...fixtureTrainingResult(), ...expected } : null) satisfies ReturnType<
+	typeof createTrainingService
+>['loadCompletedResult'];
+
 /** Committed result recovery retries saving through the service and enables View Results. */
 export const ResultPublicationPending: Story = {
 	beforeEach: () => {
-		const restore = seedRun('training', false);
+		const restore = seedRun('training', false, true);
 		setTrainingSessionStatus(identity, 'saving');
 		setTrainingSessionStatus(identity, 'publication-pending');
 		$publicationPending.set({ operationId: 'story-save', kind: 'finish', identity });
 		retryPublication.mockClear();
-		setTrainingServiceForTesting({ ...createTrainingService(), retry: retryPublication });
+		setTrainingServiceForTesting({
+			...createTrainingService(),
+			retry: retryPublication,
+			loadCompletedResult: loadProvisionalResult
+		});
 		return restore;
 	},
 	play: async ({ canvasElement }) => {
@@ -319,40 +528,144 @@ export const StoppedRepairPending: Story = {
 	}
 };
 
+/** The visible attempt becomes a stopped state with its own measured progress and actions. */
+export const TrainingStopped: Story = {
+	beforeEach: () => {
+		const restore = seedRun('training', false);
+		setTrainingSessionStatus(identity, 'running');
+		applyTrainingSessionUpdate(identity, {
+			progress: {
+				percent: 25,
+				stage: 'fitting',
+				phase: 'training',
+				statusMessage: 'training'
+			},
+			note: { key: 'phase', phase: 'training' }
+		});
+		setTrainingServiceForTesting({
+			...createTrainingService(),
+			activeIdentity: () => identity
+		});
+		return restore;
+	},
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const panel = builder.shadowRoot!.querySelector('[data-testid=training-step]')!;
+		panel.querySelector<HTMLButtonElement>('header button')!.focus();
+		const state = $appState.get();
+		$appState.set({
+			...state,
+			models: state.models.map((entry) => ({
+				...entry,
+				status: 'draft',
+				resultRevision: null,
+				completedSteps: entry.completedSteps.filter(
+					(step) => step !== 'configure-training'
+				),
+				error: { code: 'TRAINING_CANCELLED', message: 'Training cancelled', timestamp: 2 }
+			}))
+		});
+		setTrainingSessionStatus(identity, 'cancelled');
+		await waitFor(() =>
+			expect(panel.querySelector('h2')).toHaveTextContent('5. Training Stopped')
+		);
+		const retry = panel.querySelector('[data-stopped-retry]');
+		expect(retry).toBeEnabled();
+		expect(builder.shadowRoot!.activeElement).toBe(retry);
+		const progress = panel.querySelector('app-training-progress')!;
+		expect(progress.shadowRoot!.querySelector('progress')).toHaveAttribute('value', '25');
+	}
+};
+
 /** A completed result is available for acknowledgement, with history still inspectable. */
 export const TrainingComplete: Story = {
 	beforeEach: () => {
-		const restore = seedRun('trained', true);
+		const restore = seedRun('trained', true, true);
+		setTrainingServiceForTesting({
+			...createTrainingService(),
+			loadCompletedResult: loadProvisionalResult
+		});
 		setTrainingSessionStatus(
 			identity,
 			'complete',
 			appendTrainingLog([], { key: 'completed' }, 1)
 		);
 		return restore;
+	},
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const panel = builder.shadowRoot!.querySelector('[data-testid=training-step]')!;
+		await waitFor(() => expect(panel.querySelector('header button:last-child')).toBeEnabled());
 	}
 };
+
+/** The read-only fallback formats large model numbers in the active locale. */
+export const UnavailableProvisionalResult: Story = {
+	beforeEach: () => {
+		const restore = seedRun('trained', true, true);
+		const appState = $appState.get();
+		$appState.set({
+			...appState,
+			models: [{ ...appState.models[0]!, num: 1001 }],
+			nextModelNum: 1002
+		});
+		$route.set({
+			kind: 'workflow',
+			path: '/models/new',
+			section: 3,
+			provisional: { kind: 'bound', identity: { ...provisionalIdentity, modelNum: 1001 } }
+		});
+		setTrainingServiceForTesting({
+			...createTrainingService(),
+			loadCompletedResult: async () => null
+		});
+		return restore;
+	},
+	render: () => html`<app-model-builder-view model-num="1001"></app-model-builder-view>`,
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const root = builder.shadowRoot!;
+		await waitFor(() =>
+			expect(root.querySelector('[data-testid="provisional-route"]')).toBeVisible()
+		);
+		expect(root.querySelector('h1')).toHaveTextContent('Model 1,001');
+	}
+};
+
+function seedShownResult(label?: string) {
+	const restore = seedRun('trained', true);
+	const state = $appState.get();
+	const previous = $modelResults.get();
+	const record = state.models[0]!;
+	$appState.set({
+		...state,
+		models: [
+			{
+				...record,
+				completedSteps: [...record.completedSteps, 'results'],
+				modelLabel: label ?? null,
+				modelColor: 'blue'
+			}
+		]
+	});
+	const identity = currentResultIdentity(1);
+	if (identity) {
+		$modelResults.set({
+			1: { identity, status: 'ready', evaluation: irisCrossValidation(), error: '' }
+		});
+	}
+	return () => {
+		$modelResults.set(previous);
+		restore();
+	};
+}
+
 /** Section 6 shows the shared results of an acknowledged trained model. */
 export const ModelResultsShown: Story = {
-	beforeEach: () => {
-		const restore = seedRun('trained', true);
-		const state = $appState.get();
-		const previous = $modelResults.get();
-		const record = state.models[0]!;
-		$appState.set({
-			...state,
-			models: [{ ...record, completedSteps: [...record.completedSteps, 'results'] }]
-		});
-		const identity = currentResultIdentity(1);
-		if (identity) {
-			$modelResults.set({
-				1: { identity, status: 'ready', evaluation: irisCrossValidation(), error: '' }
-			});
-		}
-		return () => {
-			$modelResults.set(previous);
-			restore();
-		};
-	},
+	beforeEach: () => seedShownResult(),
 	play: async ({ canvasElement }) => {
 		const builder = canvasElement.querySelector('app-model-builder-view')!;
 		await builder.whenSettled();
@@ -362,22 +675,104 @@ export const ModelResultsShown: Story = {
 		);
 	}
 };
+
+/** A trained numeric route starts at a heading and shows the saved evaluation. */
+export const NumberedModelResults: Story = {
+	beforeEach: () => seedShownResult(),
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.whenSettled();
+		const root = builder.shadowRoot!;
+		expect(root.querySelector('h1.model-results')).toHaveTextContent(
+			'1 Logistic Regression Results'
+		);
+		expect(root.querySelector('.swatch-large')).toHaveClass('swatch-blue');
+		const results = root.querySelector('app-model-results')!;
+		const details = results.shadowRoot!.querySelector('details.training-summary')!;
+		await userEvent.click(details.querySelector('summary')!);
+		expect(details).toHaveAttribute('open');
+	}
+};
+
+/** The saved label wraps with its palette number in a right-to-left result heading. */
+export const NumberedResultsLongLabelRTL: Story = {
+	beforeEach: () => {
+		const restore = seedShownResult('A very long saved label with UnbrokenModelNameThatWraps');
+		const direction = document.documentElement.dir;
+		document.documentElement.dir = 'rtl';
+		return () => {
+			document.documentElement.dir = direction;
+			restore();
+		};
+	}
+};
+/** All illustrated classifiers are available for a categorical target. */
+export const ChooseCategoricalModel: Story = {
+	beforeEach: () => seed('categorical', { completedSteps: [], modelId: null, features: [] })
+};
+/** All illustrated classifiers are available for a Boolean target. */
+export const ChooseBooleanModel: Story = {
+	beforeEach: () => seed('boolean', { completedSteps: [], modelId: null, features: [] })
+};
+/** The current choice stays visible while Section 1 is active. */
+export const ChooseModelSelected: Story = {
+	beforeEach: () => seed('categorical', { completedSteps: [], features: [] })
+};
+/** Acknowledging Select Model closes the card panel and focuses the next heading. */
+export const AcknowledgeModelChoice: Story = {
+	beforeEach: () => {
+		const previous = $route.get();
+		seed('categorical', { completedSteps: [], modelId: null, features: [] });
+		$route.set({ kind: 'workflow', path: '/models/1', section: 3, modelNum: 1 });
+		setTrainingServiceForTesting({
+			...createTrainingService(),
+			async saveWizardStep(num, submission) {
+				const current = $appState.get();
+				const draft = current.models.find((entry) => entry.num === num);
+				const next = draft && reduceWizardStep(current, draft, submission);
+				if (!next) return { ok: false, code: 'invalid-request' };
+				$appState.set(next);
+				return { ok: true, value: undefined };
+			}
+		});
+		return () => {
+			setTrainingServiceForTesting();
+			$route.set(previous);
+		};
+	},
+	play: async ({ canvasElement }) => {
+		const builder = canvasElement.querySelector('app-model-builder-view')!;
+		await builder.updateComplete;
+		const root = builder.shadowRoot!;
+		const card = root.querySelector('app-model-card[model-id="logistic-regression"]')!;
+		await userEvent.click(
+			card.shadowRoot!.querySelector<HTMLButtonElement>('button.btn-primary')!
+		);
+		await waitFor(() => expect(root.activeElement?.id).toBe('step-2-title'));
+		expect(root.querySelectorAll('.step-active[aria-current="step"]')).toHaveLength(1);
+		expect(root.querySelector('#step-1-title')).toHaveTextContent('1. Logistic Regression');
+	}
+};
 /** A numeric target has no classification model. */
 export const NoClassifierNumericTarget: Story = {
 	beforeEach: () => seed('numeric', { completedSteps: [], modelId: null, features: [] })
 };
-/** Section 3 beside a long saved value. */
+/** A long completed model name wraps beside its Edit control. */
 export const LongLabel: Story = {
 	beforeEach: () =>
 		seed('categorical', {
-			modelId: 'support-vector-classifier',
-			hyperparameters: { mode: 'manual', values: { C: 123456.789 } }
+			modelId: 'Model for comparing several groups using a deliberately long name',
+			completedSteps: ['choose-model']
 		})
 };
 /** Right-to-left direction. */
 export const RTL: Story = {
 	beforeEach: () => {
-		seed('categorical');
+		const direction = document.documentElement.dir;
+		seed('categorical', { completedSteps: ['choose-model'] });
 		document.documentElement.dir = 'rtl';
+		return () => {
+			document.documentElement.dir = direction;
+		};
 	}
 };

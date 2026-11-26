@@ -34,13 +34,105 @@ describe('DatasetProfiler', () => {
 	it('elects date order from forcing dates and marks an assumed DMY order', () => {
 		const forced = profile(['05/03/2024', '25/03/2024'], 'date');
 		expect(forced).toMatchObject({
-			type: 'datetime',
+			type: 'date',
 			format: { kind: 'date', order: 'DMY', orderAssumed: false }
 		});
 		const assumed = profile(['05/03/2024', '06/03/2024'], 'date');
 		expect(assumed).toMatchObject({
-			type: 'datetime',
+			type: 'date',
 			format: { kind: 'date', order: 'DMY', orderAssumed: true }
+		});
+	});
+
+	describe('temporal election', () => {
+		const repeat = (value: string, count: number): string[] => Array(count).fill(value);
+
+		it('TEMP-AC-8: elects date, datetime, time or neither from the worked examples', () => {
+			expect(profile(repeat('2013-08-14', 100))).toMatchObject({
+				type: 'date',
+				invalidCount: 0
+			});
+			expect(profile(repeat('2013-08-14 00:00:00', 100))).toMatchObject({
+				type: 'date',
+				invalidCount: 0
+			});
+			expect(profile([...repeat('2013-08-14', 99), '2013-08-13 06:03:42'])).toMatchObject({
+				type: 'date',
+				invalidCount: 1,
+				invalidExamples: ['2013-08-13 06:03:42']
+			});
+			expect(profile([...repeat('2013-08-14', 99), 'banana'])).toMatchObject({
+				type: 'date',
+				invalidCount: 1,
+				invalidExamples: ['banana']
+			});
+			expect(
+				profile([...repeat('2013-08-14', 97), ...repeat('2013-08-13 06:03:42', 3)])
+			).toMatchObject({
+				type: 'datetime',
+				format: { kind: 'date', order: 'ISO' },
+				invalidCount: 0
+			});
+			expect(['categorical', 'text']).toContain(
+				profile([...repeat('2013-08-14', 95), ...repeat('banana', 5)]).type
+			);
+			expect(
+				profile(Array.from({ length: 100 }, (_, i) => (i % 2 ? '09:30' : '17:45:10')))
+			).toMatchObject({
+				type: 'time',
+				invalidCount: 0
+			});
+			expect(['categorical', 'text']).toContain(
+				profile([...repeat('2013-08-14', 50), ...repeat('09:30', 50)]).type
+			);
+			expect(
+				profile(['999999000', '999999731', '1000000417', '1000086400'], 'value')
+			).toMatchObject({
+				type: 'datetime',
+				format: { kind: 'epoch', unit: 's' },
+				invalidCount: 0
+			});
+			expect(
+				profile(Array.from({ length: 50 }, (_, i) => String(1_000_000_000 + i)))
+			).toMatchObject({ type: 'numeric', identifierHint: true });
+			expect(
+				profile(Array.from({ length: 50 }, (_, i) => String(10_000_000_000 + i * 7)))
+			).toMatchObject({ type: 'numeric' });
+		});
+
+		it('TEMP-AC-9: year-last date order decides between date and datetime', () => {
+			const dateOnly = Array.from({ length: 100 }, (_, i) => `${14 + (i % 10)}/08/2013`);
+			expect(profile(dateOnly)).toMatchObject({
+				type: 'date',
+				format: { kind: 'date', order: 'DMY' }
+			});
+			const withTimes = dateOnly.map((value, i) => (i % 20 === 0 ? `${value} 10:00` : value));
+			expect(profile(withTimes)).toMatchObject({
+				type: 'datetime',
+				format: { kind: 'date', order: 'DMY' }
+			});
+		});
+
+		it('TEMP-AC-10: time and epoch latches switch off after a bad first 1,000 rows', () => {
+			const times = [...repeat('abc', 30), ...repeat('09:30', 970), ...repeat('09:30', 4000)];
+			expect(profile(times).type).not.toBe('time');
+			expect(profile([...repeat('abc', 30), ...repeat('09:30', 970)]).type).not.toBe('time');
+			const epochs = [
+				...repeat('abc', 30),
+				...Array.from({ length: 4970 }, (_, i) => String(1_700_000_000 + i * 7))
+			];
+			expect(profile(epochs).type).not.toBe('datetime');
+		});
+
+		it('TEMP-AC-12: a descriptor override to date uses the date-only counters', () => {
+			const profiler = new DatasetProfiler(['d'], { overrides: { d: 'date' } });
+			for (const value of ['14/08/2013', '05/03/2013', '20/01/2013'])
+				profiler.addRow([value]);
+			expect(profiler.elect()[0]).toMatchObject({
+				type: 'date',
+				format: { kind: 'date', order: 'DMY', orderAssumed: false },
+				invalidCount: 0
+			});
 		});
 	});
 

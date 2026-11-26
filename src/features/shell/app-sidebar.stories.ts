@@ -9,13 +9,27 @@ import './app-sidebar';
 const prepare =
 	(fixture: SidebarFixture, rtl = false) =>
 	() => {
+		const previousState = $appState.get();
+		const previousRoute = $route.get();
+		const direction = document.documentElement.dir;
 		$appState.set(createSidebarFixture(fixture));
 		$route.set(
 			parseRoute(
-				fixture === 'models' ? '/models/2' : fixture === 'target' ? '/target' : '/data'
+				fixture === 'models'
+					? '/models/2'
+					: fixture === 'provisional'
+						? '/models/new'
+						: fixture === 'target'
+							? '/target'
+							: '/data'
 			)
 		);
 		if (rtl) document.documentElement.dir = 'rtl';
+		return () => {
+			$appState.set(previousState);
+			$route.set(previousRoute);
+			document.documentElement.dir = direction;
+		};
 	};
 const meta = {
 	title: 'Shell/Sidebar',
@@ -40,9 +54,11 @@ export const Empty: Story = { beforeEach: prepare('empty') };
 export const DatasetLoaded: Story = { beforeEach: prepare('dataset') };
 /** Target name and type alongside the loaded dataset. */
 export const TargetSet: Story = { beforeEach: prepare('target') };
-/** Draft, training and trained models, with the second model current. */
+/** Trained links with catalogue and saved names, with the second result current. */
 export const Models: Story = { beforeEach: prepare('models') };
+/** The active provisional wizard has a static current row below the trained links. */
+export const Provisional: Story = { beforeEach: prepare('provisional') };
 /** Unbroken long values and a large grouped row count. */
 export const LongLabel: Story = { beforeEach: prepare('long') };
 /** Logical layout inheriting right-to-left document direction. */
-export const RTL: Story = { beforeEach: prepare('models', true) };
+export const RTL: Story = { beforeEach: prepare('long', true) };

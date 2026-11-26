@@ -10,6 +10,11 @@
 	font-size: 1rem;
 	text-align: center;
 
+	&.btn-small {
+		padding: 0.25rem 0.5rem;
+		font-size: 0.875rem;
+	}
+
 	&:hover {
 		border-color: var(--stone-400);
 		background-color: var(--stone-200);

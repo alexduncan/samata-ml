@@ -110,7 +110,8 @@ async function fetchAndValidateIndex<D extends ContentDomain>(
 	domain: D,
 	signal?: AbortSignal
 ): Promise<ContentIndex<D>> {
-	const url = `/content/${locale}/${domain}/index.json`;
+	const suffix = CONTENT_INDEX_VERSION ? `?v=${encodeURIComponent(CONTENT_INDEX_VERSION)}` : '';
+	const url = `/content/${locale}/${domain}/index.json${suffix}`;
 	let response: Response;
 	try {
 		response = await fetch(url, { signal });

@@ -58,12 +58,13 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		await expect(overview.locator('.empty-message')).toContainText(
 			'No models yet. Train a new model to get started.'
 		);
-		const trainNewBtn = overview.locator('button:has-text("Train New Model")');
+		const trainNewBtn = overview.getByRole('link', { name: 'Train New Model' });
 		await expect(trainNewBtn).toBeEnabled();
 
-		// 4. Create Model 1: click Train New Model -> navigates to /models/1
+		// The new URL binds Model 1 after the protected save.
 		await trainNewBtn.click();
-		await expect(page).toHaveURL(/\/models\/1$/);
+		await expect(page).toHaveURL('/models/new');
+		await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
 
 		// Return to /models overview
 		await page.goto('/models');
@@ -80,21 +81,46 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		await expect(rows.nth(0).locator('td').nth(3)).toHaveText('Not trained'); // Duration
 		const actionLink1 = rows.nth(0).locator('td').nth(4).locator('a');
 		await expect(actionLink1).toHaveText('Continue');
-		await expect(actionLink1).toHaveAttribute('href', '/models/1');
+		await expect(actionLink1).toHaveAttribute('href', '/models/new');
 
-		// 5. Create Model 2: click Train New Model -> navigates to /models/2
-		await overview.locator('button:has-text("Train New Model")').click();
-		await expect(page).toHaveURL(/\/models\/2$/);
-
-		// Return to /models overview
+		await actionLink1.click();
+		await expect(page).toHaveURL('/models/new');
+		await expect(page.locator('app-model-builder-view')).toHaveAttribute('model-num', '1');
+		await page.reload();
+		await expect(page.locator('app-model-builder-view')).toHaveAttribute('model-num', '1');
 		await page.goto('/models');
-		rows = table.locator('tbody tr');
-		await expect(rows).toHaveCount(2);
-		await expect(rows.nth(0).locator('th[scope="row"]')).toHaveText('Model 1');
-		await expect(rows.nth(1).locator('th[scope="row"]')).toHaveText('Model 2');
-		const actionLink2 = rows.nth(1).locator('td').nth(4).locator('a');
-		await expect(actionLink2).toHaveText('Continue');
-		await expect(actionLink2).toHaveAttribute('href', '/models/2');
+		await trainNewBtn.click();
+		await expect(page.locator('app-model-builder-view')).toHaveAttribute('model-num', '1');
+		await page.goto('/models');
+		await expect(rows).toHaveCount(1);
+
+		// Historic projects may also have legacy numbered drafts.
+		const legacyDrafts = await page.evaluate(() => {
+			const state = JSON.parse(localStorage.getItem('samata-ml:state')!) as ReturnType<
+				NonNullable<Window['__appState']>['get']
+			>;
+			const first = state.models[0]!;
+			return JSON.stringify({
+				...state,
+				models: [
+					...state.models,
+					{ ...first, num: 2, createdAt: first.createdAt + 1 },
+					{ ...first, num: 3, createdAt: first.createdAt + 2 }
+				],
+				nextModelNum: 4
+			});
+		});
+		await page.addInitScript((drafts) => {
+			if (sessionStorage.getItem('legacy-models-initialised')) return;
+			localStorage.setItem('samata-ml:state', drafts);
+			sessionStorage.setItem('legacy-models-initialised', 'yes');
+		}, legacyDrafts);
+		await page.reload();
+		await expect(rows).toHaveCount(3);
+		await expect(rows.nth(1).getByRole('link', { name: 'Continue' })).toHaveAttribute(
+			'href',
+			'/models/2'
+		);
 
 		// 6. Test populated row with model selection and features
 		await page.evaluate(() => {
@@ -108,7 +134,7 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 						features: ['sepal width', 'sepal length'],
 						completedSteps: ['choose-model', 'select-features']
 					},
-					s.models[1]!
+					...s.models.slice(1)
 				]
 			});
 		});
@@ -134,10 +160,6 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		const unexpectedViolations = axeResults.violations.filter((v) => v.id !== 'color-contrast');
 		expect(unexpectedViolations).toEqual([]);
 
-		await overview.getByRole('button', { name: 'Train New Model' }).click();
-		await expect(page).toHaveURL(/\/models\/3$/);
-		await page.goto('/models');
-		await expect(rows).toHaveCount(3);
 		await page.evaluate(() => {
 			const store = window.__appState!;
 			const state = store.get();
@@ -235,14 +257,10 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 	}) => {
 		const setup = await openSetup(page);
 		const sidebar = page.locator('app-sidebar a[href="/models"]');
-		await sidebar.click();
 		const overview = page.locator('app-models-view');
 		const rows = overview.locator('table.table tbody tr');
 		const compareDisabled = overview.getByRole('button', { name: 'Compare Results' });
 		const compareHint = overview.locator('.compare-hint');
-		await expect(compareDisabled).toBeDisabled();
-		await expect(compareHint).toBeVisible();
-		await rows.first().getByRole('link', { name: 'Continue' }).click();
 		await setup.getByRole('button', { name: 'Train Model' }).click();
 		await expect(page.getByRole('button', { name: 'View Results' })).toBeEnabled({
 			timeout: 45_000
@@ -253,12 +271,12 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		await expect(firstResults).toHaveAttribute('href', '/models/1');
 		await expect(rows.first().locator('td:nth-child(5)')).toHaveText(/^\d+(?:\.\d+)?s$/);
 		await expect(compareDisabled).toBeDisabled();
+		await expect(compareHint).toBeVisible();
 		await firstResults.click();
-		await expect(page.locator('.train-step[aria-current="step"] h2')).toHaveText(
-			'5. Train Model'
-		);
-		await page.getByRole('button', { name: 'View Results' }).click();
-		await expect(page.getByRole('heading', { name: '6. Model Results' })).toBeFocused();
+		await expect(
+			page.getByRole('heading', { name: '1 Logistic Regression Results' })
+		).toBeFocused();
+		await expect(page.locator('app-model-results')).toBeVisible();
 		await sidebar.click();
 
 		const second = await configureDraft(page, 2);

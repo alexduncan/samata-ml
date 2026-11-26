@@ -139,6 +139,12 @@ test.describe('Target Selection & Confirmation (TARG-E2E-1 .. TARG-E2E-3)', () =
 	test('TARG-E2E-3: cancel/Esc keeps models/focus, confirm discards any existing model, dataset change while modal open cancels safely', async ({
 		page
 	}) => {
+		const diagnostics: string[] = [];
+		page.on('console', (message) => {
+			if (message.text().includes('Autofocus processing was blocked')) {
+				diagnostics.push(message.text());
+			}
+		});
 		// Load Iris dataset
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
@@ -201,13 +207,16 @@ test.describe('Target Selection & Confirmation (TARG-E2E-1 .. TARG-E2E-3)', () =
 		const dialog = targetView.locator('dialog.confirm-dialog');
 		await expect(dialog).toBeVisible();
 		await expect(dialog.locator('h2#confirm-target-title')).toHaveText('Change Target');
-		await expect(dialog.locator('.modal-body')).toContainText(
+		await expect(dialog.locator('.confirm-body')).toContainText(
 			'Confirmation: discard all models and set sepal length as the target?'
 		);
+		await expect(dialog.locator('.confirm-body .notification-alert')).toHaveCount(0);
 
 		// Cancel button is autofocused
 		const cancelBtn = dialog.locator('button:has-text("Cancel")');
 		await expect(cancelBtn).toBeFocused();
+		await page.mouse.click(2, 2);
+		await expect(dialog).toBeVisible();
 
 		// Press Escape to dismiss
 		await page.keyboard.press('Escape');
@@ -215,6 +224,7 @@ test.describe('Target Selection & Confirmation (TARG-E2E-1 .. TARG-E2E-3)', () =
 
 		// Focus is restored to the invoker button
 		await expect(sepalLengthBtn).toBeFocused();
+		expect(diagnostics).toEqual([]);
 
 		// State unchanged: class is still current target, model count is still 1
 		await expect(classRow.locator('button')).toHaveText('Current Target');

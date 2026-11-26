@@ -32,31 +32,31 @@ The labels contracts are: `ComparisonControlsLabels` (`group`, `models`, `limit`
 
 ## 4. Usage and states
 
-With fewer than two trained models, show a notification and Models link. While results load, wait before choosing the initial default. Legacy, lost and read-error results have their own explanations and retry or retraining actions. Incompatible groups are listed; a group with fewer than two selected keeps the controls and explains the requirement. An analysis error does not hide the other comparisons. The route's `focusHeading` never waits for data. `whenSettled` waits for resources, the initial terminal analysis and visible charts, but resolves when the view is superseded or disconnected.
+With fewer than two trained models, show a notification and Models link. While results load, wait before choosing the initial default. Legacy, lost and read-error results have their own explanations and retry or retraining actions. Incompatible groups are listed; a group with fewer than two selected keeps the controls and explains the requirement. The populated group puts one native “What do these results terms mean?” disclosure immediately after the metrics table. It starts closed and retains its native open state while that comparison remains mounted. A missing comparison projection has no disclosure. An analysis error does not hide the other comparisons. The route's `focusHeading` never waits for data. `whenSettled` waits for resources, the initial terminal analysis and visible charts, but resolves when the view is superseded or disconnected.
 
 ## 5. Visual specification
 
-The semantic draft is not normative for appearance until promoted. Apply shared table, notification and page-header styles and the chart-token exception in [visual design §1.1](../visual-design.md#11-draft-mockups). Measured visual-only deviations and human styling work are tracked in [HUMAN.md](../HUMAN.md). No winner styling is used.
+The semantic draft is not normative for appearance until promoted. Apply shared table, notification, page-header and native results disclosure styles and the chart-token exception in [visual design §1.1](../visual-design.md#11-draft-mockups). Measured visual-only deviations and human styling work are tracked in [HUMAN.md](../HUMAN.md). No winner styling is used.
 
 ## 6. Accessibility
 
-Use labelled native checkboxes, selects, buttons and a captioned table. Header buttons cycle ascending, descending and unsorted, with `aria-sort` on the active header. Keep baseline rows fixed. Pair selects prevent duplicate models; the swap button works with exactly two models, keeps focus and announces the committed order in a persistent status. Charts have captions, text and data-table disclosures; matrix regions are keyboard scrollable and signed counts include non-colour text. The selection limit and invalid width are visibly explained and associated with controls. The >20-class filter uses the same default and ordering as Section 6.
+Use labelled native checkboxes, selects, buttons and a captioned table. Header buttons cycle ascending, descending and unsorted, with `aria-sort` on the active header. Keep baseline rows fixed. Pair selects prevent duplicate models; the swap button works with exactly two models, keeps focus and announces the committed order in a persistent status. Charts have captions, text and data-table disclosures; matrix regions are keyboard scrollable and signed counts include non-colour text. The selection limit and invalid width are visibly explained and associated with controls. The >20-class filter uses the same default and ordering as Section 6. The terms summary adds one keyboard stop with a visible focus outline, a native marker and a target at least 24 × 24 CSS px. The definition list exposes expansion text for MCC, ROC-AUC and ECE directly beside the term.
 
 ## 7. Internationalisation
 
-The connected route supplies all user-facing text through the application i18n and formatter. Signed confusion values use locale-aware grouping and signs, including an unsigned zero. Labels and group reasons are complete translated messages rather than concatenated fragments.
+The connected route supplies all user-facing text through the application i18n and formatter. The shared `RESULT_TERM_COPY` inventory supplies the base `term.<id>.name`, `term.<id>.definition` and `term.<id>.expansion` messages. Signed confusion values use locale-aware grouping and signs, including an unsigned zero. Labels and group reasons are complete translated messages rather than concatenated fragments.
 
 ## 8. Acceptance criteria
 
-The executable contracts are `WML-P5-MODEL-*`, `WML-P5-STATE-*`, `WML-P5-ROPE-*`, `WML-P5-UI-*`, `JOURNEY-IRIS-COMPARE` and `JOURNEY-PENGUINS-COMPARE` in the Phase 5 plan and corresponding tests. Native screen-reader and browser-zoom observations were explicitly deferred to the human queue and have not yet been performed.
+The executable contracts are `WML-P5-MODEL-*`, `WML-P5-STATE-*`, `WML-P5-ROPE-*`, `WML-P5-UI-*`, `JOURNEY-IRIS-COMPARE` and `JOURNEY-PENGUINS-COMPARE` in the Phase 5 plan and corresponding tests. `TERM-AC-7` checks placement, persistence while mounted, sort and width behaviour, and the six-row fixture’s 83.3% pooled balanced accuracy and 25% table gap. `TERM-AC-9` checks the open disclosure at narrow widths, zoom and RTL, and with axe. Native Safari verified focus, term order, expanded state and actual 200% zoom for the disclosure. Spoken VoiceOver output and the broader Phase 5 assistive-technology checks are tracked in the human queue.
 
 ## 9. Stories
 
-The co-located stories cover populated, blocked, loading, unavailable, error, incompatible, long-label and RTL states. Chart and control stories cover their own variants and data tables.
+The co-located stories cover populated, blocked, loading, unavailable, error, incompatible, long-label and RTL states. The populated, long-label and RTL stories toggle the native disclosure. Non-ready and incompatible stories check its absence. Chart and control stories cover their own variants and data tables.
 
 ## 10. Files
 
-`src/features/results/app-results-view.ts`, the seven comparison presentational modules and their stories, `src/features/results/comparison-model.ts`, `src/stores/comparison.store.ts`, `src/features/results/analysis-{protocol,client,worker}.ts`, and `tests/comparison*.e2e.ts`.
+`src/features/results/app-results-view.ts`, the seven comparison presentational modules and their stories, `src/features/results/comparison-model.ts`, `src/features/results/result-term-copy.ts`, `src/stores/comparison.store.ts`, `src/features/results/analysis-{protocol,client,worker}.ts`, and `tests/comparison*.e2e.ts`.
 
 ## 11. Non-goals
 

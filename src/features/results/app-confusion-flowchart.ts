@@ -1,7 +1,7 @@
 import { LitElement, css, html, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
+import { ref } from 'lit/directives/ref.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { styleMap } from 'lit/directives/style-map.js';
 import { resultsStyles } from '../../styles/results.styles';
 import type { BinaryFlowView, FlowOutcome, FlowRow } from './results-view-model';
 
@@ -119,8 +119,10 @@ export class AppConfusionFlowchart extends LitElement {
 												class="segment ${outcome.correct
 													? 'correct'
 													: 'wrong'}"
-												style=${styleMap({
-													inlineSize: `${outcome.share * 100}%`
+												${ref((element) => {
+													if (element instanceof HTMLElement) {
+														element.style.inlineSize = `${outcome.share * 100}%`;
+													}
 												})}></span>
 										`
 									)}

@@ -116,7 +116,12 @@ export type ResultEnvelopeV1 = LegacyTrainingResultPayload &
 	EnvelopeBase & { readonly schemaVersion: 1 };
 
 /** The durable result stored under the dataset and model number, with its evaluation. */
-export type ResultEnvelopeV2 = TrainingResultPayload & EnvelopeBase & { readonly schemaVersion: 2 };
+export type ResultEnvelopeV2 = TrainingResultPayload &
+	EnvelopeBase & {
+		readonly schemaVersion: 2;
+		/** Optional app presentation label. It is never part of the worker payload. */
+		readonly modelLabel?: string | null;
+	};
 
 /** Either durable result version. */
 export type ResultEnvelope = ResultEnvelopeV1 | ResultEnvelopeV2;

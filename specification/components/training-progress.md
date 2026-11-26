@@ -8,14 +8,15 @@
 
 ## 2. Public API (closed)
 
-| Property       | Type                          | Default                                                 |
-| -------------- | ----------------------------- | ------------------------------------------------------- |
-| `progress`     | `TrainingProgress \| null`    | `null`                                                  |
-| `logEntries`   | `readonly TrainingLogEntry[]` | Empty list                                              |
-| `logOpen`      | `boolean`                     | `false`                                                 |
-| `announcement` | `string`                      | Empty string                                            |
-| `durationText` | `string`                      | Empty string                                            |
-| `labels`       | `TrainingProgressLabels`      | English progress name, waiting text and entry formatter |
+| Property       | Type                                  | Default                                                 |
+| -------------- | ------------------------------------- | ------------------------------------------------------- |
+| `progress`     | `TrainingProgress \| null`            | `null`                                                  |
+| `variant`      | `'active' \| 'stopped' \| 'complete'` | `'active'`                                              |
+| `logEntries`   | `readonly TrainingLogEntry[]`         | Empty list                                              |
+| `logOpen`      | `boolean`                             | `false`                                                 |
+| `announcement` | `string`                              | Empty string                                            |
+| `durationText` | `string`                              | Empty string                                            |
+| `labels`       | `TrainingProgressLabels`              | English progress name, waiting text and entry formatter |
 
 Properties are unreflected and use `attribute: false`. The contract has no custom methods, slots, parts or CSS properties. The labels object supplies `progress`, `waiting` and `formatEntry(entry)`. The parent supplies all localised labels, formatted counts and elapsed text.
 
@@ -23,14 +24,14 @@ The non-bubbling, non-composed `app-training-log-toggle` event carries `{ readon
 
 ## 3. Semantics, layout and focus
 
-The component retains one labelled native `progress` with `max="100"`. Indeterminate progress omits the value attribute. A native `details` has its current status in the first-child `summary` and an ordered list keyed by log ID. The bar and disclosure remain mounted on ticks. The visible focus outline uses the shared token.
+The component renders one labelled native `progress` with `max="100"`. An indeterminate active bar omits the value attribute. An unknown stopped ratio omits the bar. A visible percentage is hidden from assistive technology because the native element supplies that value. Active uses static stripes, stopped uses red, and complete uses green. Text and forced-colours boundaries preserve the status and bar in display overrides. A native `details` has its status in the first-child `summary` and an ordered list keyed by log ID. The bar and disclosure remain mounted across progress ticks. The focus outline uses the shared token.
 
-The builder supplies announcements only for live milestones. It leaves the announcement empty when first presenting saved historical content. The component mounts a separate polite status region before updating its text. Progress ticks and disclosure changes leave that text alone. The builder displays a readable status in other tabs and owns the Cancel Training, View Results and Retry saving affordances.
+The builder supplies live milestones and leaves the announcement empty when presenting historical content. The component mounts a separate polite status region before updating its text. Progress ticks and disclosure changes leave that text alone. The builder owns Cancel Training, View Results and Retry saving and the stopped Train Model and Edit Training Setup actions. The acknowledged stop reason takes precedence over earlier command notices.
 
 ## 4. Usage and verification
 
-Use the component for one run. Supply readable stage text and a chronological event list. Leave the percent indeterminate until the worker reports reliable run-level progress. Keep failed or cancelled terminal notices beside Training Setup so the learner can retry.
+Use the component for one run. Supply readable status text and a chronological event list. Keep the last measured percent during saving and use 100 only after acknowledged success. The builder may supply a stopped ratio only from the matching locally displayed run. It clears that projection on retry, edit or departure and retains it under Help. Reload without the local run restores the editable setup.
 
-The progress stories cover queued, determinate, open and closed logs, cross-validation, cancelling, remote, publication pending, completion, long labels and RTL. `tests/training-panels.e2e.ts` covers the connected component, native keyboard interaction, quiet updates, failure focus, recovery and 320 px reflow. The Iris and Palmer Penguins journeys verify that logs, the disclosure preference and the acknowledged section survive reload. The Phase 3 plan records Safari and manual screen-reader evidence.
+Stories cover queued, determinate, open and closed logs, cross-validation, cancelling, remote, publication pending, completion, stopped with and without progress, manual milestones, long labels and RTL. `tests/training-panels.e2e.ts` covers native keyboard interaction, quiet updates, failure focus, recovery, forced colours and 320 px reflow. The Iris and Palmer Penguins journeys verify logs, disclosure preference and acknowledged completion after reload. The maintainer confirmed VoiceOver in Safari. The native 200% inspection confirmed the labelled bar, keyboard disclosure and retained stopped percentage and log. See [T6 evidence](../plans/archive/model-training-workflow.md#implementation-and-verification-log).
 
 The [03-6 draft](../mockups/03-6_train-models-5-train.html) shows the semantic states. Human styling and promotion remain in the [human queue](../HUMAN.md#6-style-or-fix-mockups).

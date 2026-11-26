@@ -13,8 +13,9 @@ export interface PartitionFingerprintInput {
 }
 
 /**
- * Lowercase SHA-256 over `["samata-eval-v1", datasetId, kind, foldsOrTestRatio, randomState,
- * classLabels, rows]` with rows sorted numerically by original source row. Equal digests mean
+ * Lowercase SHA-256 over
+ * `["samata-eval-v1", datasetId, kind, foldsOrTestRatio, randomState, classLabels, rows]`
+ * with rows sorted numerically by original source row. Equal digests mean
  * models were scored on the same rows, partitions and class axis.
  */
 export async function partitionFingerprint(input: PartitionFingerprintInput): Promise<string> {

@@ -140,6 +140,16 @@ function validateAppState(val: unknown):
 	if (!isPlainObject(val.onboarding) || typeof val.onboarding.welcomeDismissed !== 'boolean') {
 		return { valid: false, isNewer: false };
 	}
+	if (
+		val.onboarding.betaTelemetryAccepted !== undefined &&
+		typeof val.onboarding.betaTelemetryAccepted !== 'boolean'
+	) {
+		return { valid: false, isNewer: false };
+	}
+	const onboarding: PersistedAppState['onboarding'] = {
+		welcomeDismissed: val.onboarding.welcomeDismissed,
+		betaTelemetryAccepted: val.onboarding.betaTelemetryAccepted === true
+	};
 
 	if (typeof val.resumePath !== 'string' || parseRoute(val.resumePath).kind !== 'workflow') {
 		return { valid: false, isNewer: false };
@@ -162,6 +172,7 @@ function validateAppState(val: unknown):
 			val.comparisonContextEpoch >= 0);
 	const state = {
 		...val,
+		onboarding,
 		...decoded.domain,
 		trainingDomainGeneration: generation
 	} as PersistedAppState;
@@ -604,13 +615,58 @@ export async function readGuardedTrainingSnapshot(
 	return { ...snapshot, generation, replayed: false };
 }
 
+/**
+ * Merges onboarding state across tabs while keeping `welcomeDismissed` tab-local unless beta
+ * telemetry has been accepted in `other`.
+ *
+ * @param local - Current tab's onboarding state.
+ * @param other - Stored or concurrent tab's onboarding state.
+ * @returns Merged onboarding state preserving monotonic beta acceptance.
+ */
+export function mergeOnboarding(
+	local: PersistedAppState['onboarding'],
+	other: PersistedAppState['onboarding']
+): PersistedAppState['onboarding'] {
+	return {
+		welcomeDismissed: local.welcomeDismissed || other.betaTelemetryAccepted,
+		betaTelemetryAccepted: local.betaTelemetryAccepted || other.betaTelemetryAccepted
+	};
+}
+
+/**
+ * Adopts stored beta telemetry acceptance into the current tab without writing back to storage.
+ *
+ * @param storage - Storage adapter to read from (defaults to the active storage).
+ */
+export function adoptStoredBetaAcceptance(storage: StorageAdapter = activeStorage): void {
+	const current = $appState.get();
+	if (current.onboarding.betaTelemetryAccepted) return;
+	const snapshot = readAppSnapshot(storage);
+	if (!snapshot.ok || !snapshot.state?.onboarding.betaTelemetryAccepted) return;
+	const next: PersistedAppState = {
+		...current,
+		onboarding: {
+			...current.onboarding,
+			welcomeDismissed: true,
+			betaTelemetryAccepted: true
+		}
+	};
+	publishingSnapshot = true;
+	try {
+		$appState.set(next);
+	} finally {
+		publishingSnapshot = false;
+	}
+	previousAppState = next;
+}
+
 /** Applies a verified newer snapshot under the state lock, preserving current-tab preferences. */
 export function publishNewerTrainingSnapshot(state: PersistedAppState): void {
 	const current = $appState.get();
 	if (state.trainingDomainGeneration > current.trainingDomainGeneration) {
 		publishAcknowledgedAppSnapshot({
 			...state,
-			onboarding: current.onboarding,
+			onboarding: mergeOnboarding(current.onboarding, state.onboarding),
 			resumePath: current.resumePath,
 			results: ownedComparisonResults(state, state)
 		});
@@ -661,17 +717,20 @@ function draftSteps(model: ModelRecord) {
 	);
 }
 
-function sameDraft(left: ModelRecord, right: ModelRecord): boolean {
+/** Compares the persisted editing inputs and wizard completions for a captured draft. */
+export function sameDraft(left: ModelRecord, right: ModelRecord): boolean {
 	return (
+		Boolean(left.ui.featureSelectionInitialised) ===
+			Boolean(right.ui.featureSelectionInitialised) &&
 		draftFields.every(
 			(field) => JSON.stringify(left[field]) === JSON.stringify(right[field])
-		) && JSON.stringify(draftSteps(left)) === JSON.stringify(draftSteps(right))
+		) &&
+		JSON.stringify(draftSteps(left)) === JSON.stringify(draftSteps(right))
 	);
 }
 
-/** Acknowledges the exact initiating draft against the state already checked under the lock. */
-export function flushSubmittedDraft(
-	context: TrainingStateContext,
+/** Reconciles a captured draft with the acknowledged base without publishing a snapshot. */
+export function stageSubmittedDraft(
 	latest: PersistedAppState,
 	captured: PersistedAppState,
 	model: ModelRecord
@@ -684,34 +743,54 @@ export function flushSubmittedDraft(
 		stored.status !== 'draft' ||
 		latest.trainingDomainGeneration !== captured.trainingDomainGeneration ||
 		latest.dataset?.id !== captured.dataset?.id ||
-		latest.target !== captured.target
+		latest.target !== captured.target ||
+		latest.comparisonContextEpoch !== captured.comparisonContextEpoch
 	) {
 		return { ok: false, reason: 'conflict' };
 	}
-	if (!sameDraft(stored, model)) {
-		const base = acknowledgedState?.models.find(
-			(record) => record.num === model.num && record.createdAt === model.createdAt
-		);
-		if (
-			!base ||
-			acknowledgedState?.trainingDomainGeneration !== latest.trainingDomainGeneration ||
-			!sameDraft(base, stored)
-		) {
-			return { ok: false, reason: 'conflict' };
+	const base =
+		acknowledgedState?.trainingDomainGeneration === latest.trainingDomainGeneration &&
+		acknowledgedState.comparisonContextEpoch === latest.comparisonContextEpoch &&
+		acknowledgedState.dataset?.id === latest.dataset?.id &&
+		acknowledgedState.target === latest.target
+			? acknowledgedState.models.find(
+					(record) => record.num === model.num && record.createdAt === model.createdAt
+				)
+			: undefined;
+	if (!sameDraft(stored, model) && (!base || !sameDraft(base, stored)))
+		return { ok: false, reason: 'conflict' };
+	const merged = mergeOrdinaryModel(stored, base ?? stored, model, true, !protectedPersistence);
+	// The submitted controls are authoritative once the captured base has been validated.
+	for (const field of draftFields) Object.assign(merged, { [field]: model[field] });
+	merged.completedSteps = [
+		...draftSteps(model),
+		...stored.completedSteps.filter(
+			(section) => section === 'training' || section === 'results'
+		)
+	];
+	const patched = mergeTrainingLogEdit(latest, merged);
+	return {
+		ok: true,
+		state: {
+			...latest,
+			models: latest.models.map((record) => (record === stored ? patched : record))
 		}
-	}
-	const patched = mergeTrainingLogEdit(
-		latest,
-		mergeOrdinaryModel(stored, stored, model, true, !protectedPersistence)
-	);
-	const state = {
-		...latest,
-		models: latest.models.map((record) => (record === stored ? patched : record))
 	};
-	const ack = writeAcknowledgedSnapshot(context.storage, state);
+}
+
+/** Acknowledges the exact initiating draft against the state already checked under the lock. */
+export function flushSubmittedDraft(
+	context: TrainingStateContext,
+	latest: PersistedAppState,
+	captured: PersistedAppState,
+	model: ModelRecord
+): { ok: true; state: PersistedAppState } | PersistenceFailure {
+	const draft = stageSubmittedDraft(latest, captured, model);
+	if (!draft.ok) return draft;
+	const ack = writeAcknowledgedSnapshot(context.storage, draft.state);
 	if (!ack.ok) return ack;
-	acknowledgedState = state;
-	return { ok: true, state };
+	acknowledgedState = draft.state;
+	return draft;
 }
 
 function mergeResultsUi(
@@ -741,6 +820,7 @@ function mergeOrdinaryModel(
 	const ui = { ...stored.ui };
 	for (const key of new Set([...Object.keys(base.ui), ...Object.keys(captured.ui)])) {
 		if (key === 'trainingLogOpen' && !includeTrainingLog) continue;
+		if (key === 'featureSelectionInitialised' && !sameGeneration) continue;
 		if (base.ui[key] === captured.ui[key]) continue;
 		if (key === 'results') {
 			// Preferences belong to one result revision and merge field by field, so a stale
@@ -789,7 +869,7 @@ function mergeOrdinaryState(
 	return {
 		...latest,
 		updatedAt: Date.now(),
-		onboarding: captured.onboarding,
+		onboarding: mergeOnboarding(captured.onboarding, latest.onboarding),
 		resumePath: captured.resumePath,
 		results:
 			JSON.stringify(captured.results) !== JSON.stringify(base.results) &&
@@ -865,7 +945,7 @@ function keepLocalOrdinaryChanges(
 			: candidate.data;
 	return {
 		...candidate,
-		onboarding: local.onboarding,
+		onboarding: mergeOnboarding(local.onboarding, candidate.onboarding),
 		resumePath: local.resumePath,
 		results: ownedComparisonResults(candidate, candidate),
 		models,
@@ -1042,6 +1122,8 @@ function isSynchronousChange(
 	if (prev.dataset !== next.dataset) return true;
 	if (prev.target !== next.target) return true;
 	if (prev.onboarding.welcomeDismissed !== next.onboarding.welcomeDismissed) return true;
+	if (prev.onboarding.betaTelemetryAccepted !== next.onboarding.betaTelemetryAccepted)
+		return true;
 	if (prev.data.mode !== next.data.mode) return true;
 	if (prev.data.selectedColumn !== next.data.selectedColumn) return true;
 	if (prev.models.length !== next.models.length) return true;
@@ -1088,6 +1170,7 @@ function isProgressOnlyChange(
 	if (
 		prev.version !== next.version ||
 		prev.onboarding.welcomeDismissed !== next.onboarding.welcomeDismissed ||
+		prev.onboarding.betaTelemetryAccepted !== next.onboarding.betaTelemetryAccepted ||
 		prev.resumePath !== next.resumePath ||
 		prev.dataset !== next.dataset ||
 		prev.data.mode !== next.data.mode ||

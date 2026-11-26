@@ -1,7 +1,6 @@
-import type { GlossaryTerm } from '../../common/description-segments';
 import type { ModelDocument } from '../../types/model-document';
 import type { ConfigurationLabels, OptionLabels } from './app-model-configuration';
-import { getOptionPolicy, GLOSSARY_TERM_KEYS } from './model-presentation-policy';
+import { getOptionPolicy } from './model-presentation-policy';
 
 /** Option copy: `[label, description]` keyed by option name. */
 const OPTIONS: Readonly<Record<string, readonly [string, string]>> = {
@@ -170,46 +169,6 @@ const ERRORS: Readonly<Record<string, string>> = {
 		'L-BFGS supports only no penalty or L2. Choose a compatible penalty before saving.'
 };
 
-/** Glossary term text and explanation per glossary key. */
-const TERMS: Readonly<Record<(typeof GLOSSARY_TERM_KEYS)[number], readonly [string, string]>> = {
-	solver: ['solver', 'The method a model uses to find its best settings.'],
-	penalty: ['penalty', 'A cost for complexity that keeps the model simple.'],
-	regularisation: [
-		'regularisation',
-		'Discouraging complexity so the model copes better with new data.'
-	],
-	'learning-rate': [
-		'learning rate',
-		'How big a step the solver takes each time it adjusts the model.'
-	],
-	tolerance: ['tolerance', 'How small an improvement must be before training stops.'],
-	iteration: ['iterations', 'Rounds of adjusting the model.'],
-	intercept: ['intercept', 'A constant baseline added to every prediction.'],
-	'class-weight': ['class weights', 'How much each class counts when the model learns.'],
-	activation: [
-		'activation function',
-		'The rule a network unit uses to turn its input into an output.'
-	],
-	'hidden-layer': [
-		'hidden layers',
-		'Layers of units between the input and the output of a network.'
-	],
-	seed: ['seed', 'A starting number that makes random choices repeatable.'],
-	impurity: ['impurity', 'How mixed the classes are within a group of rows.'],
-	criterion: ['criterion', 'The measure a tree uses to score a split.'],
-	neighbour: ['neighbours', 'The training rows closest to a new row.'],
-	metric: ['distance metric', 'The way distance between rows is measured.'],
-	smoothing: [
-		'smoothing',
-		'Adding a small amount to counts so unseen values are not impossible.'
-	],
-	prior: ['priors', 'How likely each class is before looking at the features.'],
-	binarise: ['Binarise', 'Turn a number into on or off using a threshold.'],
-	kernel: ['kernel', 'The function that decides what shape of boundary can be drawn.'],
-	gamma: ['Gamma', 'How far the influence of one training row reaches.'],
-	'probability-estimate': ['probability estimates', 'The model’s confidence in each class.']
-};
-
 /** Section 3 chrome and Section 1 notice strings, plus every configure-model message. */
 export const CONFIGURE_MODEL_MESSAGES = {
 	formLabel: 'Model settings',
@@ -233,7 +192,7 @@ export const CONFIGURE_MODEL_TEMPLATES = {
 	exactValue: '{name} (exact value)'
 } as const;
 
-/** Flat key-value copy for every option, term, note and error, namespaced for the builder's messages. */
+/** Flat key-value copy for every option, note and error, namespaced for the builder's messages. */
 export function flatOptionMessages(): Record<string, string> {
 	const flat: Record<string, string> = {};
 	for (const [name, [label, description]] of Object.entries(OPTIONS)) {
@@ -246,10 +205,6 @@ export function flatOptionMessages(): Record<string, string> {
 	}
 	for (const [key, text] of Object.entries(NOTES)) flat[`note.${key}`] = text;
 	for (const [key, text] of Object.entries(ERRORS)) flat[`error.${key}`] = text;
-	for (const [key, [term, title]] of Object.entries(TERMS)) {
-		flat[`term.${key}`] = term;
-		flat[`termTitle.${key}`] = title;
-	}
 	return flat;
 }
 
@@ -283,17 +238,12 @@ export function buildConfigurationLabels(
 	for (const option of document.options) {
 		const policy = getOptionPolicy(document.id, option.name);
 		if (!policy) continue;
-		const terms: GlossaryTerm[] = (policy.terms ?? []).map((key) => ({
-			term: text(`term.${key}`),
-			title: text(`termTitle.${key}`)
-		}));
 		const notes: Record<string, string> = {};
 		for (const note of policy.notes ?? []) notes[note.key] = text(`note.${note.key}`);
 		const choiceKeys = Object.keys(CHOICES[option.name]?.values ?? {});
 		const labels: OptionLabels = {
 			name: text(`opt.${option.name}.name`) || option.name,
 			description: text(`opt.${option.name}.description`),
-			terms,
 			notes
 		};
 		if (choiceKeys.length > 0) {

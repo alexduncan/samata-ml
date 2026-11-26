@@ -1,6 +1,6 @@
 # System Architecture
 
-**Status:** partial — feature placement, development-only Storybook, routing, hydration, root-absolute assets, Markdown, SPA fallback and the same-origin training graph are implemented. Service-worker caching, dynamically imported views, per-model configuration and no-inlining remain target. See [Known gaps](README.md#known-gaps).
+**Status:** partial — feature placement, external hashed `/bundles/` assets with no CSS inlining, development-only Storybook, routing, hydration, root-absolute assets, Markdown, SPA fallback, CI/CD release verification, production public SVG optimisation and the same-origin training graph are implemented. Service-worker caching, dynamically imported views and broader per-model options remain target. See [Known gaps](README.md#known-gaps).
 
 This document defines the target system shape and the architectural invariants that changes must preserve.
 
@@ -22,7 +22,7 @@ This repository MUST NOT contain actual training algorithms. The only responsibi
 The repository strictly adheres to a domain-driven, feature-based directory structure to keep related logic (UI, state, workers) co-located. Agents must not create generic horizontal directories like `/views` or `/controllers`.
 
 - `/index.html`: Source HTML template referencing `/app.js` and `/style.css`; the build compiles `src/app.ts` and rewrites asset URLs to their emitted hashes.
-- `/public/`: Static assets served unchanged (fonts, favicons, manifest, `_headers`, `robots.txt`).
+- `/public/`: Source for public assets such as fonts, favicons, the manifest and model illustrations. The build copies files to the output root at the same relative paths. Production optimises lowercase `.svg` files during that copy.
 - `/src/`: All application source code.
 - `/src/common/`: Framework-free utilities, content/storage/worker boundaries; no Lit imports.
 - `/src/components/`: Reusable feature-agnostic `ui-*` elements, named after their tags.
@@ -42,8 +42,12 @@ The repository strictly adheres to a domain-driven, feature-based directory stru
 
 ## Delivery and Caching
 
-- **No Inlining:** Compiled JavaScript and CSS MUST NOT be inlined into `index.html`. Use standard `<script type="module">` and `<link rel="stylesheet">`.
-- **Root-absolute asset URLs:** Because workflow pages have real paths (`/models/3`), the template references `/style.css` and `/app.js`; emitted production references retain the leading slash and include content hashes. Relative references break on nested paths.
+- **No Inlining:** Compiled JavaScript and CSS MUST NOT be inlined into `index.html`. Use external `/bundles/app.<hash>.js` `<script type="module">` and `/bundles/style.<hash>.css` `<link rel="stylesheet">` tags.
+- **Bundle mode.** The shared `Bun.build` configuration defines `process.env.NODE_ENV` explicitly as `production` for releases and `development` for local development. Bun resolves Lit’s production exports in release bundles and keeps development diagnostics and source maps for local builds. The definition contributes to the bundle build identity.
+- **Root-absolute asset URLs:** Because workflow pages have real paths (`/models/3`), the template references `/style.css` and `/app.js`; emitted production references retain the `/bundles/` leading slash and include content hashes. Relative references break on nested paths.
+- **Public SVG delivery.** Use lowercase `.svg` for public illustrations. Production runs SVGO with its default preset and precision 6 when copying those files into the active output directory. Development uses the ordinary copy for all files. Production copies other public files through the same ordinary path, then emits the release metadata and generated header files at their existing stage. The build leaves the authored files intact. Illustrations keep their root-absolute URLs under `/assets/`, with the revalidation policy below. Generated bundles and the training runtime use their existing content hashes and cache rules.
+- **Release metadata, cache headers, and stale-build detection:** Production builds emit `/release.json` (`version`, `build`, and `workers`) and Cloudflare `/_headers` rules (`immutable` caching on `/bundles/` and `/web-ml/{version}-{graph-digest}/`; `public, max-age=0, must-revalidate` on `/index.html`, `/content/<locale>/<domain>/index.json?v=<hash>`, `/datasets/index.json?v=<hash>`, `/robots.txt`, `/assets/*`, and `/release.json`; Cloudflare `! Header` detach rules; strict CSP, COOP/COEP/CORP, `nosniff`, and `no-referrer`). `scripts/headers-file.ts` and `scripts/static-server.ts --dist` emulate those `/_headers` rules (including detach directives) locally. Versioned content and dataset manifests avoid stale cached catalogue reads across deploys, and client-side storage/training/analysis worker failures probe `/release.json` to display a reload banner if a newer build is deployed.
+- **Beta crawler policy and telemetry boundary:** Closed beta builds (`SAMATA_CRAWLER_POLICY=closed`, default) emit `robots.txt` with `Disallow: /` and global `X-Robots-Tag: noindex, nofollow, nosnippet` on `/*` in `_headers`; public builds (`SAMATA_CRAWLER_POLICY=public`, restricted to stable production releases ≥ `1.0.0`) emit `Allow: /` and omit the global header while keeping `X-Robots-Tag: noindex, nofollow` on `/content/*` and `/datasets/*`. Beta telemetry (`BETA_TELEMETRY_ENABLED=true` on a `-beta.N` build, restricted at runtime to `beta.samata.ml` with CSP allowances for `https://cloud.umami.is/script.js` in `script-src` and `https://gateway.umami.is` in `connect-src`) never loads pre-consent and sends only allowlisted canonical route paths, UI milestone event names, and fixed error-category codes after explicit **Get Started** acceptance.
 - **Style/workbench boundary:** `css/style.css` imports only root tokens and document base rules. `src/styles/global.ts` adopts shared primitive sheets. Component-local styles remain in their owning shadow root. Storybook/Vitest/CEM are development tooling and do not affect production bundling, caching, CSP or worker delivery.
 - **Single-page fallback:** Every workflow and reserved path (`/`, `/data`, `/target`, `/models`, `/models/{num}`, `/results`, `/about`, `/privacy`, `/help`) MUST return the app shell. Production uses `"not_found_handling": "single-page-application"` in `wrangler.jsonc`; the dev server (`scripts/static-server.ts`) MUST fall back only for extension-less paths so a missing `.js`/`.css` still returns 404.
 - **Content and dataset fragments:** `/content/*` and `/datasets/*` carry `X-Robots-Tag: noindex, nofollow` in `public/_headers`, are never `Disallow`ed in `robots.txt`, and are never linked directly with `<a href>`. Compiled fragments contain no inline scripts or third-party images (compatible with the production CSP).
@@ -71,7 +75,5 @@ The workflow is specified in [workflow-steps.md](workflow-steps.md); routing, st
 
 ## Future Improvements
 
-- Automate the locked Bun install and app verification suite in CI with the pinned prebuilt web-ml package. Native compilation and library benchmarks belong to the web-ml build.
 - Add a bun run doctor or setup-check command that reads the version files, checks the required tools and dependencies, and prints actionable fix instructions.
 - Offer a pinned devcontainer or Codespaces configuration for contributors who prefer a preconfigured environment.
-- Research security requirements and add `SECURITY.md`.

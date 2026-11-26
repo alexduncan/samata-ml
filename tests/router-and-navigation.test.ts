@@ -9,7 +9,9 @@ import {
 	initRouter,
 	stopRouter,
 	getDocumentTitle,
-	takeFocusRequest
+	takeFocusRequest,
+	$leaveConfirmation,
+	resolveWizardLeave
 } from '../src/router/router';
 import {
 	getScrollKeyForRoute,
@@ -86,6 +88,11 @@ describe('Router & Navigation (NAV-AC-1, NAV-AC-2, NAV-AC-4)', () => {
 				path: '/models',
 				section: 3
 			});
+			expect(parseRoute('/models/new')).toEqual({
+				kind: 'workflow',
+				path: '/models/new',
+				section: 3
+			});
 			expect(parseRoute('/results')).toEqual({
 				kind: 'workflow',
 				path: '/results',
@@ -136,6 +143,17 @@ describe('Router & Navigation (NAV-AC-1, NAV-AC-2, NAV-AC-4)', () => {
 			}
 			expect(parseRoute('/help/other-topic').kind).toBe('unknown');
 			expect(RESERVED_CONTENT['/help/training-setup']).toBe('training-setup');
+		});
+
+		it('MW-HELP-1: reserves Select Features without accepting arbitrary Help paths', () => {
+			const route = { kind: 'reserved', path: '/help/select-features' } as const;
+			expect(parseRoute('/help/select-features')).toEqual(route);
+			expect(parseRoute('/help/select-features/')).toEqual(route);
+			expect(RESERVED_CONTENT[route.path]).toBe('select-features');
+			expect(getDocumentTitle(route)).toBe('samatā.ml | What are features?');
+			expect(parseRoute('/help/select-features/extra').kind).toBe('unknown');
+			expect(parseRoute('/help/unlisted-topic').kind).toBe('unknown');
+			expect(parseRoute('constructor').kind).toBe('unknown');
 		});
 
 		it('normalises trailing slashes without breaking', () => {
@@ -424,6 +442,86 @@ describe('Router & Navigation (NAV-AC-1, NAV-AC-2, NAV-AC-4)', () => {
 				path: '/help',
 				underlayPath: '/models/2'
 			});
+		});
+
+		it('MW-ROUTE-1: inferred /models/new falls back to the overview without allocating', () => {
+			for (const path of ['/', '/help'] as const) {
+				stopRouter();
+				setResumePath('/models/new');
+				window.history.replaceState(null, '', path);
+				initRouter();
+				const route = $route.get();
+				if (path === '/')
+					expect(route).toEqual({ kind: 'workflow', path: '/models', section: 3 });
+				else
+					expect(route).toEqual({
+						kind: 'reserved',
+						path: '/help',
+						underlayPath: '/models'
+					});
+				expect($appState.get().models).toEqual([]);
+			}
+		});
+
+		it('MW-ROUTE-2: canonicalises an active numeric draft, including a reserved underlay', () => {
+			loadDatasetSucceeded(sampleDataset);
+			setTarget('species');
+			const num = createModel();
+			$appState.set({ ...$appState.get(), newModelNum: num || null });
+			for (const path of ['/models/1', '/help'] as const) {
+				stopRouter();
+				setResumePath('/models/1');
+				window.history.replaceState(null, '', path);
+				initRouter();
+				const route = $route.get();
+				const expectedBinding = {
+					kind: 'bound' as const,
+					identity: {
+						datasetId: sampleDataset.id,
+						target: 'species',
+						comparisonContextEpoch: $appState.get().comparisonContextEpoch,
+						modelNum: 1,
+						modelCreatedAt: $appState.get().models[0]!.createdAt
+					}
+				};
+				if (path === '/help')
+					expect(route).toEqual({
+						kind: 'reserved',
+						path: '/help',
+						underlayPath: '/models/new',
+						provisional: expectedBinding
+					});
+				else
+					expect(route).toEqual({
+						kind: 'workflow',
+						path: '/models/new',
+						section: 3,
+						provisional: expectedBinding
+					});
+				expect(getScrollKeyForRoute(route)).toBe('models/1');
+				expect($appState.get().models).toHaveLength(1);
+			}
+		});
+
+		it('MW-GUARD-1: programmatic departure is deferred until the current intent resolves', () => {
+			loadDatasetSucceeded(sampleDataset);
+			setTarget('species');
+			const num = createModel();
+			$appState.set({ ...$appState.get(), newModelNum: num || null });
+			window.history.replaceState(null, '', '/models/1');
+			initRouter();
+			const source = window.history.state.entryId;
+			navigate('/target', { replace: true });
+			const intent = $leaveConfirmation.get()!;
+			expect(intent).toMatchObject({ sourceEntryId: source, binding: { modelNum: 1 } });
+			expect($route.get()).toMatchObject({ path: '/models/new' });
+			expect(takeFocusRequest()).toBe(false);
+			resolveWizardLeave(intent.token - 1, false);
+			expect($leaveConfirmation.get()).toBe(intent);
+			resolveWizardLeave(intent.token, false);
+			expect($leaveConfirmation.get()).toBeNull();
+			expect(window.history.state.entryId).toBe(source);
+			expect($appState.get().newModelNum).toBe(1);
 		});
 	});
 

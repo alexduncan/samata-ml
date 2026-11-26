@@ -44,7 +44,9 @@ test.describe('Section 6 error views', () => {
 		);
 	});
 
-	test('WML-P4-UI-5: outcome bar widths are proportional to the counts', async ({ page }) => {
+	test('BETA-ERR-2b / WML-P4-UI-5: outcome bar widths are proportional to the counts', async ({
+		page
+	}) => {
 		await mount(page, { element: 'flowchart', evaluation: 'breast-cancer' });
 		const rows = await page.locator('app-confusion-flowchart').evaluate((host) =>
 			[...host.shadowRoot!.querySelectorAll('.rows > li')].map((row) => {

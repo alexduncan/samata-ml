@@ -70,11 +70,12 @@ async function openConfigure(page: Page, target = 'class', dataset = 'iris'): Pr
 		)
 		.toBe(target);
 	await page.goto('/models');
-	await page.locator('app-models-view button:has-text("Train New Model")').click();
+	await page.locator('app-models-view a[href="/models/new"]').click();
 	const builder = page.locator('app-model-builder-view');
 	const step1 = builder.locator('.train-step').nth(0);
-	await step1.locator('app-model-card button:has-text("Select Model")').click();
-	await step1.locator('.section-actions button:has-text("Continue")').click();
+	await step1
+		.locator('app-model-card[model-id="logistic-regression"] button:has-text("Select Model")')
+		.click();
 	await builder
 		.locator('.train-step')
 		.nth(1)
@@ -82,6 +83,7 @@ async function openConfigure(page: Page, target = 'class', dataset = 'iris'): Pr
 		.click();
 	const form = builder.locator('app-model-configuration');
 	await expect(form.locator('form')).toBeVisible();
+	await expect(builder.locator('.step-active .train-step-content[inert]')).toHaveCount(0);
 	return form;
 }
 
@@ -161,7 +163,10 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		const mode = form.locator('select#mode');
 		await expect(mode).toHaveValue('manual');
 		await expect(mode.locator('option[value="tuning"]')).toBeDisabled();
-		await expect(form.locator('abbr[title]').first()).toBeVisible();
+		await expect(form.locator('#solver-help')).toContainText(
+			'The solver is the method used to fit the model.'
+		);
+		await expect(form.locator('#solver-help abbr')).toHaveCount(0);
 
 		// Logistic Regression: classWeight hidden; solver and penalty rules
 		await expect(form.getByLabel('Class weights')).toHaveCount(0);
@@ -315,13 +320,16 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		expect(await seed.evaluate((el: HTMLInputElement) => el.validity.badInput)).toBe(false);
 	});
 
-	test('WML-P1-UI-3: every control has a name, validity and description', async ({ page }) => {
+	test('TERM-AC-3: WML-P1-UI-3 every control has a name, validity and plain description', async ({
+		page
+	}) => {
 		const form = await openConfigure(page);
 		for (const { id, setup } of CLASSIFIERS) {
 			await useModel(page, id);
 			if (setup) await form.locator(`select#${setup[0]}`).selectOption(setup[1]);
 			await expect(form.locator('select#mode')).toBeVisible();
 			await expectControlsAccessible(form);
+			await expect(form.locator('.field-description abbr')).toHaveCount(0);
 		}
 
 		// Named examples from each control kind
@@ -367,6 +375,16 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		const layer = form.getByRole('spinbutton', { name: 'Layer 1 size' });
 		await expect(layer).toBeVisible();
 		await expect(layer).toHaveAttribute('min', '1');
+		// Audit the last persisted form after exercising the transient controls in each model.
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() => JSON.parse(localStorage.getItem('samata-ml:state')!).models[0]?.modelId
+				)
+			)
+			.toBe('mlp-classifier');
+		await page.reload();
+		await expect(layer).toBeVisible();
 
 		const axe = await new AxeBuilder({ page })
 			.withTags(AXE_TAGS)
@@ -414,7 +432,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 
 		// Edit reopens directly (no later section complete)
 		await step3.getByRole('button', { name: 'Edit Configure Model' }).click();
-		await expect(builder.locator('dialog.confirm-dialog')).not.toBeVisible();
+		await expect(builder.locator('dialog[data-confirm="reopen-section"]')).not.toBeVisible();
 		await expect(step3).toHaveAttribute('aria-current', 'step');
 		await form.locator('select#penalty').selectOption('l2');
 		await expect(form.locator('#C-number')).toHaveValue('1');
@@ -423,6 +441,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		// With a later section complete, Edit asks first (from persisted state, after a reload)
 		await form.locator('select#penalty').selectOption('none');
 		await form.getByRole('button', { name: 'Save & Continue' }).click();
+		await expect(step3.locator('h2')).toContainText('3. Model Configured');
 		await page.evaluate(() => {
 			const s = window.__appState!.get();
 			window.__appState!.set({
@@ -434,7 +453,15 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 				}))
 			});
 		});
-		await page.waitForTimeout(500);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:state')!).models[0]
+							.completedSteps
+				)
+			)
+			.toContain('configure-training');
 		await page.reload();
 		await dismissWelcome(page);
 		const reloaded = page.locator('app-model-builder-view .train-step').nth(2);
@@ -443,7 +470,9 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 			await page.evaluate(() => window.__appState!.get().models[0]!.completedSteps)
 		).toContain('configure-training');
 		await reloaded.getByRole('button', { name: 'Edit Configure Model' }).click();
-		await expect(page.locator('app-model-builder-view dialog.confirm-dialog')).toBeVisible();
+		await expect(
+			page.locator('app-model-builder-view dialog[data-confirm="reopen-section"]')
+		).toBeVisible();
 	});
 
 	test('WML-P1-UI-4: a binary target saves multiclass as null', async ({ page }) => {
@@ -487,6 +516,29 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		await expect(form.locator('.form-note').last()).toContainText('Class priors');
 	});
 
+	test.describe('Configure Model term definitions', () => {
+		test.use({ hasTouch: true });
+
+		test('TERM-AC-1: Configure Model Help works by keyboard and touch', async ({ page }) => {
+			await openConfigure(page);
+			const help = page.locator('app-model-builder-view a[href="/help/configure-model"]');
+			const dialog = page.getByRole('dialog', { name: 'What do these settings mean?' });
+			const article = dialog.locator('.modal-content');
+			await help.focus();
+			await page.keyboard.press('Enter');
+			await expect(article).toContainText('The exact stopping check depends on the solver.');
+			await expect(article).toContainText('limited-memory Broyden–Fletcher–Goldfarb–Shanno');
+			await page.keyboard.press('Escape');
+			await expect(dialog).toBeHidden();
+			await expect(help).toBeFocused();
+
+			await help.tap();
+			await expect(dialog).toBeVisible();
+			await dialog.getByRole('button', { name: 'Close' }).tap();
+			await expect(dialog).toBeHidden();
+		});
+	});
+
 	test('WML-P1-UI-5: help link opens the dialog and closing returns to the model', async ({
 		page
 	}) => {
@@ -499,7 +551,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 			dialog.getByRole('heading', { name: 'What do these settings mean?' })
 		).toBeVisible();
 		await page.keyboard.press('Escape');
-		await expect(page).toHaveURL(/\/models\/1$/);
+		await expect(page).toHaveURL(/\/models\/new$/);
 
 		const form = page.locator('app-model-configuration');
 		await form.locator('select#penalty').selectOption('l2');

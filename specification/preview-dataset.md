@@ -21,9 +21,11 @@ After loading a sample dataset or uploading a CSV file, the `/data` view switche
     - `numeric`
     - `categorical`
     - `boolean`
+    - `date`
+    - `time`
     - `datetime`
     - `text`
-- Statistics for each column include missing/invalid counts, tokens, and type-specific summaries (min/mean/max/histogram for numeric, value frequencies for categorical, UTC bounds for datetime).
+- Statistics for each column include missing/invalid counts, tokens, and type-specific summaries (min/mean/max/histogram for numeric, value frequencies for categorical, earliest and latest values for date, time and datetime, shown at the column's precision, with UTC stated only for datetime).
 
 ## View-Switch & State Rules
 

@@ -43,8 +43,8 @@ export interface CheckoutExpectation {
 /**
  * Builds the identity response.
  *
- * @param identity Identity payload.
- * @param method HTTP method; `HEAD` sends no body.
+ * @param identity - Identity payload.
+ * @param method - HTTP method; `HEAD` sends no body.
  * @returns A 200 JSON response with `Cache-Control: no-store`.
  */
 export function createCheckoutIdentityResponse(
@@ -63,8 +63,8 @@ export function createCheckoutIdentityResponse(
 /**
  * Compares a server reply with an expectation.
  *
- * @param expected Expected identity.
- * @param reply Parsed reply body (anything).
+ * @param expected - Expected identity.
+ * @param reply - Parsed reply body (anything).
  * @returns One sentence per problem; empty when the reply matches.
  */
 export function compareCheckoutIdentity(expected: CheckoutExpectation, reply: unknown): string[] {
@@ -101,7 +101,7 @@ export function compareCheckoutIdentity(expected: CheckoutExpectation, reply: un
 /**
  * Formats failed server checks as one message.
  *
- * @param failures Failed expectations with their problems.
+ * @param failures - Failed expectations with their problems.
  * @returns A multi-line message with remedies.
  */
 export function formatCheckoutFailure(

@@ -28,7 +28,7 @@ Presentational tag `app-content-dialog`, class `AppContentDialog`, source `src/f
 
 All scalar properties are unreflected. `ContentDialogLabels` exports exactly `close: string` and `loadError: string`, with standalone defaults “Close” and “This content could not be loaded. Check your connection, then close this dialog and try again.” `ContentDialogCloseDetail = Record<string, never>` is the exported empty detail type.
 
-The only event is `app-content-dialog-close: CustomEvent<ContentDialogCloseDetail>`, dispatched on the host once for user button/native dismissal, `bubbles: false`, `composed: false`. Property/route-driven closing emits no intent. Apart from the named class and two contract types, there are no slots, public methods, parts, CSS properties or other exports. CEM is derived from this contract and excludes private members.
+The only event is `app-content-dialog-close: CustomEvent<ContentDialogCloseDetail>`. The native close event causes one dispatch on the host for the close button, Escape or a backdrop click. The event uses `bubbles: false` and `composed: false`. Property and route changes suppress user intent. Apart from the named class and two contract types, there are no slots, public methods, parts, CSS properties or other exports. CEM is derived from this contract and excludes private members.
 
 ## 4. Usage
 
@@ -48,23 +48,25 @@ html`<app-content-dialog
 
 Pass loader/sanitiser output, never HTML strings. The child clones the fragment before rendering, including readiness transitions with the same source; it never consumes or mutates consumer nodes. Heading/body lang and dir apply only while ready. Loading sets body aria-busy; error renders one labelled alert while Close remains usable.
 
-Native opening reconciles on first render/open-property changes, not on every loading/content update, so a delayed parent cannot reopen a user-closed dialog. Counted suppression consumes queued closes caused by property changes/disconnection, including immediate reopening.
+The owner reconciles the native dialog on first render and open-property changes. Updates to loading or content preserve the current native state. Counted suppression consumes queued closes caused by property changes or disconnection, including immediate reopening.
 
-The connected parent retains transient status/entry/fragment, AbortController, request sequence and path guards around loadContentEntry. Only a complete current entry and safe fragment become ready; idle/loading maps to loading. Each reserved-route opening or switch creates a fresh child instance, so an old route's queued event cannot dismiss a new reserved route. Leaving a reserved route keeps the current instance connected while it closes, so the browser returns focus to the invoker after Back as well as after Esc or the close button. User intent calls closeReserved once only for the corresponding active reserved path; history-driven close has no navigation echo. Source loader, sanitiser, router decisions and underlay/scroll ownership remain unchanged.
+The connected parent guards loading by AbortController, request sequence and path. Only a complete current entry and sanitised fragment become ready. Each reserved-route opening or switch creates a fresh child. Leaving the route keeps that instance connected until native close can restore invoker focus. User dismissal calls `closeReserved` once for the corresponding active path. History-driven close does not navigate again.
+
+Each fixed-route history entry pushed by this document records its document owner. Close and Escape go Back after Forward revisits as well as the initial opening. Direct, reloaded or ownerless entries replace to the validated underlay. The overlay keeps the wizard source entry and binding, and preserves the underlying form and scroll. The router can acknowledge a pending wizard under Help and recover the binding on return to that exact source.
 
 ## 5. Visual specification
 
-Structure follows `specification/mockups/00-2_content-modal.html`; prose has no promoted appearance and no parity entries. The child reuses dialogStyles and buttonStyles with display-contents/hidden host rules, a wrapping h2 and non-shrinking icon control. Connected host is display-contents/hidden. No new prose typography, colours, spacing system or sanitised-content CSS API exists.
+The structure follows `specification/mockups/00-2_content-modal.html`. The child uses the shared `dialog.modal` layout, a sticky `.modal-header` with a wrapping h2 and a non-shrinking icon control, and `.modal-content` for loaded content and status. The connected host keeps its display-contents and hidden rules. Prose appearance remains in the draft mockup.
 
 The shared dialog header translates its title to named h2 (SEM-04), and the native icon button uses SEM-08 decorative SVG. Paired draft/app screenshots document structure/shared styling only, not finished prose parity.
 
 ## 6. Accessibility
 
-Native dialog aria-labelledby references h2. Close has the translated accessible name, a decorative non-focusable SVG and shared 40px target/24px glyph. Native Esc/focus return remain browser-owned; there is no role/aria-modal, custom Esc, focus trap or document scroll lock. Manual review checks loading/ready/error names, invoker focus, real zoom, RTL and display settings. Strict ready-content axe has no exclusions.
+Native `aria-labelledby` references the h2. Close has the translated accessible name, a decorative non-focusable SVG and the shared 40px target and 24px glyph. Native Escape and backdrop dismissal follow the shared [dialog contract](dialog.md) and return focus to the invoker. Manual review checks loading, ready and error names, invoker focus, native zoom, RTL and display settings. Strict ready-content axe has no exclusions.
 
 ## 7. Internationalisation
 
-The connected dictionary owns the fallback titles and the Close and load-error text. `/help/configure-model` uses “Configure Model” and `/help/training-setup` uses “Training Setup” while loading and on failure. Loaded entry titles retain their consumer wording. The child owns no messages/stores and receives ContentDialogLabels; entry metadata controls ready content language/direction. No language switcher or locale persistence is introduced.
+The connected dictionary owns fallback titles and Close and load-error text. The wizard routes use **What are features?**, **What do these settings mean?** and **Training Setup** while loading or on failure. Loaded article titles retain their authored wording. The child receives `ContentDialogLabels` and uses content metadata for the ready language and direction.
 
 ## 8. Acceptance criteria
 

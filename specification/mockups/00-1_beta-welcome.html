@@ -1,0 +1,102 @@
+<!doctype html>
+<!-- DRAFT: structure only, not normative for appearance. Source: specification/plans/beta-release-and-ci-cd.md §D. Open questions: none. -->
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="name" content="Beta Welcome Modal" />
+		<meta
+			name="description"
+			content="First-visit beta welcome dialog with cookieless telemetry notice and privacy policy link shown on beta.samata.ml before Get Started." />
+		<meta name="status" content="draft" />
+		<link rel="stylesheet" href="./style.css" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>samatā.ml | Select Data</title>
+	</head>
+	<body>
+		<div class="sidebar">
+			<h1>samat&amacr;.ml</h1>
+			<p class="tagline">Machine Learning in Your Browser</p>
+			<section class="project">
+				<h4>Project</h4>
+				<span class="project-name">New Project</span>
+			</section>
+			<nav class="workflow" aria-label="Workflow">
+				<ol class="steps">
+					<li class="step" aria-current="step">
+						<div class="step-link">
+							<span class="step-num">1</span>
+							<span class="step-label">Load Data</span>
+						</div>
+					</li>
+					<li class="step">
+						<a href="/target" class="step-link">
+							<span class="step-num">2</span>
+							<span class="step-label">Select Target</span>
+						</a>
+					</li>
+					<li class="step">
+						<a href="/models" class="step-link">
+							<span class="step-num">3</span>
+							<span class="step-label">Train Models</span>
+						</a>
+					</li>
+					<li class="step">
+						<a href="/results" class="step-link">
+							<span class="step-num">4</span>
+							<span class="step-label">Compare Results</span>
+						</a>
+					</li>
+				</ol>
+			</nav>
+			<footer>
+				<a href="/about">about</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/privacy">privacy</a>
+				&nbsp;&nbsp;|&nbsp;&nbsp;
+				<a href="/help">help</a>
+			</footer>
+		</div>
+
+		<main>
+			<header class="page-header">
+				<h1>Select Data</h1>
+				<p>
+					Training an AI model needs data. Get started by choosing one of the sample
+					datasets below or uploading your own custom dataset.
+				</p>
+				<button class="btn btn-primary" disabled>Upload Dataset</button>
+			</header>
+		</main>
+
+		<!-- Beta Welcome Modal -->
+		<!-- This will display on beta.samata.ml until the user accepts by clicking Get Started. -->
+		<dialog
+			id="initial"
+			class="modal"
+			aria-labelledby="welcome-title"
+			aria-describedby="welcome-beta">
+			<header class="modal-header">
+				<h2 id="welcome-title">
+					samatā.ml
+					<span class="chiclet chiclet-amber">beta</span>
+				</h2>
+			</header>
+			<p>train machine learning models inside your browser.</p>
+			<p>
+				The samatā.ml platform allows anyone to learn key Artificial Intelligence concepts
+				through hands-on experimentation.
+			</p>
+			<p id="welcome-beta">
+				By clicking Get Started, you accept cookieless analytics and error reporting for
+				this beta. <a href="/privacy">Read the privacy policy</a>
+			</p>
+			<button class="btn btn-primary" type="button" autofocus>Get Started</button>
+		</dialog>
+		<!-- / Beta Welcome Modal -->
+
+		<script>
+			const modal = document.getElementById("initial");
+			modal.showModal();
+		</script>
+	</body>
+</html>

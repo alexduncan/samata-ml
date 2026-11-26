@@ -94,6 +94,8 @@ function modelRecord(overrides: Partial<ModelRecord>): ModelRecord {
 		trainingSetup: null,
 		progress: null,
 		resultRevision: null,
+		provisionalCompletedRunId: null,
+		modelLabel: null,
 		error: null,
 		timings: null,
 		durationMs: null,
@@ -614,6 +616,8 @@ const VALID_COLUMN_TYPES = new Set<string>([
 	'numeric',
 	'categorical',
 	'boolean',
+	'date',
+	'time',
 	'datetime',
 	'text'
 ]);

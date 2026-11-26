@@ -3,10 +3,10 @@ import { StoreController } from '@nanostores/lit';
 import { css, html, LitElement, nothing } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
-import { classMap } from 'lit/directives/class-map.js';
 import { $format, i18n } from '../../i18n';
 import { $sidebarState } from '../../stores/sidebar.store';
 import { chicletStyles } from '../../styles/chiclet.styles';
+import { modelSwatchStyles } from '../../styles/model-swatch.styles';
 
 const messages = i18n('app-sidebar', {
 	brand: 'samatā.ml',
@@ -16,11 +16,16 @@ const messages = i18n('app-sidebar', {
 	workflow: 'Workflow',
 	loadData: 'Load Data',
 	setTarget: 'Set Target',
-	trainModels: 'Train Models',
+	allTrained: 'All Trained Models',
+	trainNew: 'Train New Model',
+	trainAnother: 'Train Another Model',
+	trainingNew: 'Training New Model…',
+	featureCount: params<{ formatted: string }>(
+		count({ one: '{formatted} feature', many: '{formatted} features' })
+	),
 	compareResults: 'Compare Results',
 	dataset: 'Dataset',
 	target: 'Target',
-	models: 'Models',
 	rows: params<{ formatted: string }>(
 		count({ one: '{formatted} row', many: '{formatted} rows' })
 	),
@@ -28,11 +33,12 @@ const messages = i18n('app-sidebar', {
 		count({ one: '{formatted} column', many: '{formatted} columns' })
 	),
 	model: params<{ num: string }>('Model {num}'),
-	training: 'training',
 	trained: 'trained',
 	numeric: 'Numeric',
 	categorical: 'Categorical',
 	boolean: 'Boolean',
+	date: 'Date',
+	time: 'Time',
 	datetime: 'Date/time',
 	text: 'Text',
 	about: 'about',
@@ -49,6 +55,7 @@ export class AppSidebar extends LitElement {
 
 	static override readonly styles = [
 		chicletStyles,
+		modelSwatchStyles,
 		css`
 			:host {
 				display: flex;
@@ -136,11 +143,12 @@ export class AppSidebar extends LitElement {
 				border-end-start-radius: 0.25rem;
 				border-end-end-radius: 0.25rem;
 			}
-			.step:has(> .step-link[aria-current]) {
+			.step:has(> .step-link[aria-current], > .step-link > .step-link-small[aria-current]) {
 				z-index: 1;
 				border-color: var(--blue-700);
 			}
-			.step:has(> .step-link[aria-current]) > .step-link {
+			.step:has(> .step-link[aria-current], > .step-link > .step-link-small[aria-current])
+				> .step-link {
 				background-color: var(--surface);
 				color: var(--blue-800);
 			}
@@ -188,22 +196,45 @@ export class AppSidebar extends LitElement {
 			.step-label-small,
 			.step-value,
 			.step-chiclets,
-			.step-model-link {
+			.step-model-link,
+			.step-train-new {
 				min-inline-size: 0;
 				overflow-wrap: anywhere;
 			}
+			.step-model-navigation {
+				grid-template-areas: 'num label' 'num value';
+			}
+			.step-link-small {
+				grid-area: label;
+				padding-block: 0.5rem 0.375rem;
+				color: var(--stone-700);
+				font-weight: 600;
+				font-size: 0.75rem;
+			}
+			.step-link-small[aria-current] {
+				color: var(--blue-800);
+			}
+			.step-train-new {
+				grid-area: value;
+				margin-inline-end: 0.5rem;
+				margin-block: 0.25rem 0.5rem;
+			}
 			.step-models {
 				display: flex;
+				grid-area: value;
 				flex-direction: column;
 				gap: 0.25rem;
 				margin: 0;
-				padding-inline: 2rem 0.5rem;
+				padding-inline: 0 0.5rem;
 				padding-block: 0.25rem 0.5rem;
 				list-style: none;
 			}
 			.step-model-link {
 				display: flex;
 				position: relative;
+				flex-wrap: wrap;
+				align-items: center;
+				gap: 0.375rem;
 				border: 1px solid var(--stone-350);
 				border-radius: 0.25rem;
 				background-color: var(--stone-100);
@@ -212,13 +243,26 @@ export class AppSidebar extends LitElement {
 				color: var(--stone-700);
 				text-decoration: none;
 			}
+			.step-trained-model {
+				padding-inline-start: 0.5rem;
+			}
+			.step-model-name {
+				flex: 1 1 7rem;
+				min-inline-size: 0;
+				overflow-wrap: anywhere;
+			}
+			.step-trained-model .chiclet {
+				margin-inline-start: auto;
+			}
 			.step-model-link[aria-current] {
 				border-color: var(--blue-700);
 				background-color: var(--surface);
 				color: var(--blue-700);
+				font-weight: 600;
 			}
-			.step-link:hover,
-			.step-model-link:hover {
+			a.step-link:hover,
+			a.step-model-link:hover,
+			a.step-train-new:hover {
 				border-color: var(--stone-900);
 				background-color: var(--surface);
 				color: var(--stone-900);
@@ -226,27 +270,6 @@ export class AppSidebar extends LitElement {
 			a:focus-visible {
 				outline: 2px solid var(--focus-ring);
 				outline-offset: -2px;
-			}
-			.dot {
-				position: absolute;
-				transform: translateY(-50%);
-				inset-block-start: 50%;
-				inset-inline-end: 0.75rem;
-				border-radius: 50%;
-				inline-size: 0.625rem;
-				block-size: 0.625rem;
-				color: var(--blue-700);
-			}
-			.dot::before {
-				position: absolute;
-				transform: scale(1);
-				inset: 0;
-				border-radius: inherit;
-				background: currentColor;
-				content: '';
-			}
-			.trained {
-				margin-inline-start: auto;
 			}
 			.visually-hidden {
 				position: absolute;
@@ -275,28 +298,6 @@ export class AppSidebar extends LitElement {
 			footer a:focus-visible {
 				outline-offset: 2px;
 			}
-			@keyframes pulse-core {
-				0%,
-				100% {
-					transform: scale(1);
-				}
-				50% {
-					transform: scale(0.85);
-				}
-			}
-			@keyframes pulse-ring {
-				0% {
-					transform: scale(1);
-					opacity: 0.6;
-				}
-				70% {
-					transform: scale(2.5);
-					opacity: 0;
-				}
-				100% {
-					opacity: 0;
-				}
-			}
 			@media (prefers-reduced-motion: no-preference) {
 				.step-link,
 				.step-model-link {
@@ -304,19 +305,6 @@ export class AppSidebar extends LitElement {
 						background-color 500ms ease,
 						border-color 500ms ease,
 						color 500ms ease;
-				}
-				.dot::before {
-					animation: pulse-core 1500ms ease-in-out infinite;
-				}
-				.dot::after {
-					position: absolute;
-					transform: scale(1);
-					opacity: 0;
-					animation: pulse-ring 1500ms ease-out infinite;
-					inset: 0;
-					border: 0.25rem solid currentColor;
-					border-radius: inherit;
-					content: '';
 				}
 			}
 			@media (width < 50rem) {
@@ -398,52 +386,78 @@ export class AppSidebar extends LitElement {
 						</a>
 					</li>
 					<li class="step">
-						<a
-							class="step-link"
-							href="/models"
-							aria-current=${state.current.models ?? nothing}>
-							<span class="step-num">3</span
-							><span
-								class=${classMap({
-									'step-label-small': state.models.length > 0,
-									'step-label': state.models.length === 0
-								})}
-								>${state.models.length ? t.models : t.trainModels}</span
-							>
-						</a>
-						${state.models.length
-							? html`<ul class="step-models">
-									${repeat(
-										state.models,
-										(model) => model.num,
-										(model) =>
-											html`<li class="step-model">
-												<a
-													class="step-model-link"
-													href="/models/${model.num}"
-													aria-current=${model.current ?? nothing}>
-													${t.model({ num: format.number(model.num) })}
-													${model.status === 'training'
-														? html`<span
-																	class="dot"
-																	aria-hidden="true"></span
-																><span class="visually-hidden">
-																	${t.training}</span
-																>`
-														: model.status === 'trained'
-															? html`<span
-																		class="trained"
-																		aria-hidden="true"
-																		>✓</span
-																	><span class="visually-hidden">
-																		${t.trained}</span
-																	>`
-															: nothing}
-												</a>
-											</li>`
-									)}
-								</ul>`
-							: nothing}
+						<div class="step-link step-model-navigation">
+							<span class="step-num">3</span>
+							<a
+								href="/models"
+								class="step-link-small"
+								aria-current=${state.current.models ?? nothing}>
+								${t.allTrained}
+							</a>
+							${state.models.length || state.provisionalVisible
+								? html`<ul class="step-models">
+										${repeat(
+											state.models,
+											(model) => model.num,
+											(model) => html`
+												<li class="step-model">
+													<a
+														class="step-model-link step-trained-model"
+														href="/models/${model.num}"
+														aria-current=${model.current ?? nothing}>
+														<span class="swatch swatch-${model.colour}"
+															>${format.number(model.num)}</span
+														>
+														<span class="step-model-name">
+															${model.name ??
+															t.model({
+																num: format.number(model.num)
+															})}
+														</span>
+														${model.featureCount === undefined
+															? nothing
+															: html`<span class="chiclet">
+																	${t.featureCount({
+																		formatted: format.number(
+																			model.featureCount
+																		)
+																	})(model.featureCount)}
+																</span>`}
+														<span class="trained" aria-hidden="true"
+															>✓</span
+														>
+														<span class="visually-hidden"
+															>${t.trained}</span
+														>
+													</a>
+												</li>
+											`
+										)}
+										${!state.canTrain
+											? nothing
+											: state.provisionalVisible
+												? html`<li class="step-model">
+														<span
+															class="step-model-link"
+															aria-current=${state.current
+																.provisional ?? nothing}
+															>${t.trainingNew}</span
+														>
+													</li>`
+												: html`<li class="step-model">
+														<a
+															class="step-model-link"
+															href="/models/new"
+															>${t.trainAnother}</a
+														>
+													</li>`}
+									</ul>`
+								: state.canTrain
+									? html`<a class="step-train-new" href="/models/new"
+											>${t.trainNew}</a
+										>`
+									: nothing}
+						</div>
 					</li>
 					<li class="step">
 						<a
