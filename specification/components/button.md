@@ -26,12 +26,13 @@ state with an announced status). That requires a new spec, not an agent's judgem
 
 ## 3. Public API (closed)
 
-| Item                      | Description                                                                                                          |
-| ------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `class="btn"`             | Default variant. Valid only on `<button>`.                                                                           |
-| `class="btn btn-primary"` | Primary variant. `btn-primary` has no effect without `btn`.                                                          |
-| `class="btn-icon"`        | Independent native icon button, without `.btn`; direct decorative SVG and a translated accessible name are required. |
-| `buttonStyles`            | `CSSResult` exported from `src/styles/button.styles.ts`.                                                             |
+| Item                      | Description                                                                                                                |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `class="btn"`             | Default variant. Valid only on `<button>`.                                                                                 |
+| `class="btn btn-primary"` | Primary variant. `btn-primary` has no effect without `btn`.                                                                |
+| `class="btn btn-red"`     | Destructive variant, only for destructive or discarding actions (for example Change Dataset). Has no effect without `btn`. |
+| `class="btn-icon"`        | Independent native icon button, without `.btn`; direct decorative SVG and a translated accessible name are required.       |
+| `buttonStyles`            | `CSSResult` exported from `src/styles/button.styles.ts`.                                                                   |
 
 Nothing else is public. No other classes, modifiers, custom properties or exports.
 
@@ -66,6 +67,7 @@ Usage rules:
 - MUST set `type` explicitly (`button`, `submit` or `reset`). A button with no
   `type` inside a form submits it.
 - MUST NOT add `role` or `tabindex`.
+- Use `.btn-red` only for destructive or discarding actions; never for ordinary or primary actions.
 - Disable with the native `disabled` attribute, not `aria-disabled` or a class.
 - Icon controls supply a translated `aria-label` (for example Close) and direct `svg[aria-hidden="true"][focusable="false"]`. They remain native buttons with explicit type; do not invent a custom icon component.
 
@@ -74,7 +76,7 @@ Usage rules:
 ### 5.1 Tokens used
 
 All from `css/root.css`: `--stone-50`, `--stone-200`, `--stone-300`, `--stone-400`,
-`--stone-700` (default text colour, A11Y-01), `--blue-100`, `--blue-700`, plus the tokens named in
+`--stone-700` (default text colour, A11Y-01), `--blue-100`, `--blue-700`, `--red-100`, `--red-700`, plus the tokens named in
 Open questions Q1 to Q3 once decided.
 
 ### 5.2 States
@@ -131,6 +133,16 @@ This is the implementation. Values marked `/* Qn */` wait on Open questions.
 			background-color: var(--blue-100);
 		}
 	}
+
+	&.btn-red {
+		border-color: var(--red-700);
+		background-color: var(--surface);
+		color: var(--red-700);
+
+		&:hover:not(:disabled) {
+			background-color: var(--red-100);
+		}
+	}
 }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -175,22 +187,23 @@ Manual checks (record results in the PR):
 
 ## 8. Acceptance criteria
 
-| ID        | Criterion                                                                                                                                         |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
-| BTN-AC-1  | Default and Primary stories have zero axe violations, including colour contrast.                                                                  |
-| BTN-AC-2  | A `.btn` button is reached with Tab; Enter and Space each fire one `click`.                                                                       |
-| BTN-AC-3  | When focused by keyboard, computed `outline-style` is not `none` and `outline-width` ≥ 2px.                                                       |
-| BTN-AC-4  | A `disabled` `.btn` fires no `click` and its computed background does not change on hover.                                                        |
-| BTN-AC-5  | With `prefers-reduced-motion: reduce` emulated, computed `transition-duration` is `0s`.                                                           |
-| BTN-AC-6  | A button inside a test Lit element using `buttonStyles` has the same computed colour, background, border and padding as a button in the document. |
-| BTN-AC-7  | A button in the document (no shadow root) is styled, via `global.ts` adoption.                                                                    |
-| BTN-AC-8  | Computed `font-family` equals its parent's.                                                                                                       |
-| BTN-AC-9  | With a 60-character label inside a 200px-wide container, the button does not overflow the container.                                              |
-| BTN-AC-10 | With `forced-colors: active` emulated, a keyboard-focused button still has a visible outline.                                                     |
-| BTN-AC-11 | Rendered height is at least 24 CSS px.                                                                                                            |
-| BTN-AC-12 | `btn-primary` without `btn` applies no button styles.                                                                                             |
-| BTN-AC-13 | Icon control has the supplied accessible name, decorative SVG and reference/shared styles.                                                        |
-| BTN-AC-14 | Icon target is at least 24px, actual default button 40px with a 24px glyph.                                                                       |
+| ID        | Criterion                                                                                                                                                                                                                                                                                                                       |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| BTN-AC-1  | Default and Primary stories have zero axe violations, including colour contrast.                                                                                                                                                                                                                                                |
+| BTN-AC-2  | A `.btn` button is reached with Tab; Enter and Space each fire one `click`.                                                                                                                                                                                                                                                     |
+| BTN-AC-3  | When focused by keyboard, computed `outline-style` is not `none` and `outline-width` ≥ 2px.                                                                                                                                                                                                                                     |
+| BTN-AC-4  | A `disabled` `.btn` fires no `click` and its computed background does not change on hover.                                                                                                                                                                                                                                      |
+| BTN-AC-5  | With `prefers-reduced-motion: reduce` emulated, computed `transition-duration` is `0s`.                                                                                                                                                                                                                                         |
+| BTN-AC-6  | A button inside a test Lit element using `buttonStyles` has the same computed colour, background, border and padding as a button in the document.                                                                                                                                                                               |
+| BTN-AC-7  | A button in the document (no shadow root) is styled, via `global.ts` adoption.                                                                                                                                                                                                                                                  |
+| BTN-AC-8  | Computed `font-family` equals its parent's.                                                                                                                                                                                                                                                                                     |
+| BTN-AC-9  | With a 60-character label inside a 200px-wide container, the button does not overflow the container.                                                                                                                                                                                                                            |
+| BTN-AC-10 | With `forced-colors: active` emulated, a keyboard-focused button still has a visible outline.                                                                                                                                                                                                                                   |
+| BTN-AC-11 | Rendered height is at least 24 CSS px.                                                                                                                                                                                                                                                                                          |
+| BTN-AC-12 | `btn-primary` without `btn` applies no button styles.                                                                                                                                                                                                                                                                           |
+| BTN-AC-13 | Icon control has the supplied accessible name, decorative SVG and reference/shared styles.                                                                                                                                                                                                                                      |
+| BTN-AC-14 | Icon target is at least 24px, actual default button 40px with a 24px glyph.                                                                                                                                                                                                                                                     |
+| BTN-AC-15 | `.btn.btn-red` computes border and text colour `--red-700` and background `--surface`, `--red-100` on hover; red-700 on surface and on red-100 is at least 4.5:1; the focus-visible outline is unchanged. Verified by `tests/styles-and-primitives.test.ts` (token, rule and numeric contrast) and the Red story play function. |
 
 BTN-AC-1–14 run independently in `tests/app-shell.e2e.ts` in Chromium, Firefox and WebKit. Story play functions provide additional smoke coverage; reduced-motion and forced-colours emulation stays in Playwright, not Bun or simulated DOM.
 
@@ -201,6 +214,7 @@ BTN-AC-1–14 run independently in `tests/app-shell.e2e.ts` in Chromium, Firefox
 - **Default**: "Datasheet"
 - **Primary**: "Select Dataset"
 - **Pair**: both side by side, as they will commonly appear
+- **Red**, **Red hover**, **Red focus**, **Red long label**, **Red RTL**: the destructive variant ("Change Dataset")
 - **Disabled**: both variants disabled
 - **Long label**: 60-character label in a 200px container
 - **RTL**: both variants with `dir="rtl"` and an Arabic or Hebrew label
