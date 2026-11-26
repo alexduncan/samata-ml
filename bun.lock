@@ -7,7 +7,7 @@
       "dependencies": {
         "@nanostores/i18n": "^0.10.0",
         "@nanostores/lit": "^0.2.3",
-        "@observablehq/plot": "0.6.17",
+        "@observablehq/plot": "0.6.18",
         "idb": "^8.0.4",
         "lit": "^3.3.3",
         "nanostores": "^0.11.4",
@@ -232,7 +232,7 @@
 
     "@nodelib/fs.walk": ["@nodelib/fs.walk@1.2.8", "", { "dependencies": { "@nodelib/fs.scandir": "2.1.5", "fastq": "^1.6.0" } }, "sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg=="],
 
-    "@observablehq/plot": ["@observablehq/plot@0.6.17", "", { "dependencies": { "d3": "^7.9.0", "interval-tree-1d": "^1.0.0", "isoformat": "^0.2.0" } }, "sha512-/qaXP/7mc4MUS0s4cPPFASDRjtsWp85/TbfsciqDgU1HwYixbSbbytNuInD8AcTYC3xaxACgVX06agdfQy9W+g=="],
+    "@observablehq/plot": ["@observablehq/plot@0.6.18", "", { "dependencies": { "d3": "^7.9.2", "interval-tree-1d": "^1.0.4", "isoformat": "^0.2.1" } }, "sha512-7mstE60mEC4N+ralTLgjleJJ9yyV+0SRnIijs5CjLt92/PiAp+Un2gqaFdPPVE083aIKb0Ac0qs/u1a6ARbVTg=="],
 
     "@oxc-parser/binding-android-arm-eabi": ["@oxc-parser/binding-android-arm-eabi@0.159.0", "", { "os": "android", "cpu": "arm" }, "sha512-9/yHxYVeyVzS3CEilO17axbtudUEmySuCL5x4nRz63nld21u4sdxXNhAOLeLCw/c8puAu9RmMb1+FWpq6jJYeQ=="],
 
