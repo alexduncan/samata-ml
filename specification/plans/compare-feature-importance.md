@@ -1,8 +1,8 @@
 # Feature importance on Compare Results
 
-**Status:** draft | **Updated:** 2026-11-26T13:44:02Z
+**Status:** draft | **Updated:** 2026-11-26T19:22:59Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-26T13:24:47Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -479,8 +479,9 @@ None.
 
 ## Plan review history
 
-| Reviewed (UTC) | Agent (model) | Decision | Findings |
-| -------------- | ------------- | -------- | -------- |
+| Reviewed (UTC)       | Agent (model)                             | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| -------------------- | ----------------------------------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-26T19:22:59Z | Google Antigravity (Gemini 4 Carbon High) | changes-requested | BLOCKER: unshipped web-ml scorer/grouped-shuffling APIs left unpinned (D1/D2/T2) and T4 PlotController rectY/--stone-100 mismatch + unmerged chart-best-practices dependency; MAJOR: T2 omits result-validation.ts and progress.ts breaking worker/envelope validation and dropping notes, D9(b) hollow markers fail on stroked olive/neutral symbols and amber 1.4.11 contrast and disagree with I5.6 at 0, T4/T5 SVG aria-hidden violates charts.md role=img, ImportanceComparisonLabels lacks legacy/unavailable/empty strings and orphans rowText, downgradeEnvelope produces ResultEnvelopeV1 hiding comparison, and I6 holdout seed / share xDomain / ROPE disagreement / R=1 monteCarloSe edge cases are underspecified; MINOR: training-progress.md spec sync, note retention, Phase 6 tick, format scope |
 
 ## Change log
 
