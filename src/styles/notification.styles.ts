@@ -9,9 +9,9 @@ export const notificationStyles: CSSResult = css`
 		display: flex;
 		align-items: center;
 		margin-block-end: 1rem;
-		border-radius: 0.25rem;
+		border-radius: 0.5rem;
 		padding-inline: 0.5rem;
-		padding-block: 0.5rem;
+		padding-block: 0.25rem;
 	}
 
 	.notification .icon {
@@ -19,12 +19,17 @@ export const notificationStyles: CSSResult = css`
 	}
 
 	.notification-alert {
-		border: 1px solid var(--amber-700);
+		border: 2px solid var(--amber-600);
 		background-color: var(--amber-100);
 		color: var(--amber-700);
+		font-weight: 500;
 	}
 
 	.notification-text {
 		margin: 0;
+	}
+
+	.notification-text strong {
+		font-weight: 700;
 	}
 `;
