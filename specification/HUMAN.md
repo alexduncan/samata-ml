@@ -114,6 +114,7 @@ The obsolete preview spec (TODO-48/Gap 16) is owned by Step 1 T7. The remaining 
 
 Only the human changes `ready` or `implemented` mockups and `mockups/mockups.css`. Drafts (`<meta name="status" content="draft" />`) are structure only and use existing styles; promote them in place when styled. Each is non-blocking for its scoped behaviour.
 
+- [ ] **Mark unsupported body cells in the table mockup (virtual-table-improvements T8):** Add `.unsupported` to the body `div.table-cell` elements of the unsupported columns in `01-6_virtual-table.html` (you chose this on 2026-11-26). Blocks only T8's body-cell parity entry. → [table mockup](mockups/01-6_virtual-table.html)
 - [ ] **Promote the virtual table mockup (virtual-table-improvements D2):** You authorised the draft `01-6_virtual-table.html` at `8329a10` for this plan on 2026-11-26, so promotion no longer blocks it. Set `status="ready"` and remove the DRAFT comment when you are happy with it. Non-blocking. → [table mockup](mockups/01-6_virtual-table.html) · [plan](plans/virtual-table-improvements.md#technical-decisions)
 - [ ] **Style the in-page loading state (virtual-table-improvements T7):** After T7 updates the `01-8` draft to the loading-in-main structure, style the progress, phase and status text and the error/empty states, then promote. Non-blocking. → [loading draft](mockups/01-8_table-loading.html)
 - [ ] **Style data states (step-1-load-data-and-preview):** Style progress/errors/import notices/histogram information and confirmation. Non-blocking. → [draft](mockups/01-7_data-states.html)
