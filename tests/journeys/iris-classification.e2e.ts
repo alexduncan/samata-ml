@@ -7,33 +7,56 @@ import {
 } from './helpers';
 import { configureOpenDraft, openSidebarDraft } from '../fixtures/training/browser';
 
-test('JOURNEY-IRIS-COMPARE: train two cross-validation models and analyse their paired folds', async ({
+test('DOT-AC-3 / JOURNEY-IRIS-COMPARE: train two cross-validation models and consume the two completion suggestions', async ({
 	page
 }) => {
 	test.setTimeout(120_000);
 	await page.goto('/data');
 	await loadSampleDataset(page, 'iris');
-	await page.locator('app-sidebar a[href="/target"]').click();
+	const sidebar = page.locator('app-sidebar');
+	const compare = sidebar.locator('a[href="/results"]');
+	await sidebar.locator('a[href="/target"]').click();
 	await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
-	await page.locator('app-sidebar a[href="/models"]').click();
+	await sidebar.locator('a[href="/models"]').click();
 	for (const [expectedNumber, label] of [
 		[1, 'Train New Model'],
 		[2, 'Train Another Model']
 	] as const) {
+		await expect(
+			sidebar.getByRole('link', { name: label, exact: true }).locator('.dot')
+		).toBeVisible();
 		const num = await openSidebarDraft(page, label);
 		expect(num).toBe(expectedNumber);
+		await expect(sidebar.locator('.dot')).toHaveCount(0);
 		const setup = await configureOpenDraft(page, num);
 		await setup.getByRole('combobox', { name: 'Training Strategy' }).selectOption('nested_cv');
 		await setup.getByRole('spinbutton').fill('4');
 		await setup.getByRole('button', { name: 'Train Model' }).click();
+		await expect(page.getByRole('button', { name: 'View Results', exact: true })).toBeEnabled({
+			timeout: 45_000
+		});
+		await expect(page).toHaveURL('/models/new');
+		if (num === 1) {
+			await expect(sidebar.locator('.dot')).toHaveCount(0);
+		} else {
+			await expect(compare.locator('.dot')).toBeVisible();
+		}
 		await viewNumberedTrainingResult(page, num, 'Logistic Regression');
 		await expect(
 			page.locator('app-model-results summary').filter({ hasText: 'Training Details' })
 		).toBeVisible();
 	}
-	await page.locator('app-sidebar a[href="/results"]').click();
+	await expect(compare.locator('.dot')).toBeVisible();
+	await compare.click();
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
 	await expect(page.locator('app-results-view app-comparison-table')).toBeVisible();
 	await expect(page.locator('app-rope-bar figure')).toBeVisible({ timeout: 45_000 });
+	await page.goBack();
+	await expect(page).toHaveURL('/models/2');
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
+	await page.goForward();
+	await expect(page).toHaveURL('/results');
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
 });
 
 test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () => {

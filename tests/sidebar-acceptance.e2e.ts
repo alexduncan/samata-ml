@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 import { createSidebarFixture, prepareSidebarFixture } from './visual-parity/fixtures';
+import { dismissWelcomeModal, loadSampleDataset } from './journeys/helpers';
+import { INGESTION_LOCK } from '../src/common/storage/db';
 
 test.describe('Sidebar acceptance', () => {
 	for (const [path, key] of [
@@ -243,4 +245,177 @@ test.describe('Sidebar acceptance', () => {
 		).toEqual(before);
 		await expect(link).toBeFocused();
 	});
+});
+
+test('DOT-AC-1: prerequisites follow actual workflow and historical Help underlays', async ({
+	page
+}) => {
+	await page.goto('/data');
+	await dismissWelcomeModal(page);
+	const sidebar = page.locator('app-sidebar');
+	const data = sidebar.locator('a[href="/data"]');
+	const target = sidebar.locator('a[href="/target"]');
+	const help = sidebar.getByRole('link', { name: 'help', exact: true });
+	const close = page.getByRole('button', { name: 'Close', exact: true });
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
+	await target.click();
+	await expect(data.locator('.dot')).toBeVisible();
+	const original = await data.locator('.dot').elementHandle();
+	await help.click();
+	await expect(close).toBeVisible();
+	expect(
+		await data.locator('.dot').evaluate((element, before) => element === before, original)
+	).toBe(true);
+	await close.click();
+	await expect(page).toHaveURL('/target');
+	expect(
+		await data.locator('.dot').evaluate((element, before) => element === before, original)
+	).toBe(true);
+	await page.goForward();
+	await expect(close).toBeVisible();
+	await page.evaluate(() => history.go(-2));
+	await expect(page).toHaveURL('/data');
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
+	await loadSampleDataset(page, 'iris');
+	await expect(target.locator('.dot')).toBeVisible();
+	await expect(page).toHaveURL('/data');
+	await page.evaluate(() => history.go(2));
+	await expect(page).toHaveURL('/help');
+	await expect(close).toBeVisible();
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
+	await close.click();
+	await expect(page).toHaveURL('/target');
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
+	await data.click();
+	await expect(target.locator('.dot')).toBeVisible();
+});
+
+test('DOT-AC-2: acknowledged target and confirmed wizard departure suggest the first model', async ({
+	page
+}) => {
+	await page.goto('/data');
+	await loadSampleDataset(page, 'iris');
+	const sidebar = page.locator('app-sidebar');
+	const target = sidebar.locator('a[href="/target"]');
+	const first = sidebar.locator('a.step-train-new[href="/models/new"]');
+	const choose = page.getByRole('button', { name: 'Set as Target: class', exact: true });
+	await target.click();
+	await expect(choose).toBeEnabled();
+	await page.evaluate(
+		(name) =>
+			new Promise<void>((ready) => {
+				void navigator.locks.request(
+					name,
+					() =>
+						new Promise<void>((release) => {
+							window.addEventListener('release-target-fixture', () => release(), {
+								once: true
+							});
+							ready();
+						})
+				);
+			}),
+		INGESTION_LOCK
+	);
+	try {
+		await choose.click();
+		await expect(page.locator('app-target-view').getByRole('alert')).toHaveText(
+			'The dataset is busy. Try again.'
+		);
+		await expect(sidebar.locator('.dot')).toHaveCount(0);
+		await expect(first).toHaveCount(0);
+	} finally {
+		await page.evaluate(() => window.dispatchEvent(new Event('release-target-fixture')));
+	}
+	await expect
+		.poll(() =>
+			page.evaluate(
+				async (name) =>
+					(await navigator.locks.query()).held?.some((lock) => lock.name === name),
+				INGESTION_LOCK
+			)
+		)
+		.toBe(false);
+	await choose.click();
+	await expect(first.locator('.dot')).toBeVisible();
+	await expect(first).toHaveAccessibleDescription('Suggested next step');
+	await expect(page).toHaveURL('/target');
+	await first.press('Enter');
+	await expect(page.locator('app-model-builder-view')).toBeVisible();
+	await expect(page).toHaveURL('/models/new');
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
+	const dialog = page.getByRole('dialog', { name: 'Leave this model?' });
+	await target.click();
+	await dialog.getByRole('button', { name: 'Stay', exact: true }).click();
+	await expect(dialog).toBeHidden();
+	await expect(page).toHaveURL('/models/new');
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
+	await target.click();
+	await dialog.getByRole('button', { name: 'Leave', exact: true }).click();
+	await expect(page).toHaveURL('/target');
+	await expect(first.locator('.dot')).toBeVisible();
+	await page.reload();
+	await expect(first).toBeVisible();
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
+});
+
+test('DOT-AC-3: live loss retires a training cue and a zero-to-two publication suggests comparison', async ({
+	page
+}) => {
+	await prepareSidebarFixture(page, 'target');
+	const sidebar = page.locator('app-sidebar');
+	const models = createSidebarFixture('models').models.slice(0, 2);
+	const publishModels = (records: typeof models, reset = false) =>
+		page.evaluate(
+			({ records, reset }) => {
+				const store = window.__appState!;
+				const state = store.get();
+				store.set({
+					...state,
+					models: records,
+					comparisonContextEpoch: state.comparisonContextEpoch + Number(reset)
+				});
+			},
+			{ records, reset }
+		);
+	await publishModels(models.slice(0, 1));
+	await expect(sidebar.locator('a.step-model-link[href="/models/new"] .dot')).toBeVisible();
+	await publishModels([]);
+	await expect(sidebar.locator('a.step-train-new')).toBeVisible();
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
+	await sidebar.locator('a[href="/models"]').click();
+	await expect(page).toHaveURL('/models');
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
+	await publishModels(models.slice(0, 1));
+	await expect(sidebar.locator('a.step-model-link[href="/models/new"]')).toBeVisible();
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
+	await publishModels([], true);
+	await expect(sidebar.locator('a.step-train-new')).toBeVisible();
+	await publishModels(models);
+	await expect(sidebar.locator('a[href="/results"] .dot')).toBeVisible();
+	await expect(sidebar.locator('.dot')).toHaveCount(1);
+});
+
+test('DOT-AC-4: the suggested native link keeps its name, focus and current workflow', async ({
+	page
+}) => {
+	await prepareSidebarFixture(page, 'target');
+	const sidebar = page.locator('app-sidebar');
+	const compare = sidebar.locator('a[href="/results"]');
+	await compare.focus();
+	const before = await compare.getAttribute('aria-current');
+	await page.evaluate(
+		(models) => {
+			const store = window.__appState!;
+			store.set({ ...store.get(), models });
+		},
+		createSidebarFixture('models').models.slice(0, 2)
+	);
+	await expect(compare).toHaveAccessibleName('4 Compare Results');
+	await expect(compare).toHaveAccessibleDescription('Suggested next step');
+	await expect(compare).toBeFocused();
+	await expect(compare.locator('span.dot')).toHaveAttribute('aria-hidden', 'true');
+	await expect(sidebar.locator('.dot')).toHaveCount(1);
+	expect(await compare.getAttribute('aria-current')).toBe(before);
+	await expect(page).toHaveURL('/target');
 });
