@@ -417,6 +417,8 @@ export interface ScrollSnapshot {
 	viewportWidth: number;
 	/** Document scroll top offset in CSS px. */
 	top: number;
+	/** Document inline scroll offset in CSS px (raw `scrollX`, negative in RTL); absent in legacy snapshots. */
+	left?: number;
 	/** Named internal scrollable region offsets. */
 	regions?: Record<string, { top: number; left: number }>;
 	/** Timestamp in milliseconds when snapshot was recorded. */

@@ -212,6 +212,8 @@ function validateScrollState(
 			!Number.isFinite(snap.viewportWidth) ||
 			typeof snap.top !== 'number' ||
 			!Number.isFinite(snap.top) ||
+			(snap.left !== undefined &&
+				(typeof snap.left !== 'number' || !Number.isFinite(snap.left))) ||
 			typeof snap.savedAt !== 'number' ||
 			!Number.isFinite(snap.savedAt)
 		) {

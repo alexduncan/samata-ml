@@ -1269,9 +1269,10 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 						: conflict;
 				});
 				if (!ack.ok) return notice(ack, committed ? 'discard' : undefined);
+				// A dataset discard also drops the preview offset; a target discard keeps it.
 				clearScroll(
-					Object.keys($scrollState.get().snapshots).filter(
-						(key) => !key.startsWith('data:')
+					Object.keys($scrollState.get().snapshots).filter((key) =>
+						newTarget === null ? key !== 'data:select' : !key.startsWith('data:')
 					)
 				);
 				return { ok: true, value: undefined };
@@ -1455,7 +1456,7 @@ export function createTrainingService(options: TrainingServiceOptions = {}) {
 				if (previousDataset !== dataset.id)
 					clearScroll(
 						Object.keys($scrollState.get().snapshots).filter(
-							(key) => !key.startsWith('data:')
+							(key) => key !== 'data:select'
 						)
 					);
 				try {

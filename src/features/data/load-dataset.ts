@@ -11,6 +11,8 @@ import type { IngestionSource } from './ingestion/pipeline';
 export interface LoadDatasetOptions extends IngestOptions {
 	/** Optional client override for tests or an explicitly managed worker client. */
 	client?: StorageClient;
+	/** Receives each stage as it starts: uploads validate first, samples only ingest. */
+	onStage?: (stage: 'validating' | 'ingesting') => void;
 }
 
 /** Ingests a source, updates application state, then removes older stored datasets. */
@@ -20,6 +22,14 @@ export async function loadDataset(
 ): Promise<DatasetSummary> {
 	const client = options.client ?? getStorageClient();
 	const previousDataset = $appState.get().dataset?.id ?? null;
+	if (source.kind === 'file') {
+		options.onStage?.('validating');
+		// Pass 1: parse and profile the whole file without writing to IndexedDB.
+		await client.validate(source, { signal: options.signal, onProgress: options.onProgress });
+		if (options.signal?.aborted)
+			throw new IngestionError('CANCELLED', 'Dataset loading was cancelled.');
+	}
+	options.onStage?.('ingesting');
 	const metadata = await client.ingest(source, {
 		signal: options.signal,
 		onProgress: options.onProgress

@@ -1,6 +1,6 @@
 # Virtual table improvements: document scrolling, typed columns and in-page loading
 
-**Status:** ready | **Updated:** 2026-11-26T13:26:34Z
+**Status:** ready | **Updated:** 2026-11-26T13:29:45Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-26T10:41:08Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-26T13:19:15Z | **Verification:** approved
 **Verified hash:** sha256:801305afa207541d1ef6d716843998f36b56b0338d5b96fdad036c6d812671f9
@@ -255,12 +255,12 @@ One exported symbol; no events. Writes only `--page-header-block-size` on the ro
 - **Must not touch:** `src/components/`, `src/features/data/ingestion/` — protocol fixed by T1.
 - **Implementation:** Add `stage`, `name` and `errorStage` to `DatasetLoadState` (D18). `startDatasetLoad({kind: 'file'})` sets `validating`, calls `client.validate`, on success sets `ingesting` and continues with the existing ingest + `publishDataset`; samples go straight to `ingesting`. Errors and cancellation reset `stage` to `idle` with `errorCode` and `errorStage`; a new load clears both. Add optional `left` to `ScrollSnapshot`, writer, restore and validator (D17); legacy snapshots without `left` restore to 0. Apply D24's scroll invalidation: in `destructive()` (`src/features/models/training/training-service.ts:1272-1276`) when the mutation is `delete-dataset`, and in `publishDataset()` (1456-1460) when `previousDataset !== dataset.id`, the `clearScroll` key filter keeps only `data:select` (it currently keeps every `data:` key); the target-discard path (`delete-results`) and `clearNonDataScroll` (`app.store.ts:97-103`) keep `data:preview`.
 - **Acceptance criteria:**
-    - [ ] LOAD-ST-1: a file load passes through `validating` then `ingesting` then `idle`; a validation error sets `errorStage = 'validating'`, never enters `ingesting` and leaves dataset, target and models unchanged; a pass-2 failure sets `errorStage = 'ingesting'`.
-    - [ ] LOAD-ST-2: a sample load never enters `validating`; its failure sets `errorStage = 'ingesting'`; the `busy` guard still rejects a second concurrent load; starting a new load clears `errorCode` and `errorStage`.
-    - [ ] SCROLL-CLEAR-1: `discardDataset` removes `data:preview` and keeps `data:select`; `discardTarget` keeps `data:preview`; publishing a different dataset id removes `data:preview`; republishing the same id keeps it.
-    - [ ] SCROLL-LEFT-1: a snapshot with `left` round-trips through the persister; a legacy snapshot without `left` validates and restores `left = 0`; a non-finite `left` is rejected by the validator.
+    - [x] LOAD-ST-1: a file load passes through `validating` then `ingesting` then `idle`; a validation error sets `errorStage = 'validating'`, never enters `ingesting` and leaves dataset, target and models unchanged; a pass-2 failure sets `errorStage = 'ingesting'`.
+    - [x] LOAD-ST-2: a sample load never enters `validating`; its failure sets `errorStage = 'ingesting'`; the `busy` guard still rejects a second concurrent load; starting a new load clears `errorCode` and `errorStage`.
+    - [x] SCROLL-CLEAR-1: `discardDataset` removes `data:preview` and keeps `data:select`; `discardTarget` keeps `data:preview`; publishing a different dataset id removes `data:preview`; republishing the same id keeps it.
+    - [x] SCROLL-LEFT-1: a snapshot with `left` round-trips through the persister; a legacy snapshot without `left` validates and restores `left = 0`; a non-finite `left` is rejected by the validator.
 - **Verification:** `bun test tests/state-and-storage.test.ts`, `bun test tests/router-and-navigation.test.ts`, `bun test tests/dataset-resources.test.ts`, `bun test tests/training-service.test.ts`, `bun test tests/telemetry-privacy.test.ts`, `bun run check`, `bun run lint`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-26T13:29:45Z)
 
 ### T3 — `.btn-red` destructive button variant
 
@@ -405,6 +405,7 @@ None.
 | ---------- | ---- | ------------- | ----------------------------- |
 | —          | —    | —             | Not started                   |
 | 2026-11-26T13:26:34Z | T1 | Claude Code (claude-sonnet-5-5) | bun test (695 pass, 0 fail) incl. ingestion-pipeline, storage-client, load-progress, dataset-resources, telemetry-privacy; bun run lint pass; bun run typecheck reports only pre-existing TS7016 for @observablehq/plot in src/features/results/charts/plot-controller.ts (untouched). Changed: ingestion pipeline/csv-stream/errors/protocol/worker-handler/storage-client, new dataset-name.ts and load-progress.ts, tests and StorageClient fakes. |
+| 2026-11-26T13:29:45Z | T2 | Claude Code (claude-sonnet-5-5) | bun test full suite (704 pass, 0 fail) incl. state-and-storage, router-and-navigation, dataset-resources, training-service, telemetry-privacy; bun run lint pass; bun run typecheck reports only pre-existing TS7016 for @observablehq/plot in src/features/results/charts/plot-controller.ts (untouched). Changed: dataset.store.ts, load-dataset.ts, state.ts, persister.ts, scroll-restorer.ts, training-service.ts scroll filters, and tests. |
 
 ## Plan review history
 

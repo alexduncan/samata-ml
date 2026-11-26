@@ -2383,6 +2383,66 @@ test('WML-P3-TRAIN-7: unrelated publication preserves an in-memory debounced dra
 	}
 });
 
+const SCROLL_SNAPSHOT = { top: 120, left: 30, savedAt: 1, viewportWidth: 900 };
+
+function recordScrollFixture(): void {
+	recordScroll('data:select', SCROLL_SNAPSHOT);
+	recordScroll('data:preview', SCROLL_SNAPSHOT);
+	recordScroll('models', SCROLL_SNAPSHOT);
+}
+
+function scrollKeys(): string[] {
+	return Object.keys($scrollState.get().snapshots).sort();
+}
+
+test('SCROLL-CLEAR-1: a target discard keeps the preview offset', async () => {
+	const formerScroll = $scrollState.get();
+	try {
+		seed();
+		recordScrollFixture();
+		expect(await service.discardTarget(metadata.id, 'species', 'measurement')).toMatchObject({
+			ok: true
+		});
+		expect(scrollKeys()).toEqual(['data:preview', 'data:select']);
+	} finally {
+		$scrollState.set(formerScroll);
+	}
+});
+
+test('SCROLL-CLEAR-1: a dataset discard clears the preview offset and keeps the selection offset', async () => {
+	const formerScroll = $scrollState.get();
+	try {
+		seed();
+		recordScrollFixture();
+		expect(await service.discardDataset(metadata.id, 'species')).toMatchObject({ ok: true });
+		expect(scrollKeys()).toEqual(['data:select']);
+	} finally {
+		$scrollState.set(formerScroll);
+	}
+});
+
+test('SCROLL-CLEAR-1: publishing a different dataset clears the preview offset; republishing the same id keeps it', async () => {
+	const formerScroll = $scrollState.get();
+	try {
+		seed();
+		await db.put('metadata', metadata);
+		recordScrollFixture();
+		expect(
+			await service.publishDataset(toDatasetSummary(metadata), metadata.id, async () => {})
+		).toMatchObject({ ok: true });
+		expect(scrollKeys()).toEqual(['data:preview', 'data:select', 'models']);
+
+		const staged = { ...metadata, id: 'staged-dataset' };
+		await db.put('metadata', staged);
+		expect(
+			await service.publishDataset(toDatasetSummary(staged), metadata.id, async () => {})
+		).toMatchObject({ ok: true });
+		expect(scrollKeys()).toEqual(['data:select']);
+	} finally {
+		$scrollState.set(formerScroll);
+	}
+});
+
 test('WML-P3-TRAIN-4: a missing staged hand-off fails before commit and preserves active resources', async () => {
 	const prior = seed();
 	const staged = { ...metadata, id: 'staged-dataset' };

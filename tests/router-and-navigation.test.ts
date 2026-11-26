@@ -314,7 +314,40 @@ describe('Router & Navigation (NAV-AC-1, NAV-AC-2, NAV-AC-4)', () => {
 
 			const restored = await restoreScroll('target');
 			expect(restored).toBe(true);
-			expect(scrolledTo as unknown).toEqual({ top: 450, behavior: 'instant' });
+			expect(scrolledTo as unknown).toEqual({ top: 450, left: 0, behavior: 'instant' });
+		});
+
+		it('SCROLL-LEFT-1: restores the inline offset and records the document scrollX', async () => {
+			let scrolledTo: unknown = null;
+			window.scrollTo = (options: any) => {
+				scrolledTo = options;
+			};
+			$scrollState.set({
+				version: 1,
+				snapshots: {
+					'data:preview': {
+						viewportWidth: window.innerWidth,
+						top: 450,
+						left: -35,
+						savedAt: Date.now()
+					}
+				}
+			});
+			expect(await restoreScroll('data:preview')).toBe(true);
+			expect(scrolledTo).toEqual({ top: 450, left: -35, behavior: 'instant' });
+
+			Object.defineProperty(window, 'scrollX', {
+				value: 75,
+				configurable: true,
+				writable: true
+			});
+			recordCurrentScroll('data:preview');
+			expect($scrollState.get().snapshots['data:preview']?.left).toBe(75);
+			Object.defineProperty(window, 'scrollX', {
+				value: 0,
+				configurable: true,
+				writable: true
+			});
 		});
 
 		it('ignores snapshot without deleting it when viewport width differs', async () => {

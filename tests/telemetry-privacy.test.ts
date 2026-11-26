@@ -424,7 +424,14 @@ describe('beta Umami telemetry client and privacy allowlist', () => {
 			kind: 'sample',
 			sampleId: 'iris'
 		});
-		expect($datasetLoad.get()).toEqual({ busy: false, progress: null, errorCode: null });
+		expect($datasetLoad.get()).toEqual({
+			busy: false,
+			progress: null,
+			errorCode: null,
+			stage: 'idle',
+			name: '',
+			errorStage: null
+		});
 		expect(firstOk).toBe(true);
 
 		expect(
