@@ -1063,34 +1063,31 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 	}) => {
 		await page.setViewportSize({ width: 1000, height: 800 });
 		await loadSampleDataset(page, 'iris');
-		const table = page.locator('app-dataset-preview ui-virtual-table');
-		await table.evaluate(async (element) => {
-			await (element as HTMLElementTagNameMap['ui-virtual-table']).scrollToRow(50, 5, 25);
-		});
-		const viewport = table.locator('.table-viewport');
-		await expect
-			.poll(() => viewport.evaluate((element) => element.scrollTop))
-			.toBeGreaterThan(0);
+		// Let rows load first: the loading notice changing height above the offset would move it.
+		await expect(
+			page.locator('app-dataset-preview ui-virtual-table .table-cell').first()
+		).not.toHaveText('');
+		await expect(page.locator('app-dataset-preview .status-box')).toHaveCount(0);
 		await page.addStyleTag({ content: '#content { min-block-size: 300vh; }' });
-		await page.evaluate(() => window.scrollTo(0, 450));
-		const documentTop = await page.evaluate(() => scrollY);
-		const tablePosition = await viewport.evaluate((element) => ({
-			top: element.scrollTop,
-			left: element.scrollLeft
-		}));
+		await page.evaluate(() => window.scrollTo(25, 450));
+		// Scrolling requests rows, which briefly shows a loading notice above the table and can
+		// shift the offset by anchoring; wait until the offset is stable again.
+		await expect(page.locator('app-dataset-preview .status-box')).toHaveCount(0);
+		await expect
+			.poll(async () => {
+				const before = await page.evaluate(() => scrollY);
+				await page.waitForTimeout(200);
+				return before === (await page.evaluate(() => scrollY));
+			})
+			.toBe(true);
+		const documentOffsets = await page.evaluate(() => ({ x: scrollX, y: scrollY }));
 		await page.locator('app-data-view').evaluate(async (element) => {
 			await (element as HTMLElementTagNameMap['app-data-view']).focusHeading(
 				new AbortController().signal
 			);
 		});
 		await expect(page.locator('app-dataset-preview h1')).toBeFocused();
-		expect(await page.evaluate(() => scrollY)).toBe(documentTop);
-		expect(
-			await viewport.evaluate((element) => ({
-				top: element.scrollTop,
-				left: element.scrollLeft
-			}))
-		).toEqual(tablePosition);
+		expect(await page.evaluate(() => ({ x: scrollX, y: scrollY }))).toEqual(documentOffsets);
 	});
 
 	test('FOCUS-AC-6: selection and preview focus preserve header geometry with paired references', async ({
