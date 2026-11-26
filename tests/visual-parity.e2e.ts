@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { parityMap, type ParityEntry } from './visual-parity/map';
-import { prepareSidebarFixture, prepareSidebarReference } from './visual-parity/fixtures';
+import {
+	createSidebarFixture,
+	prepareSidebarFixture,
+	prepareSidebarReference
+} from './visual-parity/fixtures';
 import { MOCKUPS_URL } from '../scripts/ports';
 
 test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
@@ -275,6 +279,52 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 			await reference.close();
 			await page.close();
 		}
+	});
+
+	test('DOT-AC-7: a separately cued reduced-motion fixture matches the model-row dot slot', async ({
+		page,
+		context
+	}, testInfo) => {
+		await prepareSidebarFixture(page, 'dataset');
+		await page.evaluate(
+			(state) => window.__appState!.set(state),
+			createSidebarFixture('target')
+		);
+		const link = page.locator('app-sidebar a.step-train-new[href="/models/new"]');
+		const dot = link.locator('.dot');
+		await expect(dot).toBeVisible();
+		await expect(page.locator('body > .workflow-dot-burst')).toHaveCount(0);
+		const reference = await context.newPage();
+		await reference.emulateMedia({ reducedMotion: 'reduce' });
+		await reference.goto(`${MOCKUPS_URL}/02-2_target-set.html?clean=1`);
+		const referenceDot = reference.locator('.sidebar .step-model-link .dot');
+		const { width, height, right, radius } = await referenceDot.evaluate((element) => {
+			const style = getComputedStyle(element);
+			return {
+				width: style.width,
+				height: style.height,
+				right: style.right,
+				radius: style.borderRadius
+			};
+		});
+		await expect(dot).toHaveCSS('width', width);
+		await expect(dot).toHaveCSS('height', height);
+		await expect(dot).toHaveCSS('inset-inline-end', right);
+		await expect(dot).toHaveCSS('border-radius', radius);
+		const linkBox = (await link.boundingBox())!;
+		const dotBox = (await dot.boundingBox())!;
+		expect(dotBox.y + dotBox.height / 2).toBeCloseTo(linkBox.y + linkBox.height / 2);
+		await page.locator('app-sidebar').screenshot({
+			path: testInfo.outputPath('sidebar-cued-app.png'),
+			animations: 'disabled',
+			caret: 'hide'
+		});
+		await reference.locator('.sidebar').screenshot({
+			path: testInfo.outputPath('sidebar-cued-reference.png'),
+			animations: 'disabled',
+			caret: 'hide'
+		});
+		await reference.close();
 	});
 
 	test('SIDE-AC-11: a temporary workflow gap fails the blocking geometry assertion and restoration passes', async ({

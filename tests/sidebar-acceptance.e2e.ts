@@ -419,3 +419,224 @@ test('DOT-AC-4: the suggested native link keeps its name, focus and current work
 	expect(await compare.getAttribute('aria-current')).toBe(before);
 	await expect(page).toHaveURL('/target');
 });
+
+test('DOT-AC-5: one centred body burst paints beyond the sidebar and ends at two seconds', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 1440, height: 900 });
+	await prepareSidebarFixture(page, 'empty', 'no-preference');
+	const sidebar = page.locator('app-sidebar');
+	const core = sidebar.locator('a[href="/data"] > .dot');
+	const burst = page.locator('body > .workflow-dot-burst');
+	await sidebar.locator('a[href="/target"]').click();
+	await expect(core).toBeVisible();
+	await expect(burst).toHaveCount(1);
+	await expect(burst).toHaveAttribute('aria-hidden', 'true');
+	const measured = await burst.evaluate((element) => {
+		const host = document.querySelector('app-sidebar')!;
+		const dot = host.shadowRoot!.querySelector('.dot')!;
+		const [animation] = element.getAnimations();
+		const effect = animation!.effect as KeyframeEffect;
+		animation!.pause();
+		animation!.currentTime = 0;
+		const { x, y, width, height } = dot.getBoundingClientRect();
+		const centred = element.getBoundingClientRect();
+		const style = getComputedStyle(element);
+		const { position, pointerEvents } = style;
+		const frames = effect.getKeyframes().map(({ opacity, transform }) => ({
+			opacity: Number(opacity),
+			scale: new DOMMatrix(transform as string).a
+		}));
+		animation!.currentTime = 1_000;
+		return {
+			centres: [
+				centred.x + centred.width / 2 - (x + width / 2),
+				centred.y + centred.height / 2 - (y + height / 2)
+			],
+			width: centred.width,
+			position,
+			pointerEvents,
+			frames,
+			duration: effect.getComputedTiming().duration,
+			outside: element.getBoundingClientRect().right > host.getBoundingClientRect().right
+		};
+	});
+	for (const difference of measured.centres) expect(Math.abs(difference)).toBeLessThanOrEqual(1);
+	expect(measured.width).toBeGreaterThan(0);
+	expect(measured).toMatchObject({
+		position: 'fixed',
+		pointerEvents: 'none',
+		frames: [
+			{ opacity: 1, scale: 1 },
+			{ opacity: 0, scale: 30 }
+		],
+		duration: 2_000,
+		outside: true
+	});
+	await burst.evaluate((element) => element.getAnimations()[0]!.finish());
+	await expect(burst).toHaveCount(0);
+	await expect(core).toBeVisible();
+});
+
+test('DOT-AC-6: navigation before the pending frame prevents a burst', async ({ page }) => {
+	await prepareSidebarFixture(page, 'empty', 'no-preference');
+	const sawCue = await page
+		.locator('app-sidebar')
+		.evaluate(async (host: HTMLElementTagNameMap['app-sidebar']) => {
+			const queued = new Map<number, FrameRequestCallback>();
+			const frame = window.requestAnimationFrame;
+			const cancel = window.cancelAnimationFrame;
+			let frameId = 0;
+			window.requestAnimationFrame = (callback) => {
+				queued.set(++frameId, callback);
+				return frameId;
+			};
+			window.cancelAnimationFrame = (id) => {
+				queued.delete(id);
+			};
+			try {
+				host.shadowRoot!.querySelector<HTMLAnchorElement>('a[href="/target"]')!.click();
+				await host.updateComplete;
+				const pendingCue =
+					host.shadowRoot!.querySelector('.dot') !== null && queued.size > 0;
+				host.shadowRoot!.querySelector<HTMLAnchorElement>('a[href="/data"]')!.click();
+				await host.updateComplete;
+				return pendingCue;
+			} finally {
+				window.requestAnimationFrame = frame;
+				window.cancelAnimationFrame = cancel;
+				for (const callback of queued.values()) frame(callback);
+			}
+		});
+	expect(sawCue).toBe(true);
+	await expect(page).toHaveURL('/data');
+	await expect(page.locator('app-sidebar .dot')).toHaveCount(0);
+	await page.evaluate(
+		() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+	);
+	await expect(page.locator('body > .workflow-dot-burst')).toHaveCount(0);
+});
+
+test('DOT-AC-6: updates preserve the arrival while replacement, navigation and disconnect remove it', async ({
+	page
+}) => {
+	await prepareSidebarFixture(page, 'empty', 'no-preference');
+	const sidebar = page.locator('app-sidebar');
+	const bursts = page.locator('body > .workflow-dot-burst');
+	const first = sidebar.locator('a[href="/data"] .dot');
+	const second = sidebar.locator('a[href="/target"] .dot');
+	await sidebar.locator('a[href="/models"]').click();
+	await expect(first).toBeVisible();
+	await expect(bursts).toHaveCount(1);
+	await bursts.evaluate((element) => element.getAnimations()[0]!.pause());
+	const arrival = await bursts.elementHandle();
+	const dot = await first.elementHandle();
+	await sidebar.evaluate(async (host: HTMLElementTagNameMap['app-sidebar']) => {
+		const app = window.__appState!;
+		app.set({ ...app.get() });
+		await host.updateComplete;
+		await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+	});
+	expect(await bursts.evaluate((element, prior) => element === prior, arrival)).toBe(true);
+	expect(await first.evaluate((element, prior) => element === prior, dot)).toBe(true);
+	await page.evaluate((state) => window.__appState!.set(state), createSidebarFixture('dataset'));
+	await expect(second).toBeVisible();
+	await expect.poll(() => arrival!.evaluate((element) => element.isConnected)).toBe(false);
+	await expect(bursts).toHaveCount(1);
+	await sidebar.locator('a[href="/target"]').click();
+	await expect(bursts).toHaveCount(0);
+	await sidebar.locator('a[href="/data"]').click();
+	await expect(bursts).toHaveCount(1);
+	await sidebar.evaluate((element) => element.remove());
+	await expect(bursts).toHaveCount(0);
+});
+
+test('DOT-AC-6: reduced motion cancels the active burst and leaves a static cue on later visits', async ({
+	page
+}) => {
+	await prepareSidebarFixture(page, 'empty', 'no-preference');
+	const sidebar = page.locator('app-sidebar');
+	const bursts = page.locator('body > .workflow-dot-burst');
+	const data = sidebar.locator('a[href="/data"]');
+	const target = sidebar.locator('a[href="/target"]');
+	await target.click();
+	await expect(bursts).toHaveCount(1);
+	await bursts.evaluate((element) => element.getAnimations()[0]!.pause());
+	await page.emulateMedia({ reducedMotion: 'reduce' });
+	await expect(bursts).toHaveCount(0);
+	await expect(data.locator('.dot')).toBeVisible();
+	await expect(data.locator('.dot')).toHaveCSS('animation-name', 'none');
+	await data.click();
+	await target.click();
+	await expect(data.locator('.dot')).toBeVisible();
+	await page.evaluate(
+		() => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
+	);
+	await expect(bursts).toHaveCount(0);
+	await page.emulateMedia({ reducedMotion: 'no-preference' });
+	await expect(bursts).toHaveCount(0);
+});
+
+test('DOT-AC-7: wide labels and a forced-colours cue preserve keyboard focus at 320px in both directions', async ({
+	page,
+	browserName
+}) => {
+	await page.setViewportSize({ width: 320, height: 900 });
+	await page.emulateMedia({ forcedColors: 'active' });
+	await prepareSidebarFixture(page, 'long');
+	const sidebar = page.locator('app-sidebar');
+	const target = sidebar.locator('a[href="/target"]');
+	await page.evaluate(() => {
+		const store = window.__appState!;
+		store.set({ ...store.get(), target: null, models: [] });
+	});
+	const testsForcedColours =
+		browserName !== 'webkit' ||
+		(await page.evaluate(() => CSS.supports('forced-color-adjust', 'none')));
+	if (testsForcedColours) {
+		expect(await page.evaluate(() => matchMedia('(forced-colors: active)').matches)).toBe(true);
+	} else {
+		test.info().annotations.push({
+			type: 'browser capability',
+			description:
+				'This WebKit build does not support forced-color-adjust. Static cue, keyboard and reflow remain asserted.'
+		});
+	}
+	for (const dir of ['ltr', 'rtl'] as const) {
+		await page.evaluate((value) => (document.documentElement.dir = value), dir);
+		const core = target.locator('.dot');
+		await expect(core).toBeVisible();
+		if (testsForcedColours) {
+			await expect(core).toHaveCSS('forced-color-adjust', 'none');
+			await expect(core).toHaveCSS(
+				'background-color',
+				await target.evaluate((link) => getComputedStyle(link).color)
+			);
+		} else {
+			await expect(core).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)');
+		}
+		const linkBox = (await target.boundingBox())!;
+		const dotBox = (await core.boundingBox())!;
+		const label = (await target.locator('.step-label').boundingBox())!;
+		const margin =
+			dir === 'ltr'
+				? linkBox.x + linkBox.width - dotBox.x - dotBox.width
+				: dotBox.x - linkBox.x;
+		expect(margin).toBeGreaterThanOrEqual(12);
+		expect(
+			dir === 'ltr' ? dotBox.x - label.x - label.width : label.x - dotBox.x - dotBox.width
+		).toBeGreaterThan(0);
+		expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(
+			320
+		);
+		await target.focus();
+		await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
+		await page.keyboard.press(browserName === 'webkit' ? 'Alt+Shift+Tab' : 'Shift+Tab');
+		await expect(target).toBeFocused();
+		await expect(target).toHaveCSS('outline-width', '2px');
+		await expect(target).toHaveCSS('outline-offset', '-2px');
+	}
+	await target.press('Enter');
+	await expect(page).toHaveURL('/target');
+	await expect(sidebar.locator('.dot')).toHaveCount(0);
+});

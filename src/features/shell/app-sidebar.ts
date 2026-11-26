@@ -58,6 +58,9 @@ export class AppSidebar extends LitElement {
 	private readonly cue = new StoreController(this, this.cueTracker.cue);
 	private readonly translations = new StoreController(this, messages);
 	private readonly formatter = new StoreController(this, $format);
+	private renderedDot: HTMLElement | null = null;
+	private arrivalFrame: number | undefined;
+	private arrival: HTMLElement | undefined;
 
 	static override readonly styles = [
 		chicletStyles,
@@ -344,6 +347,54 @@ export class AppSidebar extends LitElement {
 	override disconnectedCallback(): void {
 		super.disconnectedCallback();
 		this.cueTracker.stop();
+		this.clearArrival();
+		this.renderedDot = null;
+	}
+
+	override updated(): void {
+		const dot = this.renderRoot.querySelector<HTMLElement>('.dot');
+		if (dot === this.renderedDot) return;
+		this.clearArrival();
+		this.renderedDot = dot;
+		if (!dot) return;
+
+		const cue = this.cue.value;
+		this.arrivalFrame = requestAnimationFrame(() => {
+			this.arrivalFrame = undefined;
+			if (
+				!this.isConnected ||
+				!dot.isConnected ||
+				dot !== this.renderedDot ||
+				cue !== this.cue.value ||
+				!matchMedia('(prefers-reduced-motion: no-preference)').matches
+			)
+				return;
+
+			const { x, y, width, height } = dot.getBoundingClientRect();
+			if (width === 0 || height === 0) return;
+			const burst = this.ownerDocument.createElement('span');
+			burst.className = 'workflow-dot-burst';
+			burst.setAttribute('aria-hidden', 'true');
+			burst.style.left = `${x + width / 2}px`;
+			burst.style.top = `${y + height / 2}px`;
+			this.arrival = burst;
+			this.ownerDocument.body.append(burst);
+
+			const remove = () => {
+				burst.remove();
+				if (this.arrival === burst) this.arrival = undefined;
+			};
+			const [animation] = burst.getAnimations();
+			if (animation) void animation.finished.then(remove, remove);
+			else remove();
+		});
+	}
+
+	private clearArrival(): void {
+		if (this.arrivalFrame !== undefined) cancelAnimationFrame(this.arrivalFrame);
+		this.arrivalFrame = undefined;
+		this.arrival?.remove();
+		this.arrival = undefined;
 	}
 
 	override render() {

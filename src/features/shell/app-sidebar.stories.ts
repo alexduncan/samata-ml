@@ -138,3 +138,59 @@ export const SuggestionConsumed: Story = {
 		await expect(sidebar.shadowRoot!.querySelectorAll('.dot')).toHaveLength(0);
 	}
 };
+
+const manualSuggestions = [
+	{ label: 'Load Data', path: '/target', before: 'empty' },
+	{ label: 'Set Target', path: '/data', before: 'empty', after: 'dataset' },
+	{ label: 'Train New Model', path: '/target', before: 'dataset', after: 'target' },
+	{
+		label: 'Train Another Model',
+		path: '/models/1',
+		before: 'target',
+		after: 'models',
+		trained: 1
+	},
+	{ label: 'Compare Results', path: '/models/2', before: 'target', after: 'models', trained: 2 }
+] as const;
+
+async function replaySuggestion(event: Event, scenario: (typeof manualSuggestions)[number]) {
+	const sidebar = (event.currentTarget as HTMLElement)
+		.closest('main')!
+		.parentElement!.querySelector('app-sidebar')!;
+	$appState.set(createSidebarFixture('empty'));
+	$route.set(parseRoute('/data'));
+	await sidebar.updateComplete;
+	$appState.set(createSidebarFixture(scenario.before));
+	$route.set(parseRoute(scenario.path));
+	if ('after' in scenario) {
+		const state = createSidebarFixture(scenario.after);
+		if ('trained' in scenario) state.models = state.models.slice(0, scenario.trained);
+		$appState.set(state);
+	}
+}
+
+/** Replay the production sidebar’s cues for native-browser zoom and screen-reader checks. */
+export const ManualWorkflowSuggestions: Story = {
+	beforeEach: prepare('empty', false, '/target'),
+	render: () => html`
+		<app-sidebar></app-sidebar>
+		<main>
+			<h1>Workflow suggestions</h1>
+			<p>Replay a cue, then move focus to its sidebar link.</p>
+			<ul>
+				${manualSuggestions.map(
+					(scenario) => html`
+						<li>
+							<button
+								type="button"
+								class="btn"
+								@click=${(event: Event) => replaySuggestion(event, scenario)}>
+								Show ${scenario.label}
+							</button>
+						</li>
+					`
+				)}
+			</ul>
+		</main>
+	`
+};

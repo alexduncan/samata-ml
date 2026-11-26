@@ -4,8 +4,23 @@ import { featureA11yFindings } from './a11y-feature-findings';
 import { loadSampleDataset } from './journeys/helpers';
 import { controlTraining, openSetup } from './fixtures/training/browser';
 import { seedComparablePair, seedTrainedModel, type SeedName } from './helpers/seed-results';
+import { prepareSidebarFixture } from './visual-parity/fixtures';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
+
+test('DOT-AC-7: a static suggested link keeps its name, description and accessible sidebar', async ({
+	page
+}) => {
+	await prepareSidebarFixture(page, 'dataset');
+	const suggested = page.locator('app-sidebar a[href="/target"]');
+	await expect(suggested).toHaveAccessibleName('2 Set Target');
+	await expect(suggested).toHaveAccessibleDescription('Suggested next step');
+	const { violations } = await new AxeBuilder({ page })
+		.include('app-sidebar')
+		.withTags(AXE_TAGS)
+		.analyze();
+	expect(violations).toEqual([]);
+});
 
 test('TERM-AC-9: WML-P5-UI-12 populated comparison and open terms have no unexpected findings', async ({
 	page
