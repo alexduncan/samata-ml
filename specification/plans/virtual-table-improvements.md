@@ -1,8 +1,8 @@
 # Virtual table improvements: document scrolling, typed columns and in-page loading
 
-**Status:** ready-for-review | **Updated:** 2026-11-26T10:44:41Z
+**Status:** draft | **Updated:** 2026-11-26T10:53:58Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-26T10:41:08Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -329,6 +329,7 @@ None.
 
 | Reviewed (UTC) | Agent (model) | Decision | Findings |
 | -------------- | ------------- | -------- | -------- |
+| 2026-11-26T10:53:58Z | Claude Code (claude-opus-5-5) | changes-requested | MAJOR: D10/VTB-AC-2 recycle rows by transform without restoring DOM order, so browse-mode reading order of role=table rows scrambles (WCAG 1.3.2); keep pool children in index order. MAJOR: D16 drops main overflow-y:scroll, which makes the shared sticky .page-header (page-header.styles.ts:10; models, target, data views) stick against the document on every route, contradicting the out-of-scope item and untested for WCAG 2.4.11/parity. MAJOR: D19/T1 leave statistics progress undefined: it runs one histogram scan (no row events) plus one median scan per numeric column (pipeline.ts:587-601), so a per-scan rowsProcessed/totalRows bar resets repeatedly; define a cumulative model and AC. MINOR: name $datasetResources.descriptor as the async displayName source; add errorStage to D18; HUMAN.md entry is Promote the virtual table mockup, not Style virtual table; .unsupported styling absent from 01-6; T3 parity targets draft 01-6; VTB-AC-3 counter mechanism unspecified; MAX_COLUMNS check is in csv-stream.ts:98-108; categoryCounts is uncapped. |
 
 ## Change log
 
