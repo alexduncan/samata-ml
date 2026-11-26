@@ -1,6 +1,6 @@
 # Give The Dot one purpose in workflow navigation
 
-**Status:** ready | **Updated:** 2026-11-26T05:53:23Z
+**Status:** ready | **Updated:** 2026-11-26T05:56:55Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-25T10:57:56Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-25T17:05:37Z | **Verification:** approved
 **Verified hash:** sha256:16e38470391e421663e4c317d514446ecf51577246b2666d102d14a9d57aca2f
@@ -88,11 +88,11 @@ For destination comparisons consume the effective workflow path from the normali
 
 ## Specification changes
 
-- [ ] `specification/workflow-steps.md` introduction — add a brief **Next-step guidance** section with the seven moments, destination consumption, manual navigation and the one-shot reduced-motion-safe arrival. Status stays partial.
-- [ ] `specification/app-state-and-navigation.md` §4.4 — link to the workflow rule and describe underlay route identity and exact destination consumption. Status stays draft.
-- [ ] `specification/components/sidebar.md` §§2–10 — record the store projection, link descriptions, training text, core and burst ownership, mapping, criteria and stories. Remove the outdated next-step non-goal and cite the existing training row without redefining it. Status stays implemented after the code matches.
-- [ ] `specification/visual-design.md` §§3 and 5 — update the style map, SEM-09 and SHELL-UI-02 for exclusive cue use, the body-level arrival effect and text status. Status stays partial.
-- [ ] `specification/HUMAN.md` — close the claimed Dot Rules entry on verification. Check specification index status alignment.
+- [x] `specification/workflow-steps.md` introduction — add a brief **Next-step guidance** section with the seven moments, destination consumption, manual navigation and the one-shot reduced-motion-safe arrival. Status stays partial.
+- [x] `specification/app-state-and-navigation.md` §4.4 — link to the workflow rule and describe underlay route identity and exact destination consumption. Status stays draft.
+- [x] `specification/components/sidebar.md` §§2–10 — record the store projection, link descriptions, training text, core and burst ownership, mapping, criteria and stories. Remove the outdated next-step non-goal and cite the existing training row without redefining it. Status stays implemented after the code matches.
+- [x] `specification/visual-design.md` §§3 and 5 — update the style map, SEM-09 and SHELL-UI-02 for exclusive cue use, the body-level arrival effect and text status. Status stays partial.
+- [x] `specification/HUMAN.md` — close the claimed Dot Rules entry on verification. Check specification index status alignment.
 
 ## Implementation tasks
 
@@ -133,18 +133,18 @@ For destination comparisons consume the effective workflow path from the normali
 - **Must not touch:** `src/`, `tests/`, `specification/mockups/`, `specification/notes/`
 - **Implementation:** Apply the Specification changes. Put the table of learner-visible moments in Workflow steps and link to it from the other specs. Replace obsolete statements about the training dot and omission of next-step guidance.
 - **Acceptance criteria:**
-    - [ ] DOT-AC-8 — The specifications name the same destinations, triggers, consumption rules and animation as the verified implementation. The sidebar and visual documentation identify The Dot as a navigation cue. The spec and human-queue statuses agree with the delivered work.
+    - [x] DOT-AC-8 — The specifications name the same destinations, triggers, consumption rules and animation as the verified implementation. The sidebar and visual documentation identify The Dot as a navigation cue. The spec and human-queue statuses agree with the delivered work.
 - **Verification:** `bun run check`, `bun run lint`, `bun run build`, `bun run format:check` with this task’s changed paths. Read the updated specs alongside `specification/README.md` and the tests for DOT-AC-1 through DOT-AC-7.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-26T05:56:55Z)
 
 ## Verification and definition of done
 
-- [ ] All task acceptance criteria met.
-- [ ] Relevant verification commands from `AGENTS.md` pass with no new failures.
-- [ ] Type-check, lint, formatting, and build checks pass.
-- [ ] Accessibility (WCAG 2.2 AA), privacy/security, and contract-compatibility checks completed where applicable.
-- [ ] Every item under _Specification changes_ is ticked, and specifications match the implemented code.
-- [ ] No unintended changes outside the tasks' likely files.
+- [x] All task acceptance criteria met.
+- [x] Relevant verification commands from `AGENTS.md` pass with no new failures.
+- [x] Type-check, lint, formatting, and build checks pass.
+- [x] Accessibility (WCAG 2.2 AA), privacy/security, and contract-compatibility checks completed where applicable.
+- [x] Every item under _Specification changes_ is ticked, and specifications match the implemented code.
+- [x] No unintended changes outside the tasks' likely files.
 
 ## Risks and open questions
 
@@ -166,6 +166,7 @@ None.
 | —                    | —    | —             | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 2026-11-26T05:36:59Z | T1   | Codex (GPT-6) | Installed Model main 1ede8b5 exposes both native train links and the numbered handoff. bun test tests/sidebar-state.test.ts passed 7/7, bun test tests/style-tokens.test.ts 11/11, bun run check 682/682 and lint passed. bun run test:e2e tests/sidebar-acceptance.e2e.ts tests/journeys/iris-classification.e2e.ts --workers=1 passed 66/69 initially with three strict-locator errors from a hidden alert duplicate. Scoped visible alert verification preserved the assertion and bun run test:e2e tests/sidebar-acceptance.e2e.ts --grep DOT-AC-2 --workers=1 passed 3/3 across Chromium, Firefox and WebKit. The actual two-Iris-model journey verified both acknowledged thresholds without leaving the wizard automatically. bun run test:stories --maxWorkers=1 passed 789/789 across all three engines. Scope and format passed; the one outside-Likely-files warning is the required co-located workflow cue style story.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | 2026-11-26T05:53:23Z | T2   | Codex (GPT-6) | bun test tests/style-tokens.test.ts 11/11, bun run check 682/682, lint, scoped format and bun run build (11 verified datasets) passed. bun run test:stories --maxWorkers=1 passed 792/792 in Chromium, Firefox and WebKit. Combined bun run test:e2e tests/sidebar-acceptance.e2e.ts tests/visual-parity.e2e.ts tests/a11y.e2e.ts tests/workflow-dot-csp.e2e.ts --workers=1 had 190 passes, 140 Chromium-only parity skips and 11 inherited visual failures with the exact Model baseline titles and measurements. One Firefox navigation returned Not Found and skipped nine serial cases. Unchanged tests/a11y.e2e.ts Firefox replay passed 17 including A11Y-E2E-10 through 14, then the native Firefox process crashed during the Axe API in 15. Same-checkout SAMATA_PORT_BASE=32690 Firefox replays passed 4/4 for A11Y-E2E-16 through 19 and 1/1 for 15. All 200 non-parity-failure cases therefore passed across final-source runs. Strict production CSP and observed positioned body burst passed all three browsers. Chromium and Firefox verified forced colours; this WebKit build verified static visibility, RTL and keyboard/reflow without supporting forced-color-adjust. Paired reduced-motion screenshots reviewed: centred 10px cue matches the reference slot on the existing text-link markup. Uncued pairs passed unchanged. The maintainer confirmed native Safari VoiceOver for Load Data and Train Another Model. Coordinating Codex separately checked actual Safari at 200% with native keyboard focus, a centred unclipped fade and a remaining static core. Scope passed nine files with no warning. |
+| 2026-11-26T05:56:55Z | T3   | Codex (GPT-6) | Updated the workflow cue table, navigation underlay and ownership, sidebar contracts, visual registers and human queue. The implementation tests and specification index agree with the new behaviour and the existing partial, draft and implemented specification statuses. bun run check passed type checking and all 682 tests, bun run lint passed, bun run build passed with all 11 packaged datasets, and scoped bun run format:check plus git diff --check passed. Only the five approved specification paths changed, with no scope warnings.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 
 ## Plan review history
 

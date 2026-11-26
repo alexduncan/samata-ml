@@ -1,6 +1,6 @@
 # Human tasks
 
-**Updated:** 2026-11-25
+**Updated:** 2026-11-26
 
 This is the human's work queue: decisions, plan review, missing content and mockup styling. Detail lives in the linked plan/spec. TODO IDs refer to [TODO.md](TODO.md); Known gaps refer to [the index](README.md#known-gaps).
 
@@ -100,7 +100,6 @@ The obsolete preview spec (TODO-48/Gap 16) is owned by Step 1 T7. The remaining 
 - [ ] **Commission app integration after mockup promotion (`bun run mockups`, serve-mockups-review-workflow):** Once a workflow draft is styled and promoted in place (`<meta name="status" content="ready" />`), ask the planning skill for a focused Lit port naming its selectors, states and destination. Non-blocking until promotion. Recommended: use the app-port checklist in the review guide. → [app port](mockup-review.md#commission-the-application-port)
 - [ ] **Claim remaining `ui-fixes.md` note sections:** `Improve Virtualized Table` and the other `General Fixes` sections stay unclaimed until separately planned. Non-blocking. → [note](notes/ui-fixes.md)
 - [x] **Complete independent Model Training Workflow verification:** The independent audit verified the provisional route and both native sidebar links, and the implementation plan is archived. → [plan](plans/archive/model-training-workflow.md)
-- [ ] **Implement The Dot (workflow-next-step-dot):** Start after the model training workflow lands with the `/models/new` route, both training links and the sidebar parity baseline. Close this entry after implementation verification. → [plan](plans/workflow-next-step-dot.md)
 
 - [ ] **Style generated model options (web-ml-classification-integration):** Style the proposed manual/tuning controls, structured inputs and loading/error/invalid states. Non-blocking. → [draft](mockups/03-4_train-models-3-configure-model.html)
 - [ ] **Style Training Setup (web-ml-phase-2-training-setup):** Style the 03-5 strategy controls, selected strategy descriptions, matrix, summary and blocked state, then promote the draft. Non-blocking for Phase 2. → [03-5 draft](mockups/03-5_train-models-4-configure-training.html)
