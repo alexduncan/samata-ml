@@ -8,7 +8,7 @@
 
 ## Goal
 
-**Current behaviour** — Help pages use a closed route registry and build-checked default content. The [model workflow](model-training-workflow.md) delivered entry-local ownership and exact wizard underlays for those fixed routes.
+**Current behaviour** — Help pages use a closed route registry and build-checked default content. The [model workflow](archive/model-training-workflow.md) delivered entry-local ownership and exact wizard underlays for those fixed routes.
 
 **Target behaviour** — Decide whether a single lowercase kebab-case `/help/{slug}` should open a Help page from `content/{locale}/pages/{slug}.md`, with an unlisted-topic message distinct from delivery errors.
 
