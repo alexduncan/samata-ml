@@ -1,6 +1,6 @@
 # Virtual table improvements: document scrolling, typed columns and in-page loading
 
-**Status:** ready | **Updated:** 2026-11-26T13:29:45Z
+**Status:** ready | **Updated:** 2026-11-26T13:31:35Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-26T10:41:08Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-26T13:19:15Z | **Verification:** approved
 **Verified hash:** sha256:801305afa207541d1ef6d716843998f36b56b0338d5b96fdad036c6d812671f9
@@ -217,7 +217,7 @@ One exported symbol; no events. Writes only `--page-header-block-size` on the ro
 ## Specification changes
 
 - [ ] `specification/components/virtual-table.md` — rewrite §2-§11 to the closed API above (document scroll, single rail, row-limit cap, overscan, pool recycling, grid tracks, kinds, unsupported marker, sticky offset property, removed methods/events); status stays `implemented` with the new ACs VTB-AC-1..11 (VTB-AC-12 is transitional and removed in T6).
-- [ ] `specification/components/button.md` §3, §5, §8 — `.btn-red` destructive variant and its acceptance criterion.
+- [x] `specification/components/button.md` §3, §5, §8 — `.btn-red` destructive variant and its acceptance criterion.
 - [ ] `specification/components/page-header.md` §5, §6, §8 — sticky header effective on every route via document scrolling, static below `max-height: 30rem`, `StickyHeaderController` and scroll padding; STICKY-HDR-1 and STICKY-AC-1..6.
 - [ ] `specification/COMPONENTS.md` §4 Lifecycle (line 91) — list `StickyHeaderController` and its core `observeStickyHeader` as authorised shared helpers under §3 (line 48), with their eight call sites.
 - [ ] `specification/preview-dataset.md` — header, Datasheet entry, row-limit notice, no segments, document scroll and snapshot `left`, in-page loading and focus.
@@ -270,9 +270,9 @@ One exported symbol; no events. Writes only `--page-header-block-size` on the ro
 - **Must not touch:** `css/root.css` — no new tokens; `tests/visual-parity/map.ts` — parity entries are added in T8.
 - **Implementation:** Port `.btn-red` from `specification/mockups/css/button.css` 34-42 using tokens only; add the Button story variant (default, hover-forced, focus, long label, RTL) and Do / Don't ("only for destructive or discarding actions").
 - **Acceptance criteria:**
-    - [ ] BTN-AC-(next free id): `.btn.btn-red` computed border and text colour equal `--red-700`, background `--surface`, hover `--red-100`; contrast ≥ 4.5:1 in both states; focus-visible outline unchanged.
+    - [x] BTN-AC-(next free id): `.btn.btn-red` computed border and text colour equal `--red-700`, background `--surface`, hover `--red-100`; contrast ≥ 4.5:1 in both states; focus-visible outline unchanged.
 - **Verification:** `bun test tests/style-tokens.test.ts`, `bun test tests/styles-and-primitives.test.ts`, `bun run test:stories`, `bun run check`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-26T13:31:35Z)
 
 ### T4 — `ui-virtual-table` document-scroll rewrite
 
@@ -406,6 +406,7 @@ None.
 | —          | —    | —             | Not started                   |
 | 2026-11-26T13:26:34Z | T1 | Claude Code (claude-sonnet-5-5) | bun test (695 pass, 0 fail) incl. ingestion-pipeline, storage-client, load-progress, dataset-resources, telemetry-privacy; bun run lint pass; bun run typecheck reports only pre-existing TS7016 for @observablehq/plot in src/features/results/charts/plot-controller.ts (untouched). Changed: ingestion pipeline/csv-stream/errors/protocol/worker-handler/storage-client, new dataset-name.ts and load-progress.ts, tests and StorageClient fakes. |
 | 2026-11-26T13:29:45Z | T2 | Claude Code (claude-sonnet-5-5) | bun test full suite (704 pass, 0 fail) incl. state-and-storage, router-and-navigation, dataset-resources, training-service, telemetry-privacy; bun run lint pass; bun run typecheck reports only pre-existing TS7016 for @observablehq/plot in src/features/results/charts/plot-controller.ts (untouched). Changed: dataset.store.ts, load-dataset.ts, state.ts, persister.ts, scroll-restorer.ts, training-service.ts scroll filters, and tests. |
+| 2026-11-26T13:31:35Z | T3 | Claude Code (claude-sonnet-5-5) | bun test tests/style-tokens.test.ts (11 pass); bun test tests/styles-and-primitives.test.ts (7 pass, incl. BTN-AC-15 numeric contrast); bun run lint pass; bun run test:stories 806 pass, 1 fail in app-model-builder-view.stories.ts (unrelated step-2-title expectation; button stories pass); typecheck only pre-existing plot TS7016. Changed button.styles.ts, button.stories.ts, button.md, styles-and-primitives.test.ts. |
 
 ## Plan review history
 
