@@ -4,9 +4,10 @@ import { css, html, LitElement, nothing } from 'lit';
 import { customElement } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { $format, i18n } from '../../i18n';
-import { $sidebarState } from '../../stores/sidebar.store';
+import { $sidebarState, createSidebarCueTracker } from '../../stores/sidebar.store';
 import { chicletStyles } from '../../styles/chiclet.styles';
 import { modelSwatchStyles } from '../../styles/model-swatch.styles';
+import { workflowDotStyles } from '../../styles/workflow-dot.styles';
 
 const messages = i18n('app-sidebar', {
 	brand: 'samatā.ml',
@@ -20,6 +21,7 @@ const messages = i18n('app-sidebar', {
 	trainNew: 'Train New Model',
 	trainAnother: 'Train Another Model',
 	trainingNew: 'Training New Model…',
+	suggestedNextStep: 'Suggested next step',
 	featureCount: params<{ formatted: string }>(
 		count({ one: '{formatted} feature', many: '{formatted} features' })
 	),
@@ -46,12 +48,19 @@ const messages = i18n('app-sidebar', {
 	help: 'help'
 });
 
+const suggestionId = 'workflow-suggestion';
+
 /** Connected workflow navigation and read-only dataset, target and model summaries. */
 @customElement('app-sidebar')
 export class AppSidebar extends LitElement {
 	private readonly sidebar = new StoreController(this, $sidebarState);
+	private readonly cueTracker = createSidebarCueTracker();
+	private readonly cue = new StoreController(this, this.cueTracker.cue);
 	private readonly translations = new StoreController(this, messages);
 	private readonly formatter = new StoreController(this, $format);
+	private renderedDot: HTMLElement | null = null;
+	private arrivalFrame: number | undefined;
+	private arrival: HTMLElement | undefined;
 
 	static override readonly styles = [
 		chicletStyles,
@@ -326,13 +335,74 @@ export class AppSidebar extends LitElement {
 					padding-block-end: 0.5rem;
 				}
 			}
-		`
+		`,
+		workflowDotStyles
 	];
+
+	override connectedCallback(): void {
+		super.connectedCallback();
+		this.cueTracker.start();
+	}
+
+	override disconnectedCallback(): void {
+		super.disconnectedCallback();
+		this.cueTracker.stop();
+		this.clearArrival();
+		this.renderedDot = null;
+	}
+
+	override updated(): void {
+		const dot = this.renderRoot.querySelector<HTMLElement>('.dot');
+		if (dot === this.renderedDot) return;
+		this.clearArrival();
+		this.renderedDot = dot;
+		if (!dot) return;
+
+		const cue = this.cue.value;
+		this.arrivalFrame = requestAnimationFrame(() => {
+			this.arrivalFrame = undefined;
+			if (
+				!this.isConnected ||
+				!dot.isConnected ||
+				dot !== this.renderedDot ||
+				cue !== this.cue.value ||
+				!matchMedia('(prefers-reduced-motion: no-preference)').matches
+			)
+				return;
+
+			const { x, y, width, height } = dot.getBoundingClientRect();
+			if (width === 0 || height === 0) return;
+			const burst = this.ownerDocument.createElement('span');
+			burst.className = 'workflow-dot-burst';
+			burst.setAttribute('aria-hidden', 'true');
+			burst.style.left = `${x + width / 2}px`;
+			burst.style.top = `${y + height / 2}px`;
+			this.arrival = burst;
+			this.ownerDocument.body.append(burst);
+
+			const remove = () => {
+				burst.remove();
+				if (this.arrival === burst) this.arrival = undefined;
+			};
+			const [animation] = burst.getAnimations();
+			if (animation) void animation.finished.then(remove, remove);
+			else remove();
+		});
+	}
+
+	private clearArrival(): void {
+		if (this.arrivalFrame !== undefined) cancelAnimationFrame(this.arrivalFrame);
+		this.arrivalFrame = undefined;
+		this.arrival?.remove();
+		this.arrival = undefined;
+	}
 
 	override render() {
 		const state = this.sidebar.value;
 		const t = this.translations.value;
 		const format = this.formatter.value;
+		const cue = this.cue.value;
+		const dot = html`<span class="dot" aria-hidden="true"></span>`;
 		return html`
 			<p class="brand">${t.brand}</p>
 			<p class="tagline">${t.tagline}</p>
@@ -346,6 +416,7 @@ export class AppSidebar extends LitElement {
 						<a
 							class="step-link"
 							href="/data"
+							aria-describedby=${cue === 'data' ? suggestionId : nothing}
 							aria-current=${state.current.data ?? nothing}>
 							<span class="step-num">1</span>
 							${state.dataset
@@ -364,12 +435,14 @@ export class AppSidebar extends LitElement {
 											></span
 										>`
 								: html`<span class="step-label">${t.loadData}</span>`}
+							${cue === 'data' ? dot : nothing}
 						</a>
 					</li>
 					<li class="step">
 						<a
 							class="step-link"
 							href="/target"
+							aria-describedby=${cue === 'target' ? suggestionId : nothing}
 							aria-current=${state.current.target ?? nothing}>
 							<span class="step-num">2</span>
 							${state.target
@@ -383,6 +456,7 @@ export class AppSidebar extends LitElement {
 												>`
 											: nothing}`
 								: html`<span class="step-label">${t.setTarget}</span>`}
+							${cue === 'target' ? dot : nothing}
 						</a>
 					</li>
 					<li class="step">
@@ -448,13 +522,25 @@ export class AppSidebar extends LitElement {
 														<a
 															class="step-model-link"
 															href="/models/new"
-															>${t.trainAnother}</a
+															aria-describedby=${cue ===
+															'train-another'
+																? suggestionId
+																: nothing}
+															>${t.trainAnother}${cue ===
+															'train-another'
+																? dot
+																: nothing}</a
 														>
 													</li>`}
 									</ul>`
 								: state.canTrain
-									? html`<a class="step-train-new" href="/models/new"
-											>${t.trainNew}</a
+									? html`<a
+											class="step-train-new"
+											href="/models/new"
+											aria-describedby=${cue === 'train-new'
+												? suggestionId
+												: nothing}
+											>${t.trainNew}${cue === 'train-new' ? dot : nothing}</a
 										>`
 									: nothing}
 						</div>
@@ -463,12 +549,20 @@ export class AppSidebar extends LitElement {
 						<a
 							class="step-link"
 							href="/results"
+							aria-describedby=${cue === 'results' ? suggestionId : nothing}
 							aria-current=${state.current.results ?? nothing}
 							><span class="step-num">4</span
-							><span class="step-label">${t.compareResults}</span></a
+							><span class="step-label">${t.compareResults}</span>${cue === 'results'
+								? dot
+								: nothing}</a
 						>
 					</li>
 				</ol>
+				${cue
+					? html`<span id=${suggestionId} class="visually-hidden"
+							>${t.suggestedNextStep}</span
+						>`
+					: nothing}
 			</nav>
 			<footer>
 				<a href="/about">${t.about}</a> <span aria-hidden="true">  |  </span>

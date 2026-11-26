@@ -1,6 +1,6 @@
 # Reference-dataset regression tests
 
-**Status:** draft | **Updated:** 2026-11-19T10:41:19Z
+**Status:** draft | **Updated:** 2026-11-26T09:03:13Z
 **Authors:** Codex (unrecorded) | **Created:** 2026-11-13T15:24:00Z
 **Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
@@ -224,8 +224,9 @@ What `specification/` must say once this plan is implemented. The final task app
 
 - **Depends on:** None
 - **Risk:** routine
-- **Likely files:** `tests/helpers/golden.ts`, `tests/helpers/reference-datasets.ts`, `tests/golden-helper.test.ts`, `tests/reference-datasets.test.ts`, `tests/golden/.gitkeep`, `.prettierignore` (new), `AGENTS.md` (Commands list only)
-- **Must not touch:** `content/datasets/**`; `bunfig.toml`; `playwright.config.ts`; `src/**`; any other `AGENTS.md` section.
+- **Likely files:** `tests/helpers/golden.ts`, `tests/helpers/reference-datasets.ts`, `tests/golden-helper.test.ts`, `tests/reference-datasets.test.ts`, `tests/golden/.gitkeep`, `.prettierignore`, `AGENTS.md`
+- **Must not touch:** `content/datasets/**`, `bunfig.toml`, `playwright.config.ts`, `src/**`
+- Create `.prettierignore` and limit changes to `AGENTS.md` to its Verification Commands list.
 - **Implementation:**
     - Write both helpers per _Interfaces_, with TSDoc on every export. `golden.ts` imports nothing from `bun`, `bun:test` or `@playwright/test`.
     - `.prettierignore` contains exactly `tests/golden/`.
@@ -247,7 +248,7 @@ What `specification/` must say once this plan is implemented. The final task app
 - T2 is parallel-safe with T1.
 - **Risk:** routine
 - **Likely files:** `tests/e2e/app.ts`, `tests/e2e/storage.ts`, `tests/e2e-helpers.e2e.ts`
-- **Must not touch:** existing suites (`tests/app-shell.test.ts`, `tests/content.e2e.ts`, `tests/a11y.e2e.ts`, `tests/visual-parity.e2e.ts`); `playwright.config.ts`; `src/**`.
+- **Must not touch:** `tests/app-shell.test.ts`, `tests/app-shell.e2e.ts`, `tests/content.e2e.ts`, `tests/a11y.e2e.ts`, `tests/visual-parity.e2e.ts`, `playwright.config.ts`, `src/**` — preserve existing suites.
 - **Implementation:** Write `openApp`, `dismissWelcome`, `pageHeading`, `gotoStep`, `readPersistedState`, `hasSamataDb` and `countStoredRows` per _Interfaces_ (not `ingestInWorker`; T6 adds it). `dismissWelcome` waits with `expect(...).toBeVisible()`/`toBeHidden()` or `locator.waitFor`, never `isVisible({ timeout })` races or `waitForTimeout`. Import `STATE_STORAGE_KEY` and `DB_NAME` from `src/` (type-safe constants; importing is not touching). `tests/e2e-helpers.e2e.ts` (`E2E-H-1`): fresh context → `openApp(page, '/data')` → `dismissWelcome` → heading `Load Data` → `readPersistedState` has `onboarding.welcomeDismissed === true` → reload with `openApp` → no welcome dialog → capture `hasSamataDb` before/after `countStoredRows(page, 'x') === 0` and assert existence unchanged. Startup reconciliation may already create samata-db, so do not require absence. Prove the absent-database branch separately in a fresh same-origin context with the main application script blocked (and no IndexedDB connections), then verify countStoredRows does not create it → `gotoStep(page, '/target')` shows `Set Target`.
 - **Acceptance criteria:**
     - [ ] `E2E-H-1` passes in Chromium, Firefox and WebKit.
@@ -261,7 +262,7 @@ What `specification/` must say once this plan is implemented. The final task app
 - **Depends on:** T1
 - **Risk:** needs care — the first goldens set the baseline; a product bug blessed here is hard to spot later.
 - **Likely files:** `tests/reference-ingestion.test.ts`, `tests/golden/ingestion/iris.upload.json`, `tests/golden/ingestion/palmer-penguins.upload.json`
-- **Must not touch:** `src/**` (escalate product bugs, do not fix them); `tests/ingestion-pipeline.test.ts` (data-ingestion's).
+- **Must not touch:** `src/**`, `tests/ingestion-pipeline.test.ts` — escalate product bugs to their owner and leave the ingestion pipeline suite to the data-ingestion plan.
 - **Implementation:** Cross-plan prerequisite: [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T6 has its progress checked. If not, stop before changing any file and report it. For each reference dataset: `installFakeIndexedDB()`; `runIngestion({ kind: 'file', file: referenceFile(id) }, { db, now: () => 0, uuid: () => 'golden' })`; read every RawRecord back with `getRows`, sort by rowIndex and map to record.values; build `{ metadata, rows }`; assert D5 invariants (rowCount; column names in order; `target` column `categorical` with `categoryCounts` equal to `classCounts`; each column's `missingCount` equals `missingCounts[name] ?? 0`; `source` `'upload'`, `sampleId` null, `name` equal to `id`); then compare `canonicalise(..., { redact: ['id', 'createdAt'] })` with `goldenFor('ingestion/<id>.upload.json', …)`. Generate the goldens with `UPDATE_GOLDEN=1`, then **read both files** and check, against the CSV and data-ingestion's _Interfaces_, that the types, missing counts, histograms (counts sum to `count`) and row values are right. Record anything surprising in the log and escalate rather than committing it.
 - **Acceptance criteria:**
     - [ ] `REF-2 iris` and `REF-2 palmer-penguins` pass without `UPDATE_GOLDEN`.
@@ -277,7 +278,7 @@ What `specification/` must say once this plan is implemented. The final task app
 - **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T9 has its progress checked. If not, stop and report it.
 - **Risk:** needs care — temporary directories, a fake `fetch` that must strip `?v=` query strings, and restoring globals.
 - **Likely files:** `tests/reference-ingestion.test.ts`, `tests/golden/ingestion/iris.sample.json`, `tests/golden/ingestion/palmer-penguins.sample.json`
-- **Must not touch:** `src/**`, `scripts/**`, `content/**`; `tests/sample-datasets-content.test.ts`.
+- **Must not touch:** `src/**`, `scripts/**`, `content/**`, `tests/sample-datasets-content.test.ts`
 - **Implementation:** In `beforeAll`, run `generateSampleDatasets(<tmp>/out, { ids: ['iris', 'palmer-penguins'], cacheDir: <tmp>/cache })` (`fs.mkdtemp` under `os.tmpdir()`; removed in `afterAll`). Serve `<tmp>/out` to the pipeline with a fake `fetch` that maps a URL's pathname (ignoring the query) to a file, and returns 404 otherwise, through the seam T6 built. For each dataset run `runIngestion({ kind: 'sample', sampleId: id }, …)` and repeat T3's invariants (with `source` `'sample'`, `sampleId` equal to `id`, `name` from the descriptor), then compare with `ingestion/<id>.sample.json`. Add one test: Penguins `year` is `categorical` on the sample path and records whether its upload-path type differs (per _Assumptions_). Review the new goldens as in T3.
 - **Acceptance criteria:**
     - [ ] `REF-3 iris`, `REF-3 palmer-penguins` and `REF-3 year override` pass without `UPDATE_GOLDEN`.
@@ -291,8 +292,9 @@ What `specification/` must say once this plan is implemented. The final task app
 - **Depends on:** T4
 - **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T11 has its progress checked. If not, stop and report it.
 - **Risk:** needs care — buffer sizing and splitting the row-major buffer correctly.
-- **Likely files:** `tests/reference-provider.test.ts`, `tests/helpers/reference-ingest.ts` (if sharing ingestion setup with reference-ingestion.test.ts), `tests/reference-ingestion.test.ts` (only moving that setup), `tests/golden/provider/iris.json`, `tests/golden/provider/palmer-penguins.json`
-- **Must not touch:** `src/**`; `tests/dataset-provider.test.ts`; `../web-ml/**`.
+- **Likely files:** `tests/reference-provider.test.ts`, `tests/helpers/reference-ingest.ts`, `tests/reference-ingestion.test.ts`, `tests/golden/provider/iris.json`, `tests/golden/provider/palmer-penguins.json`
+- **Must not touch:** `src/**`, `tests/dataset-provider.test.ts`
+- Use `tests/helpers/reference-ingest.ts` only if it shares ingestion setup with `tests/reference-ingestion.test.ts`. Limit changes to `tests/reference-ingestion.test.ts` to moving that setup. The upstream checkout is outside this task's scope.
 - **Implementation:** Ingest Iris by the upload path and Penguins by the sample path (reuse T3/T4 setup through a small shared function inside the test files, or move it to `tests/helpers/reference-ingest.ts` if both files need it). Create `IndexedDBDatasetProvider` with the _Provider configurations_, load into correctly sized buffers, split features into rows and compare with `provider/<id>.json`. Invariants: `sampleCount` equals `rowCount`; Iris `featureNames` equal the four feature columns and `targetCategories` the three class names in sorted order; Penguins `featureNames` include `island=Biscoe`, `island=Dream`, `island=Torgersen` and each row has exactly one 1 in the island block and in the sex block; no feature value is `NaN`; target counts per category equal `classCounts`.
 - **Acceptance criteria:**
     - [ ] `REF-4 iris` and `REF-4 palmer-penguins` pass without `UPDATE_GOLDEN`.
@@ -305,8 +307,9 @@ What `specification/` must say once this plan is implemented. The final task app
 - **Depends on:** T2, T4
 - **Cross-plan prerequisite:** [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T15 has its progress checked (worker, built catalogue and browser IndexedDB proven). If not, stop and report it.
 - **Risk:** needs care — structured-clone results across the page boundary, worker lifetime, and genuine engine differences that must be reported, not hidden.
-- **Likely files:** `tests/e2e/storage.ts` (add `ingestInWorker`), `tests/reference-conformance.e2e.ts`
-- **Must not touch:** `tests/storage-worker.e2e.ts` (data-ingestion's); `tests/helpers/golden.ts` rounding rules (raise a change instead); `playwright.config.ts`; `src/**`.
+- **Likely files:** `tests/e2e/storage.ts`, `tests/reference-conformance.e2e.ts`
+- **Must not touch:** `tests/storage-worker.e2e.ts`, `playwright.config.ts`, `src/**`
+- Add `ingestInWorker` to `tests/e2e/storage.ts`. The data-ingestion plan owns `tests/storage-worker.e2e.ts`. Raise a change if `tests/helpers/golden.ts` needs different rounding rules.
 - **Implementation:** `ingestInWorker` imports `StorageRequest`/`StorageResponse` from `src/features/data/ingestion/protocol.ts` and uses the implemented protocol (numeric requestId, discriminated type, result.value, error.error), never the old proposal: inside `page.evaluate`, start `new Worker('/storage.worker.js', { type: 'module' })`, post `ingest` (for `file`, build `new File([text], name, { type: 'text/csv' })`), wait for the result, page through getRows until fewer than the page size come back, accumulating each RawRecord.values (not RawRecord objects) in rowIndex order, reject on worker error/messageerror or a bounded 30 s timeout, terminate in finally, and return `{ metadata, rows }`. Match each numeric requestId, ignore progress when waiting for result, and use a new ID for each getRows request. The suite, for each dataset and each path, runs `openApp(page, '/data')`, `ingestInWorker` (file name `<id>.csv`, text from `readReferenceCsv`), canonicalises with the same redactions, and compares with `readGolden('ingestion/<id>.<upload|sample>.json')`. Also assert `countStoredRows` equals `rowCount`.
 - **Acceptance criteria:**
     - [ ] All four `REF-5` cases pass in Chromium.
@@ -320,7 +323,7 @@ What `specification/` must say once this plan is implemented. The final task app
 - **Depends on:** T1, T2, T3, T4, T5, T6
 - **Risk:** needs care — specs must describe what was built, not what was planned
 - **Likely files:** `specification/testing.md`, `specification/README.md`
-- **Must not touch:** Product code, tests and `specification/mockups/`; the Known gap 5 rule in testing.md (still undecided).
+- **Must not touch:** `src/**`, `tests/**`, `specification/mockups/` — preserve all product code and the undecided Known gap 5 rule in `specification/testing.md`.
 - **Implementation:** Apply every item under _Specification changes_, following "Writing specs" in `specification/README.md`. Where the log records a deviation from the plan, document the deviation, not the plan. Update testing.md's status line and its row in the index.
 - **Acceptance criteria:**
     - [ ] Every item under _Specification changes_ is applied and ticked.
@@ -371,9 +374,10 @@ None.
 
 ## Change log
 
-| When (UTC)           | Change                                                                                                                                              | Reason                                                                                                            |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| 2026-11-13T15:24:00Z | Initial draft                                                                                                                                       | User request: regression tests using the sample datasets (Iris, Penguins) to back up unit tests as the app grows. |
-| 2026-11-13T18:47:40Z | Reviewed implemented APIs, corrected startup-db assumption, fetch seam and worker protocol; linked owned journeys                                   | Review request; baseline now 144 passing tests.                                                                   |
-| 2026-11-13T16:38:05Z | Cross-reference only: data-ingestion-and-storage renumbered its browser e2e task from T14 to T15; every reference here updated. No change of scope. | data-ingestion-and-storage revision of 2026-11-13T16:38:05Z                                                       |
-| 2026-11-19T10:41:31Z | Migrated header to v2 (Claude Code, claude-opus-5-5)                                                                                                | Pre-v2 plan migrated to the v2 header; remains draft.                                                             |
+| When (UTC)           | Change                                                                                                                                              | Reason                                                                                                                                                                                                                          |
+| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-13T15:24:00Z | Initial draft                                                                                                                                       | User request: regression tests using the sample datasets (Iris, Penguins) to back up unit tests as the app grows.                                                                                                               |
+| 2026-11-13T18:47:40Z | Reviewed implemented APIs, corrected startup-db assumption, fetch seam and worker protocol; linked owned journeys                                   | Review request; baseline now 144 passing tests.                                                                                                                                                                                 |
+| 2026-11-13T16:38:05Z | Cross-reference only: data-ingestion-and-storage renumbered its browser e2e task from T14 to T15; every reference here updated. No change of scope. | data-ingestion-and-storage revision of 2026-11-13T16:38:05Z                                                                                                                                                                     |
+| 2026-11-19T10:41:31Z | Migrated header to v2 (Claude Code, claude-opus-5-5)                                                                                                | Pre-v2 plan migrated to the v2 header; remains draft.                                                                                                                                                                           |
+| 2026-11-26T09:03:13Z | Normalised task scope                                                                                                                               | Adapted the path-list cleanup from the independently audited workflow-records adoption at `76a4370`. The existing app-shell and no-upstream-write boundaries remain explicit. The fixture-source decision stays with the draft. |

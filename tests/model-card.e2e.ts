@@ -413,8 +413,9 @@ test.describe('Model Card and Description Dialog (MOD-CARD-1, MOD-DESC-1)', () =
 		await expect(nativeDialog).not.toBeVisible();
 		await expect(invokerBtn).toBeFocused();
 
-		let events = await page.evaluate(() => (window as any).__dialogEvents);
-		expect(events).toContain('close');
+		await expect
+			.poll(() => page.evaluate(() => (window as any).__dialogEvents))
+			.toContain('close');
 
 		// --- 3. Missing state ---
 		await page.evaluate(async () => {
@@ -439,6 +440,9 @@ test.describe('Model Card and Description Dialog (MOD-CARD-1, MOD-DESC-1)', () =
 		await page.keyboard.press('Escape');
 		await expect(nativeDialog).not.toBeVisible();
 		await expect(invokerBtn).toBeFocused();
+		await expect
+			.poll(() => page.evaluate(() => (window as any).__dialogEvents))
+			.toEqual(['close', 'close']);
 
 		// Check dialog returnValue was reset
 		const returnValue = await nativeDialog.evaluate((d: HTMLDialogElement) => d.returnValue);
@@ -461,8 +465,9 @@ test.describe('Model Card and Description Dialog (MOD-CARD-1, MOD-DESC-1)', () =
 		await expect(retryBtn).toBeVisible();
 		await retryBtn.click();
 
-		events = await page.evaluate(() => (window as any).__dialogEvents);
-		expect(events).toContain('retry');
+		await expect
+			.poll(() => page.evaluate(() => (window as any).__dialogEvents))
+			.toContain('retry');
 
 		// Close modal
 		const bottomCloseBtn = dialogEl.locator('.modal-actions button:has-text("Close")');

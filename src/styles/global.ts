@@ -5,6 +5,7 @@ import { pageHeaderStyles } from './page-header.styles';
 import { notificationStyles } from './notification.styles';
 import { tableStyles } from './table.styles';
 import { trainModelStyles } from './train-model.styles';
+import { workflowDotStyles } from './workflow-dot.styles';
 
 /**
  * Adopts shared document-level style sheets, including heading focus outlines.
@@ -20,7 +21,8 @@ export function initGlobalStyles(): void {
 		pageHeaderStyles,
 		tableStyles,
 		notificationStyles,
-		trainModelStyles
+		trainModelStyles,
+		workflowDotStyles
 	]
 		.map((s) => s.styleSheet)
 		.filter((sheet): sheet is CSSStyleSheet => Boolean(sheet));

@@ -1,6 +1,6 @@
 # Live training timings and fold scores in Step 5
 
-**Status:** draft | **Updated:** 2026-11-25T16:45:53Z
+**Status:** draft | **Updated:** 2026-11-26T09:03:13Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-25T15:59:05Z
 **Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
@@ -233,7 +233,7 @@ The `now` value is private `@state`, updated by a private `TickController` decla
 
 - **Depends on:** T2
 - **Risk:** needs care — the store is shared by live, restored and reconciled sessions, and the restored paths must stay timing-free.
-- **Likely files:** `src/types/training-timing.ts`, `src/stores/training.store.ts`, `src/features/models/training/training-service.ts`, `tests/training-progress.test.ts` — the existing store-action tests live at lines 78-115, `tests/training-service.test.ts`
+- **Likely files:** `src/types/training-timing.ts`, `src/stores/training.store.ts`, `src/features/models/training/training-service.ts`, `tests/training-progress.test.ts`, `tests/training-service.test.ts` — the existing store-action tests are at lines 78–115 of `tests/training-progress.test.ts`.
 - **Must not touch:** `src/stores/persister.ts`, `src/stores/reconciler.ts`, `src/types/state.ts` — no persisted shape changes; the reconciler's existing `createTrainingSession(identity)` call must yield `timing: null` unchanged.
 - **Implementation:** Add the types and action changes from _Interfaces and behaviour_ with TSDoc. Use injectable `now` parameters defaulting to `performance.now()`. Pass `config.setup` at the live start (`training-service.ts:662`) only, and call `endTrainingTiming` from `settle` (`training-service.ts:411-418`) as specified. Pass the reply's `foldScore` through the existing `TrainingUpdate` path into `applyTrainingSessionUpdate`. Keep updates immutable: replace the arrays, never mutate them.
 - **Acceptance criteria:**
@@ -250,7 +250,7 @@ The `now` value is private `@state`, updated by a private `TickController` decla
 - **Depends on:** T3
 - **Risk:** needs care — the ticker lifecycle and the table semantics are new.
 - **Likely files:** `src/features/models/app-training-timings.ts`, `src/features/models/app-training-timings.stories.ts`, `tests/training-timings.e2e.ts`
-- **Must not touch:** `src/features/models/app-training-progress.ts` — the sibling's API stays as `model-training-workflow` leaves it (D1). Also `src/stores/` — a presentational element imports no store (COMPONENTS §2, §5).
+- **Must not touch:** `src/features/models/app-training-progress.ts`, `src/stores/` — preserve the sibling API from `model-training-workflow` (D1) and keep the presentational element free of store imports (COMPONENTS §2, §5).
 - **Implementation:** Build the element exactly as specified, with `@customElement`, the `HTMLElementTagNameMap` augmentation, `accessor` decorated fields, CEM JSDoc and English default labels. Import only types, and only from `src/types/training-timing.ts`; never import from `src/stores/`. The private `TickController` uses `setTimeout` and must not run while `timing` is null or ended. Stories: Waiting (all rows waiting, clock at 0:00:00), Mid-run (two Done with accuracies, one Training, mean and remaining shown), Refitting (all folds Done, refit Training, no remaining line), Complete, Stopped (fold 3 Stopped, folds 4–5 Waiting), One-Shot running, One-Shot complete, Long label (labels about 40% longer) and RTL. Build story timestamps relative to `performance.now()` at render. The docs page adds Do (use under the training log for a run trained in this tab) and Don't (feed saved results; place inside a live region). Write component tests in `tests/training-timings.e2e.ts` using the presentational pattern in `tests/content-dialog.e2e.ts:18-40`: `bun build` the element in `beforeAll`, `page.setContent` with `css/root.css`, `addScriptTag`, then set properties through `page.evaluate`. Call `page.clock.install()` before `setContent` so `performance.now()` and `setTimeout` are controlled.
 - **Acceptance criteria:**
     - [ ] TT-AC-1 — With `timing: null` the element renders nothing.
@@ -287,8 +287,8 @@ The `now` value is private `@state`, updated by a private `TickController` decla
 - **Depends on:** T5
 - **Risk:** routine
 - **Likely files:** `specification/components/training-timings.md`, `specification/components/training-progress.md`, `specification/README.md`, `specification/workflow-steps.md`, `specification/machine-learning-orchestrator.md`, `specification/plans/live-training-metrics.md`, `specification/plans/README.md`
-- **Must not touch:** `src/`, `tests/`, `../web-ml` — the upstream request is already filed; leave its status to the upstream session.
-- **Implementation:** Apply every item under _Specification changes_ in present tense, following the README's Writing specs rules. The new component spec follows COMPONENTS §12. Run `bun run format` on the changed files.
+- **Must not touch:** `src/`, `tests/`
+- **Implementation:** Apply every item under _Specification changes_ in present tense, following the README's Writing specs rules. The new component spec follows COMPONENTS §12. Leave the filed request and any other files in the upstream checkout to the upstream session. Run `bun run format` on the changed files.
 - **Acceptance criteria:**
     - [ ] Every _Specification changes_ item is ticked, and `bun run plans:check` passes, with the spec index status column matching.
 - **Verification:** `bun run plans:check`, `bun run format:check`, `bun run build`
@@ -337,7 +337,8 @@ None.
 
 ## Change log
 
-| When (UTC)           | Change               | Reason                                                                                                                                                                                                                                                                                                   |
-| -------------------- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-11-25T15:59:05Z | Initial draft        | Learner request: live elapsed timer per fold and a per-fold metrics table under the Step 5 training log. Placement, live accuracy, live-session-only scope and the extras (refit row, mean so far, time-left estimate, upstream live-metrics request) were decided by the user in the authoring session. |
-| 2026-11-25T16:34:00Z | Revised after review | Addressed the 2026-11-25T16:19:33Z changes-requested findings: fold ordinal, real-runtime CV probe, clock ending on the worker's terminal reply, stale ticker, spec and test references, decoder field copy, persister timers under `page.clock`.                                                        |
+| When (UTC)           | Change                | Reason                                                                                                                                                                                                                                                                                                   |
+| -------------------- | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-25T15:59:05Z | Initial draft         | Learner request: live elapsed timer per fold and a per-fold metrics table under the Step 5 training log. Placement, live accuracy, live-session-only scope and the extras (refit row, mean so far, time-left estimate, upstream live-metrics request) were decided by the user in the authoring session. |
+| 2026-11-25T16:34:00Z | Revised after review  | Addressed the 2026-11-25T16:19:33Z changes-requested findings: fold ordinal, real-runtime CV probe, clock ending on the worker's terminal reply, stale ticker, spec and test references, decoder field copy, persister timers under `page.clock`.                                                        |
+| 2026-11-26T09:03:13Z | Normalised task scope | Made the local T3, T4 and T6 path lists machine-readable and retained the upstream write boundary in T6 prose. The plan retains its draft status and outstanding review findings.                                                                                                                        |

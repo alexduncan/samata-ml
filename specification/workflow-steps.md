@@ -6,6 +6,24 @@ This web application has four sections.
 
 Startup reconciles saved browser state with IndexedDB before opening a workflow view. If a committed change cannot be published, Restore saved work offers Retry saving and withholds workflow actions. The [welcome modal](mockups/00_first-load.html) opens for a fresh workspace once saved-state recovery is clear.
 
+### Next-step guidance
+
+Learners navigate between steps by choosing a link. The Dot marks one suggested sidebar link at a time. The link retains its usual name and adds the description **Suggested next step** while the cue is present.
+
+| When                                                                                                  | Suggested link                                                                                        |
+| ----------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| The learner is outside Load Data without a dataset                                                    | **Load Data** (`/data`)                                                                               |
+| A dataset is acknowledged and the learner is outside Set Target                                       | **Set Target** (`/target`) while no target is selected                                                |
+| The learner leaves Set Target without selecting a target                                              | **Set Target** (`/target`)                                                                            |
+| Target selection is acknowledged, including an acknowledged replacement that leaves no trained models | **Train New Model** (`/models/new`)                                                                   |
+| The learner leaves the first unfinished wizard                                                        | **Train New Model** (`/models/new`) while this dataset and target have never had a trained model      |
+| The first training result is acknowledged                                                             | **Train Another Model** (`/models/new`) once the completed wizard is left or View Results replaces it |
+| The second training result is acknowledged                                                            | **Compare Results** (`/results`). Comparison also takes precedence when both results arrive together. |
+
+Entering the destination consumes its suggestion, including through browser history. Help above the same workflow page preserves its suggestion. Failed and cancelled actions leave acknowledged guidance unchanged. Reloading a saved project seeds the current trained count. Recovery of a result lost during the same sidebar session never replays its milestone. Leaving comparison or a later training attempt does not restore an already consumed suggestion.
+
+A newly visible cue produces one two-second expanding fade. The small dot stays visible until the suggestion is consumed. Reduced motion shows the static dot throughout.
+
 ## 1. Load Data
 
 **url:** `/data`

@@ -626,12 +626,14 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 
 		await page.mouse.click(2, 2);
 		await expect(modal).not.toBeVisible();
+		await expect(page).toHaveURL(/\/target$/);
 		await expect(page.locator('#content h1')).not.toBeFocused();
 		await expect(page.locator('app-sidebar footer a[href="/about"]')).toBeFocused();
 		await keyboardNavigate(page, '/about');
 		await expect(modal).toBeVisible();
 		await page.keyboard.press('Escape');
 		await expect(modal).not.toBeVisible();
+		await expect(page).toHaveURL(/\/target$/);
 		await expect(page.locator('app-sidebar footer a[href="/about"]')).toBeFocused();
 	});
 
@@ -782,6 +784,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await expect(page.locator('app-content-modal dialog')).toBeVisible();
 		await page.keyboard.press('Escape');
 		await expect(page.locator('app-content-modal dialog')).not.toBeVisible();
+		await expect(page).toHaveURL(/\/target$/);
 		await expect(page.locator('app-sidebar a[href="/about"]')).toBeFocused();
 		await expect(page.locator('#content h1')).not.toBeFocused();
 		await keyboardNavigate(page, '/data');

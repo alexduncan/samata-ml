@@ -76,8 +76,12 @@ export function createSidebarFixture(fixture: SidebarFixture): PersistedAppState
 }
 
 /** Seeds the existing test atom before the sidebar connects, preventing a live cue transition. */
-export async function prepareSidebarFixture(page: Page, fixture: SidebarFixture): Promise<void> {
-	await page.emulateMedia({ reducedMotion: 'reduce' });
+export async function prepareSidebarFixture(
+	page: Page,
+	fixture: SidebarFixture,
+	reducedMotion: 'reduce' | 'no-preference' = 'reduce'
+): Promise<void> {
+	await page.emulateMedia({ reducedMotion });
 	await page.addInitScript((state) => {
 		const define = CustomElementRegistry.prototype.define;
 		CustomElementRegistry.prototype.define = function (name, component, options) {
