@@ -1,6 +1,6 @@
 # Phase 6: Display model-specific internals for the eight classifiers in Section 6
 
-**Status:** ready-for-review | **Updated:** 2026-11-23T09:52:02Z
+**Status:** draft | **Updated:** 2026-11-26T13:49:27Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
@@ -33,6 +33,43 @@
 - The registry `src/config/models/{model-id}-results.ts` (eight files) and its closed panel-ID union.
 - Fourteen presentational elements (Interfaces §C), their stories and three-browser tests; wiring into `app-model-results`; two new `ModelResultsUi` fields.
 - Configure Model: an MLP **Validation share** option (D11) and its configuration-key rule.
+
+**v2 feature-importance requirements to integrate (added 2026-11-26)**
+
+The user placed the model-specific items of `specification/notes/feature-importance-requirements.md` (v2) in this plan. The comparison surface and the permutation engine belong to [compare-feature-importance](compare-feature-importance.md), which lands first. The next revision of this plan must integrate:
+
+- **`PFI_DOTS` (v2 Chart 1)** in Section 6 for all eight models. It reads compare-feature-importance's stored `featureImportance` block and I5 summaries. It includes:
+  - fold dots, the mean marker and the variation whisker;
+  - the "hurt in n of K folds" tags and the `TOP_N` / "Show all" controls;
+  - the I7 skill-gate banner, with the chart greyed but kept;
+  - the single-holdout and fewer-shuffles notes;
+  - the rule 1 "What this does and does not tell you" note and the "Computed on held-out data" label.
+
+  This replaces this plan's deferral of MLP permutation importance.
+- **`SIGNED_WEIGHTS` (v2 Chart 3)** for Logistic Regression, linear SVC, Bernoulli NB and Multinomial NB:
+  - the "low to high" display scale and category-level centring;
+  - softmax centring and pairwise NB views;
+  - the odds-multiplier toggle;
+  - the non-linear SVC explanatory note.
+
+  It reconciles with this plan's coefficient forest and log-odds bars.
+- **`MDI_VS_PFI` (v2 Chart 4, I9)** for the Decision Tree: per-fold `featureImportances_` summed per raw column and averaged across folds, against held-out shuffle importance shares. This replaces this plan's deferral of MDI.
+- **`GAUSSIAN_DIST` (v2 Chart 5):**
+  - separation bands (terciles) and the smoothing epsilon;
+  - proportion bars for binary columns and the poor-fit note;
+  - the "Final model structure" badge.
+
+  It reconciles with this plan's fitted-curve panels.
+- **`LOCAL_EXPLAIN` 7a, 7c and 7d:**
+  - additive waterfalls summed to raw columns, with a test that additivity holds within 1e-9;
+  - rule paths that translate encoded splits;
+  - KNN neighbour tables with per-raw-column distance shares;
+  - every row explained by its own fold model.
+
+  It reconciles with this plan's evidence waterfall, tree outline and spoke diagram.
+- **The shared `selectedClass` control (I10)** for signed and probability charts, with v2 §2 rules 1–10 and the §7 constants (`WATERFALL_TOP`, `MDI_PFI_GAP_FLAG`) where they apply.
+
+Deferred with compare-feature-importance: I8 correlation warnings, the I4 log-loss alternative, lazy computation, `EFFECT_PLOT`, `LOCAL_EXPLAIN` 7b (approximate Shapley) and v2 Phase 3.
 
 **Out of scope**
 
@@ -502,7 +539,7 @@ export interface ModelResultsConfig {
 
 ## Risks and open questions
 
-- **Blocking:** None
+- **Blocking:** (1) compare-feature-importance lands first (user decision 2026-11-26). Move `StoredEvaluation` to schema version 3, decode versions 1–3 with drop-not-reject, and run this plan's `onModel` collector after the importance collector in one hook. (2) Integrate the v2 requirements listed under Scope ("v2 feature-importance requirements to integrate") into the decisions, interfaces and tasks: re-scout, then decide with the user where v2 conflicts with D1–D11. (3) Re-check the upstream gate inherited from compare-feature-importance. Then submit for review. Owner: `samata-ml` planner.
 - **Non-blocking:** Phase 5 (`ready`) shares `src/types/state.ts`, `src/stores/app.store.ts`, `src/stores/persister.ts`, `tests/a11y.e2e.ts`, `tests/helpers/seed-results.ts` and the journeys with T11. Implement Phase 6 after Phase 5 lands, or rebase T11 onto it; the changes touch different fields (`ModelRecord.ui.results` here, `results.ui` there). Owner: implementer.
 - **Non-blocking:** `web-ml` leaves several inspection shapes undocumented (`kneighbors`, `coef_`/`intercept_`, `coefs_`, Gaussian `classPrior_`). Prose and declarations also disagree on Multinomial `featureLogProb_` and holdout `validationFeatures`. D10 guards every read; filed as [request 15](../../../web-ml/specification/requests/2026-11-23-15-inspection-output-shapes-documentation.md). Owner: `web-ml` planner.
 - **Non-blocking:** Permutation importance is deferred until `web-ml` scores importance with balanced accuracy ([request 01](../../../web-ml/specification/requests/2026-11-23-01-balanced-accuracy-scoring-everywhere.md)). MLP early stopping awaits [request 03](../../../web-ml/specification/requests/2026-11-23-03-mlp-early-stopping-and-weight-decay.md). Owner: human (HUMAN.md).
@@ -532,9 +569,11 @@ None.
 
 ## Change log
 
-| When (UTC)           | Change                                                     | Reason                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| -------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-11-19T08:47:35Z | Initial draft                                              | User split the former Phase 4 stub; model-specific metrics and visuals become Phase 6 on Phase 4's contract.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| 2026-11-21T08:09:01Z | Linked upstream WR-8 request                               | User asked for an upstream request covering the nested-CV and multiclass trial-report limitations; Blocking remains open.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| 2026-11-21T08:23:10Z | Linked upstream WR-12 request                              | User asked for the WR-12 upstream request; Blocking remains open.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 2026-11-23T09:48:14Z | Revised against `web-ml` 0.2.0 and the implemented Phase 4 | WR-7, WR-8 and WR-12 ship in 0.2.0 and Phase 4 is archived, so the Blocking item is resolved. Pinned `onModel` (holdout, fold, refit) and the inspection signatures. Added decoder version 2 with drop-not-reject (D9), shape guards (D10), in-hook example selection (D4), final-tree tracing (D6) and the Phase 4 `labels`/`shownClassIndices` conventions. User decisions on 2026-11-23: an MLP Validation share option in Configure Model (D11, new T2), and permutation importance deferred until a balanced-accuracy scorer exists. Fixed the mockup paths. Filed request 15. |
+| When (UTC)           | Change                                                                         | Reason                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| -------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-19T08:47:35Z | Initial draft                                                                  | User split the former Phase 4 stub; model-specific metrics and visuals become Phase 6 on Phase 4's contract.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 2026-11-21T08:09:01Z | Linked upstream WR-8 request                                                   | User asked for an upstream request covering the nested-CV and multiclass trial-report limitations; Blocking remains open.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 2026-11-21T08:23:10Z | Linked upstream WR-12 request                                                  | User asked for the WR-12 upstream request; Blocking remains open.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 2026-11-23T09:48:14Z | Revised against `web-ml` 0.2.0 and the implemented Phase 4                     | WR-7, WR-8 and WR-12 ship in 0.2.0 and Phase 4 is archived, so the Blocking item is resolved. Pinned `onModel` (holdout, fold, refit) and the inspection signatures. Added decoder version 2 with drop-not-reject (D9), shape guards (D10), in-hook example selection (D4), final-tree tracing (D6) and the Phase 4 `labels`/`shownClassIndices` conventions. User decisions on 2026-11-23: an MLP Validation share option in Configure Model (D11, new T2), and permutation importance deferred until a balanced-accuracy scorer exists. Fixed the mockup paths. Filed request 15. |
+| 2026-11-26T13:49:27Z | Invalidated approval                                                           | compare-feature-importance now lands first (schema v2, onModel collector) and the v2 feature-importance requirements add model-specific items                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 2026-11-26T13:49:27Z | Added v2 feature-importance requirements to Scope and a Blocking revision item | User request: model-specific requirements from `specification/notes/feature-importance-requirements.md` belong in Phase 6; compare-feature-importance comes first.                                                                                                                                                                                                                                                                                                                                                                                                                  |

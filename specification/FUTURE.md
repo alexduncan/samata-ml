@@ -27,13 +27,13 @@ Items the specifications mark as _future_, _later_ or _deferred_. They are **not
   - **Prediction latency** alongside fit time.
   - **Hand-built SVG charts** that replace Observable Plot where a bespoke chart is clearer, such as a Sankey-style confusion flow.
 - **Richer model comparison:** Superimposed ROC and precision–recall curves, multi-model reliability plots, a Pareto scatter, a decision-boundary gallery and normalised expected cost with a cost-ratio slider remain future work.
-- **Richer feature importance** (deferred from [compare-feature-importance](plans/compare-feature-importance.md); source [note](notes/feature-importance.md)):
-  - A features × models importance heatmap with per-model normalisation, rank labels and a "highest disagreement" sort.
-  - Permutation importance in each model's Section 6 results, with a top-N toggle, relative share and tooltips.
-  - Decision Tree impurity importance (MDI) beside permutation importance, summed per source column.
-  - Warnings on strongly correlated columns, which needs `web-ml` association diagnostics.
-  - A configurable shuffle count (the note suggests 10; v1 uses 5).
-  - Effect plots (ALE, or PDP with ICE), local explanations for single rows, counterfactuals, a 2D decision-boundary explorer and feature-sliced error analysis.
+- **Richer feature importance** (deferred from [compare-feature-importance](plans/compare-feature-importance.md) and Phase 6; source [requirements](notes/feature-importance-requirements.md)):
+  - Correlation warnings (I8): Spearman, bias-corrected Cramér's V and η between raw columns; requested from `web-ml` as `2026-11-26-pairwise-feature-association`.
+  - A log-loss alternative to balanced accuracy (I4), which needs a `web-ml` log-loss scorer for shuffle importance.
+  - Lazy computation and a "More precise" (20 shuffles) option (I11), which need stored fold models and fold preprocessors.
+  - The `COMPARISON_HEATMAP` rank view and the grouped-permutation toggle for correlated clusters (v2 Phase 2).
+  - Effect plots (`EFFECT_PLOT`: ALE, or PDP with ICE) and approximate Shapley explanations for MLP and non-linear SVC (`LOCAL_EXPLAIN` 7b).
+  - Counterfactual explanations, a 2D decision-boundary explorer and feature-sliced error analysis (v2 Phase 3).
 
 ## Engineering
 
