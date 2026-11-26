@@ -83,15 +83,26 @@ test.describe('Sidebar acceptance', () => {
 	test('MW-MODEL-1: no trained models expose the dedicated Train New Model anchor', async ({
 		page
 	}) => {
-		await prepareSidebarFixture(page, 'target');
+		await prepareSidebarFixture(page, 'dataset');
 		const sidebar = page.locator('app-sidebar');
-		await expect(sidebar.getByRole('link', { name: 'All Trained Models' })).toHaveAttribute(
-			'href',
-			'/models'
-		);
-		await expect(sidebar.locator('a.step-train-new')).toHaveAccessibleName('Train New Model');
-		await expect(sidebar.locator('a.step-train-new')).toHaveAttribute('href', '/models/new');
-		await expect(sidebar.locator('a.step-model-link[href="/models/new"]')).toHaveCount(0);
+		const step = sidebar.locator('ol.steps > li').nth(2);
+		const overview = step.locator('a[href="/models"]');
+		await expect(overview).toHaveClass('step-link');
+		await expect(overview.locator('.step-label')).toHaveText('Train Models');
+		await expect(step.locator('a[href="/models/new"]')).toHaveCount(0);
+
+		await page.evaluate(() => {
+			const state = window.__appState!;
+			state.set({ ...state.get(), target: 'species' });
+		});
+		await expect(overview).toHaveClass('step-link-small');
+		await expect(overview).toHaveText('All Trained Models');
+		const train = step.locator('ul.step-models > li.step-model > a.step-train-new');
+		await expect(train).toHaveAccessibleName('Train New Model');
+		await expect(train).toHaveAttribute('href', '/models/new');
+		await expect(train).toHaveAccessibleDescription('Suggested next step');
+		await expect(train.locator('.dot')).toBeVisible();
+		await expect(step.locator('a.step-model-link[href="/models/new"]')).toHaveCount(0);
 	});
 
 	test('SIDE-AC-5: four valid list items contain sibling model links without interactive nesting', async ({
@@ -126,6 +137,11 @@ test.describe('Sidebar acceptance', () => {
 	}) => {
 		await page.setViewportSize({ width: 320, height: 900 });
 		await prepareSidebarFixture(page, 'long');
+		const modelLink = page.locator('app-sidebar a[href="/models/2"]');
+		const modelName = modelLink.locator('.step-model-name');
+		await expect(modelLink).toHaveAccessibleName(
+			/Long trained model label with UnbrokenModelNameThatMustWrap/
+		);
 		for (const dir of ['ltr', 'rtl']) {
 			await page.evaluate((direction) => (document.documentElement.dir = direction), dir);
 			await expect(page.locator('app-sidebar')).toHaveCSS('position', 'static');
@@ -142,6 +158,11 @@ test.describe('Sidebar acceptance', () => {
 			await expect(page.locator('app-sidebar .step-value').first()).toHaveCSS(
 				'overflow-wrap',
 				'anywhere'
+			);
+			await expect(modelName).toHaveCSS('white-space', 'nowrap');
+			await expect(modelName).toHaveCSS('text-overflow', 'ellipsis');
+			expect(await modelName.evaluate((name) => name.scrollWidth > name.clientWidth)).toBe(
+				true
 			);
 		}
 		await page.setViewportSize({ width: 1440, height: 900 });

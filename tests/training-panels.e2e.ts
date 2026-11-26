@@ -160,7 +160,9 @@ test('MW-PROGRESS-1: starts once, keeps native controls stable and announces mil
 		.toBe('trained');
 	await expect(close).toBeFocused();
 	await close.click();
-	await expect(panel.getByRole('button', { name: 'View Results' })).toBeEnabled();
+	const viewResults = panel.getByRole('button', { name: 'View Results' });
+	await expect(viewResults).toBeEnabled();
+	await expect(viewResults).toHaveClass('btn btn-primary');
 	await expect(progress).toHaveAttribute('value', '100');
 	await expect(panel.getByText(/^Elapsed time/)).toBeVisible();
 	await expect(panel.locator('details')).toHaveAttribute('open', '');

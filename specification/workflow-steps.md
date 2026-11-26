@@ -142,7 +142,7 @@ Once a dataset and target are configured:
     - **Action:** **View Results** opens the numbered result. **Continue** opens the current provisional draft at `/models/new` or a historical draft at its numbered URL.
 - The header includes a "Compare Results" button (`<a href="/results">`). It is disabled with a visible hint until at least two models have completed training (`$canCompare`).
 
-The sidebar groups acknowledged trained models under **All Trained Models**. Each result link has a numbered swatch, the saved label or catalogue name, a feature count and a trained check. The current wizard has a static **Training New Model…** row through Step 5 completion. A well-formed but missing model number stays on its URL and links back to Models.
+The sidebar shows **Train Models** until the target is set. It then groups the training action and acknowledged trained models under **All Trained Models**. Each result link has a numbered swatch, the saved label or catalogue name, a feature count and a trained check. The current wizard has a static **Training New Model…** row through Step 5 completion. A well-formed but missing model number stays on its URL and links back to Models.
 
 Leaving an unfinished wizard through an app link or a reversible same-document Back/Forward action requires **Stay** or **Leave**. Leave removes only the matching unfinished provisional draft after any local attempt settles. If a save finishes first, the trained result stays available. Opening or closing Help over the wizard retains its identity, form edits and scroll. Reload and browser departures outside the app-owned history stack preserve the saved draft. See [Navigation Behaviour](app-state-and-navigation.md#5-navigation-behaviour).
 
@@ -206,7 +206,7 @@ The [training panel](components/training-progress.md) displays a labelled native
 
 After a matching local cancellation or fitting failure, **Training Stopped** shows the acknowledged reason and the run's last measured percentage in red, when available. **Train Model** starts a new attempt with the saved setup. **Edit Training Setup** returns to the editable form. Help preserves the stopped state. A fresh reload without that in-memory attempt returns to the saved setup with any recovery reason.
 
-Acknowledged completion shows 100%, elapsed time and **View Results** at the same `/models/new` visit. The saved log remains inspectable. **View Results** revalidates that visit's pinned first run, acknowledges the result and replaces the visit with `/models/{num}` without adding a Back stop. A trained numbered deep link opens the result directly.
+Acknowledged completion shows 100%, elapsed time and a primary **View Results** button at the same `/models/new` visit. The saved log remains inspectable. **View Results** revalidates that visit's pinned first run, acknowledges the result and replaces the visit with `/models/{num}` without adding a Back stop. A trained numbered deep link opens the result directly.
 
 Detailed timing tables for nested evaluation and tuning belong to the later results and tuning phases. The [03-6 draft](mockups/03-6_train-models-5-train.html) awaits human styling.
 

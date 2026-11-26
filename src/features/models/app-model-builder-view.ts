@@ -2449,7 +2449,7 @@ export class AppModelBuilderView extends LitElement {
 											>${completedStepIcon}`
 									: html`<button
 											type="button"
-											class="btn"
+											class=${complete ? 'btn btn-primary' : 'btn'}
 											?disabled=${!complete ||
 											this.showingResults ||
 											viewingPending}

@@ -3,6 +3,53 @@
 - Disable scroll on body while a `dialog.modal` is open.
 - `header.page-header` inside `main` should stick to the top of the viewport when scrolling.
 
+
+## Regressions
+
+### Train Models Step
+In the sidebar Step 3 "Train Models" should display like this before a target variable has been set:
+```
+<li class="step">
+	<a href="/models" class="step-link">
+		<span class="step-num">3</span>
+		<span class="step-label">Train Models</span>
+	</a>
+</li>
+```
+
+After a target variable has been set the step should be updated to use `.step-link-small` and the UI updated to:
+```
+<li class="step">
+	<div class="step-link step-model-navigation">
+		<span class="step-num">3</span>
+		<a href="/models" class="step-link-small">
+			All Trained Models
+		</a>
+		<ul class="step-models">
+			<li class="step-model">
+				<a href="/models/new"
+					class="step-train-new"
+					aria-describedby="workflow-suggestion">Train New Model</span>
+					<span class="dot" aria-hidden="true"></span>
+				</a>
+			</li>
+		</ul>
+	</div>
+</li>
+```
+
+### Fix Dot Emphasis Animation
+
+On Safari running webkit the animation for 
+
+- Training progress bar not animated.
+- Make the "View Results" in  `.btn-primary`
+
+
+
+- "All Trained Models" in `.step-link-small`
+- CSS missing for `<a class="step-train-new" href="/models/new" aria-describedby="workflow-suggestion">Train New Model<span class="dot" aria-hidden="true"></span></a>`
+
 ## Improve Virtualized Table
 
 ### Navigation from "Select Data"

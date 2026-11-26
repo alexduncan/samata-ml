@@ -54,6 +54,11 @@
 					d="M12 3a9 9 0 1 1 0 18 9 9 0 0 1 0-18m0 12.75a1.25 1.25 0 1 0 0 2.5 1.25 1.25 0 0 0 0-2.5M12 5.5a1 1 0 0 0-.891.546C11 6.26 11 6.54 11 7.1v4.8c0 .56 0 .84.109 1.054a1 1 0 0 0 1.782 0C13 12.74 13 12.46 13 11.9V7.1c0-.56 0-.84-.109-1.054A1 1 0 0 0 12 5.5" />
 			</symbol>
 
+			<symbol id="alert" viewBox="0 0 24 24" fill="currentColor" fill-rule="evenodd">
+				<path
+					d="M13.3 2c1 .4 1.5 1.5 2.5 3.6l5 10c1 2 1.5 2.9 1.3 3.8a3 3 0 0 1-1.2 2q-1 .8-4 .6H7.1q-3.1.1-4-.5a3 3 0 0 1-1.3-2c-.2-1 .3-2 1.3-4l5-9.9q1.3-3 2.5-3.6a3 3 0 0 1 2.6 0M12 16.8a1.3 1.3 0 1 0 0 2.5 1.3 1.3 0 0 0 0-2.6m0-10.3a1 1 0 0 0-.9.5L11 8.1v4.8l.1 1a1 1 0 0 0 1.8 0l.1-1V8.1l-.1-1a1 1 0 0 0-.9-.6" />
+			</symbol>
+
 			<symbol
 				id="edit"
 				viewBox="0 0 24 24"
@@ -167,23 +172,29 @@
 									<span>last</span>
 								</button>
 							</div>
-							<div class="table-header-cell" role="columnheader">
+							<div class="table-header-cell unsupported" role="columnheader">
 								<button
 									type="button"
 									class="header-btn"
 									data-col-key="compas_screening_date">
 									<span>compas_screening_date</span>
 								</button>
+								<svg class="icon" aria-hidden="true">
+									<use href="#alert"></use>
+								</svg>
 							</div>
 							<div class="table-header-cell" role="columnheader">
 								<button type="button" class="header-btn" data-col-key="sex">
 									<span>sex</span>
 								</button>
 							</div>
-							<div class="table-header-cell" role="columnheader">
+							<div class="table-header-cell unsupported" role="columnheader">
 								<button type="button" class="header-btn" data-col-key="dob">
 									<span>dob</span>
 								</button>
+								<svg class="icon" aria-hidden="true">
+									<use href="#alert"></use>
+								</svg>
 							</div>
 							<div class="table-header-cell" role="columnheader">
 								<button type="button" class="header-btn" data-col-key="age">
@@ -240,23 +251,32 @@
 									<span>priors_count</span>
 								</button>
 							</div>
-							<div class="table-header-cell" role="columnheader">
+							<div class="table-header-cell unsupported" role="columnheader">
 								<button
 									type="button"
 									class="header-btn"
 									data-col-key="days_b_screening_arrest">
 									<span>days_b_screening_arrest</span>
 								</button>
+								<svg class="icon" aria-hidden="true">
+									<use href="#alert"></use>
+								</svg>
 							</div>
-							<div class="table-header-cell" role="columnheader">
+							<div class="table-header-cell unsupported" role="columnheader">
 								<button type="button" class="header-btn" data-col-key="c_jail_in">
 									<span>c_jail_in</span>
 								</button>
+								<svg class="icon" aria-hidden="true">
+									<use href="#alert"></use>
+								</svg>
 							</div>
-							<div class="table-header-cell" role="columnheader">
+							<div class="table-header-cell unsupported" role="columnheader">
 								<button type="button" class="header-btn" data-col-key="c_jail_out">
 									<span>c_jail_out</span>
 								</button>
+								<svg class="icon" aria-hidden="true">
+									<use href="#alert"></use>
+								</svg>
 							</div>
 							<div class="table-header-cell" role="columnheader">
 								<button
@@ -266,21 +286,27 @@
 									<span>c_case_number</span>
 								</button>
 							</div>
-							<div class="table-header-cell" role="columnheader">
+							<div class="table-header-cell unsupported" role="columnheader">
 								<button
 									type="button"
 									class="header-btn"
 									data-col-key="c_offense_date">
 									<span>c_offense_date</span>
 								</button>
+								<svg class="icon" aria-hidden="true">
+									<use href="#alert"></use>
+								</svg>
 							</div>
-							<div class="table-header-cell" role="columnheader">
+							<div class="table-header-cell unsupported" role="columnheader">
 								<button
 									type="button"
 									class="header-btn"
 									data-col-key="c_arrest_date">
 									<span>c_arrest_date</span>
 								</button>
+								<svg class="icon" aria-hidden="true">
+									<use href="#alert"></use>
+								</svg>
 							</div>
 							<div class="table-header-cell" role="columnheader">
 								<button
@@ -335,13 +361,16 @@
 									<span>r_days_from_arrest</span>
 								</button>
 							</div>
-							<div class="table-header-cell" role="columnheader">
+							<div class="table-header-cell unsupported" role="columnheader">
 								<button
 									type="button"
 									class="header-btn"
 									data-col-key="r_offense_date">
 									<span>r_offense_date</span>
 								</button>
+								<svg class="icon" aria-hidden="true">
+									<use href="#alert"></use>
+								</svg>
 							</div>
 							<div class="table-header-cell" role="columnheader">
 								<button
@@ -351,15 +380,21 @@
 									<span>r_charge_desc</span>
 								</button>
 							</div>
-							<div class="table-header-cell" role="columnheader">
+							<div class="table-header-cell unsupported" role="columnheader">
 								<button type="button" class="header-btn" data-col-key="r_jail_in">
 									<span>r_jail_in</span>
 								</button>
+								<svg class="icon" aria-hidden="true">
+									<use href="#alert"></use>
+								</svg>
 							</div>
-							<div class="table-header-cell" role="columnheader">
+							<div class="table-header-cell unsupported" role="columnheader">
 								<button type="button" class="header-btn" data-col-key="r_jail_out">
 									<span>r_jail_out</span>
 								</button>
+								<svg class="icon" aria-hidden="true">
+									<use href="#alert"></use>
+								</svg>
 							</div>
 							<div class="table-header-cell" role="columnheader">
 								<button

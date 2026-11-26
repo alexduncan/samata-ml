@@ -32,6 +32,7 @@
 				display: flex;
 				/* Enforce rigid width via flex since display: table is gone */
 				flex: 0 0 auto;
+				align-items: center;
 				box-sizing: border-box;
 				border-inline-end: 1px solid var(--stone-200);
 				inline-size: var(--column-width);
@@ -62,6 +63,16 @@
 
 					&:hover {
 						background-color: var(--stone-300);
+					}
+				}
+
+				&.unsupported {
+					background-color: var(--red-100);
+					color: var(--red-700);
+					.icon {
+						flex: 0 0 auto;
+						margin-right: 0.5rem;
+						color: var(--red-700);
 					}
 				}
 			}
@@ -113,6 +124,15 @@
 				&.table-cell-boolean,
 				&.table-cell-categorical {
 					text-align: center;
+				}
+
+				&.table-cell-date {
+					background-color: var(--amber-100);
+					text-align: start;
+				}
+
+				&.unsupported {
+					background-color: var(--red-100);
 				}
 			}
 		}
