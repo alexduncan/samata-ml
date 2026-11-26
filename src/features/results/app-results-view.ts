@@ -401,7 +401,9 @@ export class AppResultsView extends LitElement {
 				text
 			};
 		});
-		const name = (num: number) => t.model({ n: format.count(num) });
+		const name = (num: number) =>
+			data.activeGroup?.models.find((model) => model.num === num)?.label ??
+			t.model({ n: format.count(num) });
 		const models = (data.activeGroup?.models ?? []).map((model) => ({
 			num: model.num,
 			label: name(model.num)
@@ -460,14 +462,7 @@ export class AppResultsView extends LitElement {
 								? format.seconds(value)
 								: ['falsePositives', 'falseNegatives', 'errors'].includes(key)
 									? format.count(value)
-									: [
-												'mcc',
-												'rocAuc',
-												'averagePrecision',
-												'logLoss',
-												'brier',
-												'ece'
-										  ].includes(key)
+									: ['mcc', 'logLoss', 'brier'].includes(key)
 										? format.decimal(value)
 										: format.percent(value);
 					return [key, { ...cell, text }];
@@ -486,7 +481,12 @@ export class AppResultsView extends LitElement {
 				{ series: name(model.num), mostFrequent: t.mostFrequent, stratified: t.stratified },
 				format
 			);
-			series.push({ ...fold.series[0]!, id: String(model.num) });
+			series.push({
+				...fold.series[0]!,
+				id: String(model.num),
+				num: model.num,
+				color: model.modelColor
+			});
 			if (marks.length === 0)
 				marks = fold.baselines.filter(
 					(mark) =>
@@ -579,7 +579,9 @@ export class AppResultsView extends LitElement {
 			ui = ownedComparisonResults(this.app.value, this.app.value).ui;
 		const a = data.pairA,
 			b = data.pairB;
-		const name = (num: number) => t.model({ n: format.count(num) });
+		const name = (num: number) =>
+			data.activeGroup?.models.find((model) => model.num === num)?.label ??
+			t.model({ n: format.count(num) });
 		const signed = (value: number) =>
 			this.format.value.number(value, {
 				signDisplay: 'exceptZero',
@@ -774,7 +776,7 @@ export class AppResultsView extends LitElement {
 													takeaway: t.ropeTakeaway({
 														a: name(a.num),
 														b: name(b.num),
-														width: format.decimal(ui.ropeWidth),
+														width: format.points(ui.ropeWidth),
 														folds: format.count(
 															a.evaluation.partitions.length
 														)

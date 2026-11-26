@@ -1,4 +1,5 @@
 import { describe, expect, it, beforeEach } from 'bun:test';
+import { ropeFractionToPoints, ropePointsToFraction } from '../src/stores/comparison-preferences';
 import {
 	$appState,
 	chooseModel,
@@ -1570,4 +1571,16 @@ describe('WML-P4-STATE-1: model results display preferences', () => {
 		expect(adoptStorage.writes).toBe(writesAfterExternalSeed);
 		expect(writesBeforeAdopt).toBeGreaterThanOrEqual(0);
 	});
+});
+it('CHT-MODEL-3: converts percentage points and rejects invalid inputs', () => {
+	for (const [points, fraction] of [
+		[0.1, 0.001],
+		[1, 0.01],
+		[10, 0.1]
+	] as const) {
+		expect(ropePointsToFraction(points)).toBe(fraction);
+		expect(ropeFractionToPoints(fraction)).toBe(points);
+	}
+	for (const points of [0, 10.1, 0.15, NaN, Infinity])
+		expect(ropePointsToFraction(points)).toBeNull();
 });

@@ -243,6 +243,7 @@ describe('Binary flow view model', () => {
 describe('Classee view model', () => {
 	it('WML-P4-UI-6: three rows with the correct run and stacked non-zero errors', () => {
 		const view = buildClasseeView(irisCrossValidation(), null, format)!;
+		expect(view.legendClasses.map((item) => item.classIndex)).toEqual([2, 1]);
 		expect(view.rows.map((row) => row.label)).toEqual(['setosa', 'versicolor', 'virginica']);
 		expect(view.rows.map((row) => row.correct.count)).toEqual([50, 46, 48]);
 		expect(view.rows[0]!.errors).toEqual([]);
@@ -324,7 +325,24 @@ describe('Calibration view model', () => {
 		expect(view.bins[4]).toMatchObject({ count: 0, meanPredicted: null, observed: null });
 		expect(view.bins[3]!.observed).not.toBeNull();
 		expect(view.bins[5]!.observed).not.toBeNull();
-		expect(view.eceText).toBe('0.04');
+		expect(view.eceText).toBe('4%');
+	});
+
+	it('CHT-MODEL-1: uses percentages for bounded scores and keeps stored calibration rates', () => {
+		const evaluation = breastCancerOneShot();
+		const summary = buildSummaryView(evaluation, names, format);
+		for (const id of ['rocAuc', 'averagePrecision', 'ece']) {
+			const row = summary.more.find((entry) => entry.id === id)!;
+			if (row.value !== null) expect(row.value).toContain('%');
+		}
+		const calibration = evaluation.curves.calibration!;
+		const observed = [...calibration.observed];
+		observed[3] = 0.123456;
+		const changed = {
+			...evaluation,
+			curves: { ...evaluation.curves, calibration: { ...calibration, observed } }
+		};
+		expect(buildCalibrationView(changed, format)!.bins[3]!.observed).toBe(0.123456);
 	});
 
 	it('WML-P4-UI-8: multiclass uses top-label bins; no probabilities gives null', () => {
