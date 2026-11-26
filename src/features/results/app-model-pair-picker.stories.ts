@@ -8,9 +8,9 @@ interface Args {
 	pairB: number | null;
 	dir?: 'ltr' | 'rtl';
 }
-const models = [
-	{ num: 1, label: 'Model 1' },
-	{ num: 2, label: 'Model 2' }
+const models: ModelOptionView[] = [
+	{ num: 1, label: 'Model 1', color: 'amber' },
+	{ num: 2, label: 'Model 2', color: 'sky' }
 ];
 const meta = {
 	title: 'Results/Model pair',
@@ -52,7 +52,11 @@ type Story = StoryObj<Args>;
 /** Long labels wrap. */ export const LongLabel: Story = {
 	args: {
 		models: [
-			{ num: 1, label: 'A classifier with a very long descriptive model name' },
+			{
+				num: 1,
+				label: 'A classifier with a very long descriptive model name',
+				color: 'amber'
+			},
 			models[1]!
 		],
 		pairA: 1,

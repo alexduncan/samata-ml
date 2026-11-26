@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import type { AppConfusionDelta } from '../src/features/results/app-confusion-delta';
+import type { AppClassErrorBars } from '../src/features/results/app-class-error-bars';
 import { bundleResultsFixture, mountResultsFixture } from './helpers/mount-results-fixture';
 
 const bundle = bundleResultsFixture('tests/fixtures/results/comparison-charts.browser.ts');
@@ -26,6 +27,41 @@ test('WML-P5-UI-5: class error bars retain labels and data in forced colours', a
 	await bars.getByText('Show data table').click();
 	await expect(bars.getByRole('table').getByText('Model 1')).toBeVisible();
 	await expect(bars.getByRole('table').getByText('20%')).toBeVisible();
+});
+
+test('CHT-COMP-3: wide labels fit at 200% through resize and stay complete in the table', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 320, height: 800 });
+	await page.addStyleTag({ content: 'html { font-size: 200% }' });
+	const bars = page.locator('app-class-error-bars');
+	const full = 'WWWWMMMMWWWWMMMM wide class label';
+	await bars.evaluate((element, label) => {
+		const chart = element as AppClassErrorBars;
+		chart.rows = chart.rows.map((row) => ({ ...row, label }));
+	}, full);
+	for (const width of [320, 280, 320]) {
+		await page.setViewportSize({ width, height: 800 });
+		await bars.evaluate(async (element) => (element as AppClassErrorBars).whenSettled());
+		const svg = bars.locator('.chart > svg:not([data-plot-probe])');
+		await expect(svg.getByText('…', { exact: false }).first()).toBeVisible();
+		await expect
+			.poll(() =>
+				svg.evaluate((element) => {
+					const bounds = element.getBoundingClientRect();
+					return [...element.querySelectorAll('text')]
+						.filter((text) => {
+							const box = text.getBoundingClientRect();
+							return box.left < bounds.left - 1 || box.right > bounds.right + 1;
+						})
+						.map((text) => text.textContent);
+				})
+			)
+			.toEqual([]);
+	}
+	await bars.getByText('Show data table').click();
+	await expect(bars.getByRole('rowheader', { name: full })).toHaveCount(2);
+	await expect(bars.getByRole('rowheader', { name: full }).first()).toBeVisible();
 });
 
 test('WML-P5-UI-6: signed counts and takeaway follow the active locale', async ({ page }) => {

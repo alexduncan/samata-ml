@@ -47,7 +47,8 @@ const meta = {
 			trueClass: 'True class',
 			predictedClass: 'Predicted class',
 			correct: 'correct',
-			takeaway: args.takeaway
+			takeaway: args.takeaway,
+			filterStatus: (label) => `Showing ${label ?? 'all classes'}.`
 		};
 		element.formatSignedCount = (value) =>
 			new Intl.NumberFormat('en-GB', {

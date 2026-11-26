@@ -2,6 +2,7 @@ import { LitElement, css, html, nothing, type PropertyValues } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { resultsStyles } from '../../styles/results.styles';
+import { modelSwatchStyles } from '../../styles/model-swatch.styles';
 import type { ModelOptionView } from './app-comparison-controls';
 
 /** Text supplied by the connected comparison view. */
@@ -32,15 +33,8 @@ export interface ModelPairChangeDetail {
 export class AppModelPairPicker extends LitElement {
 	static override styles = [
 		resultsStyles,
+		modelSwatchStyles,
 		css`
-			.visually-hidden {
-				position: absolute;
-				clip-path: inset(50%);
-				inline-size: 1px;
-				block-size: 1px;
-				overflow: hidden;
-				white-space: nowrap;
-			}
 			button:focus-visible {
 				outline: 2px solid var(--focus-ring);
 				outline-offset: 2px;
@@ -99,8 +93,15 @@ export class AppModelPairPicker extends LitElement {
 	}
 
 	override render() {
+		const modelA = this.models.find((model) => model.num === this.pairA);
+		const modelB = this.models.find((model) => model.num === this.pairB);
 		return html`
 			<label for="pair-a">${this.labels.modelA}</label>
+			${modelA
+				? html`<span class=${`swatch swatch-${modelA.color}`} aria-hidden="true"
+						>${modelA.num}</span
+					>`
+				: nothing}
 			<select
 				id="pair-a"
 				.value=${this.pairA === null ? '' : String(this.pairA)}
@@ -118,6 +119,11 @@ export class AppModelPairPicker extends LitElement {
 				)}
 			</select>
 			<label for="pair-b">${this.labels.modelB}</label>
+			${modelB
+				? html`<span class=${`swatch swatch-${modelB.color}`} aria-hidden="true"
+						>${modelB.num}</span
+					>`
+				: nothing}
 			<select
 				id="pair-b"
 				.value=${this.pairB === null ? '' : String(this.pairB)}

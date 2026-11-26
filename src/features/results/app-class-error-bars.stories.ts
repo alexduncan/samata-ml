@@ -11,16 +11,44 @@ const rows: ClassErrorRowView[] = [
 		classIndex: 0,
 		label: 'Adélie',
 		models: [
-			{ num: 1, label: 'Model 1', errorRate: 0.1 },
-			{ num: 2, label: 'Model 2', errorRate: 0.2 }
+			{
+				num: 1,
+				label: 'Model 1',
+				modelColor: 'amber',
+				errorRate: 0.1,
+				errorCount: 1,
+				support: 10
+			},
+			{
+				num: 2,
+				label: 'Model 2',
+				modelColor: 'sky',
+				errorRate: 0.2,
+				errorCount: 2,
+				support: 10
+			}
 		]
 	},
 	{
 		classIndex: 1,
 		label: 'Gentoo',
 		models: [
-			{ num: 1, label: 'Model 1', errorRate: 0.15 },
-			{ num: 2, label: 'Model 2', errorRate: null }
+			{
+				num: 1,
+				label: 'Model 1',
+				modelColor: 'amber',
+				errorRate: 0.15,
+				errorCount: 3,
+				support: 20
+			},
+			{
+				num: 2,
+				label: 'Model 2',
+				modelColor: 'sky',
+				errorRate: null,
+				errorCount: null,
+				support: null
+			}
 		]
 	}
 ];
@@ -48,7 +76,13 @@ const meta = {
 			model: 'Model',
 			errorRate: 'Error rate',
 			unavailable: 'Unavailable',
-			showData: 'Show data table'
+			showData: 'Show data table',
+			xAxis: 'Error rate (%, lower is better)',
+			yAxis: 'Class and model',
+			errorCountHeading: 'Errors',
+			errorCountCell: (errors, total) => `${errors} of ${total}`,
+			legendLabel: 'Models',
+			description: () => 'Class error rates and counts.'
 		};
 		element.formatPercent = (value) =>
 			new Intl.NumberFormat('en-GB', { style: 'percent' }).format(value);

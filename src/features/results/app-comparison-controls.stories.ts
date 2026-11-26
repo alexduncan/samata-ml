@@ -8,9 +8,21 @@ interface Args {
 	groups: GroupOptionView[];
 	dir?: 'ltr' | 'rtl';
 }
+const colors = [
+	'amber',
+	'sky',
+	'olive',
+	'neutral',
+	'blue',
+	'teal',
+	'purple',
+	'red',
+	'green'
+] as const;
 const models = Array.from({ length: 9 }, (_, index) => ({
 	num: index + 1,
-	label: `Model ${index + 1}`
+	label: `Model ${index + 1}`,
+	color: colors[index]!
 }));
 const groups: GroupOptionView[] = [
 	{
@@ -77,7 +89,11 @@ type Story = StoryObj<Args>;
 /** Long labels wrap. */ export const LongLabel: Story = {
 	args: {
 		models: [
-			{ num: 1, label: 'A classifier with an exceptionally long descriptive model name' }
+			{
+				num: 1,
+				label: 'A classifier with an exceptionally long descriptive model name',
+				color: 'amber'
+			}
 		],
 		selected: [1],
 		groups

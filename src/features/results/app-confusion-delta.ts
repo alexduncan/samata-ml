@@ -1,5 +1,5 @@
 import { LitElement, html, nothing } from 'lit';
-import { customElement, property } from 'lit/decorators.js';
+import { customElement, property, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { tableStyles } from '../../styles/table.styles';
 import { resultsStyles } from '../../styles/results.styles';
@@ -22,6 +22,7 @@ export interface ConfusionDeltaLabels {
 	predictedClass: string;
 	correct: string;
 	takeaway: string;
+	filterStatus: (label: string | null) => string;
 }
 /** Empty labels supplied until translations are provided. */
 export const DEFAULT_CONFUSION_DELTA_LABELS: ConfusionDeltaLabels = {
@@ -31,7 +32,8 @@ export const DEFAULT_CONFUSION_DELTA_LABELS: ConfusionDeltaLabels = {
 	trueClass: '',
 	predictedClass: '',
 	correct: '',
-	takeaway: ''
+	takeaway: '',
+	filterStatus: () => ''
 };
 /** Detail of a true-class filter change. */
 export interface ConfusionDeltaFilterChangeDetail {
@@ -51,9 +53,13 @@ export class AppConfusionDelta extends LitElement {
 		null;
 	@property({ attribute: false }) accessor labels: ConfusionDeltaLabels =
 		DEFAULT_CONFUSION_DELTA_LABELS;
+	@state() private accessor announcement = '';
 
 	private changeFilter(event: Event): void {
 		const value = (event.currentTarget as HTMLSelectElement).value;
+		this.announcement = this.labels.filterStatus(
+			value === '' ? null : (this.delta?.labels[Number(value)] ?? null)
+		);
 		this.dispatchEvent(
 			new CustomEvent<ConfusionDeltaFilterChangeDetail>('app-confusion-delta-filter-change', {
 				detail: { classFilter: value === '' ? null : Number(value) },
@@ -70,6 +76,7 @@ export class AppConfusionDelta extends LitElement {
 		const size = delta.labels.length;
 		return html`
 			<p>${this.labels.takeaway}</p>
+			<p class="visually-hidden" aria-live="polite">${this.announcement}</p>
 			${size > 20
 				? html`<label for="filter">${this.labels.filter}</label>
 						<select id="filter" @change=${this.changeFilter}>

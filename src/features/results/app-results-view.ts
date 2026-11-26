@@ -1,7 +1,7 @@
 import { count, params } from '@nanostores/i18n';
 import { StoreController } from '@nanostores/lit';
 import { LitElement, css, html, nothing, type PropertyValues } from 'lit';
-import { customElement } from 'lit/decorators.js';
+import { customElement, state } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { $format, i18n } from '../../i18n';
 import { $appState, setComparisonUi } from '../../stores/app.store';
@@ -33,6 +33,7 @@ import type {
 	ComparisonSelectionChangeDetail,
 	GroupOptionView
 } from './app-comparison-controls';
+import type { ModelOptionView } from './app-comparison-controls';
 import type { ModelPairChangeDetail } from './app-model-pair-picker';
 import type { ConfusionDeltaFilterChangeDetail } from './app-confusion-delta';
 import type { RopeWidthChangeDetail } from './app-rope-bar';
@@ -134,6 +135,20 @@ const messages = i18n('app-results-view', {
 	standardDeviation: 'Standard deviation',
 	classTitle: 'Errors by class',
 	classTakeaway: 'Compare the share of held-out rows misclassified in each class.',
+	classXAxis: 'Error rate (%, lower is better)',
+	classYAxis: 'Class and model',
+	errorCountHeading: 'Errors',
+	errorCountCell: params<{ errors: string; total: string }>('{errors} of {total}'),
+	classDescription: params<{ values: string }>('Class error rates and counts: {values}.'),
+	classDataTakeaway: params<{ className: string; model: string; rate: string }>(
+		'{model} has an error rate of {rate} for {className}.'
+	),
+	selectionStatus: params<{ n: string }>('Comparison selection updated: {n} models.'),
+	groupStatus: 'Comparison group updated.',
+	pairHeading: 'Pair comparison and confusion differences',
+	filterStatus: params<{ label: string }>('Showing {label}.'),
+	targetTrue: params<{ target: string }>('True {target}'),
+	targetPredicted: params<{ target: string }>('Predicted {target}'),
 	class: 'Class',
 	errorRate: 'Error rate',
 	modelA: 'Model A',
@@ -151,8 +166,14 @@ const messages = i18n('app-results-view', {
 		'{actual} predicted as {predicted}: {value}.'
 	),
 	ropeTitle: 'Practical equivalence',
-	ropeWidth: 'Equivalence width',
-	ropeInvalid: 'Enter a value from 0.001 to 0.1 in steps of 0.001.',
+	ropeWidth: 'Equivalence width (percentage points)',
+	ropeInvalid: 'Enter a value from 0.1 to 10 in steps of 0.1.',
+	ropeXAxis: 'Posterior probability (%)',
+	frequencyHeading: 'Frequency',
+	inHundred: params<{ n: string }>('{n} in 100'),
+	modelHigher: params<{ label: string }>('{label} higher'),
+	ropeDescription: params<{ a: string; b: string; values: string }>('{a} and {b}: {values}.'),
+	ropeStatus: params<{ status: string; summary: string }>('{status} {summary}'),
 	aHigher: 'A higher',
 	equivalent: 'Practically equivalent',
 	bHigher: 'B higher',
@@ -173,6 +194,10 @@ const messages = i18n('app-results-view', {
 	),
 	correctModels: 'Correct models',
 	rowCount: 'Rows',
+	agreementXAxis: params<{ n: string }>('Models correct (out of {n})'),
+	agreementYAxis: 'Rows',
+	shareHeading: 'Share (%)',
+	agreementDescription: params<{ values: string }>('Agreement counts: {values}.'),
 	bucket: params<{ n: string }>(count({ one: '{n} model correct', many: '{n} models correct' })),
 	noWinner: 'There is no automatic winner. Compare the measures and their trade-offs.'
 });
@@ -180,7 +205,7 @@ const messages = i18n('app-results-view', {
 type ComparisonData = ReturnType<typeof $comparison.get>;
 interface Views {
 	groups: GroupOptionView[];
-	models: { num: number; label: string }[];
+	models: ModelOptionView[];
 	rows: ComparisonRowView[];
 	baselines: ComparisonRowView[];
 	columns: ComparisonColumnView[];
@@ -229,6 +254,7 @@ export class AppResultsView extends LitElement {
 	private waiters = new Set<() => void>();
 	private analysisKey = '';
 	private pendingEffect: Promise<void> | null = null;
+	@state() private accessor announcement = '';
 
 	/** Focuses the route heading without waiting for results. */
 	async focusHeading(signal: AbortSignal): Promise<void> {
@@ -413,7 +439,8 @@ export class AppResultsView extends LitElement {
 			t.model({ n: format.count(num) });
 		const models = (data.activeGroup?.models ?? []).map((model) => ({
 			num: model.num,
-			label: name(model.num)
+			label: name(model.num),
+			color: model.modelColor
 		}));
 		const selected = (data.activeGroup?.models ?? []).filter((model) =>
 			data.selected.includes(model.num)
@@ -514,10 +541,14 @@ export class AppResultsView extends LitElement {
 	}
 
 	private groupChanged(event: CustomEvent<ComparisonGroupChangeDetail>): void {
+		this.announcement = this.text.value.groupStatus;
 		const owner = comparisonOwner(this.app.value);
 		if (owner) selectComparisonGroup(owner, event.detail.fingerprint);
 	}
 	private selectionChanged(event: CustomEvent<ComparisonSelectionChangeDetail>): void {
+		this.announcement = this.text.value.selectionStatus({
+			n: this.format.value.number(event.detail.selected.length)
+		});
 		const owner = comparisonOwner(this.app.value);
 		if (owner) selectComparisonModels(owner, event.detail.selected);
 	}
@@ -605,12 +636,23 @@ export class AppResultsView extends LitElement {
 			: t.noDifferences;
 		const analysis = this.analysis.value;
 		const ropeStatus = analysis.status === 'idle' ? 'loading' : analysis.status;
+		const classValues = data.classErrors.flatMap((row) =>
+			row.models.map((model) => ({
+				className: row.label,
+				model: model.label,
+				rate: model.errorRate
+			}))
+		);
+		const greatestClassError = classValues
+			.filter((value): value is typeof value & { rate: number } => value.rate !== null)
+			.toSorted((a, b) => b.rate - a.rate)[0];
 		return html`
 			<header class="page-header">
 				<h1 tabindex="-1">${t.title}</h1>
 				<p>${t.description}</p>
 			</header>
 			<section class="page-body" data-testid="results-view">
+				<p class="visually-hidden" aria-live="polite">${this.announcement}</p>
 				${!this.canCompare.value
 					? html`<p class="notification">
 							${t.blocked} <a href="/models">${t.modelsLink}</a>
@@ -694,12 +736,13 @@ export class AppResultsView extends LitElement {
 												: nothing}
 										</section>
 										<section>
+											<h2>${t.foldTitle}</h2>
 											<app-fold-strip
 												.series=${views.series}
 												.baselines=${views.marks}
 												.caption=${{
 													title: t.foldTitle,
-													takeaway: t.foldTakeaway
+													takeaway: `${t.foldTakeaway} ${views.series.map((row) => `${row.label}: ${format.percent(row.mean)}`).join('; ')}`
 												}}
 												.formatPercent=${format.percent}
 												.labels=${{
@@ -737,6 +780,7 @@ export class AppResultsView extends LitElement {
 												}}></app-fold-strip>
 										</section>
 										<section>
+											<h2>${t.classTitle}</h2>
 											<app-class-error-bars
 												.rows=${data.classErrors.map((row) => ({
 													...row,
@@ -747,18 +791,48 @@ export class AppResultsView extends LitElement {
 												}))}
 												.caption=${{
 													title: t.classTitle,
-													takeaway: t.classTakeaway
+													takeaway: greatestClassError
+														? t.classDataTakeaway({
+																className:
+																	greatestClassError.className,
+																model: greatestClassError.model,
+																rate: format.percent(
+																	greatestClassError.rate
+																)
+															})
+														: t.classTakeaway
 												}}
 												.formatPercent=${format.percent}
+												.formatCount=${format.count}
 												.labels=${{
 													class: t.class,
 													model: t.modelColumn,
 													errorRate: t.errorRate,
 													unavailable: t.unavailable,
-													showData: t.showData
+													showData: t.showData,
+													xAxis: t.classXAxis,
+													yAxis: t.classYAxis,
+													errorCountHeading: t.errorCountHeading,
+													errorCountCell: (
+														errors: string,
+														total: string
+													) => t.errorCountCell({ errors, total }),
+													legendLabel: t.foldLegend,
+													description: (rows: typeof data.classErrors) =>
+														t.classDescription({
+															values: rows
+																.flatMap((row) =>
+																	row.models.map(
+																		(model) =>
+																			`${row.label}, ${model.label}: ${model.errorRate === null ? t.unavailable : format.percent(model.errorRate)}`
+																	)
+																)
+																.join('; ')
+														})
 												}}></app-class-error-bars>
 										</section>
 										<section>
+											<h2>${t.pairHeading}</h2>
 											<app-model-pair-picker
 												.models=${views.models.filter((model) =>
 													data.selected.includes(model.num)
@@ -784,8 +858,16 @@ export class AppResultsView extends LitElement {
 													caption: t.confusion,
 													filter: t.filter,
 													allClasses: t.allClasses,
-													trueClass: t.trueClass,
-													predictedClass: t.predictedClass,
+													trueClass: t.targetTrue({
+														target: this.app.value.target ?? t.class
+													}),
+													predictedClass: t.targetPredicted({
+														target: this.app.value.target ?? t.class
+													}),
+													filterStatus: (label: string | null) =>
+														t.filterStatus({
+															label: label ?? t.allClasses
+														}),
 													correct: t.correct,
 													takeaway
 												}}
@@ -793,7 +875,10 @@ export class AppResultsView extends LitElement {
 													.filterChanged}></app-confusion-delta>
 										</section>
 										<section class="rope-section">
+											<h2>${t.ropeTitle}</h2>
 											<app-rope-bar
+												.modelA=${a}
+												.modelB=${b}
 												.result=${analysis.status === 'ready'
 													? analysis.result
 													: null}
@@ -823,13 +908,36 @@ export class AppResultsView extends LitElement {
 													retry: t.retry,
 													outcome: t.outcome,
 													probability: t.probability,
-													showData: t.showData
+													showData: t.showData,
+													xAxis: t.ropeXAxis,
+													frequencyHeading: t.frequencyHeading,
+													inHundred: (n: number) =>
+														t.inHundred({ n: format.count(n) }),
+													modelHigher: (label: string) =>
+														t.modelHigher({ label }),
+													description: (
+														a: string,
+														b: string,
+														ap: number,
+														eq: number,
+														bp: number
+													) =>
+														t.ropeDescription({
+															a,
+															b,
+															values: [ap, eq, bp]
+																.map(format.percent)
+																.join(', ')
+														}),
+													liveStatus: (status: string, summary: string) =>
+														t.ropeStatus({ status, summary })
 												}}
 												@app-rope-width-change=${this.widthChanged}
 												@app-rope-retry=${this
 													.retryAnalysis}></app-rope-bar>
 										</section>
 										<section>
+											<h2>${t.agreementTitle}</h2>
 											<app-instance-agreement
 												.counts=${{ counts: data.agreement }}
 												.caption=${{
@@ -839,12 +947,23 @@ export class AppResultsView extends LitElement {
 													})(data.agreement[0] ?? 0)
 												}}
 												.formatCount=${format.count}
+												.formatPercent=${format.percent}
 												.labels=${{
 													correctModels: t.correctModels,
 													rowCount: t.rowCount,
 													showData: t.showData,
 													bucket: (n: number) =>
-														t.bucket({ n: format.count(n) })(n)
+														t.bucket({ n: format.count(n) })(n),
+													xAxis: (n: number) =>
+														t.agreementXAxis({ n: format.count(n) }),
+													yAxis: t.agreementYAxis,
+													shareHeading: t.shareHeading,
+													description: (counts: readonly number[]) =>
+														t.agreementDescription({
+															values: counts
+																.map(format.count)
+																.join(', ')
+														})
 												}}></app-instance-agreement>
 										</section>
 										<p>${t.noWinner}</p>

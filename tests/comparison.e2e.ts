@@ -1,6 +1,9 @@
 import { expect, test } from '@playwright/test';
 import { seedComparableGroups, seedComparablePair } from './helpers/seed-results';
 
+// These journeys train two models before exercising comparison; allow for slower browser workers.
+test.setTimeout(60_000);
+
 test('CHT-SINGLE-1A: comparison owner supplies the fold chart labels and data description', async ({
 	page
 }) => {
@@ -21,7 +24,19 @@ test('CHT-SINGLE-1A: comparison owner supplies the fold chart labels and data de
 	expect(description).toMatch(/\d+\.\d%/);
 });
 
-test('BETA-ERR-2b: comparison bars reflect changed input on a reused model row', async ({
+test('CHT-COMP-1: comparison sections and model identities are exposed', async ({ page }) => {
+	await seedComparablePair(page);
+	await page.goto('/results');
+	const view = page.locator('app-results-view');
+	await expect(view.getByRole('heading', { level: 2 })).toHaveCount(6);
+	await expect(view.locator('app-comparison-controls .swatch')).toHaveCount(2);
+	await expect(view.locator('app-comparison-table .swatch')).toHaveCount(2);
+	await expect(view.locator('app-model-pair-picker .swatch')).toHaveCount(2);
+	await expect(view.locator('app-comparison-table .bar')).toHaveCount(0);
+	await expect(view.locator('p[aria-live="polite"]').first()).toBeAttached();
+});
+
+test('CHT-COMP-2: comparison values update on a reused row without truncated bars', async ({
 	page
 }) => {
 	await seedComparablePair(page);
@@ -63,18 +78,9 @@ test('BETA-ERR-2b: comparison bars reflect changed input on a reused model row',
 		await table.updateComplete;
 	});
 	const table = page.locator('app-comparison-table#comparison-bar-fixture');
-	const bar = table.getByRole('row').filter({ hasText: 'Middle' }).locator('.bar');
-	const share = () =>
-		bar.evaluate((element) => {
-			const cell = element.parentElement!;
-			const style = getComputedStyle(cell);
-			const contentWidth =
-				cell.clientWidth -
-				parseFloat(style.paddingInlineStart) -
-				parseFloat(style.paddingInlineEnd);
-			return element.getBoundingClientRect().width / contentWidth;
-		});
-	expect(await share()).toBeCloseTo(0.5, 2);
+	const row = table.getByRole('row').filter({ hasText: 'Middle' });
+	await expect(row).toContainText('50%');
+	await expect(table.locator('.bar')).toHaveCount(0);
 	await table.evaluate(async (element) => {
 		const table = element as HTMLElementTagNameMap['app-comparison-table'];
 		table.rows = table.rows.map((row) =>
@@ -84,7 +90,8 @@ test('BETA-ERR-2b: comparison bars reflect changed input on a reused model row',
 		);
 		await table.updateComplete;
 	});
-	expect(await share()).toBeCloseTo(0.75, 2);
+	await expect(row).toContainText('75%');
+	await expect(table.locator('.bar')).toHaveCount(0);
 });
 
 test('TERM-AC-7: comparison terms explain pooled scores and the paired fold gap', async ({
@@ -327,6 +334,44 @@ test('WML-P5-UI-10: swapping reverses nonzero confusion differences and refreshe
 	page
 }) => {
 	await seedComparablePair(page, 'iris', 'different-confusion');
+	await page.addInitScript(() => {
+		const NativeWorker = window.Worker;
+		window.Worker = new Proxy(NativeWorker, {
+			construct(target, args, newTarget) {
+				if (!String(args[0]).endsWith('/analysis.worker.js'))
+					return Reflect.construct(target, args, newTarget);
+				let requests = 0;
+				const worker = {
+					onmessage: null as ((event: MessageEvent) => void) | null,
+					onerror: null,
+					onmessageerror: null,
+					postMessage(request: { id: number }) {
+						const deliver = () =>
+							worker.onmessage?.(
+								new MessageEvent('message', {
+									data: {
+										type: 'rope-result',
+										id: request.id,
+										result: {
+											probabilityLower: 0.2,
+											probabilityEquivalent: 0.3,
+											probabilityHigher: 0.5
+										}
+									}
+								})
+							);
+						if (++requests === 1) setTimeout(deliver, 0);
+						else
+							(
+								window as Window & { releaseSwapAnalysis?: () => void }
+							).releaseSwapAnalysis = deliver;
+					},
+					terminate() {}
+				};
+				return worker;
+			}
+		});
+	});
 	await page.goto('/results');
 	const view = page.locator('app-results-view');
 	const matrix = view.locator('app-confusion-delta tbody td');
@@ -339,6 +384,19 @@ test('WML-P5-UI-10: swapping reverses nonzero confusion differences and refreshe
 		.click();
 	await expect(matrix.first()).toContainText('-1');
 	await expect(rope).toHaveJSProperty('status', 'loading');
+	await expect
+		.poll(() =>
+			page.evaluate(
+				() =>
+					typeof (window as Window & { releaseSwapAnalysis?: () => void })
+						.releaseSwapAnalysis
+			)
+		)
+		.toBe('function');
+	await page.evaluate(() =>
+		(window as Window & { releaseSwapAnalysis?: () => void }).releaseSwapAnalysis!()
+	);
+	await expect(rope).toHaveJSProperty('status', 'ready');
 	await expect(rope.locator('figure')).toBeVisible({ timeout: 45_000 });
 	await expect(
 		view
@@ -390,7 +448,7 @@ test('WML-P5-UI-11: sorting and equivalence width survive reload', async ({ page
 	const sortedHeader = table.locator('th:has(button[value="balancedAccuracy"])');
 	await expect(sortedHeader).toHaveAttribute('aria-sort', 'ascending');
 	const width = view.locator('app-rope-bar').getByLabel('Equivalence width');
-	await width.fill('0.02');
+	await width.fill('2');
 	await expect
 		.poll(() =>
 			page.evaluate(
@@ -399,7 +457,7 @@ test('WML-P5-UI-11: sorting and equivalence width survive reload', async ({ page
 		)
 		.toBe(0.02);
 	await page.reload();
-	await expect(width).toHaveValue('0.02');
+	await expect(width).toHaveValue('2');
 	await expect(sortedHeader).toHaveAttribute('aria-sort', 'ascending');
 });
 
