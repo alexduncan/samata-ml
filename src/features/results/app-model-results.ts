@@ -54,7 +54,8 @@ import {
 	type FoldStripView,
 	type ResultsFormatters,
 	type ResultsSummaryView,
-	type ThresholdView
+	type ThresholdView,
+	type ThresholdReadout
 } from './results-view-model';
 import { RESULT_TERM_COPY } from './result-term-copy';
 
@@ -267,8 +268,22 @@ const messages = i18n('app-model-results', {
 	),
 	thresholdTpr: params<{ positive: string }>('Share of {positive} rows found'),
 	thresholdFpr: params<{ negative: string }>('Share of {negative} rows wrongly flagged'),
-	thresholdTrueClass: params<{ label: string }>('True class {label}'),
-	thresholdXAxis: 'Predicted probability',
+	thresholdTrueClass: params<{ target: string; label: string }>('True {target}: {label}'),
+	thresholdXAxis: params<{ positive: string }>('Predicted probability of {positive} (%)'),
+	thresholdCutoff: params<{ threshold: string }>('Cutoff {threshold}'),
+	thresholdRateCounts: params<{ rate: string; hits: string; total: string }>(
+		'{rate} ({hits} of {total})'
+	),
+	thresholdDescription: params<{
+		threshold: string;
+		tp: string;
+		positives: string;
+		fp: string;
+		negatives: string;
+	}>(
+		'At {threshold}, {tp} of {positives} positive rows and {fp} of {negatives} negative rows are flagged.'
+	),
+	thresholdLegend: 'True class',
 	thresholdYAxis: 'Rows',
 	thresholdTableCaption: 'Held-out rows by predicted probability and true class',
 	thresholdRangeHeading: 'Probability range',
@@ -283,17 +298,24 @@ const messages = i18n('app-model-results', {
 	reliabilityTakeaway: params<{ ece: string }>(
 		'Expected calibration error is {ece}. Lower is better; zero means predicted probabilities match observed rates.'
 	),
-	reliabilityXAxis: 'Mean predicted probability',
-	reliabilityXAxisTopLabel: 'Mean confidence in the top class',
-	reliabilityYAxis: 'Observed rate',
-	reliabilityYAxisTopLabel: 'Observed accuracy',
+	reliabilityXAxis: 'Mean predicted probability (%)',
+	reliabilityXAxisTopLabel: 'Mean confidence in the top class (%)',
+	reliabilityYAxis: 'Observed positive rate (%)',
+	reliabilityYAxisTopLabel: 'Correct prediction rate (%)',
 	reliabilityCountsTitle: 'Rows in each probability bin',
 	reliabilityCountsAxis: 'Rows',
 	reliabilityDiagonal: 'Perfect calibration',
 	reliabilityTableCaption: 'Calibration by probability bin',
 	reliabilityBin: 'Probability bin',
 	reliabilityMeanPredicted: 'Mean predicted',
-	reliabilityObserved: 'Observed',
+	reliabilityObserved: 'Observed positive rate',
+	reliabilityObservedTopLabel: 'Correct prediction rate',
+	reliabilityDescription: params<{ ece: string }>(
+		'Expected calibration error is {ece}; each point represents a non-empty probability bin.'
+	),
+	reliabilityCountsDescription: params<{ total: string }>(
+		'The histogram shows {total} held-out rows across probability bins.'
+	),
 	reliabilityEmptyBin: 'No rows',
 	reliabilityUnavailableProbabilities: params<{ model: string }>(
 		'The reliability diagram is unavailable because this {model} was trained without probability estimates.'
@@ -336,6 +358,15 @@ function buildLabels(
 		'insufficient-degrees-of-freedom': t.reasonFewRows,
 		'single-class': t.reasonSingleClass
 	};
+	const thresholdView = buildThresholdView(evaluation, target);
+	const thresholdDescription = (view: ThresholdView, readout: ThresholdReadout) =>
+		t.thresholdDescription({
+			threshold: format.percent(readout.threshold),
+			tp: format.count(readout.tp),
+			positives: format.count(readout.tp + readout.fn),
+			fp: format.count(readout.fp),
+			negatives: format.count(readout.fp + readout.tn)
+		});
 	const probabilities = unavailableReason === 'probabilities';
 	return {
 		summary: {
@@ -488,8 +519,13 @@ function buildLabels(
 				t.thresholdFn({ positive: view.positive, negative: view.negative }),
 			truePositiveRate: (view) => t.thresholdTpr({ positive: view.positive }),
 			falsePositiveRate: (view) => t.thresholdFpr({ negative: view.negative }),
-			trueClass: (label) => t.thresholdTrueClass({ label }),
-			xAxis: t.thresholdXAxis,
+			trueClass: (label) => t.thresholdTrueClass({ target, label }),
+			cutoffLabel: (threshold) => t.thresholdCutoff({ threshold }),
+			description: thresholdDescription,
+			liveUpdate: thresholdDescription,
+			rateWithCounts: (rate, hits, total) => t.thresholdRateCounts({ rate, hits, total }),
+			legendLabel: t.thresholdLegend,
+			xAxis: t.thresholdXAxis({ positive: thresholdView?.positive ?? '' }),
 			yAxis: t.thresholdYAxis,
 			showTable: t.showTable,
 			tableCaption: t.thresholdTableCaption,
@@ -497,6 +533,13 @@ function buildLabels(
 			range: (lower, upper) => t.range({ lower, upper })
 		},
 		reliability: {
+			description: (view) => t.reliabilityDescription({ ece: view.eceText }),
+			countsDescription: (view) =>
+				t.reliabilityCountsDescription({
+					total: format.count(view.bins.reduce((sum, bin) => sum + bin.count, 0))
+				}),
+			observedHeading: topLabel ? t.reliabilityObservedTopLabel : t.reliabilityObserved,
+			countHeading: t.matrixRows,
 			unavailable: probabilities
 				? t.reliabilityUnavailableProbabilities({ model })
 				: t.reliabilityUnavailableSingleClass,
@@ -832,7 +875,7 @@ export class AppModelResults extends LitElement {
 			thresholdCaption: threshold
 				? {
 						title: t.thresholdTitle,
-						takeaway: t.thresholdTakeaway({ positive: threshold.positive })
+						takeaway: labels.threshold.description(threshold, threshold.readouts[50]!)
 					}
 				: null,
 			calibration,

@@ -4,7 +4,8 @@ import { repeat } from 'lit/directives/repeat.js';
 import { resultsStyles } from '../../styles/results.styles';
 import { tableStyles } from '../../styles/table.styles';
 import { PlotController, type ChartLibrary, type ChartTokens } from './charts/plot-controller';
-import type { ChartCaption, ThresholdView } from './results-view-model';
+import { integerTicks, truncateLabel } from './charts/chart-encoding';
+import type { ChartCaption, ThresholdView, ThresholdReadout } from './results-view-model';
 
 /** Text supplied by the connected results view. */
 export interface ThresholdExplorerLabels {
@@ -26,6 +27,11 @@ export interface ThresholdExplorerLabels {
 	readonly falsePositiveRate: (view: ThresholdView) => string;
 	/** Name of a true-class facet and table column. */
 	readonly trueClass: (label: string) => string;
+	readonly cutoffLabel: (threshold: string) => string;
+	readonly description: (view: ThresholdView, readout: ThresholdReadout) => string;
+	readonly liveUpdate: (view: ThresholdView, readout: ThresholdReadout) => string;
+	readonly rateWithCounts: (rate: string, hits: string, total: string) => string;
+	readonly legendLabel: string;
 	readonly xAxis: string;
 	readonly yAxis: string;
 	readonly showTable: string;
@@ -48,6 +54,11 @@ export const DEFAULT_THRESHOLD_EXPLORER_LABELS: ThresholdExplorerLabels = {
 	truePositiveRate: () => '',
 	falsePositiveRate: () => '',
 	trueClass: () => '',
+	cutoffLabel: () => '',
+	description: () => '',
+	liveUpdate: () => '',
+	rateWithCounts: () => '',
+	legendLabel: '',
 	xAxis: '',
 	yAxis: '',
 	showTable: '',
@@ -129,11 +140,15 @@ export class AppThresholdExplorer extends LitElement {
 	@state() private accessor liveIndex: number | null = null;
 	private pendingFrame = 0;
 	private pendingIndex = 0;
+	private announcementTimer: ReturnType<typeof setTimeout> | undefined;
+	@state() private accessor announcement = '';
 
 	private readonly plot = new PlotController(
 		this,
 		() => this.renderRoot.querySelector<HTMLElement>('.chart'),
-		(chart, tokens, width) => this.draw(chart, tokens, width)
+		(chart, tokens, width, fontSize, measureText) =>
+			this.draw(chart, tokens, width, fontSize, measureText),
+		() => 'description'
 	);
 
 	/** Resolves when the current chart has been drawn or abandoned. */
@@ -155,6 +170,7 @@ export class AppThresholdExplorer extends LitElement {
 		super.disconnectedCallback();
 		if (this.pendingFrame) cancelAnimationFrame(this.pendingFrame);
 		this.pendingFrame = 0;
+		clearTimeout(this.announcementTimer);
 	}
 
 	private get index(): number {
@@ -167,6 +183,12 @@ export class AppThresholdExplorer extends LitElement {
 		const value = Number((event.currentTarget as HTMLInputElement).value);
 		this.liveIndex = value;
 		this.pendingIndex = value;
+		clearTimeout(this.announcementTimer);
+		this.announcementTimer = setTimeout(() => {
+			const view = this.explorer;
+			const readout = view?.readouts[value];
+			if (view && readout) this.announcement = this.labels.liveUpdate(view, readout);
+		}, 250);
 		if (this.pendingFrame) return;
 		this.pendingFrame = requestAnimationFrame(() => {
 			this.pendingFrame = 0;
@@ -180,7 +202,13 @@ export class AppThresholdExplorer extends LitElement {
 		});
 	}
 
-	private draw(chart: ChartLibrary, tokens: ChartTokens, width: number) {
+	private draw(
+		chart: ChartLibrary,
+		tokens: ChartTokens,
+		width: number,
+		fontSize: number,
+		measureText: (text: string) => number
+	) {
 		const view = this.explorer;
 		if (!view || !this.caption) return null;
 		const { labels } = this;
@@ -202,23 +230,40 @@ export class AppThresholdExplorer extends LitElement {
 			}
 		]);
 		const threshold = view.readouts[this.index]!.threshold;
+		const marginLeft = Math.ceil(fontSize * 3);
+		const marginRight = Math.ceil(
+			Math.max(fontSize, measureText(this.formatPercent(1)) / 2 + 8)
+		);
+		const plotWidth = Math.max(1, width - marginLeft - marginRight);
+		const cutoff = truncateLabel(
+			labels.cutoffLabel(this.formatPercent(threshold)),
+			Math.max(0, width - fontSize),
+			measureText
+		);
+		const half = measureText(cutoff) / 2 + Math.ceil(fontSize / 2);
+		const cutoffX = Math.max(
+			(half - marginLeft) / plotWidth,
+			Math.min((width - half - marginLeft) / plotWidth, threshold)
+		);
 		return chart.plot({
 			width,
 			height: 120 + 2 * 110,
-			marginLeft: 44,
-			marginRight: 16,
+			marginLeft,
+			marginRight,
 			marginTop: 32,
 			marginBottom: 48,
 			x: {
 				domain: [0, 1],
-				label: labels.xAxis,
+				label: null,
 				ticks: [0, 0.25, 0.5, 0.75, 1],
 				tickFormat: this.formatPercent
 			},
 			y: {
-				label: labels.yAxis,
-				domain: [0, view.maxBinCount],
+				label: null,
+				zero: true,
 				nice: true,
+				ticks: integerTicks(0, view.maxBinCount),
+				grid: true,
 				tickFormat: this.formatCount
 			},
 			fy: { domain: names, axis: null, padding: 0.35 },
@@ -240,9 +285,21 @@ export class AppThresholdExplorer extends LitElement {
 					insetRight: 0.5
 				}),
 				chart.ruleX([threshold], { stroke: tokens['--chart-axis'], strokeWidth: 2 }),
+				chart.text([cutoff], {
+					x: cutoffX,
+					frameAnchor: 'top',
+					text: (label: string) => label,
+					fill: tokens['--chart-axis'],
+					dy: -18
+				}),
 				chart.text(names, {
 					fy: (name: string) => name,
-					text: (name: string) => labels.trueClass(name),
+					text: (name: string) =>
+						truncateLabel(
+							labels.trueClass(name),
+							Math.max(0, width - marginLeft - marginRight),
+							measureText
+						),
 					frameAnchor: 'top-left',
 					lineAnchor: 'bottom',
 					dy: -4,
@@ -267,92 +324,124 @@ export class AppThresholdExplorer extends LitElement {
 			<figure>
 				<figcaption>
 					<span class="caption-title">${this.caption.title}</span>
-					<span class="muted">${this.caption.takeaway}</span>
+					<span class="muted">${labels.description(view, readout)}</span>
 				</figcaption>
+				<p class="visually-hidden" id="description">${labels.description(view, readout)}</p>
+				<p class="visually-hidden" aria-live="polite">${this.announcement}</p>
+				<ul class="chart-legend" aria-label=${labels.legendLabel}>
+					<li>
+						<svg aria-hidden="true" width="16" height="16">
+							<rect width="16" height="16" fill="var(--chart-neutral)"></rect></svg
+						>${view.negative}
+					</li>
+					<li>
+						<svg aria-hidden="true" width="16" height="16">
+							<rect width="16" height="16" fill="var(--chart-1)"></rect></svg
+						>${view.positive}
+					</li>
+				</ul>
+				<p>${labels.yAxis}</p>
 				<div class="chart"></div>
-			</figure>
-			<div class="control">
-				<label for="threshold">${labels.slider}</label>
-				<input
-					id="threshold"
-					type="range"
-					min="0"
-					max=${view.lastIndex}
-					step="1"
-					.value=${String(index)}
-					aria-valuetext=${labels.valueText(thresholdText, view)}
-					@input=${this.handleInput} />
-			</div>
-			<p class="muted">${labels.notice}</p>
-			<dl class="readout">
-				<div>
-					<dt>${labels.threshold}</dt>
-					<dd>${thresholdText}</dd>
+				<p>${labels.xAxis}</p>
+				<div class="control">
+					<label for="threshold">${labels.slider}</label>
+					<input
+						id="threshold"
+						type="range"
+						min="0"
+						max=${view.lastIndex}
+						step="1"
+						.value=${String(index)}
+						aria-valuetext=${labels.valueText(thresholdText, view)}
+						@input=${this.handleInput} />
 				</div>
-				<div>
-					<dt>${labels.truePositives(view)}</dt>
-					<dd>${this.formatCount(readout.tp)}</dd>
-				</div>
-				<div>
-					<dt>${labels.falsePositives(view)}</dt>
-					<dd>${this.formatCount(readout.fp)}</dd>
-				</div>
-				<div>
-					<dt>${labels.trueNegatives(view)}</dt>
-					<dd>${this.formatCount(readout.tn)}</dd>
-				</div>
-				<div>
-					<dt>${labels.falseNegatives(view)}</dt>
-					<dd>${this.formatCount(readout.fn)}</dd>
-				</div>
-				<div>
-					<dt>${labels.truePositiveRate(view)}</dt>
-					<dd>${this.formatPercent(readout.tpr)}</dd>
-				</div>
-				<div>
-					<dt>${labels.falsePositiveRate(view)}</dt>
-					<dd>${this.formatPercent(readout.fpr)}</dd>
-				</div>
-			</dl>
-			<details>
-				<summary>${labels.showTable}</summary>
-				<div class="table-region" role="region" tabindex="0" aria-labelledby="caption">
-					<table class="table table-compact">
-						<caption id="caption">
-							${labels.tableCaption}
-						</caption>
-						<thead>
-							<tr>
-								<th scope="col">${labels.rangeHeading}</th>
-								<th scope="col" class="number">
-									${labels.trueClass(view.negative)}
-								</th>
-								<th scope="col" class="number">
-									${labels.trueClass(view.positive)}
-								</th>
-							</tr>
-						</thead>
-						<tbody>
-							${repeat(
-								view.bins,
-								(bin) => bin.lower,
-								(bin) => html`
-									<tr>
-										<th scope="row">
-											${labels.range(
-												this.formatPercent(bin.lower),
-												this.formatPercent(bin.upper)
-											)}
-										</th>
-										<td class="number">${this.formatCount(bin.negative)}</td>
-										<td class="number">${this.formatCount(bin.positive)}</td>
-									</tr>
-								`
+				<p class="muted">${labels.notice}</p>
+				<dl class="readout">
+					<div>
+						<dt>${labels.threshold}</dt>
+						<dd>${thresholdText}</dd>
+					</div>
+					<div>
+						<dt>${labels.truePositives(view)}</dt>
+						<dd>${this.formatCount(readout.tp)}</dd>
+					</div>
+					<div>
+						<dt>${labels.falsePositives(view)}</dt>
+						<dd>${this.formatCount(readout.fp)}</dd>
+					</div>
+					<div>
+						<dt>${labels.trueNegatives(view)}</dt>
+						<dd>${this.formatCount(readout.tn)}</dd>
+					</div>
+					<div>
+						<dt>${labels.falseNegatives(view)}</dt>
+						<dd>${this.formatCount(readout.fn)}</dd>
+					</div>
+					<div>
+						<dt>${labels.truePositiveRate(view)}</dt>
+						<dd>
+							${labels.rateWithCounts(
+								this.formatPercent(readout.tpr),
+								this.formatCount(readout.tp),
+								this.formatCount(readout.tp + readout.fn)
 							)}
-						</tbody>
-					</table>
-				</div>
-			</details>
+						</dd>
+					</div>
+					<div>
+						<dt>${labels.falsePositiveRate(view)}</dt>
+						<dd>
+							${labels.rateWithCounts(
+								this.formatPercent(readout.fpr),
+								this.formatCount(readout.fp),
+								this.formatCount(readout.fp + readout.tn)
+							)}
+						</dd>
+					</div>
+				</dl>
+				<details>
+					<summary>${labels.showTable}</summary>
+					<div class="table-region" role="region" tabindex="0" aria-labelledby="caption">
+						<table class="table table-compact">
+							<caption id="caption">
+								${labels.tableCaption}
+							</caption>
+							<thead>
+								<tr>
+									<th scope="col">${labels.rangeHeading}</th>
+									<th scope="col" class="number">
+										${labels.trueClass(view.negative)}
+									</th>
+									<th scope="col" class="number">
+										${labels.trueClass(view.positive)}
+									</th>
+								</tr>
+							</thead>
+							<tbody>
+								${repeat(
+									view.bins,
+									(bin) => bin.lower,
+									(bin) => html`
+										<tr>
+											<th scope="row">
+												${labels.range(
+													this.formatPercent(bin.lower),
+													this.formatPercent(bin.upper)
+												)}
+											</th>
+											<td class="number">
+												${this.formatCount(bin.negative)}
+											</td>
+											<td class="number">
+												${this.formatCount(bin.positive)}
+											</td>
+										</tr>
+									`
+								)}
+							</tbody>
+						</table>
+					</div>
+				</details>
+			</figure>
 		`;
 	}
 }

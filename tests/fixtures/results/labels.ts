@@ -156,7 +156,14 @@ export const englishThresholdLabels: ThresholdExplorerLabels = {
 	truePositiveRate: (view) => `Share of ${view.positive} rows found`,
 	falsePositiveRate: (view) => `Share of ${view.negative} rows wrongly flagged`,
 	trueClass: (label) => `True class ${label}`,
-	xAxis: 'Predicted probability',
+	cutoffLabel: (threshold) => `Cutoff ${threshold}`,
+	description: (_view, readout) =>
+		`At ${readout.threshold}, ${readout.tp} of ${readout.tp + readout.fn} positive rows and ${readout.fp} of ${readout.fp + readout.tn} negative rows are flagged.`,
+	liveUpdate: (_view, readout) =>
+		`At ${readout.threshold}, ${readout.tp} of ${readout.tp + readout.fn} positive rows and ${readout.fp} of ${readout.fp + readout.tn} negative rows are flagged.`,
+	rateWithCounts: (rate, hits, total) => `${rate} (${hits} of ${total})`,
+	legendLabel: 'True class',
+	xAxis: 'Predicted probability of positive (%)',
 	yAxis: 'Rows',
 	showTable: 'Show data table',
 	tableCaption: 'Held-out rows by predicted probability and true class',
@@ -166,10 +173,15 @@ export const englishThresholdLabels: ThresholdExplorerLabels = {
 
 /** English labels for `app-reliability-diagram`. */
 export const englishReliabilityLabels: ReliabilityDiagramLabels = {
+	description: (view) => `Expected calibration error is ${view.eceText}.`,
+	countsDescription: (view) =>
+		`Rows in bins: ${view.bins.reduce((sum, bin) => sum + bin.count, 0)}.`,
+	observedHeading: 'Observed positive rate',
+	countHeading: 'Rows',
 	unavailable:
 		'The reliability diagram is unavailable because this model was trained without probability estimates.',
-	xAxis: 'Mean predicted probability',
-	yAxis: 'Observed rate',
+	xAxis: 'Mean predicted probability (%)',
+	yAxis: 'Observed positive rate (%)',
 	countsTitle: 'Rows in each probability bin',
 	countsAxis: 'Rows',
 	diagonal: 'Perfect calibration',

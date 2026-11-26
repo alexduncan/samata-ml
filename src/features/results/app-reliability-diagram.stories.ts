@@ -37,8 +37,14 @@ const meta = {
 		const wrapper = document.createElement('div');
 		wrapper.dir = dir;
 		const element = document.createElement('app-reliability-diagram');
-		element.labels = englishReliabilityLabels;
 		element.calibration = buildCalibrationView(evaluation, format);
+		element.labels = {
+			...englishReliabilityLabels,
+			observedHeading:
+				element.calibration?.mode === 'top-label'
+					? 'Correct prediction rate'
+					: 'Observed positive rate'
+		};
 		element.caption = {
 			title: 'Reliability of predicted probabilities',
 			takeaway: `Expected calibration error is ${element.calibration?.eceText ?? ''}.`
