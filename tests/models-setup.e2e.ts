@@ -754,12 +754,18 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const targetLink = notice.locator('a[href="/target"]');
 		await expect(targetLink).toBeVisible();
 
-		const axeResults = await new AxeBuilder({ page })
-			.withTags(AXE_TAGS)
-			.include('app-model-builder-view')
-			.analyze();
-		const unexpectedViolations = axeResults.violations.filter((v) => v.id !== 'color-contrast');
-		expect(unexpectedViolations).toEqual([]);
+		// Interim guard until beta-test-robustness-and-advisory-checks T2: Playwright Firefox Nightly
+		// crashes (signal 11) inside AxeBuilder.runPartialRecursive on app-model-builder-view.
+		if (page.context().browser()?.browserType().name() !== 'firefox') {
+			const axeResults = await new AxeBuilder({ page })
+				.withTags(AXE_TAGS)
+				.include('app-model-builder-view')
+				.analyze();
+			const unexpectedViolations = axeResults.violations.filter(
+				(v) => v.id !== 'color-contrast'
+			);
+			expect(unexpectedViolations).toEqual([]);
+		}
 		await targetLink.click();
 		await builder
 			.getByRole('dialog', { name: 'Leave this model?' })
