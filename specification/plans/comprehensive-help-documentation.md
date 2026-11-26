@@ -1,508 +1,577 @@
-# Comprehensive Plain-English Help Documentation System
+# Help documentation platform and maintenance model
 
-**Status:** draft | **Updated:** 2026-11-26T18:32:09Z
-**Authors:** Google Antigravity (Gemini 4 Neon High) | **Created:** 2026-11-26T17:46:20Z
-**Verified by:** — | **Verified:** — | **Verification:** changes-requested
+**Status:** ready-for-review | **Updated:** 2026-11-26T18:55:03Z
+**Authors:** Google Antigravity (Gemini 4 Neon High), Claude Code (claude-opus-5-5) | **Created:** 2026-11-26T17:46:20Z
+**Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
 
-**Current behaviour:** In-app educational documentation is sparse and flat. `content/en/pages/` holds seven flat pages (`help.md`, `select-features.md`, `configure-model.md`, `training-setup.md`, plus `about.md`, `privacy-policy.md`, and `terms-and-conditions.md`); `content/en/models/` contains only a two-link stub (`logistic-regression.md`); and `content/en/glossary/` is empty. `scripts/build-content.ts` only permits flat domains `['pages', 'models', 'glossary']` and rejects nested directories or co-located SVG assets. `src/common/content/fragment-policy.ts` (`isAllowedHref`) strips root-absolute internal links (`/help/...`), preventing articles from cross-linking. `src/router/reserved-content.ts` supports only six hardcoded `ReservedPath` values and replaces history on modal switches, giving learners no Back/Forward trail or breadcrumbs. Model descriptions open in a separate transient `<app-model-description-dialog>` with no URL routing, and `<app-model-configuration>` displays only one-sentence inline hints with no per-hyperparameter Help links. An example article (`content/en/help/mlp/activation.md` with five co-located SVGs) cannot currently build, contains US spellings and an H1→H3 skip, has a `TODO_LINK_TO_MLP_OVERVIEW_DOC` placeholder, and uses inline `style="..."` on `<svg>` elements that violates production CSP `style-src-attr 'none'`.
+**Current behaviour:** Help is four flat Markdown pages in `content/en/pages/` (`help`, `select-features`, `configure-model`, `training-setup`) served at six fixed reserved routes (`src/router/reserved-content.ts:7-14`, `src/types/routes.ts:6-12`). The build accepts only the flat domains `pages`, `models` and `glossary` (`scripts/build-content.ts:17`, subdirectories rejected at `:165`), forbids raw HTML (`scripts/markdown.ts:287-289`, `:325-327`) and has no directives. `isAllowedHref` rejects every root-absolute path (`src/common/content/fragment-policy.ts:83-100`), so articles cannot link to each other, although `specification/content-and-i18n.md` §Static Content says same-origin paths are permitted. No content image pipeline exists (`scripts/build-assets.ts:191-193`). Nothing defines what good Help looks like. Nothing connects Help to the model catalogue: a new upstream classifier is dropped silently by `Extract` in `ClassifierId` (`src/features/models/model-catalogue.ts:15-25`), a new option on an existing classifier fails only `WML-P1-OPT-1` (`tests/model-options.test.ts:25-33`), and no check notices when a default, choice or dependency changes. UI Help links are string literals spread across six files. The maintainer's seed article (MLP `activation`, five SVGs) is tracked at `specification/notes/help-seed/mlp-activation/` (commit `7d29dbb`).
 
-**Target behaviour:** `samata-ml` provides a comprehensive, accessible, plain-English, SVG-illustrated Help knowledge base structured hierarchically under `/help/...`, governed by a formal documentation standard (`specification/documentation-standard.md`) and enforced by an automated build and quality evaluator (`scripts/evaluate-docs.ts`, `bun run audit:docs`). Learners can open contextual, in-depth Help from every workflow step—including **every single exposed hyperparameter across all eight active classifiers** (40 exposed controls mapping to 37 unique hyperparameter articles), all six model family overviews, all eight classifier guides (unifying Model Description cards into `/help/models/...`), 16 shared concept articles (reused via build-validated links and `::concept[slug]` callout embeds), six workflow guides, two results/comparison overview guides, and a browsable Help Hub at `/help`. Clicking links inside the native `<app-content-modal>` updates breadcrumbs and pushes modal history so Back/Forward moves smoothly across articles while Close or Escape returns directly to the underlying workflow page with form edits and invoker focus intact.
+**Target behaviour:** A normative Help standard (`specification/help-documentation.md`) defines excellent Help as numbered rules, each tagged with the layer that enforces it. A hierarchical `help` content domain serves `/help/...` articles inside the existing Help modal, with build-time directives that generate facts, labels and navigation from their sources instead of retyping them. A maintenance chain makes drift visible in `bun run check`: a catalogue parity test, a coverage ratchet with a shrink-only pending list, and a facts lock that fails when an article's content or underlying facts change after review. `bun run audit:docs` reports writing-quality findings and the impact of a change on Help, and a rule-registry parity test keeps the standard and the checker identical. The four existing Help pages keep their URLs, and a small exemplar set (MLP activation from the seed, the Neural networks family page, the Sigmoid concept and two section indexes) proves every archetype the corpus plans need.
 
-**Why:** `samata-ml` exists to help non-technical learners understand machine learning concepts without extraneous cognitive load or expertise reversal (`specification/VISION.md` §3–§4). Plain-English explanations paired with concrete dataset examples, accessible SVG visualisations, and reusable shared concepts turn every control in the workflow into an inspectable learning opportunity, while a codified standard and automated evaluator keep future documentation consistent, accurate, British English, WCAG 2.2 AA conformant, and CSP-safe.
+**Why:** `specification/VISION.md` §4 requires every technical term to be "accompanied by plain-English jargon-free definitions", with formulas available for learners who want depth. A one-time corpus decays as soon as web-ml, the option policy or the UI changes. This plan builds the definition, the gates and the triggers first, so the corpus plans that follow (see _Programme_) are mechanical, reviewable and stay correct.
 
 ## Scope
 
 **In scope**
 
-- Author the formal documentation standard (`specification/documentation-standard.md`) and reusable Markdown archetype templates (`specification/templates/docs/`), covering tone, British English, plain-English readability, progressive disclosure, SVG visual/accessibility/CSP rules, shared-concept reuse, authoring instructions, and the two-tier evaluation rubric.
-- Upgrade the static content pipeline (`scripts/build-content.ts`, `scripts/markdown.ts`, `scripts/build-assets.ts`, `src/types/content.ts`, `src/common/content/*`) to support a hierarchical `help` domain under `content/{locale}/help/`, legacy URL aliases (`/help/select-features`, `/help/configure-model`, `/help/training-setup`), co-located SVG validation/optimisation/copying (rejecting inline `style` attributes), build-validated internal `/help/...` links and anchors, semantic `<figure>`/`<figcaption>` and `<aside class="concept-callout">` compilation, and `::concept[slug]` build-time embeds.
-- Build an automated documentation evaluator (`scripts/evaluate-docs.ts`, registered as `bun run audit:docs`) verifying model/hyperparameter coverage against `MODEL_OPTION_POLICY`, archetype structure, link/placeholder integrity, SVG accessibility/CSP/contrast compliance, heading hierarchy, British English prose, readability thresholds, and concept cross-linking.
-- Upgrade the router (`src/router/*`, `src/types/routes.ts`) and reserved content modal (`app-content-modal`, `app-content-dialog`, `src/styles/help-prose.styles.ts`) for hierarchical `/help/...` routes (resolving the `router-help-history-and-dynamic-topics.md` stub), `helpDepth`-tracked Back/Forward history inside the modal, direct-return Close/Esc, breadcrumbs, distinct `not-found` vs `error` states, and unified `/help/models/...` Model Description loading with library-JSON fallback.
-- Add contextual Help entry points across all four workflow steps, including per-hyperparameter Help links on every exposed control (and fixed/multiclass notes) in `<app-model-configuration>` via a deterministic `src/features/models/model-help-map.ts`, plus entry points in Column Details, Set Target, Choose Model, Training Progress, Single Model Results, and Compare Results.
-- Author and verify the complete initial Help corpus under `content/en/help/`:
-  - Help Hub (`index.md`), six workflow guides (`inspect-data`, `set-target`, `select-features`, `configure-model`, `training-setup`, `training-progress`), and two results/comparison overview guides (`metrics/understanding-results`, `metrics/comparing-models`).
-  - Sixteen core shared concept articles under `concepts/` (`sigmoid`, `regularisation`, `solvers-and-gradient-descent`, `stopping-tolerance`, `overfitting-and-underfitting`, `class-weights-and-imbalance`, `distance-metrics`, `prior-probability`, `smoothing`, `kernels`, `impurity`, `random-seed`, `multiclass-strategies`, `data-leakage`, `stratified-splitting`, `probability-calibration`).
-  - All six model family overviews (`linear-models`, `mlp`, `decision-trees`, `knn`, `naive-bayes`, `svm`), all eight active classifier articles, and all 37 unique hyperparameter articles covering 100% of the 40 exposed controls across the eight classifiers—including migrating and upgrading `content/en/help/mlp/activation.md` and its five SVGs.
-- Update `specification/mockups/00-2_content-modal.html` (currently `status="draft"`) with unstyled semantic structure for breadcrumbs, Back button, `not-found`, concept callout, and SVG figure states, plus Storybook stories and Playwright E2E/a11y/CSP tests.
+- `specification/help-documentation.md`: the Help standard, its rule IDs, archetypes, writing rules, figure rules, sources of truth, review rubric, maintenance triggers and authoring procedure. Archetype templates in `specification/templates/help/`. A repository `specification/decision-checklist.md` with a Help-impact item.
+- The `help` content domain: nested discovery, path and front-matter rules, validated internal links, the directives in _Interfaces §4_, co-located SVG figures with a closed palette, the `help/index.json` index and a `loadHelpEntry` loader.
+- Router and modal: open `/help/...` reserved routes, a `not-found` dialog state, a central `HELP_ROUTES` registry replacing UI string literals, and Help prose styles. Help-to-Help links keep today's `replaceState` behaviour.
+- The maintenance chain: catalogue parity, family slugs, coverage ratchet, facts lock, `bun run docs:accept`, `bun run audit:docs` (`--json`, `--since`, `--facts`) and the rule-registry parity test.
+- Migration of the four existing Help pages to `content/en/help/` at unchanged URLs, plus the exemplar articles, and removal of the seed note.
 
 **Out of scope**
 
-- Individual deep-dive articles for each of the 37 granular metrics in `RESULT_TERM_COPY` beyond the two comprehensive `metrics/understanding-results.md` and `metrics/comparing-models.md` guides (tracked as Wave 2 in the evaluator coverage report; existing inline `<details class="terms-disclosure">` definitions stay intact).
-- Articles for the eight currently hidden `web-ml` models (six regressors, `k-means`, `pca`) or unreleased upstream `decision-tree-*` options (`categoricalFeatures`, `ccpAlpha`, `maxLeafNodes`, `classWeight`); the family-first hierarchy and `model-help-map.ts` accommodate them without URL migration when those models are enabled.
-- Full-page `/help/...` routes outside the modal overlay, interactive client-side search UI, multi-locale translations beyond `en`, or human visual styling/promotion of `status="draft"` mockups.
-- Any machine learning computation or changes to `../web-ml` (upstream library boundary unchanged).
+- Breadcrumbs, the in-modal Back trail and in-article `#` anchors. These go to [router-help-history-and-dynamic-topics.md](router-help-history-and-dynamic-topics.md), which this plan narrows. Help-domain Markdown rejects fragment links until then.
+- Per-hyperparameter **Learn more** links, other step entry points and the move of Model Description into Help. These go to [help-entry-points.md](help-entry-points.md).
+- The remaining corpus. These go to [help-corpus-core.md](help-corpus-core.md) and [help-corpus-models.md](help-corpus-models.md).
+- The `write-help` and `review-help` agent skills. They live in `agent-workflow/domain-skills/` and are created outside this repository after T1 (see _Risks_).
+- Path aliases and redirects (published Help paths are permanent), client-side search, locales beyond `en`, dark-scheme figures (`css/root.css:11` is `color-scheme: light`), MathML, and any machine-learning computation or change to `../web-ml`.
+
+**Must not touch:** `content/en/pages/about.md`, `content/en/pages/privacy-policy.md`, `content/en/pages/terms-and-conditions.md`, `node_modules/`, `bun.lock`, `src/features/models/app-model-configuration.ts`, `src/features/data/`, `src/features/results/` — the maintainer has uncommitted edits to `about.md`; the other paths belong to the follow-up plans.
 
 **Constraints and invariants**
 
-- **Upstream boundary:** All model metadata, parameter domains, defaults, and option interactions remain grounded exclusively in the installed `web-ml@0.2.0` public catalogue (`node_modules/web-ml/specification/public-api/model-specifications/`), public declarations (`node_modules/web-ml/dist/index.d.ts`), and `samata-ml`'s `MODEL_OPTION_POLICY`. Never inspect private upstream source or invent unsupported options.
-- **Zero broken links or regressions:** Existing reserved routes (`/about`, `/privacy`, `/help`, `/help/select-features`, `/help/configure-model`, `/help/training-setup`) and all existing workflow tests (`CNT-*`, `CDLG-*`, `MW-HELP-*`, `WML-P1-UI-*`, `TERM-AC-*`) continue to pass. Opening, navigating, or closing Help over a provisional or historical wizard preserves form edits, draft identity, scroll position, and invoker focus, and never persists reserved URLs to `resumePath`.
-- **CSP & security:** Compiled HTML fragments remain wrapper-free, script-free, and sanitised into cloned `DocumentFragment` nodes (`sanitiseFragment`; never `unsafeHTML` or `innerHTML`). All authored SVGs served under `/content/*` or `/assets/*` MUST have **zero inline `style="..."` attributes** (enforcing production CSP `style-src-attr 'none'`), zero `<script>` tags, zero `on*` handlers, and zero external `<image>`/`href` fetches.
-- **WCAG 2.2 AA & styling:** Use only tokens from `css/root.css` with no fallbacks and no literal colours (`tests/style-tokens.test.ts`). Per-field Help links in `<app-model-configuration>` MUST sit outside the `aria-describedby` target (`#${name}-help`) and carry disambiguated accessible names containing their visible text (WCAG 2.5.3). All interactive controls meet 24×24 CSS px target size, visible `2px` `--focus-ring` outlines, 320px/200% zoom reflow, RTL logical properties, and `prefers-reduced-motion`.
-- **British English:** All user-facing prose, UI labels, and documentation articles use British English (`centred`, `behaviour`, `generalise`, `regularisation`, `neighbours`, `binarise`, `colour`), while verbatim `web-ml` API identifiers remain exact inside backticks (e.g. `` `nNeighbors` ``, `` `binarize` ``).
-- **Carry-forward from `plain-english-technical-terms.md`:** Preserve every audited term, abbreviation expansion, and semantic rule established by `specification/plans/archive/plain-english-technical-terms.md` §§A–E: use `<abbr title="Expansion">` strictly on actual abbreviations (never on full words such as "solver"); reserve `<dfn>` for defining occurrences (such as the results `<dl>` disclosures); keep machine tokens (`sgd`, `lbfgs`, `rbf`, `tanh`, `C`, `p`, `F1`) plain; use **"practical equivalence"** (not developer jargon `ROPE`) in user-facing prose and SVG labels (mentioning `ROPE` only in an optional `<details>` technical note if at all); preserve `RESULT_TERM_COPY`, `#strategy-description`, and `Freq.` `<abbr title="Frequency">` untouched; and retain `Mean Squared Error (MSE)` in the future regression inventory.
-- **Local user edits preservation:** Do not touch unrelated local changes in `content/en/pages/about.md`.
+- **Repository boundary:** facts come only from the installed `web-ml@0.2.0` public catalogue (`node_modules/web-ml/specification/public-api/model-specifications/`), its public declarations and Samata's `MODEL_OPTION_POLICY` and option copy. Nothing reads `../web-ml` or private upstream files. Writers get facts from `bun run audit:docs --facts`, never by opening upstream files.
+- **Stable URLs:** `/help`, `/help/select-features`, `/help/configure-model` and `/help/training-setup` keep serving the same content. Existing tests on them (`tests/content.e2e.ts`, `tests/models-setup.e2e.ts:102,123,144`, `tests/training-setup.e2e.ts:652,679`, `tests/model-configuration.e2e.ts:524`, `tests/a11y.e2e.ts:475`) keep passing unchanged.
+- **History contract unchanged:** opening Help from a workflow page pushes one entry. A Help-to-Help link replaces the current entry and keeps `underlayPath`, `underlayEntryId` and `modalDocumentId` (`src/router/router.ts:741-756`). Close and Escape call `history.back()` when this document owns the entry (`:774-776`) and otherwise replace to the underlay. Browser Back from any Help article closes Help.
+- **Security:** fragments stay wrapper-free, script-free and sanitised into cloned `DocumentFragment` nodes, never `unsafeHTML` or `innerHTML`. Help Markdown still forbids raw HTML. SVGs contain no script, `style` element or attribute, event handler, `foreignObject`, `image` or external reference, and are validated before and after optimisation.
+- **Styles:** only `css/root.css` tokens with no fallbacks (`tests/style-tokens.test.ts`). The SVG palette mirrors token values and is parity-tested, because an `<img>` cannot read CSS custom properties.
+- **Language:** British English in prose and UI strings; verbatim web-ml identifiers stay exact inside backticks (`` `nNeighbors` ``, `` `binarize` ``). Carry forward `specification/plans/archive/plain-english-technical-terms.md` §§A–E: visible expansion on first use, plain machine tokens, **practical equivalence** rather than ROPE in learner prose, and `RESULT_TERM_COPY` untouched.
 
 ## Required reading
 
-- `specification/COMPONENTS.md` §3–§10 — closed public APIs, Lit practices, Nanostores boundaries, token-only styles, WCAG 2.2 AA, i18n, testing, and Storybook rules (mandatory for T4, T5).
-- `specification/content-and-i18n.md` §Static Content — current Markdown pipeline, allow-list, and model-description fallback rules (T1, T2, T4).
-- `specification/app-state-and-navigation.md` §3, §5.2–§5.4, §5.6 — reserved route table, history ownership, modal overlay behaviour, and focus rules (T4).
-- `specification/components/content-modal.md` — current closed API and acceptance criteria (`CDLG-AC-1..8`, `CEM-AC-1`) for `app-content-modal` and `app-content-dialog` (T4).
-- `specification/components/model-configuration.md` — current closed API and accessibility rules (`WML-P1-UI-1..9`, `TERM-AC-1`, `TERM-AC-3`) for `app-model-configuration` (T5).
-- `specification/visual-design.md` §1.1, §2, §4–§6 — draft mockup authoring rules, closed token vocabulary, and token guard rules (T1, T4, T5).
-- `specification/VISION.md` §3–§4, §9 — cognitive load alignment, progressive disclosure, plain-English guidance, and neural-network opacity goals (T1, T6–T9).
-- `specification/plans/archive/plain-english-technical-terms.md` §§A–E — audited English terminology inventory, `<abbr>`/`<dfn>` semantic rules, "practical equivalence" wording rule, and `TERM-AC-1..9` contracts carried forward (T1, T5, T6).
+- `specification/VISION.md` §3–§4, §9 — learner, progressive disclosure and neural-network opacity (T1, T7).
+- `specification/content-and-i18n.md` §Static Content — current pipeline rules this plan extends (T2, T3, T8).
+- `specification/app-state-and-navigation.md` §3, §5.2–§5.4, §5.6 — route table, history table, modal rules and titles (T4, T8).
+- `specification/COMPONENTS.md` §3–§10 — closed API, Lit practice, styles, a11y, i18n, tests, Storybook (T4).
+- `specification/components/content-modal.md` — closed API and `CDLG-AC-*`, `CEM-AC-1` (T4, T8).
+- `specification/visual-design.md` §1.1 — draft-mockup limits (T1, T4).
+- `specification/plans/archive/plain-english-technical-terms.md` §§A–E — terminology rules to carry forward (T1, T6, T7).
+- `specification/notes/help-seed/mlp-activation/` — seed article and SVGs migrated in T7. What changes from the note: front matter added, H1 moved to front matter, `### Why this step matters` becomes H3 under `## What it does`, the TODO link resolves to `/help/models/neural-networks`, US spellings are corrected, inline `style` and `width="100%"` are removed, the palette is applied, and `::option-facts` and `::concept[sigmoid]` are added.
 
 ## Codebase context
 
 Facts verified by `codebase-scout`:
 
-- **Relevant specifications:** `specification/content-and-i18n.md` (partial), `specification/app-state-and-navigation.md` (draft), `specification/workflow-steps.md` (partial), `specification/components/content-modal.md` (implemented), `specification/components/model-configuration.md` (implemented), `specification/visual-design.md` (partial), `specification/plans/archive/plain-english-technical-terms.md` (archived — baseline terminology & semantic rules carried forward), `specification/plans/router-help-history-and-dynamic-topics.md` (stub — superseded by this plan), `specification/TODO.md` (TODO-12, TODO-40).
-- **Relevant implementation:**
-  - Content pipeline: `scripts/build-content.ts#L17-L557` (domains `['pages', 'models', 'glossary']`, flat only), `scripts/markdown.ts#L17-L398` (`Marked` + `gray-matter` + `HTMLRewriter`), `scripts/build-assets.ts#L163-L373`, `scripts/build-public-assets.ts#L7-L54` (`SaxNamespaceParser` + `svgo@4.1.0`), `src/types/content.ts#L4-L67`, `src/common/content/fragment-policy.ts#L5-L160` (`isAllowedHref` currently omits `/...`), `src/common/content/sanitise-fragment.ts#L16-L72`, `src/common/content/content-loader.ts#L6-L329`.
-  - CSP & headers: `public/_headers#L1-L17` and `scripts/release-headers.ts#L69-L191` apply `style-src-attr 'none'` on `/*`, inherited by `/content/*` and `/assets/*`.
-  - Router & modals: `src/types/routes.ts#L6-L45`, `src/router/reserved-content.ts#L7-L14`, `src/router/route-parser.ts#L11-L64`, `src/router/router.ts#L406-L846`, `src/features/shell/app-content-modal.ts#L27-L172`, `src/features/shell/app-content-dialog.ts#L9-L190`.
-  - Model catalogue & UI help surfaces: `node_modules/web-ml@0.2.0` (`specification/public-api/model-specifications/index.json` and 8 classifier JSONs; note `../web-ml` has 2 unreleased 2026-11-25 tree JSON updates not in installed `0.2.0`), `src/features/models/model-catalogue.ts#L15-L99`, `src/features/models/model-presentation-policy.ts#L90-L337` (40 exposed options across 8 classifiers), `src/features/models/model-option-copy.ts#L6-L278`, `src/features/models/app-model-configuration.ts#L43-L1045`, `src/features/models/app-model-builder-view.ts#L130-L2730`, `src/features/models/app-model-description-dialog.ts#L11-L315`, `src/features/data/app-column-details.ts`, `src/features/target/app-target-view.ts#L332`, `src/features/models/app-training-setup.ts#L495`, `src/features/models/app-training-progress.ts`, `src/features/results/app-model-results.ts#L823-L860`, `src/features/results/app-results-view.ts#L540-L572`, `src/features/results/result-term-copy.ts#L2-L217`, `src/styles/help-link.styles.ts#L4-L28`, `src/styles/dialog.styles.ts#L7-L118`.
-  - Existing seed content: `content/en/help/mlp/activation.md` + 5 co-located SVGs (`mlp-activation-{function,identity,logistic,relu,tanh}.svg`), `content/en/pages/{help,select-features,configure-model,training-setup}.md`, `content/en/models/logistic-regression.md`.
-- **Tests and commands:** `bun run check`, `bun run lint`, `bun run build`, `bun test tests/style-tokens.test.ts`, `bun run test:stories`, `bun run test:e2e`, plus new `bun run audit:docs` introduced in T3. Existing suites: `tests/content-policy.test.ts`, `tests/content-markdown.test.ts`, `tests/build-content.test.ts`, `tests/content-loader.test.ts`, `tests/router-and-navigation.test.ts`, `tests/custom-elements-manifest.test.ts`, `tests/content.e2e.ts`, `tests/content-dialog.e2e.ts`, `tests/model-configuration.e2e.ts`, `tests/models-setup.e2e.ts`, `tests/a11y.e2e.ts`.
-- **Web guidance:**
-  - `dialog` — Native `<dialog>` via `showModal()`, no manual `role="dialog"`/`aria-modal`/focus trap, `closedby="any"` progressive enhancement with existing pointer fallback, native focus return to invoker on close; retains `samata-ml`'s `SEM-04` `<h2>` modal heading.
-  - `accessibility` — Disambiguate repeated links with unique accessible names containing visible text (WCAG 2.5.3); keep interactive Help links outside `aria-describedby` targets so screen readers do not announce "Learn more" inside an input's description; use `<figure>`/`<figcaption>` for informative diagrams and `<nav aria-label="...">` for breadcrumbs.
-  - `sanitize-untrusted-html` — Sanitizer API remains Limited Availability (unsupported in Safari), so retain `DOMParser` + allow-list `sanitiseFragment` returning cloned `DocumentFragment` nodes without re-serialising to `innerHTML` (preventing mXSS).
-- **Visual reference:** Draft-only mockups `specification/mockups/00-2_content-modal.html` (`status="draft"`) and `specification/mockups/03-4_train-models-3-configure-model.html` (`status="draft"`). Follow `specification/visual-design.md` §1.1 (structure from draft, existing shared style modules + `css/root.css` tokens only, no parity entries until human promotion). Deviations: none beyond existing `MODELS-UI-04` and `MODELS-UI-06`.
-- **Domain skills:** `lit-component-implementer` for `T4, T5`.
-- **Assumptions requiring verification:** None — all paths, types, CSP headers, and exposed option lists were verified by `codebase-scout` against installed `web-ml@0.2.0` and the active source tree.
+- **Relevant specifications:** `specification/content-and-i18n.md` (partial; its link rule conflicts with `isAllowedHref`, resolved in T2), `specification/app-state-and-navigation.md` (draft; §5.2 row "Reserved → reserved: `replaceState`" is implemented implicitly at `router.ts:746,756`), `specification/components/content-modal.md` (implemented), `specification/standards-and-documentation.md` (TSDoc only, so the new standard is a separate file), `specification/plans/router-help-history-and-dynamic-topics.md` (stub, narrowed here), `specification/TODO.md` TODO-12 and TODO-40.
+- **Content pipeline:** `scripts/build-content.ts` (`DOMAINS` L17, `VALID_ID_FILENAME` L18, `scanDomainFiles` L149-177, `validateDirectoryLayout` L320-366, required reserved pages L480-486; imports `src/config/locales`, `src/router/reserved-content`, `src/types/content`), `scripts/markdown.ts` (`new Marked({ gfm: true })` L245, renderer L246-294, `validateRenderedHtml` L181-208, no extensions), `src/common/content/fragment-policy.ts` (elements L17-43 include `table` but not `details`, `summary`, `aside`, `figure`, `figcaption` or `caption`; attributes L44-54; `class` only on `code` L13, L140-141), `src/common/content/sanitise-fragment.ts` L16-28, `src/common/content/content-loader.ts`, `src/types/content.ts`.
+- **SVG handling:** `scripts/build-public-assets.ts` L7-25 (`validateSvgDocument`, SAX with SVG namespace), L31-54 (SVGO `preset-default`, `floatPrecision: 6`, override `removeDoctype: false`); content images are not copied today.
+- **Router and modal:** `src/types/routes.ts` L6, L41; `src/router/reserved-content.ts` L1, L7-14; `src/router/route-parser.ts` L1-2, L41-42; `src/router/router.ts` titles L599-613, `openReserved` L728-757, `closeReserved` L764-784, `handleClick` L792-846 (leaves `#…` to the browser at L826 and drops the hash of `/path#…` at L829), `initRouter` L939-956; `src/features/shell/app-content-modal.ts` (loads `pages` at L86-92, status L31, heading map L135-146); `src/features/shell/app-content-dialog.ts` (`ContentDialogLabels` L9-15, status L36, close event L131-137); `src/styles/dialog.styles.ts` L86-88 (no prose rules).
+- **Help link literals:** `src/features/shell/app-sidebar.ts:577-579`, `src/features/target/app-target-view.ts:332`, `src/features/models/app-model-builder-view.ts:269,1480,1712`, `src/features/models/app-training-setup.ts:62` (plus `/privacy` at `src/features/shell/app-welcome-modal.ts:197`).
+- **Model facts:** `src/features/models/model-catalogue.ts` (`ClassifierId` L15-25, `MODEL_DOCUMENTS` L45 `Readonly<Record<ClassifierId, unknown>>`, `SUPERVISED_MODELS` L67-78), `src/features/models/model-presentation-policy.ts` (`OptionPolicy` kinds L43-87, `PolicyBase.notes`/`activeWhen` L25-37, `MULTICLASS_STRATEGY` L90, `MODEL_OPTION_POLICY` L135-337), `src/features/models/model-option-copy.ts` (`OPTIONS` L6-122 keyed by option name, `CHOICES` L124-135, `NOTES` L137-151), `src/features/models/model-documents.ts` (`narrowOption` L142-186 drops `description` and `appliesWhen`). Catalogue option fields: `name`, `valueSchema`, `required`, `defaultKind`, `description`, optional `default`, `defaultNote`, `appliesWhen`, `aliasOf`, `aliasPrecedence`, `example`, `defaultBy`, `enumDescriptions` (`schema.json` `$defs.hyperparameter` L26-98). Model `familyId` values: `linear` (logistic-regression), `neural-networks` (mlp-classifier), `trees` (decision-tree-classifier), `distance-based` (k-neighbors-classifier), `bayesian` (gaussian-nb, multinomial-nb, bernoulli-nb), `support-vector-machines` (support-vector-classifier). There are 40 exposed options across the 8 classifiers.
+- **Tests and commands:** content unit tests use fixtures in `tests/fixtures/content` (`tests/build-content.test.ts:17`). Only `tests/sample-datasets-content.test.ts` reads real `content/`. Tests that change meaning here: `tests/router-and-navigation.test.ts` L137 (`WML-P2-ROUTE-1`: `/help/other-topic` unknown) and L148 (`MW-HELP-1`: `/help/unlisted-topic` unknown), and `tests/content-policy.test.ts` L14 (`CNT-P-1`: `/about` rejected) and L68 (`CNT-P-3`: six-key `RESERVED_CONTENT`). CI (`.github/workflows/ci.yml`) runs `lint`, `check`, `deploy:dry-run` (which builds) and `test:stories`, with e2e on three engines. Commands come from `AGENTS.md` Verification Commands, and T5 and T6 add `docs:accept` and `audit:docs` there.
+- **Sample datasets for examples:** `iris`, `palmer-penguins`, `breast-cancer-wisconsin`, `heart-disease`, `titanic-inquiry`, `german-credit`, `credit-card-default`, `bank-marketing`, `adult-census`, `compas-recidivism`, `student-dropout`.
+- **Web guidance:** `dialog`: native `<dialog>` with `showModal()` and native focus return, unchanged. `accessibility`: an SVG shown through `<img>` is exposed only through the `img` element's `alt`, so the accessible name and any long description belong in Markdown (alt, caption and adjacent prose), not in `aria-labelledby` inside the file. `sanitize-untrusted-html`: keep `DOMParser` with the allow-list, because the Sanitizer API is not Baseline.
+- **Visual reference:** `specification/mockups/00-2_content-modal.html` (draft). T1 adds unstyled not-found, figure, concept callout, details, children-list and settings-table states. The implementation uses shared modules and tokens only and adds no parity entries (`visual-design.md` §1.1). Deviations: none.
+- **Domain skills:** `lit-component-implementer` for T4. `lit-architecture-planner` was applied to T4's API.
+- **Assumptions requiring verification:** Bun build and test code can import `src/features/models/model-option-copy.ts`, `model-presentation-policy.ts` and `model-catalogue.ts` without DOM globals. If `model-option-copy.ts` pulls DOM-only code, T5 moves `OPTIONS`, `CHOICES` and `NOTES` unchanged into `src/features/models/model-option-copy-data.ts` and re-exports them from the original module.
 
 ## Technical decisions
 
-| Decision                                                               | Chosen approach and rationale                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              | Rejected alternative / trade-off                                                                                                                                                                                                                      |
-| ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Plan scope & rollout (User A1)                                         | Deliver the complete documentation platform, standard, automated evaluator, app-wide UI entry points, Help Hub, 6 workflow guides, 2 results/comparison guides, 16 core shared concepts, all 6 model families, all 8 active classifiers, and all 37 unique hyperparameter articles (40 exposed controls) in one sequenced plan (T1–T10), decomposed by subsystem and model family.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Deferring authoring to a separate plan (leaves app sparse after platform delivery); putting all 37 granular per-metric articles and 8 hidden models in one plan (premature for unbuilt regression/clustering UIs).                                    |
-| Hierarchical Help taxonomy & URLs (User A2)                            | Promote `help` to a first-class hierarchical domain under `content/{locale}/help/` mapped 1:1 to `/help/...`: `/help` (`index.md`), `/help/workflow/{slug}`, `/help/models/{family}` (`index.md`), `/help/models/{family}/{model-id}`, `/help/models/{family}/{option}` (shared across task variants) with per-model overrides `/help/models/{family}/{model-id}/{option}` when task-specific (e.g. Decision Tree `criterion`, Logistic Regression `solver`/`penalty`/`C`/`l1Ratio`, SVC `classWeight`/`probability`, GNB `varSmoothing`, BNB `binarize`), `/help/concepts/{slug}`, and `/help/metrics/{slug}`. Keep `/about`, `/privacy`, `/terms-and-conditions` in `content/{locale}/pages/`. Support front-matter `aliases` so `/help/select-features`, `/help/configure-model`, and `/help/training-setup` resolve directly to their `/help/workflow/*` articles with zero broken bookmarks or tests. | Flat `pages`/`models`/`glossary` domains (cannot cleanly express family→model→hyperparameter hierarchy); always duplicating per-model hyperparameter URLs (creates maintenance drift between classifier/regressor or MNB/BNB siblings).               |
-| Shared concept reuse (User A3)                                         | Every shared concept lives once at `content/{locale}/help/concepts/{slug}.md` with required `summary` (1–2 plain-English sentences) and optional `summarySvg` front matter. Other articles reference it via (a) build-validated inline Markdown links (`/help/concepts/{slug}`) and/or (b) an optional block directive `::concept[slug]` compiled at build time into `<aside class="concept-callout" aria-label="Concept: {Title}">` containing the canonical `summary`, optional shared SVG, and a link to the full concept article. Zero runtime fetch waterfalls and zero copy-paste drift.                                                                                                                                                                                                                                                                                                             | Hyperlinks only (forces context-switching for a 2-sentence refresher); full Markdown section transclusion (bloats pages and causes heading-level collisions).                                                                                         |
-| Help modal navigation & unified Model Descriptions (User A4)           | Keep Help in the native `<dialog class="modal">` (`<app-content-modal>` / `<app-content-dialog>`), preserving workflow underlay, form edits, and scroll. Navigating between `/help/...` links pushes history with an incremented `helpDepth`, enabling browser Back/Forward and an in-modal Back button plus `<nav aria-label="Breadcrumb">`. Close/Esc calls `history.go(-helpDepth)` (when opened in-document) to return directly to the underlay in one step. Unify Choose Model's **Model Description** buttons to open `/help/models/{family}/{model-id}` in `<app-content-modal>`, retaining graceful library-JSON fallback if an unauthored model is ever requested, and retire redundant `<app-model-description-dialog>` usage from the builder.                                                                                                                                                  | Replacing history on Help-to-Help clicks (breaks Back between articles); separate transient model dialog (fragments navigation and prevents links from model overviews into hyperparameters); full-page `/help` routes (destroys builder form state). |
-| SVG authoring, optimisation & CSP compliance                           | Author SVGs co-located beside their Markdown article (`./<name>.svg`), optimised at build time via `svgo` and emitted to `{outDir}/content/{locale}/help/{dir}/{name}.svg` with `?v={12-hex}` cache-busting query. Reject any inline `style="..."` attribute on `<svg>` or descendants at build and audit time because `/content/*` inherits `style-src-attr 'none'` from `public/_headers`. Enforce `viewBox`, integer `width`/`height`, `role="img"`, `<title>`, `<desc>`, and `aria-labelledby`; size responsively via CSS on `<img class="help-svg">` inside `<figure class="help-figure">`.                                                                                                                                                                                                                                                                                                           | Relaxing production CSP `style-src-attr` (weakens XSS defence); storing all 100+ doc SVGs flat in `public/assets/` (loses co-location and makes orphan detection harder).                                                                             |
-| Per-hyperparameter Help links & a11y (`lit-architecture-planner`)      | Keep `<app-model-configuration>` strictly Tier 2 presentational (zero store/router imports). Extend `OptionLabels` with optional `helpPath?: string` populated by `app-model-builder-view` via pure `src/features/models/model-help-map.ts`. Render `<a class="help-link field-help-link" href=${helpPath}>Learn more<span class="visually-hidden"> about ${copy.name}</span></a>` as a sibling **outside** `#${name}-help` (`aria-describedby` target), preventing "Learn more" from polluting the input's accessible description and ensuring unique accessible link names (WCAG 2.5.3).                                                                                                                                                                                                                                                                                                                 | Embedding `<a>` inside `#${name}-help` (violates `accessibility` guide §3); importing router/help-map inside `<app-model-configuration>` (violates `COMPONENTS.md` §2/§5).                                                                            |
-| Component tiers, prefixes & shared styles (`lit-architecture-planner`) | Retain existing `<app-content-modal>` (Tier 3 connected) and `<app-content-dialog>` (Tier 2 presentational) rather than adding new wrapper elements (`COMPONENTS.md` §2–§3). Extract shared prose, figure, table-scroll, and `.concept-callout` styles into one `src/styles/help-prose.styles.ts` (`CSSResult`) adopted by `<app-content-dialog>` (and `<app-datasheet-dialog>` if reused later, or `help-prose.stories.ts`), using only `css/root.css` tokens with zero fallbacks.                                                                                                                                                                                                                                                                                                                                                                                                                        | Creating `<ui-help-breadcrumb>` or `<ui-concept-callout>` custom elements (unnecessary wrapper over native `<nav><ol>` and `<aside>`, violating `COMPONENTS.md` §3).                                                                                  |
-| Two-tier documentation evaluation                                      | Layer 1 (CI-blocking): `bun run audit:docs` (`scripts/evaluate-docs.ts`) checks 100% exposed model/hyperparameter coverage, archetype front matter & headings, zero broken links/`TODO`s, SVG XML/CSP/a11y/contrast rules, heading-level continuity, British English prose (exempting code spans), readability thresholds, and unlinked concept jargon warnings. Layer 2 (Review rubric): codified 6-dimension pedagogical checklist (1–5 scale, ≥4 required) in `specification/documentation-standard.md` for human/agent authoring and review.                                                                                                                                                                                                                                                                                                                                                           | Purely manual review (inconsistent, drifts as options change); LLM-only grading in CI (non-deterministic, requires network/keys).                                                                                                                     |
+| Decision                                   | Chosen approach and rationale                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Rejected alternative / trade-off                                                                                                                                                                                          |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1 Programme split (user, 2026-11-26)      | This plan delivers the standard, platform, gates and exemplars. Navigation, entry points and corpus waves are separate plans (_Interfaces §1_), following the `web-ml-phase-1..7` precedent. Each plan is small enough to review and later edits do not invalidate unrelated work.                                                                                                                                                                                                                                                                                                                                                                                                                | One ten-task plan: ten major review findings, any edit invalidates everything, and the corpus waits on router work.                                                                                                       |
+| D2 Help-to-Help history (user, 2026-11-26) | Keep §5.2: in-modal Help links replace history, and Close, Escape and browser Back close Help. Breadcrumbs and a "Back to {previous}" trail held in memory belong to the navigation plan. This matches the native modal and mobile back-gesture convention, needs no `helpDepth`, and leaves the departure guard and binding logic untouched.                                                                                                                                                                                                                                                                                                                                                     | Stacked `helpDepth` history with `history.go(-n)`: it reverses the spec and needs new rules for `/about`, `/privacy`, direct loads and anchors, which is where three of the review findings came from.                    |
+| D3 Coverage ratchet (user, 2026-11-26)     | A unit test fails unless every exposed classifier and option has an article or an entry on a tracked pending list. The list can only shrink: an entry that is documented, unknown or no longer exposed fails. New debt is added by naming each key explicitly with `docs:accept --add-pending`. Entry-point links come from the built index, so a pending item has no link and there are no dead links.                                                                                                                                                                                                                                                                                           | Hard gate: blocks a web-ml upgrade on authoring. Advisory only: gaps go unnoticed.                                                                                                                                        |
+| D4 Facts lock                              | `content/help-docs.lock.json` records each article's `contentHash` (source plus referenced SVGs) and `factsHash` (canonical JSON of its catalogue, policy and copy facts) at review, with `reviewedBy` and `reviewed`. A mismatch fails `bun test`. A facts change reads "facts changed: review prose" and a content change reads "edited since review". Separating the two hashes tells the reviewer what to check.                                                                                                                                                                                                                                                                              | Front-matter `updated` dates, which nothing checks. A web-ml version stamp per article, which flags every article on any release.                                                                                         |
+| D5 Generate, don't retype                  | Defaults, choices, ranges, dependencies, UI labels and hints render from their sources through `::option-facts` and `::model-settings`. Section lists render through `::children` and UI labels through `:ui[...]`, which is checked against the declared `surfaces`. Prose explains; generated blocks state facts. This removes the main source of drift.                                                                                                                                                                                                                                                                                                                                        | Hand-written facts checked by review alone, which drift silently on every upgrade.                                                                                                                                        |
+| D6 Paths                                   | Permanent paths with no aliases. Workflow guides keep `/help/{step}`. Sections are `/help/models`, `/help/concepts` and `/help/metrics`. A family is `/help/models/{family-slug}`, a model `/help/models/{family-slug}/{model-id}`, and an option `/help/models/{family-slug}/{option-slug}` when it means the same thing for every installed model in that family, otherwise `/help/models/{family-slug}/{model-id}/{option-slug}`. `option-slug` is the kebab-case option name (`C` → `c`, `l1Ratio` → `l1-ratio`). Family slugs are a Samata-owned map keyed by the catalogue `familyId`, which keeps URLs plain-English and stable while new upstream models join their family automatically. | `/help/workflow/*` with aliases, which adds alias canonicalisation for no learner benefit. Using raw `familyId` values as slugs (`bayesian`, `distance-based`), which are less plain and change if upstream renames them. |
+| D7 Markdown extensions                     | One `marked` extension with a closed directive registry: block `::name[label]`, container `:::name[label]` … `:::`, and inline `:name[label]`. An unknown directive fails the build. Abbreviations are expanded visibly on first use, as the existing pages already do ("Comma-separated values (CSV)", WCAG technique G97), so neither `<abbr>`, `<dfn>`, `<dl>` nor raw HTML is needed.                                                                                                                                                                                                                                                                                                         | Allowing a raw-HTML subset: widens the sanitiser surface and leaves two syntaxes. `<abbr title>`: the title is not reachable by keyboard or touch.                                                                        |
+| D8 Figures                                 | Co-located `./{name}.svg` used as a standalone Markdown image becomes `<figure class="help-figure"><img class="help-figure-image" …></figure>`, with a figcaption when a title is given. The accessible name is `alt`, and the key takeaway is also stated in the prose. Each SVG starts with a full-size background `<rect>` and uses only the closed palette. SVGO runs with `cleanupIds`, `inlineStyles` and `minifyStyles` disabled, and validation runs again on the output.                                                                                                                                                                                                                 | `role`/`aria-labelledby` inside the file, which an `<img>` never exposes. Hand-picked colours with per-element contrast maths.                                                                                            |
+| D9 Audit layers                            | Build: integrity and safety. `bun test`: coverage, facts lock, catalogue and family parity, UI labels, rule parity and zero audit errors. `audit:docs`: the same engine plus warnings (readability, paragraph length, unlinked concepts), `--since` impact and `--facts`. Review: the rubric. Readability formulas are warnings only, because they do not measure comprehension and they penalise necessary terms such as "regularisation".                                                                                                                                                                                                                                                       | Flesch–Kincaid as a failing gate, which is easily gamed and inaccurate on technical text. LLM grading in CI, which is non-deterministic and needs network keys.                                                           |
+| D10 Skills                                 | Two thin skills, `write-help` (author) and `review-help` (independent reviewer, fresh context). Both cite `help-documentation.md` rule IDs and never restate them. Only the reviewer runs `docs:accept`. They live in `agent-workflow/domain-skills/`, like `add-dataset`, and are created after T1 so they can cite final IDs.                                                                                                                                                                                                                                                                                                                                                                   | No skills, which leaves future one-off additions (a new option after an upgrade) without a repeatable procedure. Rules copied into skills, which drift from the spec.                                                     |
+| D11 Seed (user, 2026-11-26)                | The seed is tracked in `specification/notes/help-seed/mlp-activation/` (`7d29dbb`), outside the build. T7 migrates it, and T8 deletes the note once the content is live.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Committing it under `content/` now, which fails the build until T7.                                                                                                                                                       |
+
+### Review findings resolved (2026-11-26 changes-requested)
+
+1. Untracked seed: it is now tracked outside `content/` (D11), so no task depends on an untracked file.
+2. Raw HTML, `abbr`, `dfn`, `dl`: replaced by directives and visible expansion (D7). `details` comes only from `:::details`.
+3. SVGO undoing guarantees: overrides plus post-optimisation validation (D8), and nothing depends on internal ids.
+4. `#` links: rejected in the help domain (HELP-LINK-1) until the navigation plan. No fixed note links to an anchor here.
+5. History gaps: there is no new history contract (D2). Direct load, `/about` and `/privacy` behave as today.
+6. Zero regressions: the tests whose meaning changes are listed in T2 and T4 with their new assertions. RESERVED_CONTENT users and `build-content.ts:480-486` change together in T4, and Model Description work has moved out of this plan.
+7. T4 e2e dependency: T4 migrates real content in the same task, and T7 adds the exemplars it tests.
+8. `audit:docs` arrives late: T5 and T6 add `docs:accept` and `audit:docs` to `AGENTS.md` Verification Commands in the same task that creates them.
+9. `ConfigurationLabels`: moved to `help-entry-points.md`, whose stub records the `COMPONENTS.md` §8 constraint.
+10. Column details mockup deviation: moved to `help-entry-points.md` as a blocking question.
+
+Minor findings: the rules credited to web-ml are now sourced to `MODEL_OPTION_POLICY` (HELP-W-9). HUMAN.md gains real items. `/terms-and-conditions` is not claimed as a route. The standard starts as `target`. `x.md` alongside `x/index.md` is a build error (HELP-PATH-1). T1 verification runs `bun run audit:mockups`.
 
 ### Interfaces and behaviour
 
-#### 1. Documentation Taxonomy & Model-to-Help Mapping
+#### 1. Programme
 
-Complete mapping of all 6 model families, 8 active classifiers, and 40 exposed controls (37 unique hyperparameter articles) verified against installed `web-ml@0.2.0` and `src/features/models/model-presentation-policy.ts`:
+| Plan                                                                                   | Status after this revision | Delivers                                                                                  | Depends on                |
+| -------------------------------------------------------------------------------------- | -------------------------- | ----------------------------------------------------------------------------------------- | ------------------------- |
+| `comprehensive-help-documentation.md` (this plan)                                      | draft → ready-for-review   | Standard, platform, gates, exemplars                                                      | —                         |
+| [router-help-history-and-dynamic-topics.md](router-help-history-and-dynamic-topics.md) | stub (narrowed)            | Breadcrumbs, in-memory Back trail, in-article anchors                                     | This plan                 |
+| [help-entry-points.md](help-entry-points.md)                                           | stub (new)                 | Per-option **Learn more**, fixed-note links, step entry points, Model Description in Help | This plan                 |
+| [help-corpus-core.md](help-corpus-core.md)                                             | stub (new)                 | Workflow guides, metrics guides with `::terms`, concepts                                  | This plan, the two skills |
+| [help-corpus-models.md](help-corpus-models.md)                                         | stub (new)                 | Families, models and options, burning the pending list down to zero                       | This plan, the two skills |
 
-| Family Slug (`/help/models/{family}`) | Classifier (`modelId`)      | Model Article Path                                     | Exposed Options → Canonical Hyperparameter Path                                                                                                                                                                                                                                                                                                                                                      |
-| ------------------------------------- | --------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `linear-models`                       | `logistic-regression`       | `/help/models/linear-models/logistic-regression`       | `solver` → `.../logistic-regression/solver`, `penalty` → `.../logistic-regression/penalty`, `C` → `.../logistic-regression/c`, `l1Ratio` → `.../logistic-regression/l1-ratio`, `fitIntercept` → `/help/models/linear-models/fit-intercept`, `learningRate` → `/help/models/linear-models/learning-rate`, `maxIter` → `/help/models/linear-models/max-iter`, `tol` → `/help/models/linear-models/tol` |
-| `mlp`                                 | `mlp-classifier`            | `/help/models/mlp/mlp-classifier`                      | `hiddenLayerSizes` → `/help/models/mlp/hidden-layer-sizes`, `activation` → `/help/models/mlp/activation`, `solver` → `/help/models/mlp/solver`, `learningRate` → `/help/models/mlp/learning-rate`, `maxIter` → `/help/models/mlp/max-iter`, `tol` → `/help/models/mlp/tol`, `randomState` → `/help/models/mlp/random-state`                                                                          |
-| `decision-trees`                      | `decision-tree-classifier`  | `/help/models/decision-trees/decision-tree-classifier` | `criterion` → `.../decision-tree-classifier/criterion`, `maxDepth` → `/help/models/decision-trees/max-depth`, `minSamplesSplit` → `/help/models/decision-trees/min-samples-split`, `minSamplesLeaf` → `/help/models/decision-trees/min-samples-leaf`, `minImpurityDecrease` → `/help/models/decision-trees/min-impurity-decrease`                                                                    |
-| `knn`                                 | `k-neighbors-classifier`    | `/help/models/knn/k-neighbors-classifier`              | `nNeighbors` → `/help/models/knn/n-neighbors`, `weights` → `/help/models/knn/weights`, `metric` → `/help/models/knn/metric`, `p` → `/help/models/knn/p`                                                                                                                                                                                                                                              |
-| `naive-bayes`                         | `gaussian-nb`               | `/help/models/naive-bayes/gaussian-nb`                 | `varSmoothing` → `/help/models/naive-bayes/gaussian-nb/var-smoothing`                                                                                                                                                                                                                                                                                                                                |
-| `naive-bayes`                         | `multinomial-nb`            | `/help/models/naive-bayes/multinomial-nb`              | `alpha` → `/help/models/naive-bayes/alpha`, `forceAlpha` → `/help/models/naive-bayes/force-alpha`, `fitPrior` → `/help/models/naive-bayes/fit-prior`                                                                                                                                                                                                                                                 |
-| `naive-bayes`                         | `bernoulli-nb`              | `/help/models/naive-bayes/bernoulli-nb`                | `alpha` → `/help/models/naive-bayes/alpha`, `forceAlpha` → `/help/models/naive-bayes/force-alpha`, `binarize` → `/help/models/naive-bayes/bernoulli-nb/binarize`, `fitPrior` → `/help/models/naive-bayes/fit-prior`                                                                                                                                                                                  |
-| `svm`                                 | `support-vector-classifier` | `/help/models/svm/support-vector-classifier`           | `C` → `/help/models/svm/c`, `kernel` → `/help/models/svm/kernel`, `degree` → `/help/models/svm/degree`, `gamma` → `/help/models/svm/gamma`, `coef0` → `/help/models/svm/coef0`, `tol` → `/help/models/svm/tol`, `classWeight` → `.../support-vector-classifier/class-weight`, `probability` → `.../support-vector-classifier/probability`                                                            |
+#### 2. The Help standard (`specification/help-documentation.md`, written in T1)
 
-Fixed/read-only `.form-note` mappings: `multiclass` → `/help/concepts/multiclass-strategies`, `threshold` → `/help/metrics/understanding-results#probability-threshold`, `priors` / `classPrior` → `/help/concepts/prior-probability`.
+Status line in T1: `target`. T8 sets `partial`, with the note "rules and gates implemented; corpus coverage tracked by the pending list in `content/help-docs.lock.json`".
 
-#### 2. Content Pipeline & Types (`src/types/content.ts`, `src/common/content/*`, `scripts/markdown.ts`, `scripts/build-content.ts`)
+Rule syntax, which T6 parses: one list item per rule, `- **HELP-{AREA}-{n}** ({layer}[, {level}]) — {rule}`, where `layer` is `build`, `test`, `audit` or `review` and `level` (`error` or `warning`) is required for `audit`. IDs are never reused. A retired rule keeps its ID with the text _Retired._
 
-- **Domain & entries:**
+Sections, in this order:
+
+1. **Purpose and audience.** Non-technical learners first, with experienced developers kept in mind (expertise reversal). Help answers "what is this, why does it matter here, what should I do".
+2. **What excellent Help means.** Six principles, each with its source: relevant, findable, understandable, usable (ISO 24495-1:2023, plain language); one job per page (Diátaxis: Help here is explanation, how-to and reference, never tutorial); coherence, signalling, spatial contiguity, segmenting and pre-training (Mayer, _Multimedia Learning_); layered depth against expertise reversal (Kalyuga, Ayres, Chandler & Sweller 2003); accessible by default (WCAG 2.2 AA, with SC 3.1.4/3.1.5 at AAA as aspirations met through G97 and plain language); accurate and grounded (sources of truth, §8). The section also says readability formulas are signals, not targets (Redish 2000).
+3. **Archetypes.** For each `docType`: its job, its Diátaxis mode, its front matter (_§3 below_) and its required H2 sections in order (`HELP-LINT-4`):
+   - `hub`, `section`, `workflow`: no required sections.
+   - `model-family`: `How these models learn`, `Models in this family` (contains `::children`), `Strengths and limitations`, `When to use them`.
+   - `model`: `What it does`, `How it makes predictions`, `Settings` (contains `::model-settings`), `Strengths and limitations`, `When to choose it`.
+   - `hyperparameter`: `What it does`, `Settings at a glance` (contains `::option-facts`), `How it changes the model`, `When to change it`.
+   - `concept`: `The idea`, `An example`, `Where it matters`.
+   - `metric`: `What it measures`, `How to read it`, `Watch out for`.
+
+   Further H2 sections may follow the required ones. Templates in `specification/templates/help/{docType}.md` mirror this list.
+4. **Paths and information architecture.** D6, with HELP-PATH-1 to HELP-PATH-3, the family slug table (_§3_) and the rule that published paths never change.
+5. **Writing rules** (all `review` unless stated):
+   - HELP-W-1: British English (with `HELP-LINT-1`).
+   - HELP-W-2: second person, active voice, sentence-case headings.
+   - HELP-W-3: the opening paragraph says what the thing is and why it matters, in at most three sentences.
+   - HELP-W-4: one idea per paragraph (`HELP-LINT-7` warns above 90 words).
+   - HELP-W-5: expand an abbreviation visibly on first use in each article, as "Expansion (ABBR)" (with `HELP-LINT-2`).
+   - HELP-W-6: machine tokens appear verbatim in backticks, even when spelled the US way.
+   - HELP-W-7: UI labels are written as `:ui[Label]` and match the UI exactly (with `HELP-UI-1`).
+   - HELP-W-8: never hand-type defaults, choices, ranges or dependencies; use the generated blocks.
+   - HELP-W-9: name the source of a behaviour correctly. Samata limits such as the 5,000-iteration cap, the L-BFGS penalty restriction and `p` applying only to Minkowski are Samata choices, not web-ml behaviour.
+   - HELP-W-10: worked examples use a bundled sample dataset and name it.
+   - HELP-W-11: datasets about people (`adult-census`, `compas-recidivism`, `german-credit`, `credit-card-default`) are framed with their ethical context.
+   - HELP-W-12: say **practical equivalence**, not ROPE.
+   - HELP-W-13: no UI screenshots, because they drift. Draw a concept diagram instead.
+   - HELP-W-14: link text makes sense out of context.
+   - HELP-W-15: formulas go only inside `:::details[Mathematical detail]`, as plain text or Unicode, with a sentence that says them in words.
+   - HELP-W-16: never promise future features.
+6. **Markdown and directives.** The syntax in _§4_, with the build rules.
+7. **Figures.** D8, HELP-FIG-1 to HELP-FIG-4, the palette table (token, value, role) and these review rules:
+   - HELP-W-17: every figure earns its place; it is not decoration.
+   - HELP-W-18: labels sit on the figure next to what they name.
+   - HELP-W-19: plotted functions are accurate. The reviewer checks at least three sample points.
+   - HELP-W-20: meaning never relies on colour alone.
+8. **Sources of truth.** Which fact comes from where:
+   - Catalogue: description, default, `defaultBy`, `defaultNote`, enum values and `enumDescriptions`.
+   - `MODEL_OPTION_POLICY`: exposure, range domains, Samata caps, `activeWhen` and notes.
+   - `model-option-copy.ts`: UI label, hint, choice labels and note text.
+   - `RESULT_TERM_COPY`: result terms.
+   - `HELP_ROUTES`: UI-linked Help paths.
+9. **Quality gates.** The four layers from D9, and every machine-checked rule ID from _§6_.
+10. **Review rubric.** Each dimension is scored 1–5, with anchored descriptions at 1, 3 and 5. An article passes only with at least 4 on every dimension and 5 on HELP-REV-1.
+    - HELP-REV-1 Accuracy and grounding: matches the facts bundle, invents nothing, figures are correct.
+    - HELP-REV-2 Learner fit: plain English, jargon defined or linked, a concrete example, depth disclosed progressively.
+    - HELP-REV-3 Structure and findability: the archetype does its job, headings are informative, links are useful.
+    - HELP-REV-4 Explanation quality: covers why, when and trade-offs, and addresses one likely misconception.
+    - HELP-REV-5 Figures and multimodality: Mayer principles, with alt, caption and prose agreeing.
+    - HELP-REV-6 Accessibility and inclusion: link purpose, table headers, no colour-only meaning, responsible framing.
+11. **Maintenance triggers.** The table in _§7_.
+12. **Authoring and review procedure.** This is the contract the skills implement:
+    1. Pick work from `bun run audit:docs` (pending list) or `--since` (impact).
+    2. Get facts from `bun run audit:docs --facts {model-id}[.{option}]`.
+    3. Copy the archetype template.
+    4. Write the article and figures.
+    5. Run `bun run build`, then `bun run audit:docs` until there are no errors.
+    6. Remove the key from the pending list. The writer never runs `docs:accept`.
+    7. An independent reviewer in a fresh session scores the rubric with evidence. On a pass, the reviewer runs `bun run docs:accept --reviewer '{Agent (model)}' {path…}`. On a fail, the reviewer returns findings by rule ID.
+
+#### 3. Content model
+
+- **Source layout:** `content/{locale}/help/**/{slug}.md`. A `{dir}/index.md` file serves the route `/{dir}` (`help/index.md` serves `/help`). Co-located `{kebab-name}.svg` files sit beside the article that uses them. No other file types are allowed.
+- **Lock file:** `content/help-docs.lock.json` is locale-neutral and is the only non-directory entry allowed directly under `content/`. `validateDirectoryLayout` explicitly permits it.
+- **`HelpDocType`:** `'hub' | 'section' | 'workflow' | 'model-family' | 'model' | 'hyperparameter' | 'concept' | 'metric'`.
+- **Front matter:**
+  - Strict for the `help` domain, and the build fails on unknown keys.
+  - Common: `docType` (required), `title` (required, ≤ 70 characters), `description` (required, one sentence, ≤ 160 characters), `order` (optional integer, default 1000), `surfaces` (optional, a non-empty array of existing repository-relative paths under `src/`).
+  - `workflow` requires `surfaces`.
+  - `hyperparameter` requires `option`, the exact catalogue option name.
+  - `hyperparameter` also requires `models`, a non-empty array of `ClassifierId`s in the path's family. For a model-level path it must be exactly that one model.
+  - `concept` requires `summary` (≤ 280 characters, one or two plain sentences) and accepts optional `terms` (an array of phrases used by `HELP-LINT-8`).
+  - There is no `updated` key; the lock records review.
+- **Family slugs** (`scripts/help/model-families.ts`, `HELP_FAMILY_SLUGS`, keyed by the catalogue `familyId`): `linear` → `linear-models`, `neural-networks` → `neural-networks`, `trees` → `decision-trees`, `distance-based` → `nearest-neighbours`, `bayesian` → `naive-bayes`, `support-vector-machines` → `support-vector-machines`.
+- **Types (`src/types/content.ts`):**
+
   ```ts
   export type ContentDomain = 'pages' | 'models' | 'glossary' | 'help';
   export type HelpDocType =
   	| 'hub'
+  	| 'section'
   	| 'workflow'
   	| 'model-family'
   	| 'model'
   	| 'hyperparameter'
   	| 'concept'
   	| 'metric';
-
-  export interface HelpBreadcrumb {
-  	readonly label: string;
-  	readonly href: string;
-  }
-
+  /** One compiled Help article in `help/index.json`. */
   export interface HelpEntry {
-  	readonly id: string; // canonical route without leading slash, e.g. 'help' or 'help/models/mlp/activation'
-  	readonly path: string; // canonical route path, e.g. '/help/models/mlp/activation'
-  	readonly aliases?: readonly string[]; // e.g. ['/help/configure-model']
+  	readonly path: `/help` | `/help/${string}`;
   	readonly docType: HelpDocType;
   	readonly title: string;
   	readonly description: string;
-  	readonly summary?: string; // required when docType === 'concept'
-  	readonly parentPath: string | null; // null only for '/help'
-  	readonly breadcrumbs: readonly HelpBreadcrumb[];
-  	readonly family?: string;
-  	readonly modelId?: string;
-  	readonly optionName?: string;
-  	readonly related?: readonly string[];
+  	readonly order: number;
+  	readonly parentPath: `/help` | `/help/${string}` | null; // null only for '/help'
+  	readonly option?: string; // hyperparameter only
+  	readonly models?: readonly string[]; // hyperparameter and model (its own id)
   	readonly headings: readonly ContentHeading[];
-  	readonly url: string; // '/content/{locale}/help/{rel}.html?v={12-hex}'
+  	readonly url: string; // '/content/{locale}/help/{rel}.html?v={12 hex}'
   	readonly lang: Locale;
   }
   ```
-- **Front matter schema for `help` domain:** Required: `docType`, `title`, `description`, `updated` (`YYYY-MM-DD`). Conditional required: `summary` (required for `concept`; 1–2 plain-English sentences ≤ 280 chars), `family` (required for `model-family`, `model`, `hyperparameter`), `modelId` (required for `model`, optional for task-specific `hyperparameter`), `optionName` (required for `hyperparameter`). Optional: `aliases` (array of `/help/{kebab}` paths, base locale only), `summarySvg` (relative `./*.svg` path for `concept`), `illustration` (`'none'` only with `illustrationReason` string when a concept/option is genuinely non-visual), `related` (array of canonical `/help/...` paths validated in Pass 2). Unknown keys fail the build.
-- **Shared concept directive (`::concept[slug]`):** On its own paragraph line in Markdown, `::concept[sigmoid]` is expanded during Pass 2 compilation into:
-  ```html
-  <aside class="concept-callout" aria-label="Concept: Sigmoid function">
-  	<p class="concept-callout-title">Concept: Sigmoid function</p>
-  	<p class="concept-callout-body">{canonical summary}</p>
-  	<!-- optional <img class="help-svg" ...> when concept declares summarySvg -->
-  	<p class="concept-callout-link"><a href="/help/concepts/sigmoid">Read the full Sigmoid function guide</a></p>
-  </aside>
+
+  `help/index.json` is `{ version: 1, locale, domain: 'help', entries: HelpEntry[] }`, sorted by `path`. `loadHelpEntry(path, opts?)` in `content-loader.ts` takes the same options as `loadContentEntry` and resolves to the same result shape with a `HelpEntry`. For a path absent from the index it throws `ContentLoadError` with code `NOT_FOUND`. Lookup uses a `Map`, so prototype keys such as `/help/constructor` are simply not found.
+
+#### 4. Directives and links (`scripts/markdown.ts`)
+
+| Syntax                          | Allowed in                       | Output                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------------------------- | -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `::concept[{slug}]`             | any except `concept`             | `<aside class="concept-callout" aria-label="Concept: {title}"><p><strong>{title}</strong></p><p>{summary}</p><p><a href="/help/concepts/{slug}">Read about {title}</a></p></aside>`. The slug must be a `concept` article; self-reference fails.                                                                                                                                                   |
+| `:::details[{summary}]` … `:::` | any                              | `<details class="help-details"><summary>{summary}</summary>{Markdown body}</details>`. The body may not contain headings, directives or another `:::details`.                                                                                                                                                                                                                                      |
+| `::children`                    | `hub`, `section`, `model-family` | `<ul class="help-children"><li><a href="{path}">{title}</a><p>{description}</p></li>…</ul>` for direct child entries, sorted by `order`, then `title`. Renders nothing when there are no children.                                                                                                                                                                                                 |
+| `::option-facts`                | `hyperparameter` (exactly once)  | `<table class="option-facts"><caption>{label} at a glance</caption>` with one `<th scope="col">` per declared model (its catalogue `name`) and `<th scope="row">` rows: "Name in the app" (copy label), "Code name" (`<code>{option}</code>`), "Default", "Choices" or "Allowed values", "Used when" and "What the app says" (copy hint). Rows whose values are empty for every model are omitted. |
+| `::model-settings`              | `model` (exactly once)           | `<ul class="help-children">` of the model's exposed options in policy order: a link when a hyperparameter entry declares (model, option), otherwise the copy label as plain text. No "coming soon" text is generated.                                                                                                                                                                              |
+| `:ui[{label}]`                  | any                              | `<strong class="ui-label">{label}</strong>`                                                                                                                                                                                                                                                                                                                                                        |
+
+- **Generated values (`scripts/help/option-facts.ts`):**
+  - Default: `default` in `<code>`. For `defaultKind` `conditional`, use `defaultBy`, one line per condition: "When `{key}` is `{value}`: `{default}`". For `data-derived`, `random-if-omitted` and `unspecified`, use `defaultNote`, or "Chosen automatically" when it is absent.
+  - Choices: enum values in `<code>`, followed by the copy choice label in brackets when there is one. A policy `disabledChoices` entry is marked "(not available in this app)".
+  - Allowed values: the policy domain, for example "Whole numbers from 1 to 5,000", formatted with `Intl.NumberFormat('en-GB')`.
+  - Used when: the copy `NOTES` text for the policy `activeWhen` and `notes`, otherwise the row is omitted.
+- **Generated-text dictionary:** generated English strings live in `scripts/help/generated-text.ts`, keyed by locale (`en` only). Other locales fall back to `en`.
+- **Policy additions:** `FRAGMENT_POLICY` (`src/common/content/fragment-policy.ts`) adds:
+  - elements `aside`, `details`, `summary`, `figure`, `figcaption` and `caption`;
+  - attribute `scope` (`col`, `row`) on `th`;
+  - `aria-label` on `aside`;
+  - `width` and `height` (positive integers) on `img`;
+  - a closed `class` list: `concept-callout` on `aside`, `help-details` on `details`, `help-children` on `ul`, `help-figure` on `figure`, `help-figure-image` on `img`, `option-facts` on `table` and `ui-label` on `strong`.
+
+  `sanitise-fragment.ts` enforces the same list.
+- **Links:**
+  - `isAllowedHref` additionally accepts exactly `/about`, `/privacy`, `/help` and `/help/{kebab segments}`. It still rejects `/content/*`, `/datasets/*`, `//`, `/\`, `..`, whitespace, query strings and every other root-absolute path.
+  - In the `help` domain, every internal link must resolve to an article or to `/about` or `/privacy`. Relative links, `#…` links and `{path}#…` links fail (HELP-LINK-1).
+  - Other domains keep `#…`. Internal links carry no `target` or `rel`.
+
+#### 5. Router and modal (T4)
+
+- **Paths and parsing:**
+  - ``src/types/routes.ts``: ``export type HelpPath = '/help' | \``/help/${string}\`; export type ReservedPath = '/about' | '/privacy' | HelpPath;`.
+  - `route-parser.ts`: `/help` and `/help/` followed by 1–4 segments matching `^[a-z0-9]+(?:-[a-z0-9]+)*$` parse as `{ kind: 'reserved', path }`. Any other path under `/help/` (uppercase, punctuation, empty segment, more than four segments, `..`) is `unknown`, so it follows the existing redirect.
+- **Route tables:**
+  - `RESERVED_CONTENT` becomes `{ '/about': 'about', '/privacy': 'privacy-policy' } as const satisfies Record<'/about' | '/privacy', string>` (the `pages` domain).
+  - New `src/router/help-routes.ts` exports `HELP_ROUTES = { hub: '/help', selectFeatures: '/help/select-features', configureModel: '/help/configure-model', trainingSetup: '/help/training-setup' } as const satisfies Readonly<Record<string, HelpPath>>`, with TSDoc.
+  - Every UI literal in _Codebase context → Help link literals_ uses `HELP_ROUTES`, except `/about` and `/privacy`.
+  - `build-content.ts` requires each `RESERVED_CONTENT` page and each `HELP_ROUTES` path (HELP-ROUTE-1).
+- **Titles (`router.ts:599-613`):** existing cases keep their exact titles, and any other `HelpPath` gets `samatā.ml | Help`.
+- **History:** unchanged. A click on a Help-domain link inside the dialog reaches `handleClick` through `composedPath` and calls `openReserved`, which replaces the entry while a reserved route is active.
+- **`app-content-modal` (connected, tag only):**
+  - For a `HelpPath` it calls `loadHelpEntry(path, { locale: BASE_LOCALE, signal })`. For `/about` and `/privacy` it keeps `loadContentEntry('pages', …)`.
+  - On `NOT_FOUND` for a `HelpPath`, its internal status becomes `'not-found'` and it passes the dialog `status="not-found"`, `heading` from the new dictionary key `notFoundHeading` ("Help topic not found") and `notFoundHref = HELP_ROUTES.hub`.
+  - Fallback titles keep existing keys for the four `HELP_ROUTES` paths and add `helpFallback` ("Help") for any other `HelpPath`.
+  - Load guards (abort, sequence, path) are unchanged.
+- **`app-content-dialog` (presentational, closed API):**
+  - `status: 'loading' | 'ready' | 'not-found' | 'error'` (attribute `status`, unreflected).
+  - New `notFoundHref: string = ''` (attribute `not-found-href`, unreflected).
+  - `ContentDialogLabels` adds `notFound: string` (default "We could not find this Help topic. The link may be out of date.") and `notFoundAction: string` (default "Browse all Help topics").
+  - In `not-found`, the body renders one `<p>{labels.notFound}</p>` and, when `notFoundHref` is non-empty, `<p><a href=${notFoundHref}>{labels.notFoundAction}</a></p>`. It renders no alert role, because this is not a failure, and no `aria-busy`.
+  - Events, slots, parts and custom properties are unchanged.
+  - It adopts `helpProseStyles` after `dialogStyles`.
+- **`src/styles/help-prose.styles.ts`:**
+  - Exports `helpProseStyles: CSSResult`, using tokens only and logical properties, scoped under `.modal-content`.
+  - Covers `.help-figure` and `.help-figure-image` (`max-inline-size: 100%; block-size: auto`), `.concept-callout`, `.help-details` with its `summary` (24×24 target, `--focus-ring` 2px outline), `.help-children`, `table.option-facts` with its `caption`, scroll-safe tables, and `.ui-label`.
+  - Motion respects `prefers-reduced-motion`.
+- **Stories:** `src/features/shell/app-content-dialog.stories.ts` adds `NotFound`, `NotFoundLongText` (40% longer labels), `HelpProse` (figure, callout, details, children, facts table, `:ui` label; the figure uses an existing SVG under `public/`) and an RTL variant of `HelpProse`. The docs page gains Do and Don't rules: pass sanitised fragments only, and a not-found topic is not an error.
+
+#### 6. Maintenance chain (T5, T6)
+
+Rule registry: `scripts/help/rules.ts` exports `HELP_RULES: Readonly<Record<string, { layer: 'build' | 'test' | 'audit'; level: 'error' | 'warning'; summary: string }>>`. Every machine-checked message starts with its rule ID.
+
+| ID           | Layer, level   | Rule                                                                                                                                                                                                                                                                                                                                                                                                             |
+| ------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HELP-PATH-1  | build          | Kebab-case segments, depth ≤ 4 below `/help`, `index.md` maps to its directory, and `x.md` plus `x/index.md` together is an error.                                                                                                                                                                                                                                                                               |
+| HELP-PATH-2  | build          | Every path except `/help` has a parent article.                                                                                                                                                                                                                                                                                                                                                                  |
+| HELP-PATH-3  | build          | `docType` matches its path shape (D6). The family slug, model id (in that family) and `option-slug = kebab(option)` are consistent with front matter, and every declared model's `MODEL_OPTION_POLICY` entry has the key `option`.                                                                                                                                                                               |
+| HELP-META-1  | build          | Strict front matter per `docType` (_§3_).                                                                                                                                                                                                                                                                                                                                                                        |
+| HELP-MD-1    | build          | No raw HTML, no body H1, no skipped heading levels, closed directive registry and placement rules (_§4_).                                                                                                                                                                                                                                                                                                        |
+| HELP-LINK-1  | build          | Internal links resolve. No relative or fragment links in `help`.                                                                                                                                                                                                                                                                                                                                                 |
+| HELP-FIG-1   | build          | Images are standalone `./{kebab}.svg` that exist, with non-empty alt.                                                                                                                                                                                                                                                                                                                                            |
+| HELP-FIG-2   | build          | SVG safety and shape, before and after SVGO: SVG namespace root, `viewBox`, integer `width` and `height`, a `<title>`, and none of `script`, `style`, `foreignObject`, `image`, `style=`, `on*=`, or an `href`/`xlink:href` not starting with `#`.                                                                                                                                                               |
+| HELP-FIG-3   | build          | No orphan SVGs.                                                                                                                                                                                                                                                                                                                                                                                                  |
+| HELP-ROUTE-1 | build          | Every `HELP_ROUTES` path has an article.                                                                                                                                                                                                                                                                                                                                                                         |
+| HELP-COV-1   | test           | Every `ClassifierId` has a `model` article declaring it or is pending.                                                                                                                                                                                                                                                                                                                                           |
+| HELP-COV-2   | test           | Every option whose policy kind is not `fixed`, `hidden` or `alias` has a hyperparameter article declaring (model, option) or is pending.                                                                                                                                                                                                                                                                         |
+| HELP-COV-3   | test           | A pending key that is documented, unknown or not exposed fails (the ratchet).                                                                                                                                                                                                                                                                                                                                    |
+| HELP-COV-4   | test           | Each (model, option) pair is declared by at most one article, and only for policy kinds other than `hidden` and `alias`.                                                                                                                                                                                                                                                                                         |
+| HELP-FACT-1  | test           | Every article has a lock entry whose `contentHash` and `factsHash` match, and the lock has no entry without an article.                                                                                                                                                                                                                                                                                          |
+| HELP-FAM-1   | test           | Every `ClassifierId`'s catalogue `familyId` has a slug.                                                                                                                                                                                                                                                                                                                                                          |
+| HELP-UI-1    | test           | Every `:ui[label]` appears verbatim in at least one declared `surfaces` file, and every `surfaces` path exists.                                                                                                                                                                                                                                                                                                  |
+| HELP-RULE-1  | test           | Spec rule lines (build, test and audit) equal `HELP_RULES` by ID, layer and level.                                                                                                                                                                                                                                                                                                                               |
+| HELP-LINT-1  | audit, error   | No US spellings from the closed list in `scripts/help/us-spellings.ts` (at least `color`, `center`, `behavior`, `-ize`/`-ization` forms of `regularize`, `normalize`, `optimize`, `standardize`, `generalize`, `categorize`, `visualize`, `binarize`, `minimize`, `maximize`, `analyze`, plus `neighbor`, `modeling`, `labeled`), excluding code spans and blocks, URLs, front-matter keys and generated blocks. |
+| HELP-LINT-2  | audit, error   | The first prose occurrence of each abbreviation in `scripts/help/abbreviations.ts` (at least CSV, UTC, MLP, SGD, L-BFGS, ReLU, RBF, KNN, SVM, SVC, ROC, AUC; machine tokens such as `F1`, `C` and `p` stay plain and are not listed) is inside "Expansion (ABBR)". Code spans are exempt.                                                                                                                        |
+| HELP-LINT-3  | audit, error   | No `TODO`, `TBD`, `FIXME` or `XXX` in prose or link targets.                                                                                                                                                                                                                                                                                                                                                     |
+| HELP-LINT-4  | audit, error   | Required archetype H2 sections are present, in order, with exact text.                                                                                                                                                                                                                                                                                                                                           |
+| HELP-LINT-5  | audit, error   | SVG colours (`fill`, `stroke`, `stop-color`, `color`) are `none` or a palette value, and the first painted element is a full-size `rect` in a palette `background` colour.                                                                                                                                                                                                                                       |
+| HELP-LINT-6  | audit, warning | Flesch–Kincaid grade above 11 for prose (excluding code, tables and generated blocks).                                                                                                                                                                                                                                                                                                                           |
+| HELP-LINT-7  | audit, warning | A paragraph longer than 90 words.                                                                                                                                                                                                                                                                                                                                                                                |
+| HELP-LINT-8  | audit, warning | The first prose mention of a concept's `title` or `terms` outside that concept is neither linked to it nor inside its `::concept` callout.                                                                                                                                                                                                                                                                       |
+
+- **Palette (`scripts/help/svg-palette.ts`, `HELP_SVG_PALETTE`):**
+  - Entries are `{ token, value, role: 'background' | 'text' | 'graphic' }`, with at least one background, two text and four graphic colours, chosen from existing `css/root.css` tokens.
+  - `tests/help-svg-palette.test.ts` asserts that each token exists in `css/root.css` with the identical value.
+  - It also asserts that every text colour reaches at least 4.5:1, and every graphic colour at least 3:1, against every background (WCAG 1.4.3 and 1.4.11).
+- **Lock file:**
+
+  ```json
+  {
+  	"version": 1,
+  	"pending": { "models": ["gaussian-nb"], "options": ["mlp-classifier.solver"] },
+  	"articles": {
+  		"/help/models/neural-networks/activation": {
+  			"contentHash": "sha256:<64 hex>",
+  			"factsHash": "sha256:<64 hex>",
+  			"reviewedBy": "Claude Code (claude-opus-5-5)",
+  			"reviewed": "2026-11-27"
+  		}
+  	}
+  }
   ```
-  Unknown slugs, non-`concept` targets, or self-referencing/cyclic embeds fail the build.
-- **Fragment allow-list (`src/common/content/fragment-policy.ts`):**
-  - Permitted elements add semantic HTML5: `aside`, `figure`, `figcaption`, `details`, `summary`, `dl`, `dt`, `dd`.
-  - Permitted `class` values (strict closed allow-list on `aside`, `figure`, `img`, `p`): `concept-callout`, `concept-callout-title`, `concept-callout-body`, `concept-callout-link`, `help-figure`, `help-svg`.
-  - Permitted `aria-label` on `aside` only (non-empty text).
-  - `isAllowedHref(href)`: permits `https:`, `http:`, `mailto:`, `#<non-whitespace>`, and root-absolute same-origin paths starting with `/` whose pathname is `/about`, `/privacy`, `/help`, or `/help/...` (strictly rejecting `/content/*`, `/datasets/*`, `//`, `/\`, `..`, and whitespace). External links keep `target="_blank" rel="noopener noreferrer"`; internal `/...` links carry neither.
-  - `isAllowedImageSrc(src)`: permits root-absolute `/assets/...` and `/content/...` (rejecting `//`, `/\`, `..`, whitespace); `img` permits `src`, non-empty `alt`, optional `title`, optional positive integer `width`/`height`, and optional `class="help-svg"`.
-- **Co-located SVG compilation:** In `content/{locale}/help/`, relative image paths `./<kebab-name>.svg` are resolved against the Markdown file's directory, verified to exist within `content/{locale}/help/`, validated via `SaxNamespaceParser` (`<svg>` root in SVG namespace, non-empty `viewBox`, integer `width`/`height`, `role="img"`, `<title>`, `<desc>`, `aria-labelledby`, zero `<script>`, zero `on*` attributes, **zero `style` attributes**, zero external `href`/`xlink:href`), optimised with SVGO (preserving `viewBox`, `width`, `height`, `<title>`, `<desc>`, `role`, `aria-labelledby`), written to `{outDir}/content/{locale}/help/{relDir}/{name}.svg`, and rewritten in HTML to `/content/{locale}/help/{relDir}/{name}.svg?v={sha256_12}` inside `<figure class="help-figure"><img class="help-svg" src="..." alt="..." width="..." height="..." /><figcaption>...</figcaption></figure>` (caption from image `title` when provided, or omitted when absent).
 
-#### 3. Router & History Contract (`src/types/routes.ts`, `src/router/*`)
+- **Hashes:**
+  - `contentHash` is SHA-256 over the article bytes followed by each referenced SVG's name and bytes, in name order.
+  - `factsHash` is SHA-256 over canonical JSON (sorted keys) of the facts bundle, or the literal `none` for `hub`, `section`, `workflow`, `concept` and `metric`.
+  - The facts bundle for a hyperparameter covers, for each declared model, the raw catalogue option object, the policy entry and the copy label, hint, choices and referenced notes.
+  - For a model, it covers the catalogue `name`, `description` and `documentation`, plus each option name with its policy kind.
+  - For a model family, it covers the sorted `(id, name)` of its classifiers.
+  - Pending keys are sorted.
+- **Commands:**
+  - `bun run docs:accept --reviewer '<Agent (model)>' <help-path…>` (`scripts/accept-docs.ts`) refuses if the build-level validation or the audit reports an error for those paths. Otherwise it writes their entries with today's UTC date, removes pending keys those articles now document, and prints what changed.
+  - `bun run docs:accept --add-pending <key…>` adds explicitly named, currently exposed and undocumented keys. There is no bulk add.
+  - `bun run audit:docs` (`scripts/audit-docs.ts`) runs the audit engine (`scripts/help/audit.ts`) over `content/en/help/`. It prints errors and warnings with rule IDs, a coverage summary per family (documented and pending counts) and the lock status. It exits 1 on any error.
+  - `audit:docs --json` emits `{ version: 1, findings: [{ rule, level, path, line?, message }], coverage: { families: Record<string, { documented: number; pending: number }> }, lock: { stale: string[] } }`.
+  - `audit:docs --since <git-ref>` adds an "Impact" list of articles whose `surfaces` changed in `git diff --name-only <git-ref>`. It also lists articles whose facts sources changed (`model-presentation-policy.ts`, `model-option-copy.ts`, `model-catalogue.ts`, `package.json`, `vendor/web-ml/`).
+  - `audit:docs --facts <model-id>[.<option>]` prints the facts bundle and the rendered fact rows as JSON.
+- **In-test enforcement:** `tests/help-audit.test.ts` runs the engine over real content and asserts zero errors, so CI enforces audit errors through `bun run check`.
 
-- `ReservedPath`:
-  ```ts
-  export type ReservedPath =
-  	| '/about'
-  	| '/privacy'
-  	| '/help'
-  	| `/help/${string}`;
-  ```
-- `parseRoute(pathname)` validates `/help/{segments}` with:
-  - 1 to 5 `/`-separated segments after `/help`, each matching `/^[a-z0-9]+(?:-[a-z0-9]+)*$/`.
-  - Malformed `/help/...` paths (empty segments, uppercase, punctuation, `..`, >5 segments) return `{ kind: 'unknown', path }` and redirect to `resumePath` as before.
-  - Well-formed `/help/...` paths return `{ kind: 'reserved', path }`; whether an entry exists is resolved by `<app-content-modal>` against the validated `help` index (`status: 'not-found'` for unlisted valid slugs, distinct from network `'error'`).
-- `HistoryEntryState` adds `helpDepth?: number`:
-  - Opening any reserved path from a workflow route: `pushState` with `helpDepth: 1`, `underlayPath`, `underlayEntryId`, `modalDocumentId`.
-  - Navigating from a `/help*` reserved route to another `/help*` reserved route (different path): `pushState` with `helpDepth: (prev.helpDepth ?? 1) + 1`, retaining the same `underlayPath`, `underlayEntryId`, `modalDocumentId`, and `provisional` metadata. Same-path clicks are a no-op.
-  - Navigating between non-Help reserved routes (`/about` ↔ `/privacy`): retains existing `replaceState` (`helpDepth: 1`).
-  - `navigateBackInReserved()`: exported router action called when the user clicks the modal's Back button (`history.back()` when `helpDepth > 1` and owned by `documentId`).
-  - `closeReserved()`: when `modalDocumentId === documentId`, calls `history.go(-(state.helpDepth ?? 1))` so Close/Esc jumps directly back to the exact workflow underlay regardless of how many Help links the learner clicked; when direct-loaded / ownerless, calls `replaceState` to `underlayPath`.
-  - `popstate` transitions between two reserved entries sharing `underlayEntryId` never trigger wizard departure guards and update `$route` in place.
+#### 7. Maintenance triggers
 
-#### 4. Closed Public APIs (`COMPONENTS.md` §3, `lit-architecture-planner`)
-
-1. **`<app-content-modal>`** (`src/features/shell/app-content-modal.ts`, Tier 3 connected):
-   - Public API: tag only (unchanged). Reads `$route` via `StoreController`, loads `'help'` index/entries for `/help*` (resolving aliases and breadcrumbs) and `'pages'` for `/about`/`/privacy`, derives `canGoBack` from owned `helpDepth > 1`, passes fallback library description when a `/help/models/{family}/{model-id}` route has a known `modelId` in `model-catalogue.ts` but no authored article, updates `document.title` to `samatā.ml | {entry.title}`, and handles `app-content-dialog-close` (`closeReserved()`) and `app-content-dialog-back` (`navigateBackInReserved()`).
-2. **`<app-content-dialog>`** (`src/features/shell/app-content-dialog.ts`, Tier 2 presentational):
-   - Properties (all scalar properties unreflected):
-     - `open: boolean = false` (`open`)
-     - `heading: string = ''` (`heading`)
-     - `contentLang: string = ''` (`content-lang`)
-     - `contentDir: '' | 'ltr' | 'rtl' = ''` (`content-dir`)
-     - `content: DocumentFragment | null = null` (property only)
-     - `status: 'loading' | 'ready' | 'not-found' | 'error' = 'loading'` (`status`)
-     - `breadcrumbs: readonly HelpBreadcrumb[] = []` (property only)
-     - `canGoBack: boolean = false` (`can-go-back`)
-     - `fallback: string = ''` (`fallback`) — optional plain-text fallback shown when `status === 'not-found'` for an unauthored model
-     - `labels: ContentDialogLabels` (property only) — exports `close`, `back`, `breadcrumbLabel`, `loadError`, `notFound`, `notFoundAction`, `missingModelFallback` with standalone English defaults.
-   - Events (`bubbles: false`, `composed: false`):
-     - `app-content-dialog-close: CustomEvent<ContentDialogCloseDetail>`
-     - `app-content-dialog-back: CustomEvent<ContentDialogBackDetail>` (`Record<string, never>`)
-   - Behaviour: No slots, public methods, parts, or custom properties. Keeps the dialog mounted and open when navigating between Help articles inside an open modal, scrolling `.modal-content` to `0` and focusing the modal `<h2>` (`tabindex="-1"`, `preventScroll: true`) on in-modal article transitions so keyboard and screen-reader users immediately land at the new article title, while closing restores native browser focus to the workflow invoker. Uses `dialogStyles`, `buttonStyles`, `helpLinkStyles`, and `helpProseStyles` (`src/styles/help-prose.styles.ts`).
-3. **`<app-model-configuration>`** (`src/features/models/app-model-configuration.ts`, Tier 2 presentational):
-   - Closed API addition only on typed `labels` dictionary (no new element properties, slots, events, methods, parts, or CSS custom properties):
-     - `OptionLabels` adds optional `helpPath?: string`.
-     - ``ConfigurationLabels`` adds ``learnMore: string`` (default ``'Learn more'``), ``learnMoreAbout: (name: string) => string`` (default ``(name) => \`` about \${name}\```— or pre-formatted``helpLinkAriaLabel``? Prefer visible text ``Learn more``+ visually hidden`` about ${copy.name}``using``params``from i18n so WCAG 2.5.3 Label in Name is guaranteed in every locale!), and optional``fixedOptionHelpPaths?: Readonly<Record<string, string>>``+``multiclassHelpPath?: string`.
-   - Accessibility: `#${name}-help` wraps ONLY the plain-text description and dependency notes referenced by `aria-describedby`. The `<a class="help-link field-help-link" href=${copy.helpPath}>` renders immediately after `#${name}-help` as a sibling inside `.field-description`, never inside the `aria-describedby` target.
-4. **`<app-column-details>`** (`src/features/data/app-column-details.ts`, Tier 2 presentational):
-   - Adds optional `helpHref: string = ''` (`help-href`) and `labels.helpLink: string` (default `'Learn about data types and statistics'`) rendering a single `<a class="help-link">` in the inspector header/footer.
-5. **`<app-training-progress>`** (`src/features/models/app-training-progress.ts`, Tier 2 presentational):
-   - Adds optional `helpHref: string = ''` (`help-href`) and `labels.helpLink: string` (default `'What happens during training?'`) rendering a single `<a class="help-link">`.
-
-#### 5. Automated Evaluator CLI (`scripts/evaluate-docs.ts`, `bun run audit:docs`)
-
-- Flags: `--json` (machine-readable report), `--scope <core|mlp|linear-models|decision-trees|knn|naive-bayes|svm|all>` (default `all`), `--allow-incomplete` (reports coverage gaps as warnings during intermediate authoring commits without failing; default strict mode fails on any missing exposed classifier or hyperparameter).
-- Checks:
-  1. **Coverage:** Cross-checks `src/features/models/model-catalogue.ts` (all 8 classifiers) and `MODEL_OPTION_POLICY` (all 40 exposed controls) via `src/features/models/model-help-map.ts` against `content/en/help/`, plus required Hub, 6 workflow guides, and 2 metrics guides.
-  2. **Archetype schema & headings:** Required front-matter keys per `docType`, required H2 section categories per `docType`, no skipped heading levels (`h1→h3` fails), no body `# H1`, non-empty `alt` text on all images.
-  3. **Link, anchor, concept & placeholder integrity:** Fails on any `TODO`/`TBD`/`FIXME` in prose/links, broken `/help/...` links, broken `#anchor`, broken `::concept[slug]`, or orphaned `.svg` files under `content/en/help/`.
-  4. **SVG accessibility, CSP & contrast:** Parses every `.svg` under `content/en/help/` — fails on missing `viewBox`, non-integer `width`/`height`, missing `role="img"` / `<title>` / `<desc>` / `aria-labelledby`, any `style="..."` attribute, any `<script>` or `on*`, or text/graphic hex fills falling below WCAG AA contrast (4.5:1 for `<text>` against card background `#f8fafc`/`#fcfbfa`/`#ffffff`, 3:1 for data curves/key strokes).
-  5. **Plain-English & British English:** Strips code blocks, inline backticks, URLs, and front matter; flags US spellings (`color`, `center`, `centered`, `behavior`, `generalize`, `regularization`, `neighbors`, `optimize`, `normalize`, `binarize`, `categorize`, `visualize`, `modeling`, `labeled`, `standardize`, `analyze`) as errors; computes Flesch-Kincaid grade level and max paragraph word count (warns > grade 11 or > 90 words; fails > grade 13 or > 140 words); warns when a canonical concept term appears unlinked on first prose mention outside its own article.
+| Event                                                                     | What fails or reports                                                                                    | Required action                                                                                 |
+| ------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
+| web-ml adds a classification model                                        | `MOD-CAT-2` (installed classification ids equal `ClassifierId` plus `UNSUPPORTED_CLASSIFICATION_MODELS`) | Support it or record why not. Once supported, HELP-COV-1/2 and HELP-FAM-1 apply.                |
+| web-ml adds an option to a supported model                                | `WML-P1-OPT-1`, then HELP-COV-2 if the policy exposes it                                                 | Classify it in the policy. Write the article, or `--add-pending` it.                            |
+| web-ml changes a default, enum, `appliesWhen`, `defaultBy` or description | HELP-FACT-1 "facts changed" on each affected article                                                     | Review the prose against `--facts`; the generated rows update themselves. Then `docs:accept`.   |
+| Samata changes policy exposure, domain, cap or notes                      | HELP-COV-2/3 or HELP-FACT-1                                                                              | As above.                                                                                       |
+| A UI label, hint or choice label changes in `model-option-copy.ts`        | HELP-FACT-1                                                                                              | Check that prose uses the new name, then re-accept.                                             |
+| Any other UI label referenced by `:ui[...]` changes                       | HELP-UI-1                                                                                                | Update the article, then re-accept.                                                             |
+| A documented UI surface file is moved or deleted                          | HELP-UI-1                                                                                                | Update `surfaces`.                                                                              |
+| A plan changes a documented surface                                       | `specification/decision-checklist.md` item and `audit:docs --since main` impact list                     | The plan lists affected articles under Specification changes and updates them in its sync task. |
+| A UI Help link is added                                                   | HELP-ROUTE-1 (registry) or the index lookup (entry points)                                               | Use `HELP_ROUTES` or the index, never a literal.                                                |
+| A design token used by the palette changes                                | `tests/help-svg-palette.test.ts`                                                                         | Update the palette and affected SVGs, then re-accept.                                           |
+| An article is edited                                                      | HELP-FACT-1 "edited since review"                                                                        | Independent review, then `docs:accept`.                                                         |
+| The standard gains or retires a checked rule                              | HELP-RULE-1                                                                                              | Update `HELP_RULES` and the checker in the same change.                                         |
 
 ## Specification changes
 
-- [ ] `specification/documentation-standard.md` — Create normative documentation authoring standard, archetype schemas, SVG visual/CSP/a11y contract, shared-concept reuse rules, and two-tier evaluation rubric; status `implemented`.
-- [ ] `specification/content-and-i18n.md` §Static Content & §Model Descriptions — Document hierarchical `help` domain, front-matter schema, aliases, co-located SVG validation/optimisation, validated root-absolute `/help/...` links, `::concept[slug]` embeds, expanded allow-list, and unified `/help/models/...` loading; status `partial` → `partial` (multi-locale UI switcher remains target).
-- [ ] `specification/app-state-and-navigation.md` §3, §5.2–§5.4, §5.6 — Document hierarchical `/help/...` routes, `helpDepth` in `HistoryEntryState`, in-modal Back/Forward + direct-return Close/Esc, and unlisted-topic state; status `draft` → `draft`.
-- [ ] `specification/components/content-modal.md` §3–§10 — Update closed public API (`breadcrumbs`, `canGoBack`, `not-found`, `fallback`, `app-content-dialog-back`, updated `ContentDialogLabels`), prose styling, stories, and acceptance criteria; status `implemented` → `implemented`.
-- [ ] `specification/components/model-configuration.md` §3–§9 — Document per-hyperparameter Help links outside `aria-describedby`, disambiguated accessible names, and fixed/multiclass note links; status `implemented` → `implemented`.
-- [ ] `specification/workflow-steps.md` §1–§4 — Record contextual Help entry points across Steps 1–4 and unified Model Description routing; status `partial` → `partial`.
-- [ ] `specification/visual-design.md` §1.1, §3 — Record `src/styles/help-prose.styles.ts` and updated `00-2_content-modal.html` draft structure; status `partial` → `partial`.
-- [ ] `specification/README.md` §Specs — Add `documentation-standard.md` row with matching `implemented` status.
-- [ ] `specification/TODO.md` — Mark `TODO-12` model prose authoring resolved for all eight classifiers; narrow `TODO-40` to note canonical concept library and Help Hub implemented (optional expandable math formulas in future waves).
-- [ ] `specification/HUMAN.md` — Update `00-2_content-modal.html` draft styling item with breadcrumb/Back/callout/figure additions, mark `Author remaining model articles (TODO-12)` and `router-help-history-and-dynamic-topics` resolved, and add manual VoiceOver/NVDA/200%-zoom check for the upgraded Help modal and per-hyperparameter links.
-- [ ] `specification/plans/router-help-history-and-dynamic-topics.md` — Mark superseded in `specification/plans/README.md` (or archive/remove per workflow convention if unused) since hierarchical `/help/...` routing and distinct unlisted-topic state are delivered here.
-- [ ] `AGENTS.md` §Verification Commands — Add `bun run audit:docs` alongside existing verification commands.
+- [ ] `specification/help-documentation.md` — New Help standard (_Interfaces §2_). Status `target` in T1, then `partial` in T8 ("rules and gates implemented; corpus coverage tracked by the pending list").
+- [ ] `specification/templates/help/*.md` — One template per `docType`, mirroring §2 item 3.
+- [ ] `specification/decision-checklist.md` — New. Items: "Help impact: does the change add, rename or remove a user-visible control, label, step, model or option? Run `bun run audit:docs --since main` and list the affected Help articles under Specification changes, or write `N/A — {reason}`." and "Help links come from `HELP_ROUTES` or the Help index, never a literal."
+- [ ] `specification/content-and-i18n.md` §Static Content — Replace "Reserved Help pages" with the `help` domain, paths, front matter, directives, figures, generated facts, the lock and the gates (pointing to `help-documentation.md` rather than copying it). Correct the link rule to the exact `isAllowedHref` set. Status stays `partial`.
+- [ ] `specification/app-state-and-navigation.md` §3, §5.4, §5.6 — The route table lists `/about`, `/privacy`, `/help` and `/help/{1–4 kebab segments}`. Rules: malformed `/help/...` is unknown, a well-formed unlisted topic shows not-found in the modal, and titles follow _Interfaces §5_. The §5.2 reserved-to-reserved `replaceState` row is unchanged. Status stays `draft`.
+- [ ] `specification/components/content-modal.md` §3, §7–§9 — `status` adds `not-found`, plus `notFoundHref`, the two labels, the `helpProseStyles` adoption, the new stories and new criteria `CDLG-AC-9` and `CDLG-AC-10` (T4). CEM is now eight fields. Status stays `implemented`, and the prose appearance remains draft-only.
+- [ ] `specification/README.md` §Specs — Add the `help-documentation.md` row with a matching status. Mention `decision-checklist.md` and `templates/` under Other directories.
+- [ ] `specification/TODO.md` — TODO-12: point to `help-corpus-models.md` and the pending list. TODO-40: standalone reference is now `/help/concepts`, and formulas use `:::details` (HELP-W-15).
+- [ ] `specification/HUMAN.md` — Update the content-modal styling item to the new draft states. Add "Create `write-help` and `review-help` in agent-workflow" and the manual VoiceOver/NVDA check of not-found and help prose. Resolve the dynamic-topics decision.
+- [ ] `specification/plans/README.md` — Rows for the three new stubs and the narrowed `router-help-history-and-dynamic-topics.md`.
+- [ ] `AGENTS.md` §Verification Commands — `bun run docs:accept` (T5) and `bun run audit:docs` (T6). §Rules gains a **Help documentation** bullet (T8).
+- [ ] `README.md` §Upgrade web-ml — Step 5 also runs `bun test tests/help-coverage.test.ts tests/help-facts.test.ts` and resolves failures with the trigger table in `help-documentation.md`.
+- [ ] Delete `specification/notes/help-seed/` (T8, after T7 migrates it).
 
 ## Implementation tasks
 
-### T1 — Documentation Standard, Authoring Templates & Draft Modal Mockup
+### T1 — Help standard, templates, decision checklist and draft modal states
 
 - **Depends on:** None
-- **Risk:** routine
-- **Likely files:** `specification/documentation-standard.md`, `specification/templates/docs/model-family.md`, `specification/templates/docs/model.md`, `specification/templates/docs/hyperparameter.md`, `specification/templates/docs/concept.md`, `specification/templates/docs/workflow.md`, `specification/templates/docs/metric.md`, `specification/mockups/00-2_content-modal.html`, `specification/HUMAN.md`
-- **Must not touch:** `src/`, `scripts/`, `tests/`, `content/en/pages/about.md` — T1 defines the normative standard and draft mockup structure before pipeline/code changes.
+- **Risk:** needs care — every later task and both skills implement these rule IDs verbatim.
+- **Likely files:** `specification/help-documentation.md`, `specification/templates/help/`, `specification/decision-checklist.md`, `specification/mockups/00-2_content-modal.html`, `specification/README.md`, `specification/HUMAN.md`
+- **Must not touch:** `src/`, `scripts/`, `tests/`, `content/` — standard and draft structure only.
 - **Implementation:**
-  - Author `specification/documentation-standard.md` covering: (1) Educational mission & audience (non-technical learners, plain-English reading level Year 9–11, progressive disclosure via optional `<details>` "Mathematical detail" blocks to avoid expertise reversal, plus carried-forward editorial/semantic rules from `plain-english-technical-terms.md`: `<abbr title>` for true abbreviations only, `<dfn>` for defining occurrences, plain machine tokens, "practical equivalence" over developer term `ROPE`, and `Mean Squared Error (MSE)` in the future regression inventory); (2) Complete app-wide Documentation Surface Map across all four workflow steps; (3) Information Architecture & URL rules (`/help`, `/help/workflow/*`, `/help/models/{family}`, `/help/models/{family}/{model-id}`, `/help/models/{family}/{option}`, per-model overrides, `/help/concepts/*`, `/help/metrics/*`, and legacy aliases); (4) Exact front-matter & required-heading contracts for all seven `HelpDocType` archetypes; (5) Shared-concept authoring & `::concept[slug]` reuse rules; (6) SVG visual, accessibility, and CSP standard (approved palette hex values aligned with `css/root.css` contrast ≥ 4.5:1 text / ≥ 3:1 graphics, mandatory `viewBox` + integer `width`/`height` + `role="img"` + `<title>` + `<desc>` + `aria-labelledby`, prohibition of inline `style="..."` and scripts, `<figure>`/`<figcaption>` usage); (7) Two-tier evaluation standard (CI checks in `bun run audit:docs` + 6-criterion pedagogical review rubric scored 1–5 with ≥4 pass bar) and a deterministic authoring checklist/prompt template for generating new documents.
-  - Create the six reusable Markdown templates under `specification/templates/docs/`.
-  - Update `specification/mockups/00-2_content-modal.html` (preserving `<meta name="status" content="draft" />` and `visual-design.md` §1.1 semantic-HTML-only rules) to include unstyled multi-state comments for: Back button + `<nav aria-label="Breadcrumb">`, `not-found` topic state, missing-model fallback state, `<aside class="concept-callout">`, and `<figure class="help-figure">` SVG illustration. Update the existing `00-2_content-modal.html` entry in `specification/HUMAN.md` §6.
+  - Write `help-documentation.md` with the 12 sections and every rule ID from _Interfaces §2_ and _§6_, using the exact rule-line syntax. Cite each source in §2 by author, title and year. Mark it `**Status:** target`.
+  - Write the eight templates, each with complete front matter placeholders and the required H2s with one-line guidance.
+  - Write `decision-checklist.md` with the two items in _Specification changes_.
+  - Add `<!-- NotFound -->`, `<!-- HelpProse -->` and `<!-- / … -->` fragments to `00-2_content-modal.html` (keeping `status="draft"`), using the exact element and class structure from _Interfaces §4–§5_.
+  - Add the `help-documentation.md` row (status `target`) to `README.md`.
+  - Update the HUMAN.md content-modal styling item.
 - **Acceptance criteria:**
-  - [ ] `DOC-STD-1`: `specification/documentation-standard.md` defines all 7 archetypes, required front matter, British English rules, SVG CSP/a11y/palette rules, `::concept[slug]` contract, and the automated + rubric evaluation criteria with zero unresolved TBDs.
-  - [ ] `DOC-STD-2`: All six templates under `specification/templates/docs/` match the front-matter and heading schemas defined in `specification/documentation-standard.md`.
-  - [ ] `DOC-STD-3`: `specification/mockups/00-2_content-modal.html` remains `status="draft"`, uses only semantic HTML and existing classes, and passes `bun run audit:mockups 00-2_content-modal.html` (or zero new axe violations if mockup server is exercised).
-- **Verification:** `bun run plans:check` / inspect `specification/documentation-standard.md` and `specification/templates/docs/*.md`.
+  - [ ] `DOC-STD-1`: Every rule ID in _Interfaces §6_ appears exactly once as a rule line with the matching layer and level. Every HELP-W and HELP-REV rule in _§2_ appears with layer `review`.
+  - [ ] `DOC-STD-2`: Each template's front matter and H2 list match §3 and §2 item 3 of the standard.
+  - [ ] `DOC-STD-3`: The mockup stays a draft and introduces no new axe violations.
+- **Verification:** `bun run audit:mockups specification/mockups/00-2_content-modal.html` / `bun run plans:check`
 - **Progress:** [ ] Not started
 
-### T2 — Content Build Pipeline: Hierarchical `help` Domain, Co-located SVGs, Internal Links & `::concept[slug]`
+### T2 — `help` domain, directives and links in the content pipeline
 
 - **Depends on:** T1
-- **Risk:** needs care — modifies the Markdown compiler, fragment security policy, runtime sanitiser, and build asset graph; must preserve strict XSS/CSP guarantees and all existing `CNT-*` tests.
-- **Likely files:** `src/types/content.ts`, `src/common/content/fragment-policy.ts`, `src/common/content/sanitise-fragment.ts`, `src/common/content/content-loader.ts`, `scripts/markdown.ts`, `scripts/build-content.ts`, `scripts/build-assets.ts`, `scripts/build-public-assets.ts`, `tests/content-policy.test.ts`, `tests/content-markdown.test.ts`, `tests/build-content.test.ts`, `tests/content-loader.test.ts`
-- **Must not touch:** `src/router/`, `src/features/`, `content/en/pages/about.md` — keep pipeline and security policy changes cleanly isolated and unit-tested before router/UI integration.
+- **Risk:** needs care — changes the Markdown compiler and the shared sanitiser policy.
+- **Likely files:** `src/types/content.ts`, `src/common/content/fragment-policy.ts`, `src/common/content/sanitise-fragment.ts`, `src/common/content/content-loader.ts`, `scripts/build-content.ts`, `scripts/markdown.ts`, `scripts/help/`, `tests/build-content.test.ts`, `tests/content-markdown.test.ts`, `tests/content-policy.test.ts`, `tests/content-loader.test.ts`, `tests/fixtures/content/`
+- **Must not touch:** `src/router/`, `src/features/`, `content/` — real content moves in T4.
 - **Implementation:**
-  - Extend `src/types/content.ts` with `'help'` in `ContentDomain`, `HelpDocType`, `HelpBreadcrumb`, `HelpEntry`, and `ContentEntryMap['help']`.
-  - Update `src/common/content/fragment-policy.ts` and `sanitise-fragment.ts`:
-    - Allow semantic tags `aside`, `figure`, `figcaption`, `details`, `summary`, `dl`, `dt`, `dd`.
-    - Allow closed class allow-list (`concept-callout`, `concept-callout-title`, `concept-callout-body`, `concept-callout-link`, `help-figure`, `help-svg`), `aria-label` on `aside`, and positive integer `width`/`height` on `img`.
-    - Update `isAllowedHref` to allow root-absolute internal links `/about`, `/privacy`, `/help`, and `/help/{kebab-segments}` (with optional `#anchor`), strictly rejecting `/content/*`, `/datasets/*`, `//`, `/\`, `..`, `javascript:`, `data:`, and `vbscript:`.
-    - Update `isAllowedImageSrc` to allow root-absolute `/assets/...` and `/content/...` (rejecting traversal/protocol-relative URLs).
-  - Extract a reusable SVG XML/CSP/SVGO validator helper (sharing `SaxNamespaceParser` + `svgo` logic with `scripts/build-public-assets.ts`) that rejects inline `style="..."` attributes, `<script>`, `on*` handlers, and external references in content SVGs while preserving `viewBox`, `width`, `height`, `<title>`, `<desc>`, `role`, and `aria-labelledby`.
-  - Upgrade `scripts/build-content.ts` and `scripts/markdown.ts` to run a two-pass build for `content/{locale}/help/`:
-    - Pass 1 discovers recursive kebab-case `.md` files (`index.md` maps to its directory route; e.g. `help/index.md` → `/help`, `help/models/mlp/index.md` → `/help/models/mlp`, `help/models/mlp/activation.md` → `/help/models/mlp/activation`), validates front matter per `HelpDocType`, builds the route + alias + heading + concept registry, and validates `aliases` uniqueness.
-    - Pass 2 expands `::concept[slug]` directives into semantic `<aside class="concept-callout">` blocks (failing on unknown/non-concept/cyclic slugs), resolves co-located `./<name>.svg` images (validating, optimising, emitting to `{outDir}/content/{locale}/help/{relDir}/{name}.svg`, rewriting to `/content/{locale}/help/...svg?v={hash}`, and wrapping standalone images in `<figure class="help-figure">`), validates every internal `/help...` link and `#anchor` against Pass 1, rejects `TODO` placeholder link targets, and emits `{outDir}/content/{locale}/help/index.json` (`version: 1`) with precomputed `breadcrumbs` and `aliases`.
-  - Update `src/common/content/content-loader.ts` to support `loadContentIndex('help', opts)` and `loadHelpEntryByPath(path, opts)` (resolving canonical paths and `aliases`, returning `ContentLoadError('NOT_FOUND')` cleanly for unlisted paths).
-  - Add thorough unit tests (positive + negative/security cases) in `tests/content-policy.test.ts`, `tests/content-markdown.test.ts`, `tests/build-content.test.ts`, and `tests/content-loader.test.ts`.
+  - Add the types from _§3_.
+  - Add recursive discovery for `help` only, keeping `scanDomainFiles` flat for the other domains. Implement HELP-PATH-1/2/3 (with `scripts/help/model-families.ts`, which reads `familyId` from the raw documents in `MODEL_DOCUMENTS`), HELP-META-1, HELP-MD-1 and HELP-LINK-1.
+  - Implement a two-pass build: pass 1 collects entries, titles, concept summaries and children. Pass 2 renders the directives `::concept`, `:::details`, `::children` and `:ui` (`::option-facts` and `::model-settings` are T5) and validates links.
+  - Write `help/index.json` and add `loadHelpEntry`. Allow `content/help-docs.lock.json` in `validateDirectoryLayout`. The help domain may be empty.
+  - Extend `FRAGMENT_POLICY`, `isAllowedHref` and `sanitise-fragment.ts` per _§4_. Rewrite `CNT-P-1` so `/about`, `/privacy`, `/help` and `/help/a-b/c` are allowed, while `/models`, `/content/x`, `/datasets/x`, `//x`, `/help/../x`, `/help/A` and `/help/x?y` are rejected.
+  - Prefix every new build error with its rule ID.
 - **Acceptance criteria:**
-  - [ ] `DOC-PIPE-1`: `FRAGMENT_POLICY` and `sanitiseFragment` allow `/help/...` links, `<aside class="concept-callout">`, `<figure class="help-figure">`, `<details>`/`<summary>`, `<dl>`/`<dt>`/`<dd>`, and `/content/...svg` images while stripping `/content/*` links, `/datasets/*` links, `javascript:` URLs, disallowed classes, and `<script>`/`style` attributes.
-  - [ ] `DOC-PIPE-2`: `buildContent` compiles nested `content/en/help/` fixtures with `index.md`, aliases, co-located SVGs, and `::concept[slug]` embeds into deterministic hashed fragments and `help/index.json` with accurate `breadcrumbs`.
-  - [ ] `DOC-PIPE-3`: `buildContent` fails deterministically on: broken `/help/...` links, broken `#anchors`, `TODO` link targets, unknown or cyclic `::concept[...]` slugs, missing co-located SVGs, SVGs containing inline `style="..."` or `<script>`, duplicate aliases, and invalid `HelpDocType` front matter.
-  - [ ] `DOC-PIPE-4`: Existing `CNT-P-*`, `CNT-M-*`, `CNT-B-*`, and `CNT-L-*` tests pass without regression.
-- **Verification:** `bun test tests/content-policy.test.ts tests/content-markdown.test.ts tests/build-content.test.ts tests/content-loader.test.ts && bun run typecheck`
+  - [ ] `DOC-PIPE-1`: Fixture articles at all eight `docType`s compile to deterministic fragments and an index with correct `parentPath`, `order` and `models`.
+  - [ ] `DOC-PIPE-2`: One failing fixture per build rule HELP-PATH-1/2/3, HELP-META-1, HELP-MD-1 and HELP-LINK-1 asserts the rule-prefixed error. This includes `x.md` plus `x/index.md`, a `#frag` link, a `/help/x#y` link, an unknown directive, a nested `:::details`, a `::children` in a `concept`, a self-referencing `::concept` and a raw `<abbr>`.
+  - [ ] `DOC-PIPE-3`: Sanitiser tests prove the allowed classes and elements survive while a disallowed class, `style` or `onclick` on the new elements is stripped.
+  - [ ] `DOC-PIPE-4`: `loadHelpEntry('/help/constructor')` and an unlisted path throw `NOT_FOUND`, and existing `CNT-*` tests pass.
+- **Verification:** `bun test tests/build-content.test.ts` / `bun test tests/content-markdown.test.ts` / `bun test tests/content-policy.test.ts` / `bun test tests/content-loader.test.ts` / `bun run typecheck` / `bun run lint`
 - **Progress:** [ ] Not started
 
-### T3 — Automated Documentation Quality Evaluator (`bun run audit:docs`)
+### T3 — Co-located SVG figures and palette
 
 - **Depends on:** T2
-- **Risk:** routine
-- **Likely files:** `scripts/evaluate-docs.ts`, `src/features/models/model-help-map.ts`, `package.json`, `tests/evaluate-docs.test.ts`, `tests/model-help-map.test.ts`
-- **Must not touch:** `src/router/`, `src/features/shell/`, `content/en/pages/about.md` — T3 builds the canonical model-help map and automated evaluator; UI wiring follows in T4–T5.
+- **Risk:** needs care — asset emission, cache-busting and SVG safety.
+- **Likely files:** `scripts/build-content.ts`, `scripts/markdown.ts`, `scripts/build-public-assets.ts`, `scripts/help/`, `tests/build-content.test.ts`, `tests/help-svg-palette.test.ts`, `tests/fixtures/content/`
+- **Must not touch:** `src/router/`, `src/features/`, `content/`
 - **Implementation:**
-  - Create `src/features/models/model-help-map.ts` exporting pure functions: `getModelFamilySlug(modelId)`, `getModelHelpPath(modelId)`, `getHyperparameterHelpPath(modelId, optionName)`, `getFixedOptionHelpPath(optionName)`, `getMulticlassHelpPath()`, and `listExpectedModelHelpEntries()` covering all 8 classifiers and all 40 exposed controls (37 unique hyperparameter paths) derived from `MODEL_OPTION_POLICY` and `model-catalogue.ts`.
-  - Create `scripts/evaluate-docs.ts` and add `"audit:docs": "bun run scripts/evaluate-docs.ts"` to `package.json`. Implement all five deterministic check groups specified in _Interfaces and behaviour §5_: (1) model/hyperparameter/workflow coverage against `listExpectedModelHelpEntries()` (supporting `--allow-incomplete` and `--scope <name>` for incremental authoring); (2) archetype front-matter & required-section checks + heading-level continuity; (3) broken link/anchor/concept/`TODO` and orphaned SVG checks; (4) SVG XML, `viewBox`, integer `width`/`height`, `role="img"`, `<title>`, `<desc>`, `aria-labelledby`, zero inline `style`, and WCAG AA contrast validation on hex fills/strokes; (5) British English prose linter (ignoring code spans/blocks/URLs), Flesch-Kincaid grade & paragraph length thresholds, and unlinked concept jargon warnings. Support `--json` output and non-zero exit code on errors.
-  - Author `tests/model-help-map.test.ts` (asserting 100% deterministic mapping of every active classifier and every exposed option in `MODEL_OPTION_POLICY`) and `tests/evaluate-docs.test.ts` (synthetic pass/fail fixtures for every single evaluator rule, including US spelling in prose vs allowed backticked `` `nNeighbors` ``, H1→H3 skip, inline SVG `style`, low-contrast SVG text, and missing concept link warning).
+  - Extract a shared SVG validator from `build-public-assets.ts` (keeping its current behaviour for `public/`) and add the HELP-FIG-2 checks.
+  - Optimise help SVGs with `preset-default`, overriding `cleanupIds`, `inlineStyles` and `minifyStyles` to `false`, then re-validate the output.
+  - Emit to `{outDir}/content/{locale}/help/{relDir}/{name}.svg` and rewrite to `/content/{locale}/help/{relDir}/{name}.svg?v={first 12 hex of SHA-256 of the optimised bytes}`, with `width` and `height` copied from the SVG.
+  - Implement HELP-FIG-1/3 and the figure markup from D8. The caption comes from the Markdown image title.
+  - Add `HELP_SVG_PALETTE` and its parity and contrast test.
 - **Acceptance criteria:**
-  - [ ] `DOC-EVAL-1`: `model-help-map.ts` maps all 8 classifiers in `model-catalogue.ts` and all 40 exposed controls in `MODEL_OPTION_POLICY` to valid canonical `/help/models/...` paths (37 unique hyperparameter paths).
-  - [ ] `DOC-EVAL-2`: `scripts/evaluate-docs.ts` catches every negative fixture (missing front matter, missing required archetype heading, skipped heading level, `TODO` placeholder, US spelling in prose, inline SVG `style`, missing SVG `<title>`/`<desc>`, low-contrast SVG text, orphaned SVG, missing exposed hyperparameter coverage) and passes clean fixtures (including backticked US API identifiers like `` `binarize` `` and `` `nNeighbors` ``).
-  - [ ] `DOC-EVAL-3`: `bun run audit:docs --json` emits valid JSON with per-file pass/warn/error diagnostics and summary coverage counts.
-- **Verification:** `bun test tests/model-help-map.test.ts tests/evaluate-docs.test.ts && bun run typecheck && bun run lint`
+  - [ ] `DOC-FIG-1`: A fixture SVG with `<title>`, `viewBox` and a background `rect` builds into a hashed, validated output referenced by a `figure` with alt and figcaption.
+  - [ ] `DOC-FIG-2`: Failing fixtures cover `style=`, a `<style>` element, `<script>`, `onload=`, an external `href`, `<image>`, `foreignObject`, a missing `viewBox`, `width="100%"`, a missing file, an inline (non-standalone) image, an orphan SVG, and an SVG whose `<title>` an optimiser would strip (post-validation).
+  - [ ] `DOC-FIG-3`: `tests/help-svg-palette.test.ts` passes and fails when a palette value differs from `css/root.css`.
+  - [ ] `DOC-FIG-4`: `public/` SVG optimisation output is byte-identical before and after the refactor.
+- **Verification:** `bun test tests/build-content.test.ts` / `bun test tests/help-svg-palette.test.ts` / `bun run build` / `bun run typecheck` / `bun run lint`
 - **Progress:** [ ] Not started
 
-### T4 — Hierarchical `/help/...` Router, In-Modal Breadcrumbs & Back/Forward, Prose Styles & Unified Model Descriptions
+### T4 — Open Help routes, not-found state, route registry, prose styles and page migration
 
 - **Depends on:** T2, T3
-- **Risk:** needs care — modifies browser History API transitions, native `<dialog>` focus management, closed component API (`app-content-dialog`), and shared styles; must obey `lit-component-implementer`, `COMPONENTS.md` §3–§10, and `tests/style-tokens.test.ts`.
-- **Likely files:** `src/types/routes.ts`, `src/router/reserved-content.ts`, `src/router/route-parser.ts`, `src/router/router.ts`, `src/styles/help-prose.styles.ts`, `src/styles/help-prose.stories.ts`, `src/features/shell/app-content-dialog.ts`, `src/features/shell/app-content-dialog.stories.ts`, `src/features/shell/app-content-modal.ts`, `src/features/models/app-model-builder-view.ts`, `src/features/models/app-model-description-dialog.ts`, `tests/router-and-navigation.test.ts`, `tests/custom-elements-manifest.test.ts`, `tests/content-dialog.e2e.ts`, `tests/content.e2e.ts`, `tests/models-setup.e2e.ts`, `tests/style-tokens.test.ts`
-- **Must not touch:** `content/`, `scripts/evaluate-docs.ts` — keep router and shell UI cleanly tested with unit/story/E2E fixtures before bulk content authoring in T6–T9.
+- **Risk:** needs care — router parsing, closed component API, and moving live Help content without URL changes.
+- **Likely files:** `src/types/routes.ts`, `src/router/reserved-content.ts`, `src/router/help-routes.ts`, `src/router/route-parser.ts`, `src/router/router.ts`, `src/features/shell/app-content-modal.ts`, `src/features/shell/app-content-dialog.ts`, `src/features/shell/app-content-dialog.stories.ts`, `src/features/shell/app-sidebar.ts`, `src/features/target/app-target-view.ts`, `src/features/models/app-model-builder-view.ts`, `src/features/models/app-training-setup.ts`, `src/styles/help-prose.styles.ts`, `scripts/build-content.ts`, `content/en/pages/help.md`, `content/en/pages/select-features.md`, `content/en/pages/configure-model.md`, `content/en/pages/training-setup.md`, `content/en/help/`, `tests/router-and-navigation.test.ts`, `tests/content-policy.test.ts`, `tests/custom-elements-manifest.test.ts`, `tests/content-dialog.e2e.ts`, `tests/content.e2e.ts`, `tests/style-tokens.test.ts`
+- **Must not touch:** `src/features/models/app-model-configuration.ts`, `src/features/models/app-model-description-dialog.ts`, `src/features/data/`, `src/features/results/` — entry points and Model Description belong to `help-entry-points.md`.
 - **Implementation:**
-  - Update `src/types/routes.ts`, `src/router/reserved-content.ts`, `src/router/route-parser.ts`, and `src/router/router.ts`:
-    - Parse `/help` and hierarchical `/help/{kebab}` (1–5 segments) as `kind: 'reserved'`; reject malformed `/help/...` paths as `unknown`.
-    - Track `helpDepth` in `HistoryEntryState`; push history on Help→Help navigation preserving `underlayPath`, `underlayEntryId`, `modalDocumentId`, and `provisional`; export `navigateBackInReserved()`; update `closeReserved()` to call `history.go(-helpDepth)` when owned by `documentId` and `replaceState` to `underlayPath` when direct-loaded.
-    - Ensure `popstate` across Help entries never triggers wizard departure confirmation and preserves draft state and scroll.
-  - Create `src/styles/help-prose.styles.ts` (and co-located `src/styles/help-prose.stories.ts`) using strictly `css/root.css` tokens (zero literal colours, zero fallbacks, logical properties, `prefers-reduced-motion`, 2px `--focus-ring` outlines) styling `.modal-breadcrumbs`, `.modal-back`, `.modal-prose`, `figure.help-figure`, `img.help-svg`, `aside.concept-callout`, responsive prose tables, `<details>` math disclosures, and `<dl>` lists.
-  - Update `<app-content-dialog>` closed public API per _Interfaces and behaviour §4_ (`breadcrumbs`, `canGoBack`, `status: 'loading' | 'ready' | 'not-found' | 'error'`, `fallback`, updated `ContentDialogLabels`, `app-content-dialog-back` event, JSDoc/CEM tags). Keep `<dialog class="modal" closedby="any">` mounted across in-modal article transitions, scroll `.modal-content` to top and focus modal `<h2>` on article switch, and preserve native browser focus return to the workflow invoker on close.
-  - Update `<app-content-modal>` to load `'help'` entries for `/help*` (falling back gracefully to `'pages'` if legacy `pages` still exist during transition until T6 removes duplicates), resolve `aliases` & `breadcrumbs`, show library JSON `fallback` when a `/help/models/{family}/{model-id}` article is missing, update `document.title`, and wire `app-content-dialog-back` → `navigateBackInReserved()`.
-  - Update `<app-model-builder-view>` so clicking **Model Description** on any `<app-model-card>` navigates to `getModelHelpPath(modelId)` via `openReserved(...)` (replacing transient `<app-model-description-dialog>` invocation; remove unused dialog state/import in the builder and check if `app-model-description-dialog.ts` has any remaining consumers before deleting or deprecating).
-  - Update Storybook stories (`app-content-dialog.stories.ts` covering Loading, Ready with SVGs & Concept Callout, Breadcrumbs + Back, NotFound, MissingModelFallback, Error, LongHeading, RTL + Do/Don't docs) and regenerate/verify CEM (`tests/custom-elements-manifest.test.ts`).
-  - Update/add Playwright & unit tests (`tests/router-and-navigation.test.ts`, `tests/content-dialog.e2e.ts`, `tests/content.e2e.ts`, `tests/models-setup.e2e.ts`).
+  - Implement _Interfaces §5_.
+  - Move the four pages with `git mv` to `content/en/help/index.md`, `select-features.md`, `configure-model.md` and `training-setup.md`. Add front matter: `docType` (`hub` for index, `workflow` for the others), `description`, `order`, and `surfaces` (`src/features/models/app-model-builder-view.ts` for select-features and configure-model, `src/features/models/app-training-setup.ts` for training-setup). Keep each existing title and body unchanged, except that `index.md` gains `## Browse Help` followed by `::children`.
+  - Replace the help literals in the five UI files with `HELP_ROUTES`.
+  - Change the tests whose meaning changes:
+    - `WML-P2-ROUTE-1` and `MW-HELP-1` now assert that `/help/other-topic` and `/help/unlisted-topic` parse as reserved, while `/help/select-features/extra/a/b/c`, `/help/Bad`, `/help/a_b` and `/help/` plus an empty segment remain unknown.
+    - `CNT-P-3` asserts the two-key `RESERVED_CONTENT` and the `HELP_ROUTES` values.
+  - Add stories and regenerate CEM.
 - **Acceptance criteria:**
-  - [ ] `DOC-NAV-1`: `parseRoute` accepts valid hierarchical `/help/{segments}` (up to 5 kebab-case segments) and rejects malformed/uppercase/traversal paths as `unknown`.
-  - [ ] `DOC-NAV-2`: Multi-hop Help navigation (`Workflow` → `Help A` → `Help B` → `Help C`) pushes `helpDepth` 1→2→3; clicking modal Back or browser Back steps C→B→A without closing the modal or triggering wizard departure guards; clicking Close or pressing Escape returns directly to the workflow underlay in one step with invoker focus and unsaved form edits preserved.
-  - [ ] `DOC-NAV-3`: Direct load of `/help/models/mlp/activation` renders the article over the resumed underlay; Close/Esc replaces to the underlay; an unlisted valid slug (`/help/nonexistent-topic`) renders `status="not-found"` with a link to `/help`, distinct from network `status="error"`.
-  - [ ] `DOC-NAV-4`: Clicking **Model Description** on a model card opens `/help/models/{family}/{model-id}` in `<app-content-modal>`, displays authored prose or library-JSON fallback cleanly, and returns focus to the card button on close.
-  - [ ] `DOC-NAV-5`: `bun run storybook:manifest`, `tests/custom-elements-manifest.test.ts`, `tests/style-tokens.test.ts`, and `bun run test:stories` pass across Chromium, Firefox, and WebKit with zero axe violations (including LongHeading and RTL).
-- **Verification:** `bun test tests/router-and-navigation.test.ts tests/custom-elements-manifest.test.ts tests/style-tokens.test.ts && bun run storybook:manifest && bun run test:stories && bun run test:e2e tests/content-dialog.e2e.ts tests/content.e2e.ts tests/models-setup.e2e.ts`
+  - [ ] `DOC-NAV-1`: All existing `CNT-*`, `CDLG-*`, `MW-HELP-*`, `WML-P2-ROUTE-*` and `FOCUS-AC-*` tests pass, as do the `/help` assertions in `tests/models-setup.e2e.ts` and `tests/training-setup.e2e.ts`, with the four Help URLs showing the same titles and body text.
+  - [ ] `CDLG-AC-9`: A direct load of `/help/does-not-exist` shows the heading "Help topic not found", the not-found text, and a **Browse all Help topics** link that, when activated, shows `/help` in the same modal with a `replaceState` (history length unchanged). Close returns to the resumed underlay. No alert role and no console error.
+  - [ ] `CDLG-AC-10`: On an unfinished `/models/new` wizard with an edited field, activating the sidebar link to `/help` and then the hub's `::children` link to `/help/configure-model` keeps the modal open with history length unchanged. Close returns to the exact wizard entry with form edits and invoker focus preserved. Browser Back from the second article closes Help.
+  - [ ] `DOC-NAV-2`: `/help/Bad_Path` redirects like any unknown path. `tests/custom-elements-manifest.test.ts` reflects the eight-field contract. Stories `NotFound`, `NotFoundLongText`, `HelpProse` and `HelpProse` RTL pass smoke and axe on three engines.
+  - [ ] `DOC-NAV-3`: A test in `tests/router-and-navigation.test.ts` reads the five files listed under _Codebase context → Help link literals_ and finds no `'/help` or `"/help` string literal, and `tests/style-tokens.test.ts` passes.
+- **Verification:** `bun run check` / `bun run storybook:manifest` / `bun run test:stories` / `bun run test:e2e tests/content.e2e.ts` / `bun run test:e2e tests/content-dialog.e2e.ts` / `bun run test:e2e tests/models-setup.e2e.ts` / `bun run test:e2e tests/training-setup.e2e.ts` / `bun run test:e2e tests/app-shell.e2e.ts` / `bun run build`
 - **Progress:** [ ] Not started
 
-### T5 — App-Wide Contextual Help Entry Points & Per-Hyperparameter Help Links
+### T5 — Generated facts, catalogue parity, coverage ratchet and facts lock
 
-- **Depends on:** T3, T4
-- **Risk:** needs care — updates `<app-model-configuration>` (Tier 2 presentational), `<app-column-details>`, `<app-training-progress>`, `<app-target-view>`, `<app-model-results>`, and `<app-results-view>`; must preserve strict accessibility (`aria-describedby` separation, WCAG 2.5.3 Label in Name, `WML-P1-UI-*`, `TERM-AC-*`) and zero store imports in Tier 2 elements.
-- **Likely files:** `src/features/models/app-model-configuration.ts`, `src/features/models/app-model-configuration.stories.ts`, `src/features/models/model-option-copy.ts`, `src/features/models/app-model-builder-view.ts`, `src/features/models/app-training-progress.ts`, `src/features/data/app-column-details.ts`, `src/features/data/app-dataset-preview.ts`, `src/features/target/app-target-view.ts`, `src/features/results/app-model-results.ts`, `src/features/results/app-results-view.ts`, `src/styles/hyperparameters.styles.ts`, `tests/model-configuration.e2e.ts`, `tests/data-preview.e2e.ts`, `tests/model-results.e2e.ts`, `tests/comparison.e2e.ts`
-- **Must not touch:** `content/`, `src/router/` — UI entry points link to canonical `/help/...` paths wired through `model-help-map.ts` and `app-content-modal`.
+- **Depends on:** T4
+- **Risk:** needs care — introduces CI-blocking gates and imports app modules into build code.
+- **Likely files:** `scripts/help/`, `scripts/markdown.ts`, `scripts/build-content.ts`, `scripts/accept-docs.ts`, `src/features/models/model-catalogue.ts`, `src/features/models/model-option-copy.ts`, `src/features/models/model-option-copy-data.ts`, `content/help-docs.lock.json`, `package.json`, `AGENTS.md`, `tests/help-coverage.test.ts`, `tests/help-facts.test.ts`, `tests/model-catalogue.test.ts`, `tests/content-markdown.test.ts`, `tests/fixtures/content/`
+- **Must not touch:** `src/features/models/model-presentation-policy.ts`, `content/en/help/` — this task derives facts from the policy and never edits either; article edits are T7.
 - **Implementation:**
-  - In `src/features/models/model-option-copy.ts` and `app-model-builder-view.ts`, populate `OptionLabels.helpPath` for every exposed option using `getHyperparameterHelpPath(modelId, optionName)` and populate `fixedOptionHelpPaths` / `multiclassHelpPath` for `.form-note` items.
-  - In `<app-model-configuration>` (`src/features/models/app-model-configuration.ts`):
-    - Adopt `helpLinkStyles` alongside `hyperparametersStyles`.
-    - In `renderDescription`, keep `#${name}-help` containing ONLY the plain-text description and dependency notes referenced by `aria-describedby`. Render `<a class="help-link field-help-link" href=${copy.helpPath}>${labels.learnMore}<span class="visually-hidden">${labels.learnMoreAbout(copy.name)}</span></a>` immediately after `#${name}-help` inside `.field-description` when `copy.helpPath` is present.
-    - Add contextual Help links beside fixed-option and multiclass `.form-note` lines when their help path is provided.
-  - Wire contextual Help entry points across the other workflow surfaces (all strings via `@nanostores/i18n` in connected views, passed via `labels` to Tier 2 components):
-    - **Step 1 (`app-column-details` via `app-dataset-preview`):** Add `"Learn about data types and statistics"` link to `/help/workflow/inspect-data`.
-    - **Step 2 (`app-target-view`):** Point existing Help link to `/help/workflow/set-target`.
-    - **Step 3.5 (`app-training-progress` via `app-model-builder-view`):** Add `"What happens during training?"` link to `/help/workflow/training-progress`.
-    - **Step 3.6 (`app-model-results`) & Step 4 (`app-results-view`):** Retain existing `What do these results terms mean?` `<details class="terms-disclosure">` unchanged for `TERM-AC-6..8`, and add a link inside the disclosure footer (`"Read the full guide to results and metrics"` → `/help/metrics/understanding-results` in Step 3.6; `"Read the full guide to comparing models"` → `/help/metrics/comparing-models` in Step 4).
-  - Update `src/features/models/app-model-configuration.stories.ts` (including per-field Help links, Long label, RTL) and Playwright tests verifying accessible names, `aria-describedby` exclusion of link text, focus restoration, and zero axe violations across all 8 classifiers.
+  - Add the `::option-facts` and `::model-settings` directives with `scripts/help/option-facts.ts` and `scripts/help/generated-text.ts` (_§4_).
+  - Export `UNSUPPORTED_CLASSIFICATION_MODELS: Readonly<Record<string, string>> = {}` (id → reason, with TSDoc) from `model-catalogue.ts` and add `MOD-CAT-2` to `tests/model-catalogue.test.ts`, reading the installed `index.json`.
+  - Add the coverage and facts functions in `scripts/help/coverage.ts` and `scripts/help/lock.ts`, and tests HELP-COV-1..4, HELP-FACT-1 and HELP-FAM-1.
+  - Write `scripts/accept-docs.ts` and the `docs:accept` script. Initialise the lock with all 8 classifiers and all 40 exposed options as pending, and with accepted entries for the four migrated pages (`reviewedBy` is the implementer's identity; previously reviewed under `plain-english-technical-terms`).
+  - Add `bun run docs:accept` to `AGENTS.md` Verification Commands.
 - **Acceptance criteria:**
-  - [ ] `DOC-UI-1`: Every exposed hyperparameter across all 8 classifiers renders a native `<a class="help-link">` pointing to its exact `getHyperparameterHelpPath(modelId, optionName)` target, with a unique accessible name containing visible `"Learn more"` (WCAG 2.5.3) and excluded from the control's `aria-describedby` accessible description.
-  - [ ] `DOC-UI-2`: Activating any hyperparameter Help link opens the Help modal over the builder without discarding unsaved hyperparameter edits, and closing restores focus to that exact link.
-  - [ ] `DOC-UI-3`: Contextual Help links exist and open the matching Help route across Step 1 (`inspect-data`), Step 2 (`set-target`), Step 3.1 (`models/{family}/{model-id}`), Step 3.2 (`select-features`), Step 3.3 (`configure-model` + per-option), Step 3.4 (`training-setup`), Step 3.5 (`training-progress`), Step 3.6 (`understanding-results`), and Step 4 (`comparing-models`).
-  - [ ] `DOC-UI-4`: `tests/style-tokens.test.ts`, `bun run test:stories`, and `tests/model-configuration.e2e.ts` pass with zero regressions on `WML-P1-UI-*`, `TERM-AC-*`, and `DATA-PRE-2`.
-- **Verification:** `bun test tests/style-tokens.test.ts && bun run test:stories && bun run test:e2e tests/model-configuration.e2e.ts tests/data-preview.e2e.ts tests/model-results.e2e.ts tests/comparison.e2e.ts`
+  - [ ] `DOC-SYNC-1`: A fixture hyperparameter article for an option shared by two fixture-declared models renders one column per model with the default, choices or range, "Used when" and hint rows taken from the real policy and copy. Changing a fixture catalogue default changes the rendered cell and the `factsHash`.
+  - [ ] `DOC-SYNC-2`: Each gate has a passing case and a failing case, with fixture lock and content: HELP-COV-1/2 (missing article not pending), HELP-COV-3 (documented, unknown and non-exposed pending keys), HELP-COV-4 (duplicate pair, hidden option), HELP-FACT-1 (content edit, facts change, missing entry, stale entry, each with its distinct message) and HELP-FAM-1.
+  - [ ] `DOC-SYNC-3`: `MOD-CAT-2` passes on the installed catalogue and fails for a synthetic extra classification id unless it is listed in `UNSUPPORTED_CLASSIFICATION_MODELS`.
+  - [ ] `DOC-SYNC-4`: `docs:accept` refuses on an audit or build error, never adds pending keys implicitly, rejects `--add-pending` for documented or non-exposed keys, and leaves the real lock passing all gates.
+- **Verification:** `bun run check` / `bun run build` / `bun run lint`
 - **Progress:** [ ] Not started
 
-### T6 — Author Help Hub, 6 Workflow Guides, 2 Results/Comparison Guides & 16 Shared Concept Articles (with SVGs)
+### T6 — Audit engine, `audit:docs`, rule registry and UI-label checks
 
-- **Depends on:** T2, T3, T4
+- **Depends on:** T3, T5
 - **Risk:** routine
-- **Likely files:** `content/en/help/index.md`, `content/en/help/workflow/`, `content/en/help/metrics/`, `content/en/help/concepts/`, `content/en/pages/help.md`, `content/en/pages/select-features.md`, `content/en/pages/configure-model.md`, `content/en/pages/training-setup.md`
-- **Must not touch:** `content/en/pages/about.md`, `content/en/pages/privacy-policy.md`, `content/en/pages/terms-and-conditions.md`, `src/` — keep legal/about pages untouched and isolate authoring to `content/en/help/` (removing the four superseded duplicate Help files from `content/en/pages/` once migrated).
+- **Likely files:** `scripts/help/`, `scripts/audit-docs.ts`, `scripts/accept-docs.ts`, `package.json`, `AGENTS.md`, `tests/help-audit.test.ts`, `tests/help-rules.test.ts`, `tests/help-ui-labels.test.ts`, `tests/fixtures/content/`, `content/en/help/`
+- **Must not touch:** `src/` — the audit reads app modules but changes none. Edits to `content/en/help/` are limited to fixing audit errors in the migrated pages, followed by `docs:accept`.
 - **Implementation:**
-  - Author `content/en/help/index.md` (`docType: hub`) organising all Workflow Guides, Model Families, Results & Metrics Guides, and Core Concepts in clear plain-English tables/lists (initial model-family links may temporarily target stub/index or be validated with `--scope core` until T7–T9 land; keep every link in `index.md` valid at build time by either authoring the six family `index.md` files in T7–T9 and adding their hub links as each family lands, OR creating valid links in sync—specifically: include Workflow, Metrics, and Concepts links in T6, and add each Model Family row to `index.md` in T7, T8, T9 so `bun run build` stays 100% green after EVERY single task commit!).
-  - Author all **16 core shared concept articles** under `content/en/help/concepts/` (each with canonical `summary`, concrete Iris/Penguins/Credit example, optional `<details>` deeper mathematical note, and bespoke CSP-clean WCAG-AA SVG where visual):
-    - `sigmoid.md` (+ `sigmoid-curve.svg` set as `summarySvg`), `regularisation.md` (+ `regularisation-tradeoff.svg`), `solvers-and-gradient-descent.md` (+ `gradient-descent-steps.svg`), `stopping-tolerance.md` (+ `stopping-tolerance.svg`), `overfitting-and-underfitting.md` (+ `overfitting-underfitting.svg`), `class-weights-and-imbalance.md` (+ `class-weights.svg`), `distance-metrics.md` (+ `euclidean-vs-manhattan.svg`), `prior-probability.md` (+ `prior-probability.svg`), `smoothing.md` (+ `laplace-smoothing.svg`), `kernels.md` (+ `kernel-trick.svg`), `impurity.md` (+ `impurity-split.svg`), `random-seed.md`, `multiclass-strategies.md` (+ `ovr-vs-ovo.svg`), `data-leakage.md` (+ `data-leakage.svg`), `stratified-splitting.md` (+ `stratified-split.svg`), `probability-calibration.md` (+ `calibration-curve.svg`).
-  - Author all **6 workflow guides** under `content/en/help/workflow/` (each with plain-English guidance, Iris/Penguins examples, `::concept[...]` callouts, and SVG diagrams, explicitly carrying forward every audited term and expansion from `specification/plans/archive/plain-english-technical-terms.md` §§A–C so no definition or `TERM-AC-*` assertion is lost):
-    - `inspect-data.md` (carries forward §A data terms: `Comma-separated values (CSV)`, `Coordinated Universal Time (UTC)`, `Categorical`/`category`/`class`, `Numeric`/`Boolean`/`Date and time`/`Text`, `Empty (missing)`/`Invalid`, `Distinct values`/`Constant`, `Identifier`/`Identifier candidate`, `Min`/`Max`/`Median`/`Mean`, `Histogram`/`range`/`count`, `Freq.`/`%`, with histogram SVG)
-    - `set-target.md` (carries forward §A target/modelling terms: `Target`/`Feature`, `Target leakage`, `Classification`/`Regression`, `Model`/`Algorithm`, eligibility rules, class imbalance)
-    - `select-features.md` (`aliases: ['/help/select-features']`, Iris example, `::concept[data-leakage]`, feature-selection SVG)
-    - `configure-model.md` (`aliases: ['/help/configure-model']`, carries forward all §B setting definitions and `SGD`/`L-BFGS`/`ReLU`/`RBF`/`tanh` expansions, sensible defaults, Manual vs future Tuning, linking to concepts)
-    - `training-setup.md` (`aliases: ['/help/training-setup']`, carries forward all §C definitions — `One-Shot`, `Cross-Validation`, `Held-out rows`, `Training / test split`, `Fold / validation fold`, `Stratified split`, `Refit` — plus One-Shot 80/20 & K-Fold Cross-Validation SVGs, benefits/drawbacks table, `::concept[stratified-splitting]`, and fold limits)
-    - `training-progress.md` (what happens during fitting, folds, refitting, stopping/cancelling)
-  - Author the **2 results & comparison overview guides** under `content/en/help/metrics/`:
-    - `understanding-results.md` (balanced accuracy vs accuracy, baseline, confusion matrix SVG, precision/recall/F1, `#probability-threshold` section with FP/FN trade-off SVG, calibration & `::concept[probability-calibration]`, train–test gap & `::concept[overfitting-and-underfitting]`, aligned with `RESULT_TERM_COPY`)
-    - `comparing-models.md` (compatible evaluation groups & pooling, paired fold strip, confusion differences, Bayesian correlated t-test & practical-equivalence SVG using **"practical equivalence"** in user-facing prose and SVG labels per `plain-english-technical-terms.md` §D—reserving `ROPE` for an optional `<details>` technical note if mentioned—and instance agreement)
-  - Delete superseded `content/en/pages/{help,select-features,configure-model,training-setup}.md` once served from `content/en/help/`.
+  - Implement HELP-LINT-1..8 (`scripts/help/us-spellings.ts`, `scripts/help/abbreviations.ts` with expansions carried forward from `plain-english-technical-terms.md`, and a syllable-count Flesch–Kincaid in `scripts/help/readability.ts`).
+  - Implement HELP-UI-1, the `HELP_RULES` registry with HELP-RULE-1 (parsing `specification/help-documentation.md`), and the CLI flags in _§6_. `--since` uses `git diff --name-only <git-ref>` through `Bun.spawn`, and the impact function is a pure, unit-tested function over a file list.
+  - Make `docs:accept` call the engine.
+  - Add `bun run audit:docs` to `AGENTS.md` Verification Commands.
 - **Acceptance criteria:**
-  - [ ] `DOC-CORE-1`: `bun run build` compiles all 25 core Help articles (1 Hub + 6 Workflow + 2 Metrics + 16 Concepts) and all co-located SVGs with zero link, anchor, concept-embed, or SVG CSP errors.
-  - [ ] `DOC-CORE-2`: `bun run audit:docs --scope core --allow-incomplete` passes with zero errors (British English, heading hierarchy, archetype structure, SVG a11y/contrast/CSP, readability).
-  - [ ] `DOC-CORE-3`: Existing reserved-route E2E tests (`tests/content.e2e.ts`) continue to pass on `/help`, `/help/select-features`, `/help/configure-model`, and `/help/training-setup`.
-  - [ ] `DOC-CORE-4`: Every audited term and expansion from `plain-english-technical-terms.md` §§A–C is preserved across the migrated workflow/concept pages (including `CSV`/`UTC` expansions, `SGD`/`L-BFGS`/`ReLU`/`RBF`/`tanh` expansions, and practical-equivalence wording in `comparing-models.md`).
-- **Verification:** `bun run build && bun run audit:docs --scope core --allow-incomplete && bun run test:e2e tests/content.e2e.ts`
+  - [ ] `DOC-AUD-1`: One failing and one passing fixture per HELP-LINT rule. US spelling in prose fails, while `` `binarize` `` in backticks and `nNeighbors` in a generated block pass. The first-use rule passes for "Stochastic Gradient Descent (SGD)" and fails for a bare "SGD". Warnings never change the exit code.
+  - [ ] `DOC-AUD-2`: `tests/help-rules.test.ts` fails when a spec rule line and `HELP_RULES` disagree on ID, layer or level.
+  - [ ] `DOC-AUD-3`: `tests/help-ui-labels.test.ts` fails for a `:ui[...]` label absent from its surfaces and for a missing surface path.
+  - [ ] `DOC-AUD-4`: `--json` matches the schema in _§6_. The impact function lists a fixture article when its surface or `model-option-copy.ts` is in the changed list. `--facts mlp-classifier.activation` prints the catalogue, policy and copy facts.
+  - [ ] `DOC-AUD-5`: `tests/help-audit.test.ts` passes on real content.
+- **Verification:** `bun run check` / `bun run audit:docs` / `bun run lint`
 - **Progress:** [ ] Not started
 
-### T7 — Author Neural Networks (`mlp`) & Linear Models (`linear-models`) Documentation (2 Families, 2 Classifiers, 15 Hyperparameters + SVGs)
+### T7 — Exemplar articles and production rendering
 
-- **Depends on:** T6
+- **Depends on:** T4, T6
 - **Risk:** routine
-- **Likely files:** `content/en/help/index.md`, `content/en/help/models/mlp/`, `content/en/help/models/linear-models/`, `content/en/help/mlp/`, `content/en/models/logistic-regression.md`
-- **Must not touch:** `src/`, `content/en/pages/about.md` — content authoring and legacy stub cleanup only.
+- **Likely files:** `content/en/help/models/index.md`, `content/en/help/models/neural-networks/`, `content/en/help/concepts/index.md`, `content/en/help/concepts/sigmoid.md`, `content/en/help/concepts/`, `content/help-docs.lock.json`, `tests/content.e2e.ts`, `tests/a11y.e2e.ts`
+- **Must not touch:** `src/`, `scripts/`, `specification/notes/help-seed/` — content and tests only; the note is deleted in T8.
 - **Implementation:**
-  - **MLP (`content/en/help/models/mlp/`):**
-    - Author `index.md` (`model-family`: how multi-layer perceptrons learn, network-layers SVG, links to `mlp-classifier` and notes future regressor support).
-    - Author `mlp-classifier.md` (`model`: classification output, structural opacity vs inspectable models per `VISION.md` §9, complete table linking all 7 hyperparameters, when to choose).
-    - Migrate `content/en/help/mlp/activation.md` + 5 SVGs → `content/en/help/models/mlp/activation.md`: replace `TODO_LINK_TO_MLP_OVERVIEW_DOC` with `/help/models/mlp`, fix `### Why this step matters` → `## Why this step matters`, convert US spellings (`Zero-centered`, `centered`, `behavior`, `generalize`) to British English (`Zero-centred`, `centred`, `behaviour`, `generalise`), strip inline `style="..."` from all 5 SVGs and ensure integer `width`/`height` + WCAG AA contrast, embed `::concept[sigmoid]` under `logistic`, and remove legacy `content/en/help/mlp/`.
-    - Author the 6 remaining MLP hyperparameter articles + bespoke SVGs: `hidden-layer-sizes.md`, `solver.md` (`sgd`, `adam`; embeds `::concept[solvers-and-gradient-descent]`), `learning-rate.md` (notes `sgd`-only applicability, Adam fixed `0.001`), `max-iter.md` (notes 5,000 browser cap), `tol.md` (embeds `::concept[stopping-tolerance]`), `random-state.md` (embeds `::concept[random-seed]`).
-  - **Linear Models (`content/en/help/models/linear-models/`):**
-    - Author `index.md` (`model-family`: straight-line / hyperplane boundaries SVG, links to `logistic-regression` and notes future linear/polynomial regression).
-    - Author `logistic-regression.md` (`model`: embeds `::concept[sigmoid]`, links all 8 exposed hyperparameters + fixed `threshold` note; remove legacy 2-link stub `content/en/models/logistic-regression.md` if no test requires `content/en/models/logistic-regression.md`, or verify `tests/build-content.test.ts` expectations first).
-    - Author all 8 Logistic Regression hyperparameter articles + bespoke SVGs:
-      - Task-specific (`logistic-regression/`): `solver.md` (`sgd`, `adam`, `lbfgs`, `coordinate_descent` + `lbfgs` penalty compatibility note), `penalty.md` (`none`, `l1`, `l2`, `elasticnet`; embeds `::concept[regularisation]`), `c.md` (inverse regularisation strength SVG), `l1-ratio.md` (`elasticnet` mix SVG).
-      - Family-shared: `fit-intercept.md` (intercept shift SVG), `learning-rate.md` (`sgd`-only note), `max-iter.md`, `tol.md` (solver-dependent defaults `1e-6` vs `1e-4`).
-  - Add the MLP and Linear Models entries to `content/en/help/index.md`.
+  - Write `models/index.md` and `concepts/index.md` (`section`, a short intro plus `::children`).
+  - Write `models/neural-networks/index.md` (`model-family`). It describes networks as harder to inspect than the other families (VISION §9) and names the MLP classifier in `## Models in this family`, using `::children`, which is empty until the model article exists, followed by a sentence.
+  - Migrate the seed to `models/neural-networks/activation.md` (`hyperparameter`, `option: activation`, `models: [mlp-classifier]`) with the changes listed under _Required reading_. Its four option sections become H3s under `## How it changes the model`, its guidance becomes `## When to change it`, and it embeds `::concept[sigmoid]` under `logistic`.
+  - Copy the five SVGs beside it, recoloured to the palette with a background `rect`.
+  - Write `concepts/sigmoid.md` (`concept`) with one SVG.
+  - Self-check the five new articles against the rubric (HELP-REV-1..6). Run `bun run docs:accept --reviewer '<implementer identity>'` on them, which also removes `mlp-classifier.activation` from pending. The independent rubric review of these exemplars is part of this plan's `/verify-implementation`. Its findings return as review fixes, and the auditor re-accepts with its own identity.
+  - Add e2e tests against the built server with production headers.
 - **Acceptance criteria:**
-  - [ ] `DOC-FAM-1`: `bun run build` compiles all 19 articles (2 families + 2 models + 15 hyperparameters) and all co-located SVGs cleanly with zero broken links or CSP violations.
-  - [ ] `DOC-FAM-2`: `bun run audit:docs --scope mlp --allow-incomplete` and `bun run audit:docs --scope linear-models --allow-incomplete` pass with zero errors.
-  - [ ] `DOC-FAM-3`: Every option description, default, and dependency (`lbfgs` penalty restriction, `sgd`-only `learningRate`, `elasticnet`-only `l1Ratio`, `maxIter` browser cap) matches installed `web-ml@0.2.0` and `MODEL_OPTION_POLICY`.
-- **Verification:** `bun run build && bun run audit:docs --scope mlp --allow-incomplete && bun run audit:docs --scope linear-models --allow-incomplete`
+  - [ ] `DOC-EX-1`: `bun run build` and `bun run audit:docs` report no errors. The lock has entries for all ten articles. The pending list holds 8 models and 39 options.
+  - [ ] `DOC-EX-2`: Starting from `/help`, a learner reaches `/help/models/neural-networks/activation` through `::children` links alone. All six figures load (`naturalWidth > 0`), the concept callout links to `/help/concepts/sigmoid`, and the console has no CSP or other errors.
+  - [ ] `DOC-EX-3`: Axe WCAG 2.2 AA scans with the existing `tests/a11y.e2e.ts` configuration show zero violations on `/help`, `/help/models/neural-networks`, `/help/models/neural-networks/activation` (with a `:::details` opened), `/help/concepts/sigmoid` and `/help/does-not-exist`. The activation article reflows at a 320 CSS px viewport without horizontal page scroll (tables may scroll inside their wrapper).
+  - [ ] `DOC-EX-4`: The settings table for `activation` shows the copy label, `` `activation` ``, the catalogue default and all four choices with copy labels.
+- **Verification:** `bun run build` / `bun run audit:docs` / `bun run check` / `bun run test:e2e tests/content.e2e.ts` / `bun run test:e2e tests/a11y.e2e.ts`
 - **Progress:** [ ] Not started
 
-### T8 — Author Decision Trees (`decision-trees`) & K-Nearest Neighbours (`knn`) Documentation (2 Families, 2 Classifiers, 9 Hyperparameters + SVGs)
+### T8 — Specification sync and maintainer procedures
 
-- **Depends on:** T6
+- **Depends on:** T7
 - **Risk:** routine
-- **Likely files:** `content/en/help/index.md`, `content/en/help/models/decision-trees/`, `content/en/help/models/knn/`
-- **Must not touch:** `src/`, `content/en/pages/about.md` — content authoring only.
+- **Likely files:** `specification/help-documentation.md`, `specification/content-and-i18n.md`, `specification/app-state-and-navigation.md`, `specification/components/content-modal.md`, `specification/README.md`, `specification/TODO.md`, `specification/HUMAN.md`, `specification/plans/README.md`, `specification/notes/help-seed/`, `AGENTS.md`, `README.md`
+- **Must not touch:** `src/`, `scripts/`, `tests/`, `content/`
 - **Implementation:**
-  - **Decision Trees (`content/en/help/models/decision-trees/`):**
-    - Author `index.md` (`model-family`: yes/no question tree & axis-aligned boundary SVG, interpretability vs overfitting).
-    - Author `decision-tree-classifier.md` (`model`: links all 5 exposed hyperparameters, concrete Iris/Penguins split example).
-    - Author all 5 Decision Tree hyperparameter articles + bespoke SVGs:
-      - Task-specific (`decision-tree-classifier/`): `criterion.md` (`gini`, `entropy`, `log_loss`; embeds `::concept[impurity]`, impurity curves SVG).
-      - Family-shared: `max-depth.md` (shallow vs deep tree overfitting SVG; embeds `::concept[overfitting-and-underfitting]`, `Unlimited` vs custom integer), `min-samples-split.md` (split threshold SVG), `min-samples-leaf.md` (leaf size smoothing SVG), `min-impurity-decrease.md` (pruning threshold SVG).
-  - **KNN (`content/en/help/models/knn/`):**
-    - Author `index.md` (`model-family`: nearest-neighbour voting SVG, lazy learning & feature-scale sensitivity).
-    - Author `k-neighbors-classifier.md` (`model`: links all 4 exposed hyperparameters, dataset-size cap on `k`).
-    - Author all 4 KNN hyperparameter articles + bespoke SVGs:
-      - `n-neighbors.md` (`k=1` vs `k=5` vs `k=25` boundary smoothness SVG; embeds `::concept[overfitting-and-underfitting]`), `weights.md` (`uniform` vs `distance` voting SVG), `metric.md` (`minkowski`, `euclidean`, `manhattan`; embeds `::concept[distance-metrics]`), `p.md` (Minkowski unit-circle shapes for `p=1`, `p=2`, `p=4` SVG; notes `metric === 'minkowski'` dependency).
-  - Add the Decision Trees and KNN entries to `content/en/help/index.md`.
+  - Apply every item under _Specification changes_, in present tense and without history (README §Writing specs).
+  - The `AGENTS.md` §Rules bullet reads: "**Help documentation:** `specification/help-documentation.md` defines Help quality and its gates. Never hand-type model facts; use the generated blocks. Article changes need an independent review recorded with `bun run docs:accept`."
+  - Delete the seed note directory.
 - **Acceptance criteria:**
-  - [ ] `DOC-FAM-4`: `bun run build` compiles all 13 articles (2 families + 2 models + 9 hyperparameters) and all co-located SVGs cleanly.
-  - [ ] `DOC-FAM-5`: `bun run audit:docs --scope decision-trees --allow-incomplete` and `bun run audit:docs --scope knn --allow-incomplete` pass with zero errors.
-  - [ ] `DOC-FAM-6`: Every default, option enum, and dependency (`p` active when `metric === 'minkowski'`, `nNeighbors <= rowCount`, nullable `maxDepth`) matches installed `web-ml@0.2.0` and `MODEL_OPTION_POLICY`.
-- **Verification:** `bun run build && bun run audit:docs --scope decision-trees --allow-incomplete && bun run audit:docs --scope knn --allow-incomplete`
-- **Progress:** [ ] Not started
-
-### T9 — Author Naive Bayes (`naive-bayes`) & Support Vector Machines (`svm`) Documentation (2 Families, 4 Classifiers, 13 Unique Hyperparameters + SVGs)
-
-- **Depends on:** T6
-- **Risk:** routine
-- **Likely files:** `content/en/help/index.md`, `content/en/help/models/naive-bayes/`, `content/en/help/models/svm/`
-- **Must not touch:** `src/`, `content/en/pages/about.md` — content authoring only.
-- **Implementation:**
-  - **Naive Bayes (`content/en/help/models/naive-bayes/`):**
-    - Author `index.md` (`model-family`: Bayes' rule & conditional independence intuition SVG, side-by-side table choosing between Gaussian, Multinomial, and Bernoulli Naive Bayes).
-    - Author all 3 classifier articles (`gaussian-nb.md`, `multinomial-nb.md`, `bernoulli-nb.md`), each with concrete dataset guidance, fixed `priors`/`classPrior` note link, and table linking its hyperparameters.
-    - Author all 5 unique Naive Bayes hyperparameter articles + bespoke SVGs (covering all 8 exposed controls):
-      - Family-shared (Multinomial & Bernoulli): `alpha.md` (embeds `::concept[smoothing]`, Laplace/Lidstone smoothing SVG), `force-alpha.md` (flooring near-zero alpha explanation SVG), `fit-prior.md` (embeds `::concept[prior-probability]`, uniform vs learned priors SVG).
-      - Model-specific: `gaussian-nb/var-smoothing.md` (bell-curve variance stability SVG), `bernoulli-nb/binarize.md` (thresholding continuous inputs into 0/1 SVG, `None` when already binary).
-  - **Support Vector Machines (`content/en/help/models/svm/`):**
-    - Author `index.md` (`model-family`: maximum-margin boundary & support vectors SVG, links to `support-vector-classifier` and notes future `support-vector-regressor`).
-    - Author `support-vector-classifier.md` (`model`: links all 8 exposed hyperparameters, notes probability calibration speed trade-off).
-    - Author all 8 SVC hyperparameter articles + bespoke SVGs:
-      - Family-shared: `c.md` (wide soft margin vs narrow strict margin SVG; embeds `::concept[regularisation]`), `kernel.md` (`rbf`, `linear`, `poly`, `sigmoid` decision-boundary SVGs; embeds `::concept[kernels]` and `::concept[sigmoid]`), `degree.md` (`poly` degree 1/2/3/5 curve complexity SVG; notes `kernel === 'poly'`), `gamma.md` (`scale`, `auto`, custom numeric reach-of-influence SVG; notes `kernel !== 'linear'`), `coef0.md` (`poly`/`sigmoid` intercept shift SVG), `tol.md` (embeds `::concept[stopping-tolerance]`).
-      - Classification-specific (`support-vector-classifier/`): `class-weight.md` (`none` vs `balanced` margin shift on imbalanced data SVG; embeds `::concept[class-weights-and-imbalance]`), `probability.md` (Platt scaling / probability estimates trade-off SVG; embeds `::concept[probability-calibration]`).
-  - Add Naive Bayes and SVM entries to `content/en/help/index.md`.
-  - Run full strict `bun run audit:docs` (without `--allow-incomplete`) to confirm **100% coverage** of all 8 classifiers and all 40 exposed controls (37 unique hyperparameter articles)!
-- **Acceptance criteria:**
-  - [ ] `DOC-FAM-7`: `bun run build` compiles the entire Help corpus with zero broken links, zero orphaned SVGs, and zero CSP/SVGO errors.
-  - [ ] `DOC-FAM-8`: Strict `bun run audit:docs` (no `--allow-incomplete`) exits `0` with 100% coverage across all 6 model families, 8 active classifiers, 40 exposed hyperparameter controls (37 unique pages), 6 workflow guides, 2 metrics guides, 16 core concepts, and the Help Hub.
-- **Verification:** `bun run build && bun run audit:docs && bun test tests/model-help-map.test.ts`
-- **Progress:** [ ] Not started
-
-### T10 — End-to-End Verification, Accessibility & CSP Audit, and Specification Sync
-
-- **Depends on:** T5, T7, T8, T9
-- **Risk:** routine
-- **Likely files:** `tests/a11y.e2e.ts`, `tests/content.e2e.ts`, `specification/README.md`, `specification/content-and-i18n.md`, `specification/app-state-and-navigation.md`, `specification/components/content-modal.md`, `specification/components/model-configuration.md`, `specification/workflow-steps.md`, `specification/visual-design.md`, `specification/TODO.md`, `specification/HUMAN.md`, `specification/plans/README.md`, `specification/plans/router-help-history-and-dynamic-topics.md`, `AGENTS.md`
-- **Must not touch:** `content/en/pages/about.md` — leave unrelated user edits untouched.
-- **Implementation:**
-  - Add Playwright E2E/a11y assertions in `tests/content.e2e.ts` and `tests/a11y.e2e.ts` exercising:
-    - Real built-server (`--dist` / production CSP headers) rendering of `/help/models/mlp/activation` and `/help/models/svm/kernel` confirming all SVG figures load (`naturalWidth > 0`) with **zero CSP console errors**.
-    - Multi-hop journey: Configure Model (MLP) → click Activation `Learn more` → click `Multi-layer Perceptron` → click `Sigmoid function` → click modal Back twice → click Close → verify Configure Model form edits intact and focus restored to the Activation `Learn more` link.
-    - Axe WCAG 2.2 AA scan across Help Hub, a model family page, a classifier page, a hyperparameter page with SVGs + `::concept[...]` callout, and the `not-found` state, plus 320px viewport and 200% zoom checks.
-  - Update all specifications listed under _Specification changes_ (`specification/README.md`, `content-and-i18n.md`, `app-state-and-navigation.md`, `components/content-modal.md`, `components/model-configuration.md`, `workflow-steps.md`, `visual-design.md`, `TODO.md`, `HUMAN.md`, `AGENTS.md`, and supersede `router-help-history-and-dynamic-topics.md`).
-  - Run the complete verification suite from `AGENTS.md`.
-- **Acceptance criteria:**
-  - [ ] `DOC-E2E-1`: Production-header Playwright check renders SVG-illustrated Help articles and concept callouts with zero CSP console errors and zero broken images.
-  - [ ] `DOC-E2E-2`: Strict axe WCAG 2.2 AA scans pass with zero violations on Help Hub, model overview, hyperparameter + SVG + concept callout, and `not-found` states.
-  - [ ] `DOC-E2E-3`: Every item under _Specification changes_ is completed and `bun run plans:check` passes.
-- **Verification:** `bun run check && bun run lint && bun run build && bun run audit:docs && bun test tests/style-tokens.test.ts && bun run test:stories && bun run test:e2e tests/content.e2e.ts tests/content-dialog.e2e.ts tests/model-configuration.e2e.ts tests/models-setup.e2e.ts tests/a11y.e2e.ts && bun run plans:check`
+  - [ ] `DOC-SPEC-1`: Every _Specification changes_ item is done, the README and spec statuses match, and no spec still says root-absolute links are generally allowed or that Help lives in `pages`.
+  - [ ] `DOC-SPEC-2`: `bun run check` passes after the spec edit (HELP-RULE-1 still passes against the final standard).
+- **Verification:** `bun run plans:check` / `bun run check` / `bun run format:check`
 - **Progress:** [ ] Not started
 
 ## Verification and definition of done
 
-- [ ] All task acceptance criteria (`DOC-STD-1..3`, `DOC-PIPE-1..4`, `DOC-EVAL-1..3`, `DOC-NAV-1..5`, `DOC-UI-1..4`, `DOC-CORE-1..4`, `DOC-FAM-1..8`, `DOC-E2E-1..3`) are met.
-- [ ] All verification commands from `AGENTS.md` pass with no new failures: `bun run check`, `bun run lint`, `bun run build`, `bun run audit:docs`, `bun test tests/style-tokens.test.ts`, `bun run test:stories`, `bun run test:e2e`, and `bun run plans:check`.
+- [ ] All task acceptance criteria are met (`DOC-STD-1..3`, `DOC-PIPE-1..4`, `DOC-FIG-1..4`, `DOC-NAV-1..3`, `CDLG-AC-9..10`, `DOC-SYNC-1..4`, `DOC-AUD-1..5`, `DOC-EX-1..4`, `DOC-SPEC-1..2`).
+- [ ] `bun run check`, `bun run lint`, `bun run build`, `bun run audit:docs`, `bun run test:stories` and `bun run test:e2e` pass with no new failures (known failures in `tests/known-failures.ts` excepted).
 - [ ] Type-check, lint, and build checks pass; the staged-file hook and landing gate enforce formatting.
-- [ ] Accessibility (WCAG 2.2 AA), production CSP (`style-src-attr 'none'` on SVGs), sanitisation/XSS safety, and `web-ml@0.2.0` contract compatibility checks are completed.
+- [ ] WCAG 2.2 AA, sanitiser and CSP safety, and `web-ml@0.2.0` contract compatibility have been checked.
 - [ ] Every item under _Specification changes_ is ticked, and specifications match the implemented code.
-- [ ] No unintended changes outside the tasks' likely files (and unrelated local changes in `content/en/pages/about.md` remain untouched).
+- [ ] No unintended changes outside the tasks' likely files, and `content/en/pages/about.md` is untouched.
 
 ## Risks and open questions
 
 - **Blocking:** None
 - **Non-blocking:**
-  - **Draft mockup styling (`00-2_content-modal.html`, `03-4_train-models-3-configure-model.html`):** Both remain `status="draft"` awaiting human visual styling and promotion (`specification/HUMAN.md` §6). Implementation uses existing shared styles (`dialogStyles`, `helpLinkStyles`, `helpProseStyles`) and `css/root.css` tokens only, with no parity entries until promoted.
-  - **Manual assistive-technology and zoom verification:** Automated axe and Playwright checks pass across three engines, while manual Safari/VoiceOver, NVDA/Orca, and real 200% browser zoom verification of the upgraded Help modal breadcrumbs, Back button, concept callouts, and per-hyperparameter links are queued in `specification/HUMAN.md` for maintainer check before V1.
-  - **Wave 2 documentation scope:** Individual deep-dive articles for each of the 37 granular results metrics (beyond `metrics/understanding-results.md` and `metrics/comparing-models.md`) and articles for the 8 currently hidden `web-ml` models (regressors, K-Means, PCA) are tracked as informational coverage targets in `bun run audit:docs` for future authoring waves.
-  - **Unreleased upstream `web-ml` tree options:** `../web-ml` contains unreleased 2026-11-25 JSON additions for `decision-tree-*` (`categoricalFeatures`, `ccpAlpha`, `maxLeafNodes`, `classWeight`) whose `.d.ts` files are not yet rebuilt and which are not in installed `web-ml@0.2.0`. Decision tree documentation in T8 strictly matches installed `web-ml@0.2.0`; when a future `web-ml` release is vendored and exposed in `MODEL_OPTION_POLICY`, `bun run audit:docs` will automatically prompt authoring those new hyperparameter pages.
+  - **Skills created outside this repository:** `write-help` and `review-help` belong in `agent-workflow/domain-skills/` and are symlinked into `.agents/skills/`. They implement §2 item 12 and cite rule IDs. They block the corpus plans but not this plan. T7's exemplar review follows the same procedure by hand. Owner: maintainer (HUMAN.md).
+  - **`aside` landmark:** if the repository's axe configuration includes the best-practice rule `landmark-complementary-is-top-level`, the callout inside the dialog may be flagged. T7's strict scan (`DOC-EX-3`) detects this. The implementer then escalates rather than changing the markup.
+  - **CSP and SVG in `<img>`:** browsers differ on whether a response CSP applies to an SVG rendered as an image. HELP-FIG-2 is defensive and independent of that, and `DOC-EX-2` checks the production headers.
+  - **Self-acceptance:** the lock cannot prove that review was independent. `reviewedBy`, lock diffs in commits and `/verify-implementation` audits are the controls.
+  - **Light scheme only:** figures assume `color-scheme: light`. Adding dark mode later requires a second palette or inline-SVG delivery, which HELP-LINT-5 and the palette test will surface.
+  - **Unreleased upstream tree options:** `../web-ml` has unreleased decision-tree options. When a release that includes them is installed, `WML-P1-OPT-1` and then HELP-COV-2 trigger as described in _§7_.
 
 ## Escalations
 
@@ -526,10 +595,11 @@ None.
 
 ## Change log
 
-| When (UTC)           | Change                    | Reason                                                                                                                     |
-| -------------------- | ------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| 2026-11-26T17:46:20Z | Initial draft             | User request for comprehensive plain-English, SVG-illustrated Help documentation system (A1–A4).                           |
-| 2026-11-26T17:51:12Z | Risk syntax fix           | Invalidated and normalised `Risk: routine` fields to satisfy `plans:check`.                                                |
-| 2026-11-26T17:51:12Z | Invalidated approval      | Fix routine Risk field syntax flagged by plans:check                                                                       |
-| 2026-11-26T18:10:54Z | Invalidated approval      | Carry forward audited terminology, practical-equivalence wording, and semantic rules from plain-english-technical-terms.md |
-| 2026-11-26T18:11:32Z | Terminology carry-forward | Added explicit §§A–E terminology carry-forward, `<abbr>`/`<dfn>` rules, practical-equivalence wording, and `DOC-CORE-4`.   |
+| When (UTC)           | Change                    | Reason                                                                                                                                                                                                                                                                                                                                          |
+| -------------------- | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-26T17:46:20Z | Initial draft             | User request for comprehensive plain-English, SVG-illustrated Help documentation system (A1–A4).                                                                                                                                                                                                                                                |
+| 2026-11-26T17:51:12Z | Risk syntax fix           | Invalidated and normalised `Risk: routine` fields to satisfy `plans:check`.                                                                                                                                                                                                                                                                     |
+| 2026-11-26T17:51:12Z | Invalidated approval      | Fix routine Risk field syntax flagged by plans:check                                                                                                                                                                                                                                                                                            |
+| 2026-11-26T18:10:54Z | Invalidated approval      | Carry forward audited terminology, practical-equivalence wording, and semantic rules from plain-english-technical-terms.md                                                                                                                                                                                                                      |
+| 2026-11-26T18:11:32Z | Terminology carry-forward | Added explicit §§A–E terminology carry-forward, `<abbr>`/`<dfn>` rules, practical-equivalence wording, and `DOC-CORE-4`.                                                                                                                                                                                                                        |
+| 2026-11-26T18:45:17Z | Programme rewrite         | Resolved the 2026-11-26 review findings. The user chose the programme split, unchanged Help history, the coverage ratchet and the tracked seed. Added the standard's rule registry, generated facts, the facts lock, the audit layers, the trigger table and the skill contract. Moved navigation, entry points and corpus into separate stubs. |
