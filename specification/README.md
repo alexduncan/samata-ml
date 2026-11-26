@@ -33,6 +33,7 @@ These rules apply whenever a spec changes, whether in a plan's `Sync specificati
 | [VISION.md](VISION.md)                                               | reference   | Planning a new feature (product intent, educational and ethical goals)                                                   |
 | [workflow-steps.md](workflow-steps.md)                               | partial     | Four workflow steps, provisional model wizard, numbered results and comparison. **Wins on user-facing behaviour.**       |
 | [ARCHITECTURE.md](ARCHITECTURE.md)                                   | partial     | New directories or modules, routing, build, delivery, caching, Bun tooling                                               |
+| [charts.md](charts.md)                                               | implemented | Chart design, colour, accessible interaction and Observable Plot rules                                                   |
 | [COMPONENTS.md](COMPONENTS.md)                                       | partial     | Any Lit component, style primitive, store binding, a11y or i18n in UI                                                    |
 | [visual-design.md](visual-design.md)                                 | partial     | Anything a user sees: colours, type, spacing, tokens, mockup fidelity, contrast. Wins over the mockups on accessibility. |
 | [app-state-and-navigation.md](app-state-and-navigation.md)           | draft       | Routes, provisional binding and departure, fixed Help history, scroll memory and model lifecycle                         |
