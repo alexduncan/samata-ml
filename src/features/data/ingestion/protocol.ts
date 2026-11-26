@@ -7,6 +7,7 @@ export type IngestSource = IngestionSource;
 /** Request sent from the application thread to the storage worker. */
 export type StorageRequest =
 	| { requestId: number; type: 'ingest'; source: IngestSource }
+	| { requestId: number; type: 'validate'; source: IngestSource }
 	| { requestId: number; type: 'cancel'; targetRequestId: number }
 	| { requestId: number; type: 'getMetadata'; datasetId: string }
 	| { requestId: number; type: 'getRows'; datasetId: string; offset: number; limit: number }

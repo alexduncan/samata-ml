@@ -11,6 +11,8 @@ export interface CsvStreamHandlers {
 	onRows(rows: string[][], quoteErrorRowNumbers: number[]): Promise<void>;
 	/** Receives the source byte count once it is known. */
 	onBytes?(bytes: number): void;
+	/** Receives the approximate bytes consumed after each chunk's rows have been handled. */
+	onChunkProcessed?(bytesProcessed: number): void;
 	/** Receives PapaParse's detected delimiter once, when available. */
 	onDelimiter?(delimiter: string): void;
 }
@@ -37,6 +39,7 @@ export function streamCsv(
 		let finished = false;
 		let dataRowsSeen = 0;
 		let delimiterReported = false;
+		let chunksSeen = 0;
 		let parserRef: Papa.Parser | undefined;
 
 		const fail = (error: unknown) => {
@@ -131,6 +134,10 @@ export function streamCsv(
 					)
 					.then(() => {
 						if (finished) return;
+						chunksSeen++;
+						handlers.onChunkProcessed?.(
+							Math.min(totalBytes, chunksSeen * PARSE_CHUNK_BYTES)
+						);
 						if (signal?.aborted) {
 							fail(new IngestionError('CANCELLED', 'CSV parsing was cancelled.'));
 							return;

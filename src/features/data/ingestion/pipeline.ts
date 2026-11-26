@@ -27,6 +27,7 @@ import type {
 import { isTemporalColumnType, type ColumnType } from '../../../types/state';
 import { checkFileSize, checkStorageQuota, fetchWithRetry } from './fetch-source';
 import { streamCsv } from './csv-stream';
+import { uploadDatasetName } from './dataset-name';
 import { IngestionError } from './errors';
 import { PASS_BATCH_ROWS } from './limits';
 import {
@@ -56,6 +57,10 @@ export interface IngestionProgress {
 	totalBytes: number | null;
 	rowsProcessed: number;
 	totalRows: number | null;
+	/** Numeric columns whose statistics are complete; populated only during `statistics`. */
+	columnsProcessed?: number;
+	/** Numeric columns with at least one value; populated only during `statistics`. */
+	columnsTotal?: number;
 }
 
 /** Options and test seams for a single dataset ingestion. */
@@ -69,6 +74,25 @@ export interface RunIngestionOptions {
 	sleep?: (milliseconds: number) => Promise<void>;
 	estimateStorage?: () => Promise<{ quota?: number; usage?: number }>;
 }
+
+/** Options and test seams for a validate-only pass (no IndexedDB access). */
+export interface RunValidationOptions {
+	signal?: AbortSignal;
+	onProgress?: (progress: IngestionProgress) => void;
+	now?: () => number;
+	fetchImpl?: (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+	sleep?: (milliseconds: number) => Promise<void>;
+	estimateStorage?: () => Promise<{ quota?: number; usage?: number }>;
+}
+
+/** Counts returned by a successful validate-only pass. */
+export interface ValidationResult {
+	rowCount: number;
+	columnCount: number;
+}
+
+type ProgressUpdate = Partial<IngestionProgress> & Pick<IngestionProgress, 'phase'>;
+type ProgressReporter = (update: ProgressUpdate, force?: boolean) => void;
 
 interface ResolvedSource {
 	blob: Blob;
@@ -115,13 +139,13 @@ function normaliseFailure(error: unknown, signal?: AbortSignal): Error {
 
 async function resolveSource(
 	source: IngestionSource,
-	options: RunIngestionOptions,
-	report: (progress: Partial<IngestionProgress> & Pick<IngestionProgress, 'phase'>) => void
+	options: Pick<RunIngestionOptions, 'signal' | 'fetchImpl' | 'sleep'>,
+	report: ProgressReporter
 ): Promise<ResolvedSource> {
 	if (source.kind === 'file') {
 		return {
 			blob: source.file,
-			name: source.file.name.replace(/\.csv$/i, '') || 'Uploaded dataset',
+			name: uploadDatasetName(source.file.name),
 			source: 'upload',
 			sampleId: null,
 			profileOptions: {}
@@ -350,13 +374,10 @@ async function scanNumericColumn(
 	}
 }
 
-/** Runs the complete lossless, typed, and statistics passes for one dataset source. */
-export async function runIngestion(
-	source: IngestionSource,
-	options: RunIngestionOptions
-): Promise<DatasetMetadata> {
-	const now = options.now ?? Date.now;
-	const uuid = options.uuid ?? (() => crypto.randomUUID());
+function createReporter(
+	now: () => number,
+	onProgress?: (progress: IngestionProgress) => void
+): ProgressReporter {
 	let progress: IngestionProgress = {
 		phase: 'download',
 		bytesProcessed: 0,
@@ -365,18 +386,142 @@ export async function runIngestion(
 		totalRows: null
 	};
 	let lastProgressAt = -Infinity;
-	const report = (
-		update: Partial<IngestionProgress> & Pick<IngestionProgress, 'phase'>
-	): void => {
+	return (update, force = false) => {
 		const next = { ...progress, ...update };
 		const phaseChanged = next.phase !== progress.phase;
 		const currentTime = now();
 		progress = next;
-		if (phaseChanged || currentTime - lastProgressAt >= 100) {
+		if (force || phaseChanged || currentTime - lastProgressAt >= 100) {
 			lastProgressAt = currentTime;
-			options.onProgress?.({ ...progress });
+			onProgress?.({ ...progress });
 		}
 	};
+}
+
+interface ParsedSource {
+	profiler: DatasetProfiler;
+	delimiter: string;
+}
+
+/**
+ * Streams and profiles the CSV. With a `db` each kept row is written to `raw_records`; without
+ * one (validation) nothing is stored.
+ */
+async function parseAndProfile(
+	resolved: ResolvedSource,
+	byteLength: number,
+	datasetId: string | null,
+	db: IDBPDatabase<SamataDBSchema> | null,
+	signal: AbortSignal | undefined,
+	report: ProgressReporter
+): Promise<ParsedSource> {
+	let profiler: DatasetProfiler | undefined;
+	let rowsParsed = 0;
+	let delimiter = ',';
+	report({
+		phase: 'parse',
+		bytesProcessed: 0,
+		totalBytes: byteLength,
+		rowsProcessed: 0,
+		totalRows: null
+	});
+	await streamCsv(
+		resolved.blob,
+		{
+			onBytes: (bytes) => report({ phase: 'parse', totalBytes: bytes }),
+			onChunkProcessed: (bytesProcessed) => report({ phase: 'parse', bytesProcessed }),
+			onDelimiter: (value) => {
+				delimiter = value;
+			},
+			onHeader: (rawHeader) => {
+				profiler = new DatasetProfiler(rawHeader, resolved.profileOptions);
+				if (
+					resolved.expectedHeader &&
+					(profiler.header.length !== resolved.expectedHeader.length ||
+						profiler.header.some(
+							(name, index) => name !== resolved.expectedHeader![index]
+						))
+				) {
+					throw new IngestionError(
+						'DESCRIPTOR_MISMATCH',
+						'The sample CSV header does not match its descriptor.'
+					);
+				}
+			},
+			onRows: async (rows, quoteErrors) => {
+				throwIfCancelled(signal);
+				if (!profiler) throw new IngestionError('EMPTY_FILE', 'The CSV has no header row.');
+				const quoteErrorRows = new Set(quoteErrors);
+				const records: RawRecord[] = [];
+				for (let index = 0; index < rows.length; index++) {
+					const row = rows[index]!;
+					const rowNumber = rowsParsed + index + 1;
+					const result = quoteErrorRows.has(rowNumber)
+						? profiler.addRow([...row, '__quote_error__'])
+						: profiler.addRow(row);
+					if (result.kept && datasetId) {
+						records.push({
+							datasetId,
+							rowIndex: profiler.rowCount - 1,
+							values: result.values as CellValue[]
+						});
+					}
+				}
+				rowsParsed += rows.length;
+				if (db) await writeRawRows(db, records);
+				report({ phase: 'parse', rowsProcessed: rowsParsed });
+			}
+		},
+		signal
+	);
+	if (!profiler) throw new IngestionError('EMPTY_FILE', 'The CSV has no header row.');
+	if (profiler.rowCount === 0) {
+		throw new IngestionError('NO_DATA_ROWS', 'The CSV has no usable data rows.');
+	}
+	report({ phase: 'parse', bytesProcessed: byteLength, rowsProcessed: rowsParsed }, true);
+	return { profiler, delimiter };
+}
+
+/**
+ * Validates a source without writing to IndexedDB: size and quota checks, then the full parse,
+ * profile and type election. Raises the same error codes as {@link runIngestion} for those steps.
+ */
+export async function runValidation(
+	source: IngestionSource,
+	options: RunValidationOptions = {}
+): Promise<ValidationResult> {
+	const report = createReporter(options.now ?? Date.now, options.onProgress);
+	try {
+		throwIfCancelled(options.signal);
+		const resolved = await resolveSource(source, options, report);
+		const byteLength = resolved.blob.size;
+		checkFileSize(byteLength);
+		await checkStorageQuota(byteLength, options.estimateStorage);
+		throwIfCancelled(options.signal);
+		const { profiler } = await parseAndProfile(
+			resolved,
+			byteLength,
+			null,
+			null,
+			options.signal,
+			report
+		);
+		const elected = profiler.elect();
+		throwIfCancelled(options.signal);
+		return { rowCount: profiler.rowCount, columnCount: elected.length };
+	} catch (error) {
+		throw normaliseFailure(error, options.signal);
+	}
+}
+
+/** Runs the complete lossless, typed, and statistics passes for one dataset source. */
+export async function runIngestion(
+	source: IngestionSource,
+	options: RunIngestionOptions
+): Promise<DatasetMetadata> {
+	const now = options.now ?? Date.now;
+	const uuid = options.uuid ?? (() => crypto.randomUUID());
+	const report = createReporter(now, options.onProgress);
 
 	let datasetId: string | undefined;
 	try {
@@ -387,71 +532,14 @@ export async function runIngestion(
 		await checkStorageQuota(byteLength, options.estimateStorage);
 		throwIfCancelled(options.signal);
 		datasetId = uuid();
-		let profiler: DatasetProfiler | undefined;
-		let rowsParsed = 0;
-		let delimiter = ',';
-		const electedOptions = resolved.profileOptions;
-
-		report({
-			phase: 'parse',
-			bytesProcessed: 0,
-			totalBytes: byteLength,
-			rowsProcessed: 0,
-			totalRows: null
-		});
-		await streamCsv(
-			resolved.blob,
-			{
-				onBytes: (bytes) => report({ phase: 'parse', totalBytes: bytes }),
-				onDelimiter: (value) => {
-					delimiter = value;
-				},
-				onHeader: (rawHeader) => {
-					profiler = new DatasetProfiler(rawHeader, electedOptions);
-					if (
-						resolved.expectedHeader &&
-						(profiler.header.length !== resolved.expectedHeader.length ||
-							profiler.header.some(
-								(name, index) => name !== resolved.expectedHeader![index]
-							))
-					) {
-						throw new IngestionError(
-							'DESCRIPTOR_MISMATCH',
-							'The sample CSV header does not match its descriptor.'
-						);
-					}
-				},
-				onRows: async (rows, quoteErrors) => {
-					throwIfCancelled(options.signal);
-					if (!profiler)
-						throw new IngestionError('EMPTY_FILE', 'The CSV has no header row.');
-					const quoteErrorRows = new Set(quoteErrors);
-					const records: RawRecord[] = [];
-					for (let index = 0; index < rows.length; index++) {
-						const row = rows[index]!;
-						const rowNumber = rowsParsed + index + 1;
-						const result = quoteErrorRows.has(rowNumber)
-							? profiler.addRow([...row, '__quote_error__'])
-							: profiler.addRow(row);
-						if (result.kept) {
-							records.push({
-								datasetId: datasetId!,
-								rowIndex: profiler.rowCount - 1,
-								values: result.values as CellValue[]
-							});
-						}
-					}
-					rowsParsed += rows.length;
-					await writeRawRows(options.db, records);
-					report({ phase: 'parse', rowsProcessed: rowsParsed });
-				}
-			},
-			options.signal
+		const { profiler, delimiter } = await parseAndProfile(
+			resolved,
+			byteLength,
+			datasetId,
+			options.db,
+			options.signal,
+			report
 		);
-		if (!profiler) throw new IngestionError('EMPTY_FILE', 'The CSV has no header row.');
-		if (profiler.rowCount === 0) {
-			throw new IngestionError('NO_DATA_ROWS', 'The CSV has no usable data rows.');
-		}
 
 		const elected = profiler.elect();
 		const columns = elected.map(makeColumnStats);
@@ -547,7 +635,10 @@ export async function runIngestion(
 			}
 			if (records.length === 0) break;
 			offset += records.length;
-			report({ phase: 'typing', rowsProcessed: processedRows, totalRows: profiler.rowCount });
+			report(
+				{ phase: 'typing', rowsProcessed: processedRows, totalRows: profiler.rowCount },
+				offset >= profiler.rowCount
+			);
 		}
 
 		for (const stats of columns) {
@@ -562,11 +653,17 @@ export async function runIngestion(
 					? 'second'
 					: 'minute';
 		}
+		const columnsTotal = columns.filter(
+			(stats) => stats.type === 'numeric' && stats.count > 0
+		).length;
+		let columnsProcessed = 0;
 		report({
 			phase: 'statistics',
 			bytesProcessed: byteLength,
 			rowsProcessed: 0,
-			totalRows: profiler.rowCount
+			totalRows: profiler.rowCount,
+			columnsProcessed,
+			columnsTotal
 		});
 		for (let columnIndex = 0; columnIndex < columns.length; columnIndex++) {
 			const stats = columns[columnIndex]!;
@@ -588,7 +685,9 @@ export async function runIngestion(
 						report({
 							phase: 'statistics',
 							rowsProcessed: rows,
-							totalRows: profiler!.rowCount
+							totalRows: profiler.rowCount,
+							columnsProcessed,
+							columnsTotal
 						})
 				);
 			};
@@ -603,6 +702,17 @@ export async function runIngestion(
 			stats.median = await exactMedian(
 				numericAccumulators.get(columnIndex)!.fine,
 				scanValues
+			);
+			columnsProcessed++;
+			report(
+				{
+					phase: 'statistics',
+					rowsProcessed: profiler.rowCount,
+					totalRows: profiler.rowCount,
+					columnsProcessed,
+					columnsTotal
+				},
+				columnsProcessed === columnsTotal
 			);
 		}
 

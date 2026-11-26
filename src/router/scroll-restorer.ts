@@ -63,9 +63,12 @@ export function recordCurrentScroll(
 			? window.scrollY || document.documentElement?.scrollTop || liveScrollTop
 			: liveScrollTop;
 
+	const left = typeof window !== 'undefined' ? window.scrollX : 0;
+
 	const snapshot: ScrollSnapshot = {
 		viewportWidth,
 		top,
+		left,
 		regions,
 		savedAt: Date.now()
 	};
@@ -150,7 +153,7 @@ export async function restoreScroll(
 			}
 
 			// Perform instant restoration
-			window.scrollTo({ top: snapshot.top, behavior: 'instant' });
+			window.scrollTo({ top: snapshot.top, left: snapshot.left ?? 0, behavior: 'instant' });
 			liveScrollTop = snapshot.top;
 			return true;
 		} finally {

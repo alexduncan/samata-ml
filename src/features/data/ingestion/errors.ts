@@ -1,3 +1,5 @@
+import { MAX_COLUMNS } from './limits';
+
 /** Machine-readable failures emitted by the dataset ingestion pipeline. */
 export type IngestionErrorCode =
 	| 'NETWORK_ERROR'
@@ -43,7 +45,7 @@ export const INGESTION_ERROR_MESSAGES: Record<IngestionErrorCode, string> = {
 	NETWORK_ERROR: 'The dataset could not be downloaded. Check your connection and try again.',
 	HTTP_ERROR: 'The dataset could not be downloaded. Check your connection and try again.',
 	FILE_TOO_LARGE: 'This file exceeds the supported size limit.',
-	TOO_MANY_COLUMNS: 'CSV files may contain at most 256 columns.',
+	TOO_MANY_COLUMNS: `CSV files may contain at most ${MAX_COLUMNS} columns.`,
 	INSUFFICIENT_STORAGE: 'There is not enough browser storage. Free space and try again.',
 	EMPTY_FILE: 'This CSV is empty.',
 	NO_DATA_ROWS: 'This CSV has no usable data rows.',

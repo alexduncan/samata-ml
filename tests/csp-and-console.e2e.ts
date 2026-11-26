@@ -78,16 +78,30 @@ test('BETA-ERR-5: production data, training, results and dialogs stay clean unde
 	await expect(preview.locator('h1')).toContainText('Breast Cancer Wisconsin');
 
 	const table = preview.locator('ui-virtual-table');
+	// The document now scrolls the table: let the load and any scroll restoration settle first.
+	await expect(table.locator('.table-cell').first()).not.toHaveText('');
+	await expect(preview.locator('.status-box')).toHaveCount(0);
 	const row = preview.locator('input#row-number');
-	await row.fill('300');
-	await row.press('Enter');
-	await expect(table.locator('[aria-rowindex="301"]')).toBeInViewport();
-	for (const end of ['top', 'bottom']) {
-		const spacer = table.locator(`.rail-spacer-${end}`);
-		expect(
-			await spacer.evaluate((element) => element.getBoundingClientRect().height)
-		).toBeGreaterThan(0);
-	}
+	// Firefox can ignore a window.scrollTo issued straight after Playwright's own scroll into
+	// view, so repeat the whole Go to row step until the row is shown.
+	await expect(async () => {
+		await row.fill('300');
+		await row.press('Enter');
+		await expect(table.locator('[aria-rowindex="301"]')).toBeInViewport({ timeout: 1500 });
+	}).toPass({ timeout: 15_000 });
+	// Geometry is set through the CSSOM: the rail has the rows' height and rows are translated.
+	const geometry = await table.evaluate((element) => {
+		const root = element.shadowRoot!;
+		const body = root.querySelector<HTMLElement>('.table-body')!;
+		const row = root.querySelector<HTMLElement>('.table-row')!;
+		return {
+			rail: body.getBoundingClientRect().height,
+			rowHeight: row.getBoundingClientRect().height,
+			transform: getComputedStyle(row).transform
+		};
+	});
+	expect(geometry.rail).toBeGreaterThan(geometry.rowHeight * 100);
+	expect(geometry.transform).toMatch(/^matrix\(1, 0, 0, 1, 0, [\d.]+\)$/);
 
 	await page.locator('app-sidebar a[href="/target"]').click();
 	const target = page.getByRole('button', { name: 'Set as Target: Diagnosis' });

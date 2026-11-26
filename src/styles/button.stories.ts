@@ -10,7 +10,7 @@ const meta = {
 		docs: {
 			description: {
 				component:
-					'Do: use a native button with an explicit type and a concise action label. Use .btn-primary for the main action. Don’t: use a button for navigation or remove the visible keyboard focus outline.'
+					'Do: use a native button with an explicit type and a concise action label. Use .btn-primary for the main action and .btn-red only for destructive or discarding actions. Don’t: use a button for navigation, use .btn-red for ordinary actions, or remove the visible keyboard focus outline.'
 			}
 		}
 	},
@@ -24,6 +24,55 @@ export const Default: Story = {};
 /** Main action with the primary treatment. */
 export const Primary: Story = {
 	render: () => html`<button class="btn btn-primary" type="button">Select Dataset</button>`
+};
+/** Destructive action: red border and text, red-100 background on hover. */
+export const Red: Story = {
+	render: () => html`<button class="btn btn-red" type="button">Change Dataset</button>`,
+	play: async ({ canvasElement }) => {
+		const button = within(canvasElement).getByRole('button', { name: 'Change Dataset' });
+		const root = getComputedStyle(document.documentElement);
+		const red700 = root.getPropertyValue('--red-700').trim();
+		const probe = document.createElement('span');
+		probe.style.color = red700;
+		document.body.append(probe);
+		const expected = getComputedStyle(probe).color;
+		probe.remove();
+		const style = getComputedStyle(button);
+		await expect(style.color).toBe(expected);
+		await expect(style.borderTopColor).toBe(expected);
+	}
+};
+/** Red variant with the hover treatment forced for visual review. */
+export const RedHover: Story = {
+	render: () =>
+		html`<button class="btn btn-red" type="button" style="background-color: var(--red-100)">
+			Change Dataset
+		</button>`
+};
+/** Red variant with a visible keyboard focus ring. */
+export const RedFocus: Story = {
+	render: () => html`<button class="btn btn-red" type="button">Change Dataset</button>`,
+	play: async ({ canvasElement }) => {
+		const button = within(canvasElement).getByRole('button', { name: 'Change Dataset' });
+		button.focus();
+		await expect(button).toHaveFocus();
+	}
+};
+/** Red variant with a sixty-character label in a 200px container. */
+export const RedLongLabel: Story = {
+	render: () =>
+		html`<div style="inline-size: 200px">
+			<button class="btn btn-red" type="button">
+				${'Discard everything now '.repeat(4).slice(0, 60)}
+			</button>
+		</div>`
+};
+/** Red variant in document-level right-to-left direction. */
+export const RedRTL: Story = {
+	beforeEach: () => {
+		document.documentElement.dir = 'rtl';
+	},
+	render: () => html`<button class="btn btn-red" type="button">تغيير مجموعة البيانات</button>`
 };
 /** Standard and primary actions together. */
 export const Pair: Story = {

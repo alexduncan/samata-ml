@@ -60,6 +60,7 @@ export function seedTrainingConfirmation(overrides: Partial<TrainingService>): (
 	setTrainingServiceForTesting({ ...createTrainingService(), ...overrides });
 	setStorageClientForTesting({
 		ingest: async () => metadata,
+		validate: async () => ({ rowCount: 0, columnCount: 0 }),
 		getMetadata: async () => metadata,
 		fetchRows: async () => [],
 		deleteDatasetsExcept: async () => {},
