@@ -1,6 +1,6 @@
 # Remediate charts and establish chart design specification
 
-**Status:** ready | **Updated:** 2026-11-26T12:35:18Z
+**Status:** ready | **Updated:** 2026-11-26T12:39:34Z
 **Authors:** Google Antigravity (Gemini 4 Neon High) | **Created:** 2026-11-25T16:05:29Z
 **Verified by:** Google Antigravity (Gemini 4 Neon High) | **Verified:** 2026-11-25T16:53:32Z | **Verification:** approved
 **Verified hash:** sha256:e61d5a40116db6ee228df2cbd0417bc91a9d9c72448a14ac3b2475a78e096b3f
@@ -349,6 +349,7 @@ All presentational elements are Tier 2 (`src/features/results/`), own **no** i18
 
 - [x] **E1 (T1):** The approved T1 requires bun add --exact @observablehq/plot@0.6.18, but the implement skill restricts terminal commands to the repository Verification Commands and formatting/plan gates; bun add is not listed there. The dependency and lockfile cannot be updated through the required procedure under this restriction. **Decision needed:** Can the maintainer add the exact dependency-install command to the repository Verification Commands or otherwise provide an authorised workflow for this upgrade? **Evidence:** T1 Implementation explicitly requires bun add --exact @observablehq/plot@0.6.18; root AGENTS.md Verification Commands does not include bun add; implement skill Non-negotiable rules restrict terminal commands to those commands. Resolved 2026-11-26T12:35:18Z: the user authorised the command; `bun add --exact @observablehq/plot@0.6.18` passed.
 - [x] **E2 (T1):** The formatter is unavailable — **Command:** `bun run format specification/plans/chart-best-practices.md` — **Environment evidence:** `/bin/bash: prettier: command not found` / `error: script "format" exited with code 127`; `node_modules/.bin/prettier` is absent; that path is within the writable worktree; no sandbox denial was reported — **Decision needed:** Can the maintainer provision the repository dependencies so the formatter and verification commands can run? Resolved 2026-11-26T12:35:18Z: `bun run format specification/plans/chart-best-practices.md` passed.
+- [ ] **E3 (T1):** The mandatory modern-web-guidance skill requires a search and retrieval before client-side UI changes, but the implement skill restricts terminal commands to the listed Verification Commands and the guidance runner is not listed. The repository also requires Bun rather than npx. T1 cannot proceed while both requirements apply. **Decision needed:** May the implementer run bunx modern-web-guidance@latest search and retrieve for the relevant UI patterns as an exception to the implement shell restriction? **Evidence:** T1 changes PlotController, styles and accessibility; modern-web-guidance/SKILL.md requires search and retrieval before these changes; the root AGENTS.md Verification Commands do not list the runner.
 
 ## Review fixes
 
@@ -363,6 +364,7 @@ None.
 | 2026-11-26T12:28:47Z | Implement | Codex (GPT-6) | Escalated E2: `bun run format specification/plans/chart-best-practices.md` failed because Prettier is absent; see environment evidence above.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
 
 | 2026-11-26T12:35:18Z | Implement | Codex (GPT-6) | Resolved E1 with user authorisation; `bun add --exact @observablehq/plot@0.6.18` passed. Resolved E2; `bun run format specification/plans/chart-best-practices.md` passed. |
+| 2026-11-26T12:39:34Z | T1 | Codex (GPT-6) | Escalated E3. The mandatory modern-web-guidance skill requires a search and retrieval before client-side UI changes, but the implement skill restricts terminal commands to the listed Verification Commands and the guidance runner is not listed. The repository also requires Bun rather than npx. T1 cannot proceed while both requirements apply. **Decision needed:** May the implementer run bunx modern-web-guidance@latest search and retrieve for the relevant UI patterns as an exception to the implement shell restriction? **Evidence:** T1 changes PlotController, styles and accessibility; modern-web-guidance/SKILL.md requires search and retrieval before these changes; the root AGENTS.md Verification Commands do not list the runner. |
 
 ## Plan review history
 
