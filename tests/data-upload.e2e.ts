@@ -226,7 +226,7 @@ test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
 
 		// 4. Page should still be on selection mode with 12 dataset cards
 		const cards = page.locator('app-dataset-card');
-		await expect(cards).toHaveCount(12);
+		await expect(cards).toHaveCount(11);
 	});
 
 	test('DATA-UP-3: valid CSV file upload succeeds and triggers preview', async ({ page }) => {

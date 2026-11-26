@@ -117,7 +117,7 @@ test.describe('Data Flow, Route & Scroll Integration (DATA-FLOW-1 .. DATA-FLOW-3
 		// 4. Returns to selection mode
 		await expect(page.locator('header.page-header h1')).toHaveText('Select Data');
 		const cards = page.locator('app-dataset-card');
-		await expect(cards).toHaveCount(12);
+		await expect(cards).toHaveCount(11);
 
 		// 5. Sidebar step 1 reverts to default
 		await expect(sidebarStep).not.toContainText('Iris Flower Species');
@@ -125,7 +125,7 @@ test.describe('Data Flow, Route & Scroll Integration (DATA-FLOW-1 .. DATA-FLOW-3
 		// 6. Survives reload
 		await page.reload();
 		await expect(page.locator('header.page-header h1')).toHaveText('Select Data');
-		await expect(cards).toHaveCount(12);
+		await expect(cards).toHaveCount(11);
 	});
 
 	test('DATA-FLOW-3: accessibility, RTL, and keyboard navigation', async ({ page }) => {

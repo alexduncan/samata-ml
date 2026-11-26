@@ -312,6 +312,16 @@ test.describe('Dataset Preview & Column Inspector (DATA-PRE-1 .. DATA-PRE-3)', (
 		await petalLengthBtn.click();
 		await expect(aside).toBeVisible();
 		await expect(aside.locator('.overlay-title h4')).toContainText('petal length');
+		// The selection is persisted through the guarded (asynchronous) state write, so wait for it
+		// to reach storage before reloading.
+		await expect
+			.poll(() =>
+				page.evaluate(() => {
+					const raw = localStorage.getItem('samata-ml:state');
+					return raw ? (JSON.parse(raw) as PersistedAppState).data.selectedColumn : null;
+				})
+			)
+			.toBe('petal length');
 
 		await page.reload();
 

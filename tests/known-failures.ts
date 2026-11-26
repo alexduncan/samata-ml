@@ -46,48 +46,6 @@ export const KNOWN_FAILURES: readonly KnownFailure[] = [
 		human: 'Repair Chromium content-modal and data-preview E2E failures'
 	},
 	{
-		id: 'DATA-FLOW-2',
-		file: 'data-flow.e2e.ts',
-		title: 'DATA-FLOW-2: changing dataset confirms, removes it, updates sidebar and survives reload; cancel leaves state intact',
-		projects: ['chromium', 'firefox', 'webkit'],
-		human: 'Update stale dataset-count and mockup-count E2E expectations'
-	},
-	{
-		id: 'DATA-PRE-2',
-		file: 'data-preview.e2e.ts',
-		title: 'DATA-PRE-2: column inspector stats, distributions, close button and persistence',
-		projects: ['chromium'],
-		human: 'Repair Chromium content-modal and data-preview E2E failures'
-	},
-	{
-		id: 'DATA-UP-2',
-		file: 'data-upload.e2e.ts',
-		title: 'DATA-UP-2: cancel and failure preserve prior dataset state',
-		projects: ['chromium', 'firefox', 'webkit'],
-		human: 'Update stale dataset-count and mockup-count E2E expectations'
-	},
-	{
-		id: 'MOCKUP-REVIEW-1',
-		file: 'mockup-review.e2e.ts',
-		title: 'catalogue renders mockup-index table from /index.json with all 26 mockups',
-		projects: ['chromium', 'firefox', 'webkit'],
-		human: 'Update stale dataset-count and mockup-count E2E expectations'
-	},
-	{
-		id: 'MOCKUP-REVIEW-2',
-		file: 'mockup-review.e2e.ts',
-		title: 'client-side search and status filter update rows live and show empty state',
-		projects: ['chromium', 'firefox', 'webkit'],
-		human: 'Update stale dataset-count and mockup-count E2E expectations'
-	},
-	{
-		id: 'MOCKUP-REVIEW-3',
-		file: 'mockup-review.e2e.ts',
-		title: 'normal preview injects /mockups.css, light-DOM helper, and auto-navigating selector',
-		projects: ['chromium', 'firefox', 'webkit'],
-		human: 'Update stale dataset-count and mockup-count E2E expectations'
-	},
-	{
 		id: 'PARITY-sidebar-steps',
 		file: 'visual-parity.e2e.ts',
 		title: 'PARITY-sidebar-steps',
