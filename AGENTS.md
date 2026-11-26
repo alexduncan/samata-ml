@@ -43,7 +43,7 @@ Bun only: never npm, yarn, pnpm, or `npx` (use `bunx`).
 - `bun run build` — Production build (bundles app + validates sample datasets + compiles `datasheet.md` to HTML for `<dialog>` presentation).
 - `bun run version:release prerelease --dry-run` — Preview the next SemVer version and changelog section without modifying files.
 - `bun run deploy:dry-run` — Run the production build and validate the Cloudflare Workers bundle without deploying.
-- `bun run format <files>` — Prettier on changed files (`bun run format:check` to verify).
+- `bun run format` and `bun run format:check` — Whole-repository formatting for maintainer, CI and baseline work.
 - `bun run test:e2e [file]` — Playwright end-to-end tests (including `tests/visual-parity.e2e.ts` and `tests/a11y.e2e.ts`); servers use this checkout's ports from `scripts/ports.ts`; a result from another checkout's server is not evidence.
 - `bun run server` · `bun run mockups` · `bun run audit:mockups [paths]`.
 - `bun run storybook` · `bun run storybook:build` · `bun run storybook:manifest` · `bun run test:stories`.
@@ -59,6 +59,7 @@ Follow the shared rules in `agent-workflow/AGENTS.md` § Git workflow (summarise
 - One session, one worktree, one session branch. Never `git switch` to `main` or `plan/<slug>` in a session worktree; the primary checkout stays on `main`.
 - Target `main` for specification-only work and `plan/<slug>` for everything belonging to a plan once that branch exists (`implement` creates it with `bun run git:sync plan/<slug> --create`).
 - `bun run git:sync <target>` at the start (it gives a detached worktree its own session branch); commit your own paths explicitly (never `git add -A`, `.` or `-u`) with `{slug} plan|review|T{n}|R{n}|closure: …`, `docs: …`, `fix: …` or `chore: …` subjects; `bun run git:land <target>` after each commit the next session needs and before ending. On `BLOCKED`, stop and report.
+- The tracked `.githooks/pre-commit` formats staged files, and `bun run git:land` checks changed files before landing.
 - Landing non-specification work on `main` needs maintainer approval (`bun run git:land main --maintainer-approved`). `review-codebase` never changes Git state.
 - Never reset, clean, stash or overwrite others' changes, rewrite shared branches, add remotes or push.
 
@@ -74,6 +75,6 @@ Follow the shared rules in `agent-workflow/AGENTS.md` § Git workflow (summarise
 - **Specs stay current:** Keep `specification/` synced in the final task/audit and verify status alignment with `specification/README.md`.
 - **Don't edit:** the upstream checkout beyond the single new pending request allowed in Repository boundary, `node_modules/`, `specification/mockups/` files with `status="ready"` or `status="implemented"` (or `mockups.css`), or `bun.lock` except via `bun add`/`bun remove` when planned. Agents may create or edit `specification/mockups/*.html` only when `<meta name="status" content="draft" />` (or when explicitly authorised by a plan).
 - **Git:** Follow [Git workflow](#git-workflow): commit your own changes before ending a session; never push.
-- **Style:** British English in prose, docs, and UI strings. Prettier: tabs, single quotes, width 100. Exported TypeScript requires TSDoc ([`specification/standards-and-documentation.md`](specification/standards-and-documentation.md)). Run `bun run format <files>` as the final file-editing step.
+- **Style:** British English in prose, docs, and UI strings. Prettier: tabs, single quotes, width 100. Exported TypeScript requires TSDoc ([`specification/standards-and-documentation.md`](specification/standards-and-documentation.md)).
 - **Web platform:** Baseline Widely Available; WCAG 2.2 AA (`COMPONENTS.md` §1, §7).
 - **Reporting:** State exact commands run and real results; explicitly state anything not verified.

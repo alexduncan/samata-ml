@@ -123,14 +123,21 @@ function collectWorkflowViolations(rawYaml: string): string[] {
 		if (verify.steps[0]?.with?.['fetch-depth'] !== 0) {
 			violations.push('verify checkout must set fetch-depth: 0');
 		}
-		const prettierStep = verify.steps[4];
+		const formatStep = verify.steps[4];
 		if (
-			prettierStep?.env?.BASE !==
+			formatStep?.env?.BASE !==
 				'${{ github.event.pull_request.base.sha || github.event.before }}' ||
-			!prettierStep?.run?.includes(
-				"git diff --name-only --diff-filter=ACMR -z \"$BASE\" HEAD -- '*.ts' '*.mjs' '*.js' '*.json' '*.jsonc' '*.md' '*.css' '*.html' '*.yml' '*.yaml' | xargs -0 -r bun run format:check"
+			!formatStep?.run?.includes(
+				"git diff --name-only --diff-filter=ACMR -z \"$BASE\" HEAD -- '*.ts' '*.tsx' '*.mjs' '*.cjs' '*.js' '*.jsx' '*.json' '*.jsonc' '*.css' '*.html' '*.yml' '*.yaml' |\n    xargs -0 -r bunx --no-install prettier --check --"
 			) ||
-			!prettierStep?.run?.includes('^0+$')
+			!formatStep?.run?.includes(
+				'git diff --name-only --diff-filter=ACMR -z "$BASE" HEAD -- \'*.md\' |\n    xargs -0 -r "$RUNNER_TEMP/dprint/dprint" check --config dprint.json --incremental=false --allow-no-files --'
+			) ||
+			!formatStep?.run?.includes('gh release download 0.65.0 --repo dprint/dprint') ||
+			!formatStep?.run?.includes(
+				'gh attestation verify "$dprint_zip" --repo dprint/dprint'
+			) ||
+			!formatStep?.run?.includes('^0+$')
 		) {
 			violations.push('verify step 4 must check formatting of changed files via env BASE');
 		}

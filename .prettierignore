@@ -1,0 +1,11 @@
+**/*.md
+package-lock.json
+.worktrees/
+.claude/worktrees/
+.agent-workflow/
+node_modules/
+specification/plans/archive/
+specification/requests/archive/
+specification/requests/receipts/
+specification/mockups/
+specification/history/
