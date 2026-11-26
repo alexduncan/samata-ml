@@ -110,7 +110,7 @@ export function checkLiteralColours(filePath: string): Array<{ issue: string; li
 					return;
 				}
 				// If not purely var(), check for colour literal
-				if (colorLiteralRegex.test(value) && !value.startsWith('var(')) {
+				if (colorLiteralRegex.test(value.replace(/var\(--[a-z0-9-]+\)/g, ''))) {
 					violations.push({
 						issue: `Literal colour declaration: "${declMatch[0].trim()}"`,
 						line: idx + 1
@@ -282,6 +282,21 @@ describe('Inline styles under the production CSP', () => {
 describe('Static Style and Token Guards (TOK-1 .. TOK-6)', () => {
 	const globalTokens = getRootTokens();
 	const allFiles = [...getSourceFiles('src', ['.ts']), ...getSourceFiles('css', ['.css'])];
+
+	it('CHT-FOUND-3: distinguishes token references from literal colours and fallbacks', () => {
+		const dir = fs.mkdtempSync(path.join('/tmp', 'chart-token-'));
+		const file = path.join(dir, 'styles.ts');
+		try {
+			fs.writeFileSync(file, 'border: 1px solid var(--blue-700);\n');
+			expect(checkLiteralColours(file)).toEqual([]);
+			fs.writeFileSync(file, 'border: 1px solid blue;\n');
+			expect(checkLiteralColours(file)).toHaveLength(1);
+			fs.writeFileSync(file, 'border: 1px solid var(--blue-700, blue);\n');
+			expect(checkLiteralColours(file).length).toBeGreaterThan(0);
+		} finally {
+			fs.rmSync(dir, { recursive: true, force: true });
+		}
+	});
 
 	it('TOK-1: all var(--x) references use known tokens from css/root.css or local declarations', () => {
 		const nonDriftFiles = allFiles.filter((f) => !KNOWN_DRIFT_SET.has(f));

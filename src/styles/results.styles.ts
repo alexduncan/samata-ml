@@ -30,6 +30,43 @@ export const resultsStyles: CSSResult = css`
 		inline-size: 100%;
 	}
 
+	.visually-hidden {
+		position: absolute;
+		clip-path: inset(50%);
+		margin: -1px;
+		border: 0;
+		padding: 0;
+		inline-size: 1px;
+		block-size: 1px;
+		overflow: hidden;
+		white-space: nowrap;
+	}
+
+	.chart-legend {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.5rem 1rem;
+		padding: 0;
+		list-style: none;
+	}
+
+	.chart-legend li {
+		display: inline-flex;
+		align-items: center;
+		gap: 0.25rem;
+	}
+
+	.chart-legend .amber {
+		outline: 1.5px solid var(--stone-900);
+	}
+
+	details > summary,
+	button,
+	input,
+	select {
+		min-block-size: 24px;
+	}
+
 	details {
 		margin-block-start: 0.5rem;
 	}
