@@ -1,6 +1,6 @@
 # Virtual table improvements: document scrolling, typed columns and in-page loading
 
-**Status:** ready | **Updated:** 2026-11-26T13:19:15Z
+**Status:** ready | **Updated:** 2026-11-26T13:26:34Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-26T10:41:08Z
 **Verified by:** Claude Code (claude-opus-5-5) | **Verified:** 2026-11-26T13:19:15Z | **Verification:** approved
 **Verified hash:** sha256:801305afa207541d1ef6d716843998f36b56b0338d5b96fdad036c6d812671f9
@@ -239,13 +239,13 @@ One exported symbol; no events. Writes only `--page-header-block-size` on the ro
 - **Must not touch:** `src/components/`, `src/features/data/app-*.ts`, `src/stores/` — UI and store wiring belong to later tasks.
 - **Implementation:** Correct the user-visible `INGESTION_ERROR_MESSAGES.TOO_MANY_COLUMNS` (`errors.ts:46`, "at most 256 columns") to state 200 by interpolating `MAX_COLUMNS`. `validate` is a required member of the `StorageClient` interface (`storage-client.ts:14`), so every typed fake listed in Likely files gains a `validate` stub (fakes at `tests/dataset-resources.test.ts:147, 213, 277, 309, 355, 410, 564`). Add `runValidation(source, {signal, onProgress, estimateStorage})` that first runs the same `resolveSource` size check (`MAX_FILE_BYTES` → `FILE_TOO_LARGE`) and `checkStorageQuota` (`fetch-source.ts:38-51` → `INSUFFICIENT_STORAGE`) as `runIngestion` (`pipeline.ts:385-387`), then shares its parse/profile path with row writes skipped and stopping after `profiler.elect()`; it raises the same error codes and returns `{rowCount, columnCount}`. Add the `validate` request/client method (Interfaces). Make the parse phase advance `bytesProcessed` per chunk; keep typing's cumulative `rowsProcessed`; add `columnsProcessed`/`columnsTotal` to statistics progress per D19 and force the final emission of every phase through the throttle. Add `toLoadProgressView(progress, stageKind)` per D19 returning `{ phase, value: number | null, max, stepIndex, stepCount }`.
 - **Acceptance criteria:**
-    - [ ] ING-VAL-1: validating a valid CSV returns its row and column counts and writes nothing to `raw_records`.
-    - [ ] ING-VAL-2: validating CSVs with 201 columns, no data rows and an empty file rejects with `TOO_MANY_COLUMNS` (whose message states 200 columns), `NO_DATA_ROWS` and `EMPTY_FILE`; a late-failure fixture larger than `PARSE_CHUNK_BYTES` (valid header, then more than 1 MiB that produces no data rows; the implementer picks the byte pattern the parser treats as no rows and records it) emits at least two `parse` progress events before rejecting with `NO_DATA_ROWS`; an aborted signal rejects as cancelled.
-    - [ ] ING-VAL-3: during `ingest`, `parse` events have non-decreasing `bytesProcessed` ending at `totalBytes`; `typing` events have non-decreasing `rowsProcessed` ending at `totalRows`; `statistics` events for a fixture with three numeric columns (one constant, one odd count, one even count) have `columnsTotal = 3` and non-decreasing `columnsProcessed` ending at 3, never resetting.
-    - [ ] ING-VAL-4: with `estimateStorage` stubbed below the 3× headroom (`limits.ts:41`) `runValidation` rejects with `INSUFFICIENT_STORAGE` before any `parse` progress, and a `File` larger than `MAX_FILE_BYTES` (stubbed `size`) rejects with `FILE_TOO_LARGE`; `runIngestion` still repeats both checks.
-    - [ ] LOADP-1: `toLoadProgressView` returns indeterminate for `download` with `totalBytes: null`, determinate bytes for `parse`, determinate rows for `typing`, determinate columns for `statistics` (ignoring per-scan `rowsProcessed`), indeterminate for `statistics` with `columnsTotal = 0`, and step counts 4 (sample) / 3 (upload pass 2).
+    - [x] ING-VAL-1: validating a valid CSV returns its row and column counts and writes nothing to `raw_records`.
+    - [x] ING-VAL-2: validating CSVs with 201 columns, no data rows and an empty file rejects with `TOO_MANY_COLUMNS` (whose message states 200 columns), `NO_DATA_ROWS` and `EMPTY_FILE`; a late-failure fixture larger than `PARSE_CHUNK_BYTES` (valid header, then more than 1 MiB that produces no data rows; the implementer picks the byte pattern the parser treats as no rows and records it) emits at least two `parse` progress events before rejecting with `NO_DATA_ROWS`; an aborted signal rejects as cancelled.
+    - [x] ING-VAL-3: during `ingest`, `parse` events have non-decreasing `bytesProcessed` ending at `totalBytes`; `typing` events have non-decreasing `rowsProcessed` ending at `totalRows`; `statistics` events for a fixture with three numeric columns (one constant, one odd count, one even count) have `columnsTotal = 3` and non-decreasing `columnsProcessed` ending at 3, never resetting.
+    - [x] ING-VAL-4: with `estimateStorage` stubbed below the 3× headroom (`limits.ts:41`) `runValidation` rejects with `INSUFFICIENT_STORAGE` before any `parse` progress, and a `File` larger than `MAX_FILE_BYTES` (stubbed `size`) rejects with `FILE_TOO_LARGE`; `runIngestion` still repeats both checks.
+    - [x] LOADP-1: `toLoadProgressView` returns indeterminate for `download` with `totalBytes: null`, determinate bytes for `parse`, determinate rows for `typing`, determinate columns for `statistics` (ignoring per-scan `rowsProcessed`), indeterminate for `statistics` with `columnsTotal = 0`, and step counts 4 (sample) / 3 (upload pass 2).
 - **Verification:** `bun test tests/ingestion-pipeline.test.ts`, `bun test tests/storage-client.test.ts`, `bun test tests/load-progress.test.ts`, `bun test tests/dataset-resources.test.ts`, `bun test tests/telemetry-privacy.test.ts`, `bun run check`, `bun run lint`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-26T13:26:34Z)
 
 ### T2 — Load stage, two-pass upload orchestration and document inline scroll offset
 
@@ -404,6 +404,7 @@ None.
 | When (UTC) | Task | Agent (model) | Outcome / commands / evidence |
 | ---------- | ---- | ------------- | ----------------------------- |
 | —          | —    | —             | Not started                   |
+| 2026-11-26T13:26:34Z | T1 | Claude Code (claude-sonnet-5-5) | bun test (695 pass, 0 fail) incl. ingestion-pipeline, storage-client, load-progress, dataset-resources, telemetry-privacy; bun run lint pass; bun run typecheck reports only pre-existing TS7016 for @observablehq/plot in src/features/results/charts/plot-controller.ts (untouched). Changed: ingestion pipeline/csv-stream/errors/protocol/worker-handler/storage-client, new dataset-name.ts and load-progress.ts, tests and StorageClient fakes. |
 
 ## Plan review history
 

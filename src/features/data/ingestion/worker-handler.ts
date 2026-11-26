@@ -7,7 +7,7 @@ import {
 } from '../../../common/storage/db';
 import { IngestionError } from './errors';
 import type { SerializedIngestionError, StorageRequest, StorageResponse } from './protocol';
-import { runIngestion, type IngestionSource } from './pipeline';
+import { runIngestion, runValidation, type IngestionSource } from './pipeline';
 import type { DatasetMetadata } from '../../../types/dataset';
 import type { IDBPDatabase } from 'idb';
 import type { SamataDBSchema } from '../../../common/storage/db';
@@ -26,6 +26,8 @@ export interface WorkerHandlerOptions {
 	openDatabase?: () => Promise<IDBPDatabase<SamataDBSchema>>;
 	/** Runs ingestion for a request; defaults to the production pipeline. */
 	ingest?: typeof runIngestion;
+	/** Runs validation for a request; defaults to the production pipeline. */
+	validate?: typeof runValidation;
 }
 
 interface ActiveIngestion {
@@ -79,12 +81,45 @@ export function installWorkerHandler(
 ): () => void {
 	const openDatabase = options.openDatabase ?? openSamataDb;
 	const ingest = options.ingest ?? runIngestion;
+	const validate = options.validate ?? runValidation;
 	let active: ActiveIngestion | undefined;
 	let disposed = false;
 
 	const handleRequest = async (request: StorageRequest): Promise<void> => {
 		if (request.type === 'cancel') {
 			if (active?.requestId === request.targetRequestId) active.controller.abort();
+			return;
+		}
+		if (request.type === 'validate') {
+			if (active) {
+				postError(
+					port,
+					request.requestId,
+					new IngestionError('BUSY', 'Another dataset is loading.')
+				);
+				return;
+			}
+			const controller = new AbortController();
+			active = { requestId: request.requestId, controller };
+			try {
+				const value = await validate(request.source as IngestionSource, {
+					signal: controller.signal,
+					onProgress: (progress) => {
+						if (!disposed) {
+							port.postMessage({
+								requestId: request.requestId,
+								type: 'progress',
+								progress
+							} satisfies StorageResponse);
+						}
+					}
+				});
+				if (!disposed) postResult(port, request.requestId, value);
+			} catch (error) {
+				if (!disposed) postError(port, request.requestId, error);
+			} finally {
+				if (active?.requestId === request.requestId) active = undefined;
+			}
 			return;
 		}
 		if (request.type === 'ingest') {

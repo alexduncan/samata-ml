@@ -2,7 +2,7 @@ import type { DatasetMetadata, RawRecord } from '../../../types/dataset';
 import { reportWorkerFailure } from '../../../common/release/worker-failures';
 import { IngestionError } from './errors';
 import type { SerializedIngestionError, StorageRequest, StorageResponse } from './protocol';
-import type { IngestionProgress, IngestionSource } from './pipeline';
+import type { IngestionProgress, IngestionSource, ValidationResult } from './pipeline';
 
 /** Optional local callbacks for one ingestion request. */
 export interface IngestOptions {
@@ -13,6 +13,8 @@ export interface IngestOptions {
 /** Public client methods backed by the storage worker. */
 export interface StorageClient {
 	ingest(source: IngestionSource, options?: IngestOptions): Promise<DatasetMetadata>;
+	/** Validates a source (parse, profile, type election) without writing to IndexedDB. */
+	validate(source: IngestionSource, options?: IngestOptions): Promise<ValidationResult>;
 	getMetadata(datasetId: string): Promise<DatasetMetadata | null>;
 	fetchRows(datasetId: string, offset: number, limit: number): Promise<RawRecord[]>;
 	deleteDatasetsExcept(keepId: string | null): Promise<void>;
@@ -82,6 +84,14 @@ class StorageClientImpl implements StorageClient {
 		const requestId = this.nextRequestId++;
 		return this.send<DatasetMetadata>(
 			{ requestId, type: 'ingest', source },
+			{ signal: options.signal, onProgress: options.onProgress }
+		);
+	}
+
+	validate(source: IngestionSource, options: IngestOptions = {}): Promise<ValidationResult> {
+		const requestId = this.nextRequestId++;
+		return this.send<ValidationResult>(
+			{ requestId, type: 'validate', source },
 			{ signal: options.signal, onProgress: options.onProgress }
 		);
 	}

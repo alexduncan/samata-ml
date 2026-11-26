@@ -146,6 +146,7 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 
 		const mockClient: StorageClient = {
 			ingest: async () => meta,
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async (id) => (id === 'ds-iris' ? meta : null),
 			fetchRows: async () => [],
 			deleteDatasetsExcept: async () => {},
@@ -212,6 +213,7 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 			const meta = createMockMetadata('ds-retired', sampleId);
 			const client: StorageClient = {
 				ingest: async () => meta,
+				validate: async () => ({ rowCount: 0, columnCount: 0 }),
 				getMetadata: async () => meta,
 				fetchRows: async () => createMockRows('ds-retired', 0, 1),
 				deleteDatasetsExcept: async () => {},
@@ -276,6 +278,7 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 
 		const mockClient: StorageClient = {
 			ingest: async () => meta,
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async (id) => (id === 'ds-upload' ? meta : null),
 			fetchRows: async () => [],
 			deleteDatasetsExcept: async () => {},
@@ -308,6 +311,7 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 
 		const mockClient: StorageClient = {
 			ingest: async () => createMockMetadata('ds-1'),
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async (id) => (id === 'ds-1' ? firstPromise : secondPromise),
 			fetchRows: async () => [],
 			deleteDatasetsExcept: async () => {},
@@ -354,6 +358,7 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 		let fetchCount = 0;
 		const mockClient: StorageClient = {
 			ingest: async () => createMockMetadata('ds-1'),
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async () => null,
 			fetchRows: async (datasetId, offset, limit) => {
 				fetchCount++;
@@ -409,6 +414,7 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 
 		const mockClient: StorageClient = {
 			ingest: async () => createMockMetadata('ds-1'),
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async () => null,
 			fetchRows: async (datasetId, offset, limit) => {
 				requestedLimits.push(limit);
@@ -576,6 +582,7 @@ describe('clear and change dataset actions (DATA-RES-2)', () => {
 				});
 				return ingestPromise;
 			},
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async () => null,
 			fetchRows: async () => [],
 			deleteDatasetsExcept: async () => {},

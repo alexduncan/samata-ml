@@ -412,6 +412,7 @@ describe('beta Umami telemetry client and privacy allowlist', () => {
 				await db!.put('metadata', result);
 				return result;
 			},
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async () => fakeMeta,
 			fetchRows: async () => [],
 			deleteDatasetsExcept: async () => undefined,
