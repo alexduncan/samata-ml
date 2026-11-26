@@ -117,7 +117,14 @@ const messages = i18n('app-results-view', {
 	cvDuration: 'Fit + score across folds (lower is better)',
 	showData: 'Show data table',
 	foldTitle: 'Balanced accuracy across partitions',
-	foldTakeaway: 'Each dot is a held-out partition; lines connect matching partitions.',
+	foldTakeaway: 'Each unconnected dot is a held-out partition.',
+	foldXAxis: 'Balanced accuracy (%, higher is better)',
+	foldInterval: 'Mean ± 1 SD',
+	foldClamped: params<{ mean: string; sd: string }>(
+		'Mean {mean} ± {sd} extends beyond the score range.'
+	),
+	foldDescription: params<{ values: string }>('Fold scores and baselines: {values}.'),
+	foldLegend: 'Models',
 	foldTable: 'Held-out balanced accuracy by partition',
 	series: 'Model',
 	partition: params<{ n: string }>('Partition {n}'),
@@ -690,7 +697,6 @@ export class AppResultsView extends LitElement {
 											<app-fold-strip
 												.series=${views.series}
 												.baselines=${views.marks}
-												.paired=${true}
 												.caption=${{
 													title: t.foldTitle,
 													takeaway: t.foldTakeaway
@@ -705,7 +711,29 @@ export class AppResultsView extends LitElement {
 													score: t.score,
 													time: t.time,
 													mean: t.mean,
-													standardDeviation: t.standardDeviation
+													standardDeviation: t.standardDeviation,
+													xAxis: t.foldXAxis,
+													intervalNote: t.foldInterval,
+													clampedNote: (mean: string, sd: string) =>
+														t.foldClamped({ mean, sd }),
+													description: (
+														series: readonly FoldSeries[],
+														baselines: readonly BaselineMark[]
+													) =>
+														t.foldDescription({
+															values: [
+																...series.map(
+																	(row) =>
+																		`${row.label}: ${format.percent(row.mean)}`
+																),
+																...baselines.map(
+																	(mark) =>
+																		`${mark.label}: ${format.percent(mark.value)}`
+																)
+															].join('; ')
+														}),
+													legendLabel: t.foldLegend,
+													baselineColumn: t.baseline
 												}}></app-fold-strip>
 										</section>
 										<section>

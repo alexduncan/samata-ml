@@ -1,6 +1,26 @@
 import { expect, test } from '@playwright/test';
 import { seedComparableGroups, seedComparablePair } from './helpers/seed-results';
 
+test('CHT-SINGLE-1A: comparison owner supplies the fold chart labels and data description', async ({
+	page
+}) => {
+	await seedComparablePair(page);
+	await page.goto('/results');
+	const fold = page.locator('app-results-view app-fold-strip');
+	await expect(fold.locator('.chart > svg:not([data-plot-probe])')).toBeVisible();
+	await expect(fold).toContainText('Balanced accuracy (%, higher is better)');
+	await expect(fold.locator('.chart > svg:not([data-plot-probe])')).toContainText('Mean ± 1 SD');
+	await expect(fold.locator('figcaption')).toContainText('unconnected dot');
+	const description = await fold.evaluate((host) => {
+		const svg = host.shadowRoot!.querySelector('.chart > svg')!;
+		return host.shadowRoot!.getElementById(svg.getAttribute('aria-describedby')!)?.textContent;
+	});
+	expect(description?.match(/Logistic Regression/g)).toHaveLength(2);
+	expect(description).toContain('Most frequent class');
+	expect(description).toContain('33.3%');
+	expect(description).toMatch(/\d+\.\d%/);
+});
+
 test('BETA-ERR-2b: comparison bars reflect changed input on a reused model row', async ({
 	page
 }) => {
@@ -81,7 +101,8 @@ test('TERM-AC-7: comparison terms explain pooled scores and the paired fold gap'
 
 	const model = table
 		.getByRole('row')
-		.filter({ has: page.getByRole('rowheader', { name: 'Model 1', exact: true }) });
+		.filter({ has: page.getByRole('rowheader', { name: 'Logistic Regression', exact: true }) })
+		.first();
 	const balancedAccuracy = table.getByRole('columnheader', {
 		name: 'Balanced accuracy',
 		exact: true
@@ -126,7 +147,10 @@ test('TERM-AC-7: comparison terms explain pooled scores and the paired fold gap'
 	await expect(view.getByRole('spinbutton', { name: 'Equivalence width' })).toHaveValue('0.02');
 	await expect(disclosure).toHaveJSProperty('open', true);
 
-	const modelTwo = view.locator('app-comparison-controls').getByLabel('Model 2');
+	const modelTwo = view
+		.locator('app-comparison-controls')
+		.getByRole('checkbox', { name: 'Logistic Regression' })
+		.nth(1);
 	await modelTwo.uncheck();
 	await expect(disclosure).toHaveCount(0);
 	await modelTwo.check();
@@ -161,8 +185,18 @@ test('WML-P5-UI-10 / WML-P5-UI-11: compare saved models and retain the pair on r
 	await expect(picker.getByLabel('Model A')).toHaveValue('1');
 	await picker.getByRole('button', { name: 'Swap models A and B' }).click();
 	await expect(picker.getByLabel('Model A')).toHaveValue('2');
-	await expect(view.locator('app-comparison-controls').getByLabel('Model 1')).toBeChecked();
-	await expect(view.locator('app-comparison-controls').getByLabel('Model 2')).toBeChecked();
+	await expect(
+		view
+			.locator('app-comparison-controls')
+			.getByRole('checkbox', { name: 'Logistic Regression' })
+			.nth(0)
+	).toBeChecked();
+	await expect(
+		view
+			.locator('app-comparison-controls')
+			.getByRole('checkbox', { name: 'Logistic Regression' })
+			.nth(1)
+	).toBeChecked();
 	await expect
 		.poll(() =>
 			page.evaluate(
@@ -184,8 +218,8 @@ test('WML-P5-UI-12: comparison controls reflow and remain keyboard accessible at
 	await page.goto('/results');
 	const view = page.locator('app-results-view');
 	const controls = view.locator('app-comparison-controls');
-	const first = controls.getByLabel('Model 1');
-	const second = controls.getByLabel('Model 2');
+	const first = controls.getByRole('checkbox', { name: 'Logistic Regression' }).nth(0);
+	const second = controls.getByRole('checkbox', { name: 'Logistic Regression' }).nth(1);
 	await expect(first).toBeChecked();
 	await first.focus();
 	await first.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
@@ -232,7 +266,12 @@ test('TERM-AC-9: WML-P5-UI-12 comparison reflows at simulated 200% zoom with ter
 	expect(size.height).toBeGreaterThanOrEqual(24);
 	expect(size.outline).toBe('solid');
 	await expect(page.locator('app-results-view app-comparison-table')).toBeVisible();
-	await expect(page.locator('app-comparison-controls').getByLabel('Model 1')).toBeVisible();
+	await expect(
+		page
+			.locator('app-comparison-controls')
+			.getByRole('checkbox', { name: 'Logistic Regression' })
+			.nth(0)
+	).toBeVisible();
 	expect(
 		await page.evaluate(
 			() => document.documentElement.scrollWidth <= document.documentElement.clientWidth
@@ -248,7 +287,11 @@ test('WML-P5-UI-12: keyboard reaches comparison controls in visual order', async
 	await page.goto('/results');
 	const view = page.locator('app-results-view');
 	await expect(view.locator('app-rope-bar figure')).toBeVisible({ timeout: 45_000 });
-	await view.locator('app-comparison-controls').getByLabel('Model 1').focus();
+	await view
+		.locator('app-comparison-controls')
+		.getByRole('checkbox', { name: 'Logistic Regression' })
+		.nth(0)
+		.focus();
 	const visited: string[] = [];
 	for (let i = 0; i < 50; i++) {
 		const focus = await page.evaluate(() => {
@@ -297,8 +340,18 @@ test('WML-P5-UI-10: swapping reverses nonzero confusion differences and refreshe
 	await expect(matrix.first()).toContainText('-1');
 	await expect(rope).toHaveJSProperty('status', 'loading');
 	await expect(rope.locator('figure')).toBeVisible({ timeout: 45_000 });
-	await expect(view.locator('app-comparison-controls').getByLabel('Model 1')).toBeChecked();
-	await expect(view.locator('app-comparison-controls').getByLabel('Model 2')).toBeChecked();
+	await expect(
+		view
+			.locator('app-comparison-controls')
+			.getByRole('checkbox', { name: 'Logistic Regression' })
+			.nth(0)
+	).toBeChecked();
+	await expect(
+		view
+			.locator('app-comparison-controls')
+			.getByRole('checkbox', { name: 'Logistic Regression' })
+			.nth(1)
+	).toBeChecked();
 });
 
 test('WML-P5-UI-11: a many-class confusion filter survives reload', async ({ page }) => {
@@ -360,8 +413,10 @@ test('WML-P5-UI-11: the chosen group and single-model selection survive reload',
 	const controls = view.locator('app-comparison-controls');
 	const group = controls.getByLabel('Evaluation group');
 	await group.selectOption('b'.repeat(64));
-	await expect(controls.getByLabel('Model 3')).toBeChecked();
-	await controls.getByLabel('Model 4').uncheck();
+	await expect(
+		controls.getByRole('checkbox', { name: 'Logistic Regression' }).nth(0)
+	).toBeChecked();
+	await controls.getByRole('checkbox', { name: 'Logistic Regression' }).nth(1).uncheck();
 	await expect(view).toContainText('Select at least two models to compare.');
 	await expect
 		.poll(() =>
@@ -372,8 +427,12 @@ test('WML-P5-UI-11: the chosen group and single-model selection survive reload',
 		.toEqual([3]);
 	await page.reload();
 	await expect(group).toHaveValue('b'.repeat(64));
-	await expect(controls.getByLabel('Model 3')).toBeChecked();
-	await expect(controls.getByLabel('Model 4')).not.toBeChecked();
+	await expect(
+		controls.getByRole('checkbox', { name: 'Logistic Regression' }).nth(0)
+	).toBeChecked();
+	await expect(
+		controls.getByRole('checkbox', { name: 'Logistic Regression' }).nth(1)
+	).not.toBeChecked();
 	await expect(view.locator('app-comparison-table')).toHaveCount(0);
 });
 

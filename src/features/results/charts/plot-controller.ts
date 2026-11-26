@@ -153,6 +153,8 @@ export class PlotController implements ReactiveController {
 		this.observer?.observe(size);
 		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
 		svg.setAttribute('data-plot-probe', '');
+		svg.setAttribute('width', '0');
+		svg.setAttribute('height', '0');
 		const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
 		Object.assign(svg.style, {
 			position: 'absolute',

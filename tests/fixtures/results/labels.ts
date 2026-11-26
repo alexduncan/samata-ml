@@ -73,7 +73,14 @@ export const englishFoldStripLabels: FoldStripLabels = {
 	score: 'Balanced accuracy',
 	time: 'Fit and scoring time',
 	mean: 'Mean',
-	standardDeviation: 'Standard deviation'
+	standardDeviation: 'Standard deviation',
+	xAxis: 'Balanced accuracy (%, higher is better)',
+	intervalNote: 'Mean ± 1 SD',
+	clampedNote: (mean, sd) => `Mean ${mean} ± ${sd} extends beyond the score range.`,
+	description: (series, baselines) =>
+		[...series.map((row) => row.label), ...baselines.map((row) => row.label)].join(', '),
+	legendLabel: 'Models',
+	baselineColumn: 'Baseline'
 };
 
 /** English labels for `app-class-metrics-table`. */
@@ -96,7 +103,8 @@ export const englishConfusionMatrixLabels: ConfusionMatrixLabels = {
 	predictedClass: 'Predicted class',
 	support: 'Rows',
 	filter: 'Show true class',
-	defaultFilter: 'Twenty largest classes'
+	defaultFilter: 'Twenty largest classes',
+	filterStatus: (label) => `Showing ${label ?? 'twenty largest classes'}.`
 };
 
 /** A caption for tests and stories. */
@@ -109,9 +117,9 @@ export const sampleCaption: ChartCaption = {
 export const englishFlowchartLabels: ConfusionFlowchartLabels = {
 	rowHeading: (row, flow) => `Rows with ${flow.target} ${row.actual}: ${row.totalText}`,
 	outcome: (outcome, row, flow) =>
-		`${outcome.text} rows with ${flow.target} ${row.actual} were predicted ${outcome.predicted} (${
+		`${outcome.text} of ${row.totalText} rows with ${flow.target} ${row.actual} were predicted ${outcome.predicted} (${
 			outcome.correct ? 'correct' : 'incorrect'
-		})`
+		}; ${new Intl.NumberFormat('en-GB', { style: 'percent', maximumFractionDigits: 1 }).format(outcome.share)})`
 };
 
 /** English labels for `app-classee-strips`. */
@@ -126,7 +134,11 @@ export const englishClasseeLabels: ClasseeStripsLabels = {
 	error: 'Error',
 	noErrors: 'No errors: every held-out row was predicted correctly.',
 	errorsSide: 'Errors',
-	correctSide: 'Correct'
+	correctSide: 'Correct',
+	xAxis: 'Held-out rows',
+	yAxis: 'True class',
+	legendLabel: 'Predicted classes',
+	description: (view) => `Held-out errors: ${view.totalErrors}.`
 };
 
 /** English labels for `app-threshold-explorer`. */

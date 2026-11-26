@@ -57,7 +57,7 @@ export const Multiclass: Story = {
 		const element = canvasElement.querySelector<AppClasseeStrips>('app-classee-strips')!;
 		await element.whenSettled();
 		await waitFor(() =>
-			expect(element.shadowRoot!.querySelectorAll('svg rect').length).toBe(5)
+			expect(element.shadowRoot!.querySelectorAll('.chart > svg rect').length).toBe(5)
 		);
 	}
 };

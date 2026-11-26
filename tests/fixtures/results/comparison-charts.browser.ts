@@ -22,9 +22,11 @@ const view = buildFoldStripView(
 const fold = document.createElement('app-fold-strip');
 fold.labels = englishFoldStripLabels;
 fold.caption = sampleCaption;
-fold.series = [...view.series, { ...view.series[0]!, id: 'second', label: 'Model 2' }];
+fold.series = [
+	{ ...view.series[0]!, color: 'amber' },
+	{ ...view.series[0]!, id: 'second', label: 'Model 2', color: 'blue' }
+];
 fold.baselines = view.baselines;
-fold.paired = true;
 fold.formatPercent = format.percent;
 
 const bars = document.createElement('app-class-error-bars');

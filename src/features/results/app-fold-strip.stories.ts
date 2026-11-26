@@ -18,7 +18,8 @@ interface FoldStripArgs {
 	evaluation: StoredEvaluation;
 	seriesName?: string;
 	dir?: 'ltr' | 'rtl';
-	paired?: boolean;
+	multiModel?: boolean;
+	clamped?: boolean;
 }
 
 const meta = {
@@ -39,7 +40,8 @@ const meta = {
 		evaluation,
 		seriesName = 'Logistic Regression',
 		dir = 'ltr',
-		paired = false
+		multiModel = false,
+		clamped = false
 	}: FoldStripArgs) => {
 		const wrapper = document.createElement('div');
 		wrapper.dir = dir;
@@ -54,10 +56,14 @@ const meta = {
 		);
 		const element = document.createElement('app-fold-strip');
 		element.labels = englishFoldStripLabels;
-		element.series = paired
-			? [...view.series, { ...view.series[0]!, id: 'second', label: 'Model 2' }]
-			: view.series;
-		element.paired = paired;
+		element.series = multiModel
+			? [
+					{ ...view.series[0]!, color: 'amber' },
+					{ ...view.series[0]!, id: 'second', label: 'Model 2', color: 'blue' }
+				]
+			: clamped
+				? view.series.map((row) => ({ ...row, mean: 0.95, sd: 0.1 }))
+				: view.series;
 		element.baselines = view.baselines;
 		element.caption = sampleCaption;
 		element.formatPercent = format.percent;
@@ -81,8 +87,12 @@ export const CrossValidation: Story = {
 };
 /** One test split draws a single dot and no spread. */
 export const OneShot: Story = { args: { evaluation: breastCancerOneShot() } };
-/** Aligned folds are connected between models. */
-export const Paired: Story = { args: { evaluation: irisCrossValidation(), paired: true } };
+/** Multiple models retain distinct symbols and colours. */
+export const MultipleModels: Story = {
+	args: { evaluation: irisCrossValidation(), multiModel: true }
+};
+/** A spread extending beyond the score range is described explicitly. */
+export const ClampedSpread: Story = { args: { evaluation: irisCrossValidation(), clamped: true } };
 /** A long series name wraps in the chart and in the table. */
 export const LongLabel: Story = {
 	args: {

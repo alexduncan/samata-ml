@@ -8,10 +8,14 @@ test.beforeEach(async ({ page }) => {
 	await mountResultsFixture(page, bundle, 'summaryFixture');
 });
 
-test('WML-P5-UI-4: paired fold strip draws one line per aligned partition', async ({ page }) => {
+test('CHT-SINGLE-1: model folds have distinct symbols without connecting lines', async ({
+	page
+}) => {
 	const fold = page.locator('app-fold-strip');
-	await expect(fold.locator('svg [stroke-opacity="0.6"] path')).toHaveCount(5);
-	await expect(fold.locator('svg circle')).toHaveCount(10);
+	await expect(fold.locator('.chart svg [stroke-opacity="0.6"] path')).toHaveCount(0);
+	await expect(fold.locator('.chart-legend li')).toHaveCount(2);
+	await expect(fold).toContainText('Balanced accuracy (%, higher is better)');
+	await expect(fold.locator('.chart svg:not([data-plot-probe])')).toContainText('Mean ± 1 SD');
 });
 
 test('WML-P5-UI-5: class error bars retain labels and data in forced colours', async ({ page }) => {
