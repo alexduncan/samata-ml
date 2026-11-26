@@ -69,18 +69,18 @@ The implementer reads only these, plus each task's likely files. Everything else
 Facts the planner verified, so the implementer need not re-check them.
 
 - **Relevant implementation:**
-    - `content/datasets/iris/data.csv` — header `sepal length,sepal width,petal length,petal width,class`; 150 rows; classes `Iris-setosa`, `Iris-versicolor`, `Iris-virginica`, 50 each; no missing values; SHA-256 `daaeb5e3e889d07fbdd44544f5a39fe2372a07172e25899d577be0ad74df9e65`.
-    - `content/datasets/palmer-penguins/data.csv` — header `species,island,bill_length_mm,bill_depth_mm,flipper_length_mm,body_mass_g,sex,year`; 344 rows; `Adelie` 152, `Chinstrap` 68, `Gentoo` 124; `NA` twice in each of the four measurement columns and 11 times in `sex`; SHA-256 `f204db2c753b0937caac3cb35258562c14f073e4bbc76be24b4c51ce22767a93`.
-    - `src/common/storage/cells.ts:5` — `DEFAULT_MISSING_VALUE_TOKENS` includes `na`, so the upload path also treats `NA` as missing.
-    - `src/common/storage/profiler.ts`, `src/features/data/ingestion/{csv-stream,fetch-source,order-statistics,errors,limits}.ts` exist (data-ingestion T1–T5). `runIngestion`, the worker, the generator and the provider now exist; use their actual exported signatures, not the old plan's provisional shapes.
-    - `src/common/storage/db.ts` — `DB_NAME = 'samata-db'`, `DB_VERSION = 2`.
-    - `src/types/state.ts:7` — `STATE_STORAGE_KEY = 'samata-ml:state'`; the welcome flag is `onboarding.welcomeDismissed` (`src/stores/app.store.ts:50-55`).
-    - No `.prettierignore` exists; Prettier 3 reads both `.gitignore` and `.prettierignore` by default.
+  - `content/datasets/iris/data.csv` — header `sepal length,sepal width,petal length,petal width,class`; 150 rows; classes `Iris-setosa`, `Iris-versicolor`, `Iris-virginica`, 50 each; no missing values; SHA-256 `daaeb5e3e889d07fbdd44544f5a39fe2372a07172e25899d577be0ad74df9e65`.
+  - `content/datasets/palmer-penguins/data.csv` — header `species,island,bill_length_mm,bill_depth_mm,flipper_length_mm,body_mass_g,sex,year`; 344 rows; `Adelie` 152, `Chinstrap` 68, `Gentoo` 124; `NA` twice in each of the four measurement columns and 11 times in `sex`; SHA-256 `f204db2c753b0937caac3cb35258562c14f073e4bbc76be24b4c51ce22767a93`.
+  - `src/common/storage/cells.ts:5` — `DEFAULT_MISSING_VALUE_TOKENS` includes `na`, so the upload path also treats `NA` as missing.
+  - `src/common/storage/profiler.ts`, `src/features/data/ingestion/{csv-stream,fetch-source,order-statistics,errors,limits}.ts` exist (data-ingestion T1–T5). `runIngestion`, the worker, the generator and the provider now exist; use their actual exported signatures, not the old plan's provisional shapes.
+  - `src/common/storage/db.ts` — `DB_NAME = 'samata-db'`, `DB_VERSION = 2`.
+  - `src/types/state.ts:7` — `STATE_STORAGE_KEY = 'samata-ml:state'`; the welcome flag is `onboarding.welcomeDismissed` (`src/stores/app.store.ts:50-55`).
+  - No `.prettierignore` exists; Prettier 3 reads both `.gitignore` and `.prettierignore` by default.
 - **Tests and commands:**
-    - Baseline 2026-11-13: `bun run check` passes — 0 type errors, 144 tests across 22 files, 0 failures. AGENTS.md's 52-test count is historical; record a fresh before/after baseline rather than rewriting it in this test-only plan.
-    - `playwright.config.ts` `testMatch: /.*(\.e2e|app-shell\.test)\.ts/` under `./tests`, so `tests/reference-conformance.e2e.ts` and `tests/e2e-helpers.e2e.ts` are discovered without a config change; `tests/e2e/*.ts` helper files (no `.e2e`) are not. Each Playwright test gets a fresh browser context, so storage starts empty.
-    - `bun test` discovers `*.test.ts` only, so `.e2e.ts` files and `tests/e2e/*.ts` are not run by it. `tsconfig.json` has no `include`, so `tsc` type-checks everything under the root, including `tests/`.
-    - Playwright 1.65.0; Chromium, Firefox and WebKit binaries are installed in `~/Library/Caches/ms-playwright`.
+  - Baseline 2026-11-13: `bun run check` passes — 0 type errors, 144 tests across 22 files, 0 failures. AGENTS.md's 52-test count is historical; record a fresh before/after baseline rather than rewriting it in this test-only plan.
+  - `playwright.config.ts` `testMatch: /.*(\.e2e|app-shell\.test)\.ts/` under `./tests`, so `tests/reference-conformance.e2e.ts` and `tests/e2e-helpers.e2e.ts` are discovered without a config change; `tests/e2e/*.ts` helper files (no `.e2e`) are not. Each Playwright test gets a fresh browser context, so storage starts empty.
+  - `bun test` discovers `*.test.ts` only, so `.e2e.ts` files and `tests/e2e/*.ts` are not run by it. `tsconfig.json` has no `include`, so `tsc` type-checks everything under the root, including `tests/`.
+  - Playwright 1.65.0; Chromium, Firefox and WebKit binaries are installed in `~/Library/Caches/ms-playwright`.
 - **Web guidance:** None — test tooling only (the skill excludes tests).
 - **Review author:** Codex (model unrecorded), 2026-11-13; retain this co-author during workflow migration.
 - **Review handoff:** No product blockers. Prepared for review under the current valid `draft` metadata; formal `ready-for-review` submission waits for agent-workflow-gates status support.
@@ -88,8 +88,8 @@ Facts the planner verified, so the implementer need not re-check them.
 - **Lit skills:** None.
 - **Known gaps decided:** None. Gaps 5 and 17 concern component tests; these suites are data and integration tests in `tests/`, consistent with both sides.
 - **Assumptions requiring verification:**
-    - T3 establishes the upload-path type from actual inference; sample-path `year` must be categorical per descriptor. If the upload type is also categorical, assert the explicit sample override without inventing a cross-path difference. A surprising golden requires review, not weakening the invariant silently.
-    - None for the fetch seam: `RunIngestionOptions.fetchImpl` exists. Pass it directly; never replace global fetch. `generateSampleDatasets` accepts the subset ids/cacheDir options already used in tests/sample-datasets-content.test.ts.
+  - T3 establishes the upload-path type from actual inference; sample-path `year` must be categorical per descriptor. If the upload type is also categorical, assert the explicit sample override without inventing a cross-path difference. A surprising golden requires review, not weakening the invariant silently.
+  - None for the fetch seam: `RunIngestionOptions.fetchImpl` exists. Pass it directly; never replace global fetch. `generateSampleDatasets` accepts the subset ids/cacheDir options already used in tests/sample-datasets-content.test.ts.
 
 ## Technical decisions
 
@@ -228,17 +228,17 @@ What `specification/` must say once this plan is implemented. The final task app
 - **Must not touch:** `content/datasets/**`, `bunfig.toml`, `playwright.config.ts`, `src/**`
 - Create `.prettierignore` and limit changes to `AGENTS.md` to its Verification Commands list.
 - **Implementation:**
-    - Write both helpers per _Interfaces_, with TSDoc on every export. `golden.ts` imports nothing from `bun`, `bun:test` or `@playwright/test`.
-    - `.prettierignore` contains exactly `tests/golden/`.
-    - `tests/golden-helper.test.ts`: unit tests for `canonicalise` and `serialiseGolden` (key order, rounding, `-0`, redaction at depth, typed arrays, throwing inputs), and for `goldenFor` using a temporary subdirectory under `tests/golden/__helper__/` that the test removes in `afterEach` (update mode writes; non-update mode reads; missing file throws with `UPDATE_GOLDEN=1` in the message; `CI` + `UPDATE_GOLDEN` throws). Set and restore `process.env` per test.
-    - `tests/reference-datasets.test.ts` (`REF-1`): for each dataset, the file's SHA-256 (`node:crypto`) equals `sha256`; parsing the CSV with PapaParse (`header: false`, `skipEmptyLines: true`) gives the header `columns`, `rowCount` data rows, the `classCounts` for `target`, and the `missingCounts` of `NA` cells.
-    - Add to `AGENTS.md` → Commands: `` `UPDATE_GOLDEN=1 bun test <test-file>` — rewrite the golden files that suite uses; review the diff (testing.md "Golden files"). ``
+  - Write both helpers per _Interfaces_, with TSDoc on every export. `golden.ts` imports nothing from `bun`, `bun:test` or `@playwright/test`.
+  - `.prettierignore` contains exactly `tests/golden/`.
+  - `tests/golden-helper.test.ts`: unit tests for `canonicalise` and `serialiseGolden` (key order, rounding, `-0`, redaction at depth, typed arrays, throwing inputs), and for `goldenFor` using a temporary subdirectory under `tests/golden/__helper__/` that the test removes in `afterEach` (update mode writes; non-update mode reads; missing file throws with `UPDATE_GOLDEN=1` in the message; `CI` + `UPDATE_GOLDEN` throws). Set and restore `process.env` per test.
+  - `tests/reference-datasets.test.ts` (`REF-1`): for each dataset, the file's SHA-256 (`node:crypto`) equals `sha256`; parsing the CSV with PapaParse (`header: false`, `skipEmptyLines: true`) gives the header `columns`, `rowCount` data rows, the `classCounts` for `target`, and the `missingCounts` of `NA` cells.
+  - Add to `AGENTS.md` → Commands: `` `UPDATE_GOLDEN=1 bun test <test-file>` — rewrite the golden files that suite uses; review the diff (testing.md "Golden files"). ``
 - **Acceptance criteria:**
-    - [ ] `canonicalise({ b: 1, a: [0.1 + 0.2, -0] })` serialises with `a` before `b`, `0.3` and `0`; `canonicalise(NaN)` throws.
-    - [ ] Arrays of primitives serialise on one line; the output ends with one newline; serialising twice gives identical text.
-    - [ ] `goldenFor` behaves as specified in all four modes, and the test leaves nothing under `tests/golden/__helper__/`.
-    - [ ] `REF-1` passes for both datasets; changing one expected count in the registry makes it fail.
-    - [ ] `.prettierignore` is not Prettier-supported: preserve its single line manually, do not run the formatter on it; `bunx prettier --file-info tests/golden/ingestion/iris.upload.json` reports `"ignored": true`.
+  - [ ] `canonicalise({ b: 1, a: [0.1 + 0.2, -0] })` serialises with `a` before `b`, `0.3` and `0`; `canonicalise(NaN)` throws.
+  - [ ] Arrays of primitives serialise on one line; the output ends with one newline; serialising twice gives identical text.
+  - [ ] `goldenFor` behaves as specified in all four modes, and the test leaves nothing under `tests/golden/__helper__/`.
+  - [ ] `REF-1` passes for both datasets; changing one expected count in the registry makes it fail.
+  - [ ] `.prettierignore` is not Prettier-supported: preserve its single line manually, do not run the formatter on it; `bunx prettier --file-info tests/golden/ingestion/iris.upload.json` reports `"ignored": true`.
 - **Verification:** `bun test tests/golden-helper.test.ts tests/reference-datasets.test.ts`; `bun run check` (expect 144 + new tests, 0 failures)
 - **Progress:** [ ] Not started
 
@@ -251,9 +251,9 @@ What `specification/` must say once this plan is implemented. The final task app
 - **Must not touch:** `tests/app-shell.test.ts`, `tests/app-shell.e2e.ts`, `tests/content.e2e.ts`, `tests/a11y.e2e.ts`, `tests/visual-parity.e2e.ts`, `playwright.config.ts`, `src/**` — preserve existing suites.
 - **Implementation:** Write `openApp`, `dismissWelcome`, `pageHeading`, `gotoStep`, `readPersistedState`, `hasSamataDb` and `countStoredRows` per _Interfaces_ (not `ingestInWorker`; T6 adds it). `dismissWelcome` waits with `expect(...).toBeVisible()`/`toBeHidden()` or `locator.waitFor`, never `isVisible({ timeout })` races or `waitForTimeout`. Import `STATE_STORAGE_KEY` and `DB_NAME` from `src/` (type-safe constants; importing is not touching). `tests/e2e-helpers.e2e.ts` (`E2E-H-1`): fresh context → `openApp(page, '/data')` → `dismissWelcome` → heading `Load Data` → `readPersistedState` has `onboarding.welcomeDismissed === true` → reload with `openApp` → no welcome dialog → capture `hasSamataDb` before/after `countStoredRows(page, 'x') === 0` and assert existence unchanged. Startup reconciliation may already create samata-db, so do not require absence. Prove the absent-database branch separately in a fresh same-origin context with the main application script blocked (and no IndexedDB connections), then verify countStoredRows does not create it → `gotoStep(page, '/target')` shows `Set Target`.
 - **Acceptance criteria:**
-    - [ ] `E2E-H-1` passes in Chromium, Firefox and WebKit.
-    - [ ] No helper contains `waitForTimeout` or a `timeout` passed to `isVisible`.
-    - [ ] Every exported helper has TSDoc.
+  - [ ] `E2E-H-1` passes in Chromium, Firefox and WebKit.
+  - [ ] No helper contains `waitForTimeout` or a `timeout` passed to `isVisible`.
+  - [ ] Every exported helper has TSDoc.
 - **Verification:** `bun run test:e2e tests/e2e-helpers.e2e.ts`; `bun run check`
 - **Progress:** [ ] Not started
 
@@ -265,10 +265,10 @@ What `specification/` must say once this plan is implemented. The final task app
 - **Must not touch:** `src/**`, `tests/ingestion-pipeline.test.ts` — escalate product bugs to their owner and leave the ingestion pipeline suite to the data-ingestion plan.
 - **Implementation:** Cross-plan prerequisite: [data-ingestion-and-storage](archive/data-ingestion-and-storage.md) T6 has its progress checked. If not, stop before changing any file and report it. For each reference dataset: `installFakeIndexedDB()`; `runIngestion({ kind: 'file', file: referenceFile(id) }, { db, now: () => 0, uuid: () => 'golden' })`; read every RawRecord back with `getRows`, sort by rowIndex and map to record.values; build `{ metadata, rows }`; assert D5 invariants (rowCount; column names in order; `target` column `categorical` with `categoryCounts` equal to `classCounts`; each column's `missingCount` equals `missingCounts[name] ?? 0`; `source` `'upload'`, `sampleId` null, `name` equal to `id`); then compare `canonicalise(..., { redact: ['id', 'createdAt'] })` with `goldenFor('ingestion/<id>.upload.json', …)`. Generate the goldens with `UPDATE_GOLDEN=1`, then **read both files** and check, against the CSV and data-ingestion's _Interfaces_, that the types, missing counts, histograms (counts sum to `count`) and row values are right. Record anything surprising in the log and escalate rather than committing it.
 - **Acceptance criteria:**
-    - [ ] `REF-2 iris` and `REF-2 palmer-penguins` pass without `UPDATE_GOLDEN`.
-    - [ ] Iris: four `numeric` columns, `class` `categorical`, every `missingCount` 0, 150 rows of 5 values with numbers as numbers.
-    - [ ] Penguins: 344 rows; 2 `null`s in each measurement column and 11 in `sex`; `year` type recorded in the log (see _Assumptions_).
-    - [ ] Editing one value in a golden file makes the suite fail with a diff naming that field.
+  - [ ] `REF-2 iris` and `REF-2 palmer-penguins` pass without `UPDATE_GOLDEN`.
+  - [ ] Iris: four `numeric` columns, `class` `categorical`, every `missingCount` 0, 150 rows of 5 values with numbers as numbers.
+  - [ ] Penguins: 344 rows; 2 `null`s in each measurement column and 11 in `sex`; `year` type recorded in the log (see _Assumptions_).
+  - [ ] Editing one value in a golden file makes the suite fail with a diff naming that field.
 - **Verification:** `bun test tests/reference-ingestion.test.ts`; `bun run check`
 - **Progress:** [ ] Not started
 
@@ -281,9 +281,9 @@ What `specification/` must say once this plan is implemented. The final task app
 - **Must not touch:** `src/**`, `scripts/**`, `content/**`, `tests/sample-datasets-content.test.ts`
 - **Implementation:** In `beforeAll`, run `generateSampleDatasets(<tmp>/out, { ids: ['iris', 'palmer-penguins'], cacheDir: <tmp>/cache })` (`fs.mkdtemp` under `os.tmpdir()`; removed in `afterAll`). Serve `<tmp>/out` to the pipeline with a fake `fetch` that maps a URL's pathname (ignoring the query) to a file, and returns 404 otherwise, through the seam T6 built. For each dataset run `runIngestion({ kind: 'sample', sampleId: id }, …)` and repeat T3's invariants (with `source` `'sample'`, `sampleId` equal to `id`, `name` from the descriptor), then compare with `ingestion/<id>.sample.json`. Add one test: Penguins `year` is `categorical` on the sample path and records whether its upload-path type differs (per _Assumptions_). Review the new goldens as in T3.
 - **Acceptance criteria:**
-    - [ ] `REF-3 iris`, `REF-3 palmer-penguins` and `REF-3 year override` pass without `UPDATE_GOLDEN`.
-    - [ ] Upload and sample goldens differ only in `name`, `source`, `sampleId`, descriptor overrides and fields those overrides change; any other difference is recorded in the log.
-    - [ ] No files remain in `os.tmpdir()` from the suite, and `globalThis.fetch` is restored.
+  - [ ] `REF-3 iris`, `REF-3 palmer-penguins` and `REF-3 year override` pass without `UPDATE_GOLDEN`.
+  - [ ] Upload and sample goldens differ only in `name`, `source`, `sampleId`, descriptor overrides and fields those overrides change; any other difference is recorded in the log.
+  - [ ] No files remain in `os.tmpdir()` from the suite, and `globalThis.fetch` is restored.
 - **Verification:** `bun test tests/reference-ingestion.test.ts`; `bun run check`
 - **Progress:** [ ] Not started
 
@@ -297,8 +297,8 @@ What `specification/` must say once this plan is implemented. The final task app
 - Use `tests/helpers/reference-ingest.ts` only if it shares ingestion setup with `tests/reference-ingestion.test.ts`. Limit changes to `tests/reference-ingestion.test.ts` to moving that setup. The upstream checkout is outside this task's scope.
 - **Implementation:** Ingest Iris by the upload path and Penguins by the sample path (reuse T3/T4 setup through a small shared function inside the test files, or move it to `tests/helpers/reference-ingest.ts` if both files need it). Create `IndexedDBDatasetProvider` with the _Provider configurations_, load into correctly sized buffers, split features into rows and compare with `provider/<id>.json`. Invariants: `sampleCount` equals `rowCount`; Iris `featureNames` equal the four feature columns and `targetCategories` the three class names in sorted order; Penguins `featureNames` include `island=Biscoe`, `island=Dream`, `island=Torgersen` and each row has exactly one 1 in the island block and in the sex block; no feature value is `NaN`; target counts per category equal `classCounts`.
 - **Acceptance criteria:**
-    - [ ] `REF-4 iris` and `REF-4 palmer-penguins` pass without `UPDATE_GOLDEN`.
-    - [ ] Penguins rows that had `NA` in a measurement column hold that column's metadata median.
+  - [ ] `REF-4 iris` and `REF-4 palmer-penguins` pass without `UPDATE_GOLDEN`.
+  - [ ] Penguins rows that had `NA` in a measurement column hold that column's metadata median.
 - **Verification:** `bun test tests/reference-provider.test.ts`; `bun run check`
 - **Progress:** [ ] Not started
 
@@ -312,9 +312,9 @@ What `specification/` must say once this plan is implemented. The final task app
 - Add `ingestInWorker` to `tests/e2e/storage.ts`. The data-ingestion plan owns `tests/storage-worker.e2e.ts`. Raise a change if `tests/helpers/golden.ts` needs different rounding rules.
 - **Implementation:** `ingestInWorker` imports `StorageRequest`/`StorageResponse` from `src/features/data/ingestion/protocol.ts` and uses the implemented protocol (numeric requestId, discriminated type, result.value, error.error), never the old proposal: inside `page.evaluate`, start `new Worker('/storage.worker.js', { type: 'module' })`, post `ingest` (for `file`, build `new File([text], name, { type: 'text/csv' })`), wait for the result, page through getRows until fewer than the page size come back, accumulating each RawRecord.values (not RawRecord objects) in rowIndex order, reject on worker error/messageerror or a bounded 30 s timeout, terminate in finally, and return `{ metadata, rows }`. Match each numeric requestId, ignore progress when waiting for result, and use a new ID for each getRows request. The suite, for each dataset and each path, runs `openApp(page, '/data')`, `ingestInWorker` (file name `<id>.csv`, text from `readReferenceCsv`), canonicalises with the same redactions, and compares with `readGolden('ingestion/<id>.<upload|sample>.json')`. Also assert `countStoredRows` equals `rowCount`.
 - **Acceptance criteria:**
-    - [ ] All four `REF-5` cases pass in Chromium.
-    - [ ] Firefox and WebKit results are recorded in the log; any difference is reported with the field and both values and escalated, never fixed by loosening rounding or adding per-browser goldens.
-    - [ ] The suite never writes under `tests/golden/`.
+  - [ ] All four `REF-5` cases pass in Chromium.
+  - [ ] Firefox and WebKit results are recorded in the log; any difference is reported with the field and both values and escalated, never fixed by loosening rounding or adding per-browser goldens.
+  - [ ] The suite never writes under `tests/golden/`.
 - **Verification:** `bun run test:e2e tests/reference-conformance.e2e.ts`; `bun run check`
 - **Progress:** [ ] Not started
 
@@ -326,9 +326,9 @@ What `specification/` must say once this plan is implemented. The final task app
 - **Must not touch:** `src/**`, `tests/**`, `specification/mockups/` — preserve all product code and the undecided Known gap 5 rule in `specification/testing.md`.
 - **Implementation:** Apply every item under _Specification changes_, following "Writing specs" in `specification/README.md`. Where the log records a deviation from the plan, document the deviation, not the plan. Update testing.md's status line and its row in the index.
 - **Acceptance criteria:**
-    - [ ] Every item under _Specification changes_ is applied and ticked.
-    - [ ] No changed spec contradicts the code or another spec, or mentions this plan, its tasks or the history of the change.
-    - [ ] `bun run plans:check` reports no spec index mismatch.
+  - [ ] Every item under _Specification changes_ is applied and ticked.
+  - [ ] No changed spec contradicts the code or another spec, or mentions this plan, its tasks or the history of the change.
+  - [ ] `bun run plans:check` reports no spec index mismatch.
 - **Verification:** `bun run plans:check`; `git diff specification/` reviewed against _Specification changes_
 - **Progress:** [ ] Not started
 
@@ -346,12 +346,12 @@ What `specification/` must say once this plan is implemented. The final task app
 
 - **Blocking:** None.
 - **Non-blocking:**
-    - **Sequencing.** All data-ingestion prerequisites are now implemented. T1/T2 can run independently; T3–T6 follow their local dependencies. Owner: implementer.
-    - **Golden churn.** Every deliberate change to inference or statistics will update goldens. That is intended, but reviewers must read the diff rather than re-run `UPDATE_GOLDEN=1` reflexively; the explicit invariants (D5) are the backstop. Owner: reviewer.
-    - **Engine differences.** 12-significant-digit rounding absorbs last-bit differences; a value exactly on a rounding boundary could still differ. If T6 hits one, escalate rather than widening the tolerance.
-    - **Journeys are now owned.** Step 1 T6 creates both reference journeys; Step 2 T3 and Step 3 T5 extend them in order. This plan provides helpers and the lasting testing rule, not duplicate journey files.
-    - **No CI (Known gap 7).** These tests only prevent regressions if they run. `bun run check` covers the Bun goldens; the Playwright suites must be run by hand until CI exists. Owner: human.
-    - **Binary-target reference.** Neither dataset has a binary target, positive class or identifier column. Add `titanic` (or similar) as a third reference when Step 4 results exist. Owner: a later plan.
+  - **Sequencing.** All data-ingestion prerequisites are now implemented. T1/T2 can run independently; T3–T6 follow their local dependencies. Owner: implementer.
+  - **Golden churn.** Every deliberate change to inference or statistics will update goldens. That is intended, but reviewers must read the diff rather than re-run `UPDATE_GOLDEN=1` reflexively; the explicit invariants (D5) are the backstop. Owner: reviewer.
+  - **Engine differences.** 12-significant-digit rounding absorbs last-bit differences; a value exactly on a rounding boundary could still differ. If T6 hits one, escalate rather than widening the tolerance.
+  - **Journeys are now owned.** Step 1 T6 creates both reference journeys; Step 2 T3 and Step 3 T5 extend them in order. This plan provides helpers and the lasting testing rule, not duplicate journey files.
+  - **No CI (Known gap 7).** These tests only prevent regressions if they run. `bun run check` covers the Bun goldens; the Playwright suites must be run by hand until CI exists. Owner: human.
+  - **Binary-target reference.** Neither dataset has a binary target, positive class or identifier column. Add `titanic` (or similar) as a third reference when Step 4 results exist. Owner: a later plan.
 
 ## Escalations
 

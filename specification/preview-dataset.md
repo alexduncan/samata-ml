@@ -18,13 +18,13 @@ After loading a sample dataset or uploading a CSV file, the `/data` view switche
 
 - Rows are keyed in IndexedDB by compound key `[datasetId, rowIndex]`.
 - Metadata is stored per dataset in `dataset_metadata` with typed columns:
-    - `numeric`
-    - `categorical`
-    - `boolean`
-    - `date`
-    - `time`
-    - `datetime`
-    - `text`
+  - `numeric`
+  - `categorical`
+  - `boolean`
+  - `date`
+  - `time`
+  - `datetime`
+  - `text`
 - Statistics for each column include missing/invalid counts, tokens, and type-specific summaries (min/mean/max/histogram for numeric, value frequencies for categorical, earliest and latest values for date, time and datetime, shown at the column's precision, with UTC stated only for datetime).
 
 ## View-Switch & State Rules

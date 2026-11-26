@@ -69,12 +69,12 @@ Facts verified by `codebase-scout` on 2026-11-23 unless marked as a document che
 - **Servers and tests:** `scripts/static-server.ts` L4–L8 hard-codes isolation headers (applied L61, not on 403/404) and parses no `_headers`. `scripts/server.ts` serves `dist` with `--dist`. Ports come from `scripts/ports.ts` (primary 3000/3001/3333; linked worktrees use a hashed base). `playwright.config.ts` runs Chromium, Firefox and WebKit with `ignoreHTTPSErrors`. `bunfig.toml` preloads `tests/setup.ts` (happy-dom and a lock manager; defines no build constants). `.storybook/main.ts` `viteFinal` (L8–L22) and `vitest.config.ts` (single `storybook` project using `storybookTest({ configDir: '.storybook' })`, L19–L21) set no `define`. `scripts/server.ts` L328 calls `ensureHttpsCert()` (`scripts/certificates.ts` L13–L48) at start-up, so the Playwright web servers create `.cert/` before tests run. `playwright.config.ts` projects (L18–L31) set no `grep`/`grepInvert`, and its dist web server runs `bun run build` first (L41). Only `tests/training-runtime.e2e.ts` (both servers; probe `new Worker('/runtime.worker.js')` at L23) and `tests/classification-training.e2e.ts` (`baseURL: DIST_URL` at L116; `new Worker('/training.worker.js')` at L86) use the production server. `tests/fixtures/training/browser.ts` L130 matches worker URLs ending in `/training.worker.js`. Other worker E2E suites use the dev server and its root names. `tests/model-assets.test.ts` L146–L153 (`WML-P3-ASSET-1`) asserts the isolation and `script-src`/`worker-src` strings in `public/_headers`.
 - **Shell and welcome:** `src/app.ts` L33–L40 `i18n('app-shell-storage', …)`; `role="alert"` notices at L141 and L156, and a `role="status"` save notice at L169. `src/features/shell/app-welcome-modal.ts` dictionary L11–L17, `updated()` L74–L86 opens with `showModal()` and counts synchronised closes, `handleClose` L104–L110 treats any unsynchronised close (including Escape) as dismissal. `/privacy` is a reserved route (`src/router/reserved-content.ts` L9) with an existing footer link (`app-sidebar.ts` L461).
 - **Inherited E2E failures (snapshot; the code is changing concurrently):** On 2026-11-23 at about 13:40Z (main `c017619`), the following failed.
-    - **Visual parity, Chromium:** the nine tests `PARITY-sidebar-steps`, `SIDE-AC-11`, `PARITY-sidebar-step-first`, `PARITY-sidebar-step-adjacent`, `PARITY-sidebar-step-label`, `PARITY-step-links`, `PARITY-sidebar-step-last`, `PARITY-main` and `PARITY-models-features-table` (`tests/visual-parity.e2e.ts`; `HUMAN.md` §1 "Repair inherited visual parity").
-    - **App shell, all three browsers:** the `tests/app-shell.e2e.ts` L842 test titled `PH-AC-2: main uses reference geo…` (`HUMAN.md` §1 "Remove shared main padding"). The L882 `PH-AC-2` test passes.
-    - **Model setup, Chromium:** `MOD-SETUP-3` and `MOD-SETUP-4` in `tests/models-setup.e2e.ts`. `MOD-SETUP-1` and `-2` failed in one review run and passed in another, and Firefox and WebKit pass all four. The `HUMAN.md` model-builder item was removed by `3b122ac`. All twelve `tests/model-configuration.e2e.ts` tests now pass on Chromium.
-    - **Linux only:** the screenshot test `SIDE-AC-10` at `tests/visual-parity.e2e.ts` L264, which uses `toHaveScreenshot` (L276) against committed `sidebar-*-chromium-darwin.png` baselines. It is the only screenshot test. The other `SIDE-AC-10` tests (`visual-parity.e2e.ts` L320 and `sidebar-acceptance.e2e.ts` L161) pass.
+  - **Visual parity, Chromium:** the nine tests `PARITY-sidebar-steps`, `SIDE-AC-11`, `PARITY-sidebar-step-first`, `PARITY-sidebar-step-adjacent`, `PARITY-sidebar-step-label`, `PARITY-step-links`, `PARITY-sidebar-step-last`, `PARITY-main` and `PARITY-models-features-table` (`tests/visual-parity.e2e.ts`; `HUMAN.md` §1 "Repair inherited visual parity").
+  - **App shell, all three browsers:** the `tests/app-shell.e2e.ts` L842 test titled `PH-AC-2: main uses reference geo…` (`HUMAN.md` §1 "Remove shared main padding"). The L882 `PH-AC-2` test passes.
+  - **Model setup, Chromium:** `MOD-SETUP-3` and `MOD-SETUP-4` in `tests/models-setup.e2e.ts`. `MOD-SETUP-1` and `-2` failed in one review run and passed in another, and Firefox and WebKit pass all four. The `HUMAN.md` model-builder item was removed by `3b122ac`. All twelve `tests/model-configuration.e2e.ts` tests now pass on Chromium.
+  - **Linux only:** the screenshot test `SIDE-AC-10` at `tests/visual-parity.e2e.ts` L264, which uses `toHaveScreenshot` (L276) against committed `sidebar-*-chromium-darwin.png` baselines. It is the only screenshot test. The other `SIDE-AC-10` tests (`visual-parity.e2e.ts` L320 and `sidebar-acceptance.e2e.ts` L161) pass.
 
-    Because this set keeps changing, T1 derives the list from a measured baseline rather than this snapshot.
+  Because this set keeps changing, T1 derives the list from a measured baseline rather than this snapshot.
 
 - **Titles and listing:** literal titles start with the ID and `:`. `PARITY-*` titles are generated as `` `PARITY-${entry.id}` `` (`tests/visual-parity.e2e.ts` L17–L18) from `tests/visual-parity/map.ts`. The `tests/models-setup.e2e.ts` describe title contains every `MOD-SETUP` ID, so ID matching would select the whole block. `bunx playwright test --list --reporter=json` starts no web servers (about 0.5 s) and reports each spec's file (relative to `tests/`), describe path and title. `playwright.config.ts` sets `retries: process.env.CI ? 2 : 0` (L10).
 - **Unit-test DOM:** `tests/setup.ts` creates `new GlobalWindow({ url: 'http://localhost:3000' })` (happy-dom 17.6.3) with default settings. External `<script src>` elements are fetched and executed, so an appended Umami script would contact the live service.
@@ -142,28 +142,28 @@ A prerelease `minor` or `major` drops the prerelease when the lower components a
 #### B. Hashed build, manifests, `release.json`, headers and crawler policy
 
 - `buildProductionBundle(options: ProductionBuildOptions = {})`, where `ProductionBuildOptions` is `{ outDir?: string; version?: string; betaTelemetry?: boolean; crawlerPolicy?: 'closed' | 'public'; workerEntrypoints?: Partial<Record<'storage' | 'training' | 'analysis', string>> }`.
-    - Defaults: `outDir` is `DIST_DIR`; `version` comes from `package.json`; `betaTelemetry` is false; `crawlerPolicy` is `'closed'`; `workerEntrypoints` are the source paths. `buildDevBundle` takes the same `outDir`, `version` and `crawlerPolicy` options.
-    - `version`, `workerEntrypoints` and a non-default `outDir` exist for tests and are documented as such in TSDoc. `version` must pass `parseSemVer`.
-    - `scripts/build.ts` maps CLI input onto these options: `--out-dir <relative path>` (resolved under the repository root; it rejects absolute paths, `..` and paths outside `out/`, `dist/` or `dev/`), `BETA_TELEMETRY_ENABLED=true` to `betaTelemetry`, and `SAMATA_CRAWLER_POLICY` (`closed` or `public`; any other value exits non-zero) to `crawlerPolicy`.
+  - Defaults: `outDir` is `DIST_DIR`; `version` comes from `package.json`; `betaTelemetry` is false; `crawlerPolicy` is `'closed'`; `workerEntrypoints` are the source paths. `buildDevBundle` takes the same `outDir`, `version` and `crawlerPolicy` options.
+  - `version`, `workerEntrypoints` and a non-default `outDir` exist for tests and are documented as such in TSDoc. `version` must pass `parseSemVer`.
+  - `scripts/build.ts` maps CLI input onto these options: `--out-dir <relative path>` (resolved under the repository root; it rejects absolute paths, `..` and paths outside `out/`, `dist/` or `dev/`), `BETA_TELEMETRY_ENABLED=true` to `betaTelemetry`, and `SAMATA_CRAWLER_POLICY` (`closed` or `public`; any other value exits non-zero) to `crawlerPolicy`.
 - Build order (both modes unless stated):
-    1. Existing model assets, content and datasets.
-    2. `CONTENT_INDEX_VERSION` = first 12 hex of SHA-256 over the concatenated bytes of `content/<locale>/<domain>/index.json` for each locale in `src/config/locales.ts` order and each domain in `DOMAINS` order (`pages`, `models`, `glossary`). `DATASETS_INDEX_VERSION` = first 12 hex of SHA-256 of `datasets/index.json`.
-    3. Worker pass: one `Bun.build` over storage, training and analysis workers (plus the probe when enabled) with `splitting: false`, the existing `external` and `define` of `DEBUG`, `APP_VERSION`, `WEB_ML_RUNTIME_URL` and `WEB_ML_RUNTIME_REVISION`. Production outputs go to `<outDir>/bundles/`, and the three workers are revved with `writeRevvedFile`. When enabled, the probe is built in a separate `Bun.build` to `<outDir>/runtime.worker.js` in both modes and never revved. Dev outputs stay at the root names.
-    4. `BUILD_ID` = first 12 hex of SHA-256 over `APP_VERSION`, `WEB_ML_RUNTIME_REVISION`, the SHA-256 of each worker's bytes (storage, training, analysis order), `CONTENT_INDEX_VERSION` and `DATASETS_INDEX_VERSION`, joined with LF.
-    5. App pass: `src/app.ts`, `splitting: true`, `naming: { entry: '[name].[ext]', chunk: 'chunks/[name]-[hash].[ext]' }`, `define` from `toDefine` plus the two `WEB_ML_*` values. Production output goes to `<outDir>/bundles/`, and `app.js` is revved.
-    6. CSS pass: production output goes to `<outDir>/bundles/style.css`, then is revved.
-    7. `release.json` = `{"version":"<APP_VERSION>","build":"<BUILD_ID>","workers":{"storage":"<url>","training":"<url>","analysis":"<url>"}}` plus LF.
-    8. Generate `_headers` and `robots.txt` (below) from `public/`.
-    9. Production `index.html` via `transformIndexHtml`: links `/bundles/style.<hash>.css` and `/bundles/app.<hash>.js`, adds `<meta name="app-version" content="<APP_VERSION>" />`, and no `<style data-inline-build="true">`.
+  1. Existing model assets, content and datasets.
+  2. `CONTENT_INDEX_VERSION` = first 12 hex of SHA-256 over the concatenated bytes of `content/<locale>/<domain>/index.json` for each locale in `src/config/locales.ts` order and each domain in `DOMAINS` order (`pages`, `models`, `glossary`). `DATASETS_INDEX_VERSION` = first 12 hex of SHA-256 of `datasets/index.json`.
+  3. Worker pass: one `Bun.build` over storage, training and analysis workers (plus the probe when enabled) with `splitting: false`, the existing `external` and `define` of `DEBUG`, `APP_VERSION`, `WEB_ML_RUNTIME_URL` and `WEB_ML_RUNTIME_REVISION`. Production outputs go to `<outDir>/bundles/`, and the three workers are revved with `writeRevvedFile`. When enabled, the probe is built in a separate `Bun.build` to `<outDir>/runtime.worker.js` in both modes and never revved. Dev outputs stay at the root names.
+  4. `BUILD_ID` = first 12 hex of SHA-256 over `APP_VERSION`, `WEB_ML_RUNTIME_REVISION`, the SHA-256 of each worker's bytes (storage, training, analysis order), `CONTENT_INDEX_VERSION` and `DATASETS_INDEX_VERSION`, joined with LF.
+  5. App pass: `src/app.ts`, `splitting: true`, `naming: { entry: '[name].[ext]', chunk: 'chunks/[name]-[hash].[ext]' }`, `define` from `toDefine` plus the two `WEB_ML_*` values. Production output goes to `<outDir>/bundles/`, and `app.js` is revved.
+  6. CSS pass: production output goes to `<outDir>/bundles/style.css`, then is revved.
+  7. `release.json` = `{"version":"<APP_VERSION>","build":"<BUILD_ID>","workers":{"storage":"<url>","training":"<url>","analysis":"<url>"}}` plus LF.
+  8. Generate `_headers` and `robots.txt` (below) from `public/`.
+  9. Production `index.html` via `transformIndexHtml`: links `/bundles/style.<hash>.css` and `/bundles/app.<hash>.js`, adds `<meta name="app-version" content="<APP_VERSION>" />`, and no `<style data-inline-build="true">`.
 - `ProductionBuildResult` = `{ jsFile, cssFile, storageWorkerFile, trainingWorkerFile, analysisWorkerFile, appVersion, buildId }`, with files as root-absolute URLs.
 - Runtime: `storage-client.ts` L182 uses `new Worker(STORAGE_WORKER_URL, …)`, `training-service.ts` L298 uses `TRAINING_WORKER_URL`, and `analysis-client.ts` L17 uses `ANALYSIS_WORKER_URL`. `content-loader.ts` (URL built at L113) and `sample-datasets.ts` L12 append `?v=<version>` when the version is non-empty.
 - `BETA_TELEMETRY_ENABLED` is true only for a production build with `betaTelemetry: true` and a `-beta.N` version.
 - Emitted `_headers`, generated by `scripts/release-headers.ts` `renderHeaders(baseline: string, options: { telemetry: boolean; crawler: 'closed' | 'public' }): string`:
-    - The `/*` rule keeps every baseline line and adds `Cache-Control: public, max-age=0, must-revalidate`. Closed adds `X-Robots-Tag: noindex, nofollow, nosnippet`. Telemetry inserts the two Umami tokens after `'self'` in `script-src` and at the end of `connect-src`.
-    - Baseline `/content/*` and `/datasets/*` rules stay unchanged.
-    - Appended after them: `/bundles/*` and `/web-ml/*`, each with `! Cache-Control` then `Cache-Control: public, max-age=31536000, immutable`.
-    - The renderer throws if the baseline lacks `script-src` or `connect-src`, if a token is already present, if the baseline already contains any `Cache-Control` or global `X-Robots-Tag` line or a `/bundles/*` or `/web-ml/*` rule, or if any line exceeds 2,000 characters or rules exceed 100. Rendering is therefore single-pass by construction.
-    - `public/_headers` stays the baseline: security headers, CSP and the fragment crawler rules only. It never contains the cache or global crawler lines, which exist only in rendered output (`dist/_headers`, `dev/_headers` and test variants). `_headers` emission in dev mirrors production.
+  - The `/*` rule keeps every baseline line and adds `Cache-Control: public, max-age=0, must-revalidate`. Closed adds `X-Robots-Tag: noindex, nofollow, nosnippet`. Telemetry inserts the two Umami tokens after `'self'` in `script-src` and at the end of `connect-src`.
+  - Baseline `/content/*` and `/datasets/*` rules stay unchanged.
+  - Appended after them: `/bundles/*` and `/web-ml/*`, each with `! Cache-Control` then `Cache-Control: public, max-age=31536000, immutable`.
+  - The renderer throws if the baseline lacks `script-src` or `connect-src`, if a token is already present, if the baseline already contains any `Cache-Control` or global `X-Robots-Tag` line or a `/bundles/*` or `/web-ml/*` rule, or if any line exceeds 2,000 characters or rules exceed 100. Rendering is therefore single-pass by construction.
+  - `public/_headers` stays the baseline: security headers, CSP and the fragment crawler rules only. It never contains the cache or global crawler lines, which exist only in rendered output (`dist/_headers`, `dev/_headers` and test variants). `_headers` emission in dev mirrors production.
 - Effective production headers (via `scripts/headers-file.ts`): `/`, `/data`, `/index.html`, `/release.json`, `/robots.txt` and every `index.json` give exactly one `Cache-Control: public, max-age=0, must-revalidate`; `/assets/linear-regression.svg` also revalidates; `/bundles/app.<hash>.js`, workers, chunks and `/web-ml/<version>-<digest>/…` give exactly one `Cache-Control: public, max-age=31536000, immutable`; isolation and CSP apply to all.
 - `scripts/headers-file.ts` exports `parseHeadersFile(text): HeaderRule[]` and `resolveHeaders(rules, pathname): Headers`. Patterns are absolute paths with at most one `*` (any characters, including `/`). Rules apply in file order, a repeated header is joined with `, `, and `! Name` deletes values accumulated so far. Comments start with `#`. Malformed input throws.
 - **Crawler policy (`crawlerPolicy`):** the closed artefact writes `robots.txt` as `User-agent: *` LF `Disallow: /` LF and adds the global header. `public` (allowed only for a production build of a stable version ≥ `1.0.0`; anything else throws) writes `User-agent: *` LF `Allow: /` LF and omits the global header while keeping fragment rules. An unknown value throws. A version bump alone never opens crawling. The deploy job passes `closed`. `public/robots.txt` holds the closed form.
@@ -186,23 +186,23 @@ A prerelease `minor` or `major` drops the prerelease when the lower components a
 - **Script lifecycle (`src/common/telemetry/telemetry-client.ts`, framework-free):** `isBetaTelemetryDeployment(): boolean` returns `BETA_TELEMETRY_ENABLED && location.hostname === 'beta.samata.ml'`. `$betaDeployment: ReadableAtom<boolean>` is initialised from it. `setBetaDeploymentForTests(value: boolean): void` (TSDoc: tests and stories only) overrides it. `initBetaTelemetry(isAccepted: () => boolean): void` is idempotent; while disabled or unaccepted it does nothing. On the first accepted call it defines `window.samataUmamiBeforeSend`, then appends one `<script defer>` with `src="https://cloud.umami.is/script.js"`, `crossorigin="anonymous"`, `referrerpolicy="no-referrer"`, `data-website-id` (supplied ID), `data-domains="beta.samata.ml"`, `data-auto-pageview="false"`, `data-exclude-search="true"`, `data-exclude-hash="true"`, `data-fetch-credentials="omit"` and `data-before-send="samataUmamiBeforeSend"`. It sets no `data-errors`, `data-performance`, `data-tag`, `data-distinct-id`, `data-release` or `data-environment`. The client attaches its own `load` and `error` listeners to the element before appending it. An `error` event, or a `load` event after which `window.umami?.track` is not a function, marks the client failed: everything is dropped, nothing retries and nothing throws.
 - **Sends:** the client keeps `currentPath: BetaPagePath`, updated from the route store (model-detail routes collapse to `/models`). Reserved routes leave it unchanged, and it starts at `/`. `trackBetaPageview(path)` calls `umami.track(props => ({ ...props, url: path }))`. Every named event uses the callback form with the canonical URL: `umami.track(props => ({ ...props, url: currentPath, name }))`. `trackBetaEvent(name: BetaEventName)` sends `name`. `reportBetaException(code: BetaExceptionCode)` sends `'beta_error_' + code` with hyphens replaced by underscores, at most once per code per document. The string form `umami.track(name)` is never used, because the tracker would supply its own `url`. `BetaPagePath` is `'/' | '/data' | '/target' | '/models' | '/results'`, and model-detail routes collapse to `/models`. Reserved routes send nothing, and a repeated identical path sends nothing. `BetaEventName` is `beta_get_started`, `sample_dataset_selected`, `custom_dataset_uploaded`, `training_started`, `training_completed` or `training_failed`. `BetaExceptionCode` is `window-error`, `unhandled-rejection` or any `WorkerFailureCode`. The complete event-name allowlist is those six names plus `beta_error_window_error`, `beta_error_unhandled_rejection`, `beta_error_storage_worker_error`, `beta_error_storage_worker_protocol_error`, `beta_error_training_worker_startup_failed`, `beta_error_training_worker_crashed`, `beta_error_training_worker_protocol_error` and `beta_error_analysis_worker_failed`. Before the script is ready, only the pending initial pageview and the `beta_get_started` event are queued (in memory, at most one each). Everything else is dropped. No call throws or returns a rejected promise.
 - **Hook points:** app-owned window `error` and `unhandledrejection` listeners report `window-error` and `unhandled-rejection` without inspecting the error. The worker codes come from `onWorkerFailure`. Workflow events are sent only by the tab that performed the action:
-    - `startDatasetLoad` success, sent inside the active-controller guard (`dataset.store.ts` L343–L346), never after it: `source.kind` `'sample'` sends `sample_dataset_selected`, and `'file'` sends `custom_dataset_uploaded`.
-    - `training-service.ts` `train()`: `training_started` immediately after `setTrainingSessionStatus(identity, 'running')` (L545), and `training_completed` immediately after `'complete'` (L602).
-    - `training_failed`, at most once per run ID (tracked in a `Set` in the telemetry client), in three owner paths:
-        - the start acknowledgement ends as `'failed'` (L536–L542);
-        - `start()` sets a pending session to `'failed'` (L654–L655);
-        - `settleStopped` (L486–L498) computes status `'failed'` and its `repairStopped(…, 'finish')` call returns `ok`.
-          Nothing is sent from `repairStopped` itself, because `retry` recovery also calls it with `'recover'` (L754).
-    - `observePublishedStops`, `retry`, `recoverCompletedResult`, `recoverStoppedPublication`, storage-event refreshes and reloads never send. `beta_get_started` is sent only in the document whose click records acceptance.
+  - `startDatasetLoad` success, sent inside the active-controller guard (`dataset.store.ts` L343–L346), never after it: `source.kind` `'sample'` sends `sample_dataset_selected`, and `'file'` sends `custom_dataset_uploaded`.
+  - `training-service.ts` `train()`: `training_started` immediately after `setTrainingSessionStatus(identity, 'running')` (L545), and `training_completed` immediately after `'complete'` (L602).
+  - `training_failed`, at most once per run ID (tracked in a `Set` in the telemetry client), in three owner paths:
+    - the start acknowledgement ends as `'failed'` (L536–L542);
+    - `start()` sets a pending session to `'failed'` (L654–L655);
+    - `settleStopped` (L486–L498) computes status `'failed'` and its `repairStopped(…, 'finish')` call returns `ok`.
+      Nothing is sent from `repairStopped` itself, because `retry` recovery also calls it with `'recover'` (L754).
+  - `observePublishedStops`, `retry`, `recoverCompletedResult`, `recoverStoppedPublication`, storage-event refreshes and reloads never send. `beta_get_started` is sent only in the document whose click records acceptance.
 - **`before-send` allowlist:** `samataUmamiBeforeSend(type, payload)` returns `false` unless the deployment gate is open, acceptance is true, `type === 'event'` and `payload` is a plain object without a nested `payload` key. It returns a new object containing only:
-    - `website`, which must equal the supplied ID;
-    - `hostname`, which must equal `beta.samata.ml`;
-    - `url`, which must be a `BetaPagePath`;
-    - `screen`, only if it matches `^\d{1,5}x\d{1,5}$`;
-    - `language`, only if it matches `^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8}){0,3}$`;
-    - `name`, which must be in the event allowlist when present.
+  - `website`, which must equal the supplied ID;
+  - `hostname`, which must equal `beta.samata.ml`;
+  - `url`, which must be a `BetaPagePath`;
+  - `screen`, only if it matches `^\d{1,5}x\d{1,5}$`;
+  - `language`, only if it matches `^[A-Za-z]{2,3}(-[A-Za-z0-9]{1,8}){0,3}$`;
+  - `name`, which must be in the event allowlist when present.
 
-    Any other value for a required field rejects the payload. `referrer`, `title`, `tag`, `id`, `salt`, `data` and every other key are omitted. Identify, performance, error and unknown types are rejected.
+  Any other value for a required field rejects the payload. `referrer`, `title`, `tag`, `id`, `salt`, `data` and every other key are omitted. Identify, performance, error and unknown types are rejected.
 
 ## Specification changes
 
@@ -223,38 +223,38 @@ A prerelease `minor` or `major` drops the prerelease when the lower components a
 - **Likely files:** `package.json`, `bun.lock`, `.bun-version`, `wrangler.jsonc`, `CHANGELOG.md`, `AGENTS.md`, `playwright.config.ts`, `tests/known-failures.ts`, `tests/known-failures.test.ts`, `specification/HUMAN.md`, `tests/fixtures/training/runtime.worker.ts`, `scripts/release.ts`, `scripts/build-constants.ts`, `src/types/env.d.ts`, `tests/setup.ts`, `.storybook/main.ts`, `tests/release.test.ts`, `tests/build-constants.test.ts`
 - **Must not touch:** `src/features/`, `src/components/`, `src/stores/`, `src/router/`, `css/`, `specification/mockups/`
 - **Implementation:**
-    1. Record the baseline `bun run check` result in the implementation log.
-    2. `bun add -d --exact wrangler@4.166.0`. If the install cannot reach the registry, stop and escalate; do not defer it.
-    3. Apply the `package.json` fields and scripts from Interfaces §A except `lint`, and add `.bun-version`.
-    4. Update `wrangler.jsonc`: `name: "samata-ml"`, `preview_urls: true`, keep `workers_dev: false`, and set `routes: [{ "pattern": "beta.samata.ml", "custom_domain": true }]`. Keep `assets` and the compatibility date.
-    5. Add the constants to `src/types/env.d.ts`, and remove the now-duplicate global `declare const WEB_ML_RUNTIME_URL: string;` from `tests/fixtures/training/runtime.worker.ts` L1 (a script file without imports or exports, so keeping it would fail `tsc` with TS2451). Create `scripts/build-constants.ts`, the `tests/setup.ts` assignment and the Storybook `define` (Interfaces §A).
-    6. Create `CHANGELOG.md` (Keep a Changelog), with `## [Unreleased]` and `## [0.1.0-beta.1] - <UTC date of this task>`.
-    7. Create `scripts/release.ts` per Interfaces §A, with TSDoc.
-    8. Add `bun run version:release prerelease --dry-run` and `bun run deploy:dry-run` to `AGENTS.md` §Verification Commands with one-line descriptions.
-    9. Known E2E failures (D11):
-        - **`tests/known-failures.ts`:**
-            - Exports `KnownFailure` = `{ id: string; file: string; title: string; projects: readonly ('chromium' | 'firefox' | 'webkit')[]; platforms?: readonly ('darwin' | 'linux' | 'win32')[]; human: string }`, `KNOWN_FAILURES: readonly KnownFailure[]` and `knownFailureGrep(project: string, platform: string = process.platform): RegExp | undefined`.
-            - `file` is the path relative to `tests/`. `title` is the exact test title.
-            - Each entry contributes `<escaped file>\b.*(?:^|\s)<escaped title>(?=\s|$)`. The entries for a project and platform are joined with `|`, and the function returns `undefined` when there are none.
-        - **Measured baseline:**
-            - Run `bun run test:e2e --project=<p>` without the flag twice for each of `chromium`, `firefox` and `webkit`, matching how CI invokes the suite and building `dist` once per run.
-            - Add an entry only for a test that failed in both runs. A test that failed once goes in the implementation log as flaky and is left to CI retries.
-            - Platform-specific entries are added only for evidence that cannot be reproduced on the implementer's host. Currently that is the Linux-only screenshot `SIDE-AC-10` test (L264), entered with `platforms: ['linux']`.
-            - Every entry needs a `HUMAN.md` §1 item with the failing evidence. Reuse the visual-parity and main-padding items, and add one for any other failure (for example the Chromium `MOD-SETUP` tests) and one to commit Linux Chromium baselines for the screenshot test, for example from the Playwright Docker image matching the installed version.
-            - Record both runs and the resulting list in the implementation log. The Codebase context snapshot is guidance, not the list.
-        - **`playwright.config.ts`:** every project sets `grepInvert: process.env.SAMATA_SKIP_KNOWN_FAILURES === '1' ? knownFailureGrep(name, process.env.SAMATA_KNOWN_FAILURE_PLATFORM ?? process.platform) : undefined`. The platform override exists only for the listing test.
-        - **`tests/known-failures.test.ts` (timeout 60 s):**
-            - For each project and for `darwin` and `linux`, it runs `bunx playwright test --list --reporter=json --project=<p>` with and without the flag (setting the platform override) and diffs the specs, keyed by file, describe path and title.
-            - Each applicable entry must remove exactly one spec, the one with its `file` and `title`. The removed set must equal the applicable entries.
-            - Every `human` reference must appear in `specification/HUMAN.md`.
-            - On `darwin` the Linux-only entry removes nothing, and the `SIDE-AC-10` tests at `visual-parity.e2e.ts` L320 and `sidebar-acceptance.e2e.ts` L161 are never removed.
-    10. Tests: `tests/release.test.ts` covers every cell of the bump table, invalid inputs (`1.2`, `01.2.3`, `1.2.3-rc.1`, `1.2.3-beta.0`, `1.2.3+meta`), changelog formatting and `wrangler.jsonc` fields. `tests/build-constants.test.ts` covers `toDefine` output and that the preload exposes every constant.
+  1. Record the baseline `bun run check` result in the implementation log.
+  2. `bun add -d --exact wrangler@4.166.0`. If the install cannot reach the registry, stop and escalate; do not defer it.
+  3. Apply the `package.json` fields and scripts from Interfaces §A except `lint`, and add `.bun-version`.
+  4. Update `wrangler.jsonc`: `name: "samata-ml"`, `preview_urls: true`, keep `workers_dev: false`, and set `routes: [{ "pattern": "beta.samata.ml", "custom_domain": true }]`. Keep `assets` and the compatibility date.
+  5. Add the constants to `src/types/env.d.ts`, and remove the now-duplicate global `declare const WEB_ML_RUNTIME_URL: string;` from `tests/fixtures/training/runtime.worker.ts` L1 (a script file without imports or exports, so keeping it would fail `tsc` with TS2451). Create `scripts/build-constants.ts`, the `tests/setup.ts` assignment and the Storybook `define` (Interfaces §A).
+  6. Create `CHANGELOG.md` (Keep a Changelog), with `## [Unreleased]` and `## [0.1.0-beta.1] - <UTC date of this task>`.
+  7. Create `scripts/release.ts` per Interfaces §A, with TSDoc.
+  8. Add `bun run version:release prerelease --dry-run` and `bun run deploy:dry-run` to `AGENTS.md` §Verification Commands with one-line descriptions.
+  9. Known E2E failures (D11):
+     - **`tests/known-failures.ts`:**
+       - Exports `KnownFailure` = `{ id: string; file: string; title: string; projects: readonly ('chromium' | 'firefox' | 'webkit')[]; platforms?: readonly ('darwin' | 'linux' | 'win32')[]; human: string }`, `KNOWN_FAILURES: readonly KnownFailure[]` and `knownFailureGrep(project: string, platform: string = process.platform): RegExp | undefined`.
+       - `file` is the path relative to `tests/`. `title` is the exact test title.
+       - Each entry contributes `<escaped file>\b.*(?:^|\s)<escaped title>(?=\s|$)`. The entries for a project and platform are joined with `|`, and the function returns `undefined` when there are none.
+     - **Measured baseline:**
+       - Run `bun run test:e2e --project=<p>` without the flag twice for each of `chromium`, `firefox` and `webkit`, matching how CI invokes the suite and building `dist` once per run.
+       - Add an entry only for a test that failed in both runs. A test that failed once goes in the implementation log as flaky and is left to CI retries.
+       - Platform-specific entries are added only for evidence that cannot be reproduced on the implementer's host. Currently that is the Linux-only screenshot `SIDE-AC-10` test (L264), entered with `platforms: ['linux']`.
+       - Every entry needs a `HUMAN.md` §1 item with the failing evidence. Reuse the visual-parity and main-padding items, and add one for any other failure (for example the Chromium `MOD-SETUP` tests) and one to commit Linux Chromium baselines for the screenshot test, for example from the Playwright Docker image matching the installed version.
+       - Record both runs and the resulting list in the implementation log. The Codebase context snapshot is guidance, not the list.
+     - **`playwright.config.ts`:** every project sets `grepInvert: process.env.SAMATA_SKIP_KNOWN_FAILURES === '1' ? knownFailureGrep(name, process.env.SAMATA_KNOWN_FAILURE_PLATFORM ?? process.platform) : undefined`. The platform override exists only for the listing test.
+     - **`tests/known-failures.test.ts` (timeout 60 s):**
+       - For each project and for `darwin` and `linux`, it runs `bunx playwright test --list --reporter=json --project=<p>` with and without the flag (setting the platform override) and diffs the specs, keyed by file, describe path and title.
+       - Each applicable entry must remove exactly one spec, the one with its `file` and `title`. The removed set must equal the applicable entries.
+       - Every `human` reference must appear in `specification/HUMAN.md`.
+       - On `darwin` the Linux-only entry removes nothing, and the `SIDE-AC-10` tests at `visual-parity.e2e.ts` L320 and `sidebar-acceptance.e2e.ts` L161 are never removed.
+  10. Tests: `tests/release.test.ts` covers every cell of the bump table, invalid inputs (`1.2`, `01.2.3`, `1.2.3-rc.1`, `1.2.3-beta.0`, `1.2.3+meta`), changelog formatting and `wrangler.jsonc` fields. `tests/build-constants.test.ts` covers `toDefine` output and that the preload exposes every constant.
 - **Acceptance criteria:**
-    - [x] `REL-VER-1` — `package.json` has `name: samata-ml` and `version: 0.1.0-beta.1`. `wrangler.jsonc` has `name: samata-ml`, `preview_urls: true`, `workers_dev: false`, the `beta.samata.ml` Custom Domain and single-page-application assets. `wrangler` is pinned exactly.
-    - [x] `REL-VER-2` — `bumpSemVer` matches every table cell, and invalid inputs throw an `Error` naming the input.
-    - [x] `REL-VER-3` — `bun run version:release prerelease --dry-run` exits 0, prints `0.1.0-beta.1 → 0.1.0-beta.2` and the section, and leaves `package.json` and `CHANGELOG.md` byte-identical. An invalid bump exits non-zero.
-    - [x] `REL-KF-1` — `bun test tests/known-failures.test.ts` passes. With the flag, each project skips exactly the listed tests for the host platform. Without it nothing is skipped, and passing tests that share an ID still run. Every non-platform-specific entry failed in both recorded baseline runs.
-    - [x] `REL-VER-4` — Under `bun test`, every constant in `TEST_BUILD_CONSTANTS` is readable as a bare identifier. `bun run deploy:dry-run` exits 0, or the implementation log records that it needs credentials, with the exact message; in that case T7 does not run it in the `verify` job.
+  - [x] `REL-VER-1` — `package.json` has `name: samata-ml` and `version: 0.1.0-beta.1`. `wrangler.jsonc` has `name: samata-ml`, `preview_urls: true`, `workers_dev: false`, the `beta.samata.ml` Custom Domain and single-page-application assets. `wrangler` is pinned exactly.
+  - [x] `REL-VER-2` — `bumpSemVer` matches every table cell, and invalid inputs throw an `Error` naming the input.
+  - [x] `REL-VER-3` — `bun run version:release prerelease --dry-run` exits 0, prints `0.1.0-beta.1 → 0.1.0-beta.2` and the section, and leaves `package.json` and `CHANGELOG.md` byte-identical. An invalid bump exits non-zero.
+  - [x] `REL-KF-1` — `bun test tests/known-failures.test.ts` passes. With the flag, each project skips exactly the listed tests for the host platform. Without it nothing is skipped, and passing tests that share an ID still run. Every non-platform-specific entry failed in both recorded baseline runs.
+  - [x] `REL-VER-4` — Under `bun test`, every constant in `TEST_BUILD_CONSTANTS` is readable as a bare identifier. `bun run deploy:dry-run` exits 0, or the implementation log records that it needs credentials, with the exact message; in that case T7 does not run it in the `verify` job.
 - **Verification:** `bun test tests/release.test.ts`; `bun test tests/build-constants.test.ts`; `bun test tests/known-failures.test.ts`; `bun run test:e2e --project=chromium`, `bun run test:e2e --project=firefox` and `bun run test:e2e --project=webkit` (each twice, unflagged, for the baseline); `bun run version:release prerelease --dry-run`; `bun run deploy:dry-run`; `bun run check`; `bun run format:check <changed files>`.
 - **Progress:** [x] Completed (2026-11-23T14:17:19Z)
 
@@ -265,28 +265,28 @@ A prerelease `minor` or `major` drops the prerelease when the lower components a
 - **Likely files:** `scripts/build-assets.ts`, `scripts/build.ts`, `scripts/html.ts`, `scripts/headers-file.ts`, `scripts/release-headers.ts`, `scripts/static-server.ts`, `scripts/server.ts`, `public/_headers`, `public/robots.txt`, `src/features/data/ingestion/storage-client.ts`, `src/features/models/training/training-service.ts`, `src/features/results/analysis-client.ts`, `src/common/content/content-loader.ts`, `src/features/data/sample-datasets.ts`, `tests/build-cache-invalidation.test.ts`, `tests/headers-file.test.ts`, `tests/model-assets.test.ts`, `tests/fixtures/release-assets.ts`, `tests/classification-training.e2e.ts`, `tests/fixtures/training/browser.ts`, `tests/content.e2e.ts`
 - **Must not touch:** `src/components/`, `src/stores/`, `src/router/`, `css/`, `specification/mockups/`, `vendor/`
 - **Implementation:**
-    1. Implement `scripts/headers-file.ts`, `scripts/release-headers.ts`, the build order, `--out-dir`, `release.json`, `_headers` and `robots.txt` generation, and the `index.html` changes from Interfaces §B. Remove CSS inlining from `scripts/html.ts` (Known gap 3).
-    2. Switch the three worker spawns and the two manifest fetches to the build constants.
-    3. In `--dist` mode, `scripts/static-server.ts` reads `<serve dir>/_headers` once at start-up, applies `resolveHeaders` to every 200/304 response, keeps the hard-coded isolation headers on 403/404, and fails start-up on a malformed file. Dev mode is unchanged.
-    4. Add `tests/fixtures/release-assets.ts` (`workerUrl(page, name)` reads `/release.json` from the page origin). Use it at `tests/classification-training.e2e.ts` L86. Change `tests/fixtures/training/browser.ts` L130 to match `/\/training\.worker(\.[0-9a-f]{10})?\.js$/`. The runtime probe stays at `/runtime.worker.js`, so `tests/training-runtime.e2e.ts` is unchanged. Dev-server suites keep their root worker names. Widen the `tests/content.e2e.ts` L75 route to `**/content/en/pages/index.json*` so the 404 case still applies to versioned requests. Do not change its assertions.
-    5. Keep `tests/model-assets.test.ts` `WML-P3-ASSET-1`'s existing assertions on `public/_headers`. Add assertions that resolve `renderHeaders(<public/_headers>, { telemetry: false, crawler: 'closed' })` for `/`, `/bundles/x.js` and `/web-ml/x/y.js` and find the isolation strings and exactly one `Cache-Control` on each. Add a negative case: rendering a baseline that already contains `Cache-Control` throws.
-    6. `tests/headers-file.test.ts`: parsing, splat matching, joining, detach then set in the same rule, detach with no effect before the broader rule, malformed input and `:placeholder` rejection.
-    7. `tests/build-cache-invalidation.test.ts` builds each variant one after another (the variants share the dataset cache under `node_modules/.cache/samata-ml`) in `beforeAll` into `out/test-build-<random>/<variant>`, removes it afterwards and sets `{ timeout: 180_000 }` on build hooks. Variants: default production, a changed storage worker (`workerEntrypoints.storage` is a temporary file in the variant directory that imports the real worker and adds `console.info('build-variant');`), `version: '1.0.0'` with `crawlerPolicy: 'public'`, and dev. It checks:
-        - hashed `/bundles/` names and no unhashed app, CSS or worker files in production, with `assets/linear-regression.svg` still copied;
-        - `index.html` links and meta with no inline style;
-        - app bundle containing the revved worker URLs and both manifest versions;
-        - a changed worker input changing its name, the embedded URL and `BUILD_ID`;
-        - `release.json` shape;
-        - effective headers for every path class in Interfaces §B (exactly one `Cache-Control`);
-        - CSP identical to `public/_headers` without telemetry, and line and rule limits;
-        - closed and public crawler artefacts, rejection of `public` for prerelease or dev builds, and rejection of unknown policies;
-        - no worker bundle containing the identifiers `BUILD_ID`, `STORAGE_WORKER_URL`, `TRAINING_WORKER_URL`, `ANALYSIS_WORKER_URL`, `CONTENT_INDEX_VERSION`, `DATASETS_INDEX_VERSION` or `BETA_TELEMETRY_ENABLED`.
+  1. Implement `scripts/headers-file.ts`, `scripts/release-headers.ts`, the build order, `--out-dir`, `release.json`, `_headers` and `robots.txt` generation, and the `index.html` changes from Interfaces §B. Remove CSS inlining from `scripts/html.ts` (Known gap 3).
+  2. Switch the three worker spawns and the two manifest fetches to the build constants.
+  3. In `--dist` mode, `scripts/static-server.ts` reads `<serve dir>/_headers` once at start-up, applies `resolveHeaders` to every 200/304 response, keeps the hard-coded isolation headers on 403/404, and fails start-up on a malformed file. Dev mode is unchanged.
+  4. Add `tests/fixtures/release-assets.ts` (`workerUrl(page, name)` reads `/release.json` from the page origin). Use it at `tests/classification-training.e2e.ts` L86. Change `tests/fixtures/training/browser.ts` L130 to match `/\/training\.worker(\.[0-9a-f]{10})?\.js$/`. The runtime probe stays at `/runtime.worker.js`, so `tests/training-runtime.e2e.ts` is unchanged. Dev-server suites keep their root worker names. Widen the `tests/content.e2e.ts` L75 route to `**/content/en/pages/index.json*` so the 404 case still applies to versioned requests. Do not change its assertions.
+  5. Keep `tests/model-assets.test.ts` `WML-P3-ASSET-1`'s existing assertions on `public/_headers`. Add assertions that resolve `renderHeaders(<public/_headers>, { telemetry: false, crawler: 'closed' })` for `/`, `/bundles/x.js` and `/web-ml/x/y.js` and find the isolation strings and exactly one `Cache-Control` on each. Add a negative case: rendering a baseline that already contains `Cache-Control` throws.
+  6. `tests/headers-file.test.ts`: parsing, splat matching, joining, detach then set in the same rule, detach with no effect before the broader rule, malformed input and `:placeholder` rejection.
+  7. `tests/build-cache-invalidation.test.ts` builds each variant one after another (the variants share the dataset cache under `node_modules/.cache/samata-ml`) in `beforeAll` into `out/test-build-<random>/<variant>`, removes it afterwards and sets `{ timeout: 180_000 }` on build hooks. Variants: default production, a changed storage worker (`workerEntrypoints.storage` is a temporary file in the variant directory that imports the real worker and adds `console.info('build-variant');`), `version: '1.0.0'` with `crawlerPolicy: 'public'`, and dev. It checks:
+     - hashed `/bundles/` names and no unhashed app, CSS or worker files in production, with `assets/linear-regression.svg` still copied;
+     - `index.html` links and meta with no inline style;
+     - app bundle containing the revved worker URLs and both manifest versions;
+     - a changed worker input changing its name, the embedded URL and `BUILD_ID`;
+     - `release.json` shape;
+     - effective headers for every path class in Interfaces §B (exactly one `Cache-Control`);
+     - CSP identical to `public/_headers` without telemetry, and line and rule limits;
+     - closed and public crawler artefacts, rejection of `public` for prerelease or dev builds, and rejection of unknown policies;
+     - no worker bundle containing the identifiers `BUILD_ID`, `STORAGE_WORKER_URL`, `TRAINING_WORKER_URL`, `ANALYSIS_WORKER_URL`, `CONTENT_INDEX_VERSION`, `DATASETS_INDEX_VERSION` or `BETA_TELEMETRY_ENABLED`.
 - **Acceptance criteria:**
-    - [x] `REL-CACHE-1` — In production, `/bundles/` contains only hashed app, CSS, worker and chunk files, the unhashed app, CSS and worker names are absent everywhere, and `release.json`, closed `robots.txt` and the copied `public/assets/` files exist. The probe (when enabled) is `/runtime.worker.js`. Dev output keeps root names.
-    - [x] `REL-CACHE-2` — `index.html` has no `<style data-inline-build="true">`, links the hashed assets and carries `<meta name="app-version" content="0.1.0-beta.1" />`.
-    - [x] `REL-CACHE-3` — `resolveHeaders` gives exactly one `Cache-Control` per path: revalidate for shell, SPA routes, manifests, `release.json`, `robots.txt` and `/assets/*`, immutable for `/bundles/*` and `/web-ml/*`. The immutable rules contain `! Cache-Control` before their value. COOP, COEP, CORP and the baseline CSP apply to every path.
-    - [x] `REL-CACHE-4` — `tests/training-runtime.e2e.ts` (dev and production) and `tests/classification-training.e2e.ts` (production) pass with the `--dist` server applying the emitted CSP and `Cache-Control`. `tests/storage-worker.e2e.ts`, `tests/analysis-worker.e2e.ts`, `tests/comparison.e2e.ts` and `tests/content.e2e.ts` still pass on the dev server, including the `content.e2e.ts` 404 case against a versioned manifest request. Pass means no failures outside the T1 `tests/known-failures.ts` entries for that project and platform.
-    - [x] `REL-CRAWL-1` — Closed artefacts serve deny-all robots and the global `X-Robots-Tag`. A stable ≥ 1.0.0 production `public` build serves allow-all robots and only fragment crawler headers. Every other `public` request and unknown policy throws. Telemetry does not affect crawl output.
+  - [x] `REL-CACHE-1` — In production, `/bundles/` contains only hashed app, CSS, worker and chunk files, the unhashed app, CSS and worker names are absent everywhere, and `release.json`, closed `robots.txt` and the copied `public/assets/` files exist. The probe (when enabled) is `/runtime.worker.js`. Dev output keeps root names.
+  - [x] `REL-CACHE-2` — `index.html` has no `<style data-inline-build="true">`, links the hashed assets and carries `<meta name="app-version" content="0.1.0-beta.1" />`.
+  - [x] `REL-CACHE-3` — `resolveHeaders` gives exactly one `Cache-Control` per path: revalidate for shell, SPA routes, manifests, `release.json`, `robots.txt` and `/assets/*`, immutable for `/bundles/*` and `/web-ml/*`. The immutable rules contain `! Cache-Control` before their value. COOP, COEP, CORP and the baseline CSP apply to every path.
+  - [x] `REL-CACHE-4` — `tests/training-runtime.e2e.ts` (dev and production) and `tests/classification-training.e2e.ts` (production) pass with the `--dist` server applying the emitted CSP and `Cache-Control`. `tests/storage-worker.e2e.ts`, `tests/analysis-worker.e2e.ts`, `tests/comparison.e2e.ts` and `tests/content.e2e.ts` still pass on the dev server, including the `content.e2e.ts` 404 case against a versioned manifest request. Pass means no failures outside the T1 `tests/known-failures.ts` entries for that project and platform.
+  - [x] `REL-CRAWL-1` — Closed artefacts serve deny-all robots and the global `X-Robots-Tag`. A stable ≥ 1.0.0 production `public` build serves allow-all robots and only fragment crawler headers. Every other `public` request and unknown policy throws. Telemetry does not affect crawl output.
 - **Verification:** `bun test tests/headers-file.test.ts`; `bun test tests/build-cache-invalidation.test.ts`; `bun test tests/model-assets.test.ts`; `bun run check`; `bun run build`; `bun run test:e2e tests/training-runtime.e2e.ts`; `bun run test:e2e tests/classification-training.e2e.ts`; `bun run test:e2e tests/storage-worker.e2e.ts`; `bun run test:e2e tests/analysis-worker.e2e.ts`; `bun run test:e2e tests/comparison.e2e.ts`; `bun run test:e2e tests/content.e2e.ts`; `bun run format:check <changed files>`.
 - **Progress:** [x] Completed (2026-11-23T14:25:06Z)
 
@@ -297,19 +297,19 @@ A prerelease `minor` or `major` drops the prerelease when the lower components a
 - **Likely files:** `src/common/release/worker-failures.ts`, `src/common/release/stale-release.ts`, `src/app.ts`, `src/features/data/ingestion/storage-client.ts`, `src/features/models/training/training-service.ts`, `src/features/results/analysis-client.ts`, `tests/worker-failures.test.ts`, `tests/stale-release.test.ts`, `tests/storage-client.test.ts`, `tests/training-service.test.ts`, `tests/analysis-protocol.test.ts`, `tests/app-shell.e2e.ts`
 - **Must not touch:** `src/components/`, `src/stores/`, `css/`, `specification/mockups/`
 - **Implementation:**
-    1. Implement Interfaces §C, with TSDoc.
-    2. Unit tests:
-        - storage `error`/`messageerror` dispatched on a plain `EventTarget` passed as `workerEvents`: pending requests reject with `STORAGE_FAILED`, the singleton resets and the failure is reported once;
-        - training reports for L442, L443 and L447, with existing settlement codes unchanged;
-        - analysis reports on worker errors but not on dispose;
-        - listener isolation;
-        - stale check: same build, different build, 404, invalid JSON, network rejection, concurrent calls producing one request, and no throw.
-    3. E2E in `tests/app-shell.e2e.ts` (dev server): route `/release.json` to a different `build`, and make the storage worker load fail by serving `/storage.worker.js` as an HTML 200 body through `page.route`. Where a browser does not route dedicated-worker script requests, use the `addInitScript` proxy of `window.Worker` (precedent: `tests/fixtures/training/browser.ts` L96–L128) to substitute a URL that returns HTML. Trigger a fresh storage worker spawn, and expect the alert with a focusable **Reload** that reloads the page and keeps saved state. With a matching `build`, no notice appears. Run scoped axe on the notice.
+  1. Implement Interfaces §C, with TSDoc.
+  2. Unit tests:
+     - storage `error`/`messageerror` dispatched on a plain `EventTarget` passed as `workerEvents`: pending requests reject with `STORAGE_FAILED`, the singleton resets and the failure is reported once;
+     - training reports for L442, L443 and L447, with existing settlement codes unchanged;
+     - analysis reports on worker errors but not on dispose;
+     - listener isolation;
+     - stale check: same build, different build, 404, invalid JSON, network rejection, concurrent calls producing one request, and no throw.
+  3. E2E in `tests/app-shell.e2e.ts` (dev server): route `/release.json` to a different `build`, and make the storage worker load fail by serving `/storage.worker.js` as an HTML 200 body through `page.route`. Where a browser does not route dedicated-worker script requests, use the `addInitScript` proxy of `window.Worker` (precedent: `tests/fixtures/training/browser.ts` L96–L128) to substitute a URL that returns HTML. Trigger a fresh storage worker spawn, and expect the alert with a focusable **Reload** that reloads the page and keeps saved state. With a matching `build`, no notice appears. Run scoped axe on the notice.
 - **Acceptance criteria:**
-    - [x] `REL-STALE-1` — The notice appears only after a worker failure when `/release.json` reports a different build. Ordinary dataset validation or training failures (for example `training-failed`) never probe or show the notice.
-    - [x] `REL-STALE-2` — **Reload** always reloads, with no session guard, and saved workflow state survives the reload.
-    - [x] `REL-STALE-3` — The notice is `role="alert"` at the top of `main`, does not steal focus, has a native button with its visible name and passes scoped axe checks. Strings come from `app-shell-release`.
-    - [x] `REL-STALE-4` — After a storage worker error, pending storage requests reject with `STORAGE_FAILED` and the next request uses a new worker.
+  - [x] `REL-STALE-1` — The notice appears only after a worker failure when `/release.json` reports a different build. Ordinary dataset validation or training failures (for example `training-failed`) never probe or show the notice.
+  - [x] `REL-STALE-2` — **Reload** always reloads, with no session guard, and saved workflow state survives the reload.
+  - [x] `REL-STALE-3` — The notice is `role="alert"` at the top of `main`, does not steal focus, has a native button with its visible name and passes scoped axe checks. Strings come from `app-shell-release`.
+  - [x] `REL-STALE-4` — After a storage worker error, pending storage requests reject with `STORAGE_FAILED` and the next request uses a new worker.
 - **Verification:** `bun test tests/worker-failures.test.ts`; `bun test tests/stale-release.test.ts`; `bun test tests/storage-client.test.ts`; `bun test tests/training-service.test.ts`; `bun test tests/analysis-protocol.test.ts`; `bun test tests/repository-conventions.test.ts`; `bun run check`; `bun run test:e2e tests/app-shell.e2e.ts`; `bun run format:check <changed files>`.
 - **Progress:** [x] Completed (2026-11-23T14:32:06Z)
 
@@ -320,26 +320,26 @@ A prerelease `minor` or `major` drops the prerelease when the lower components a
 - **Likely files:** `scripts/build-assets.ts`, `scripts/release-headers.ts`, `src/common/telemetry/telemetry-client.ts`, `src/app.ts`, `src/stores/dataset.store.ts`, `src/features/models/training/training-service.ts`, `tests/telemetry-privacy.test.ts`, `tests/training-service.test.ts`, `tests/build-cache-invalidation.test.ts`, `tests/fixtures/umami-fake-tracker.js`, `tests/setup.ts`
 - **Must not touch:** `public/_headers`, `vendor/`, `css/`, `specification/mockups/`
 - **Implementation:**
-    1. Enable the telemetry header render and `BETA_TELEMETRY_ENABLED` gate. Extend the build tests with `betaTelemetry: true` variants for the package beta version and for `version: '1.0.0'`, and keep the default variant.
-    2. Implement Interfaces §D except welcome UI and acceptance wiring. `initBetaTelemetry` takes the acceptance reader, and T5 supplies the persisted flag. Register window listeners and the `onWorkerFailure` subscription in `bootstrapApp` after state reconciliation and persister installation. Connect manual pageviews to the existing route store, and add the dataset and training hooks at the owner-only points in Interfaces §D. In `tests/training-service.test.ts`, assert one event per owner transition and none from `observePublishedStops` or `retry` recovery.
-    3. `tests/fixtures/umami-fake-tracker.js` is a classic script with no `import` or `export`. It assigns `globalThis.installFakeUmami = (scriptElement, send) => …`, and its last statement installs it as `installFakeUmami(document.currentScript, body => fetch('https://gateway.umami.is/api/send', …))` only when `document.currentScript` is an element whose `src` is the Umami script URL. Playwright serves the file as the routed script body. `bun test` imports it for side effects only (`tsconfig.json` L9 `allowJs: true`), where `document.currentScript` is null and nothing installs, and the test declares the global's type. It mimics the documented surface: it reads `data-before-send`, exposes `umami.track` in callback and name forms, builds default props as the documented tracker does: `website` (the script's ID), `hostname` (`location.hostname`), `screen` (`` `${screen.width}x${screen.height}` ``), `language` (`navigator.language`), `title` (`document.title`), `referrer` (`document.referrer`) `url` (the full `location.href`, with search and hash cleared when the exclude attributes are `"true"`) and `salt` (as the hosted script adds it). The callback's return value is sent as-is, with no merge. It passes `('event', payload)` to the hook and records the body plus the `x-umami-website-id` and `x-umami-hostname` headers it would send with `keepalive` to `https://gateway.umami.is/api/send`. The behaviour was checked against the live script on 2026-11-23.
-    4. Make `bun test` unable to load remote scripts. `tests/setup.ts` constructs the window with `settings: { disableJavaScriptFileLoading: true, handleDisabledFileLoadingAsSuccess: true }`, so an external `<script src>` fires `load` without being fetched or executed. happy-dom 17.6.3 dispatches that `load` synchronously inside `appendChild` (`HTMLScriptElement.js` L551–L555), so `tests/telemetry-privacy.test.ts` registers, before calling `initBetaTelemetry`, a capture-phase `load` listener on `document`. That listener runs before the element's own listeners, and for the Umami script element it calls `globalThis.installFakeUmami(event.target, send)`. The `send` recorder replaces the network. The test also replaces `globalThis.fetch` and `navigator.sendBeacon` with recorders and asserts that no call targets `cloud.umami.is` or `gateway.umami.is`. Script-failure cases set `window.happyDOM.settings.handleDisabledFileLoadingAsSuccess = false` (the live settings object) so happy-dom dispatches `error` itself (L557–L559), and restore it in `finally`. A further case leaves loading successful without installing the fake, which exercises the missing-`window.umami` path. Run the full `bun run check` to confirm that the global setting breaks no existing test. Then:
-    5. `tests/telemetry-privacy.test.ts` (happy-dom with the fake tracker):
-        - gate combinations (disabled build, stable, wrong hostname, Version URL hostname, unaccepted) produce no script and no sends;
-        - one script with the exact attributes and no `data-errors`;
-        - the allowlist strips seeded referrers, titles, query strings, fragments, dataset, column and file names, `data`, `id` and `tag`;
-        - rejection of identify, performance and error types, nested envelopes, wrong website or hostname, and unknown names or paths;
-        - one pageview per canonical change, with model-detail collapsing and reserved routes silent;
-        - named events sent from `/models/3` and from a URL with a query and hash forwarded with `url: '/models'`, and a document `location` of `/models/3?x=1#y` never reaching a payload;
-        - exception events at most once per code, with error objects and reasons never forwarded;
-        - script `error` and a `load` without `window.umami`: no retries, no throws, no rejected promises and no queued replay.
+  1. Enable the telemetry header render and `BETA_TELEMETRY_ENABLED` gate. Extend the build tests with `betaTelemetry: true` variants for the package beta version and for `version: '1.0.0'`, and keep the default variant.
+  2. Implement Interfaces §D except welcome UI and acceptance wiring. `initBetaTelemetry` takes the acceptance reader, and T5 supplies the persisted flag. Register window listeners and the `onWorkerFailure` subscription in `bootstrapApp` after state reconciliation and persister installation. Connect manual pageviews to the existing route store, and add the dataset and training hooks at the owner-only points in Interfaces §D. In `tests/training-service.test.ts`, assert one event per owner transition and none from `observePublishedStops` or `retry` recovery.
+  3. `tests/fixtures/umami-fake-tracker.js` is a classic script with no `import` or `export`. It assigns `globalThis.installFakeUmami = (scriptElement, send) => …`, and its last statement installs it as `installFakeUmami(document.currentScript, body => fetch('https://gateway.umami.is/api/send', …))` only when `document.currentScript` is an element whose `src` is the Umami script URL. Playwright serves the file as the routed script body. `bun test` imports it for side effects only (`tsconfig.json` L9 `allowJs: true`), where `document.currentScript` is null and nothing installs, and the test declares the global's type. It mimics the documented surface: it reads `data-before-send`, exposes `umami.track` in callback and name forms, builds default props as the documented tracker does: `website` (the script's ID), `hostname` (`location.hostname`), `screen` (`` `${screen.width}x${screen.height}` ``), `language` (`navigator.language`), `title` (`document.title`), `referrer` (`document.referrer`) `url` (the full `location.href`, with search and hash cleared when the exclude attributes are `"true"`) and `salt` (as the hosted script adds it). The callback's return value is sent as-is, with no merge. It passes `('event', payload)` to the hook and records the body plus the `x-umami-website-id` and `x-umami-hostname` headers it would send with `keepalive` to `https://gateway.umami.is/api/send`. The behaviour was checked against the live script on 2026-11-23.
+  4. Make `bun test` unable to load remote scripts. `tests/setup.ts` constructs the window with `settings: { disableJavaScriptFileLoading: true, handleDisabledFileLoadingAsSuccess: true }`, so an external `<script src>` fires `load` without being fetched or executed. happy-dom 17.6.3 dispatches that `load` synchronously inside `appendChild` (`HTMLScriptElement.js` L551–L555), so `tests/telemetry-privacy.test.ts` registers, before calling `initBetaTelemetry`, a capture-phase `load` listener on `document`. That listener runs before the element's own listeners, and for the Umami script element it calls `globalThis.installFakeUmami(event.target, send)`. The `send` recorder replaces the network. The test also replaces `globalThis.fetch` and `navigator.sendBeacon` with recorders and asserts that no call targets `cloud.umami.is` or `gateway.umami.is`. Script-failure cases set `window.happyDOM.settings.handleDisabledFileLoadingAsSuccess = false` (the live settings object) so happy-dom dispatches `error` itself (L557–L559), and restore it in `finally`. A further case leaves loading successful without installing the fake, which exercises the missing-`window.umami` path. Run the full `bun run check` to confirm that the global setting breaks no existing test. Then:
+  5. `tests/telemetry-privacy.test.ts` (happy-dom with the fake tracker):
+     - gate combinations (disabled build, stable, wrong hostname, Version URL hostname, unaccepted) produce no script and no sends;
+     - one script with the exact attributes and no `data-errors`;
+     - the allowlist strips seeded referrers, titles, query strings, fragments, dataset, column and file names, `data`, `id` and `tag`;
+     - rejection of identify, performance and error types, nested envelopes, wrong website or hostname, and unknown names or paths;
+     - one pageview per canonical change, with model-detail collapsing and reserved routes silent;
+     - named events sent from `/models/3` and from a URL with a query and hash forwarded with `url: '/models'`, and a document `location` of `/models/3?x=1#y` never reaching a payload;
+     - exception events at most once per code, with error objects and reasons never forwarded;
+     - script `error` and a `load` without `window.umami`: no retries, no throws, no rejected promises and no queued replay.
 - **Acceptance criteria:**
-    - [x] `REL-TELEM-1` — Only the beta production artefact contains both Umami CSP tokens, inserted into the existing directives and keeping every other source (including dataset-plan sources) and isolation headers. Every other artefact's CSP equals `public/_headers`.
-    - [x] `REL-TELEM-2` — No gate combination short of all three produces a script or send, and an accepted document appends at most one script.
-    - [x] `REL-TELEM-3` — Forwarded payloads contain only the allowlisted keys and values. Seeded identifying values never appear, and all non-event types are rejected.
-    - [x] `REL-TELEM-4` — Fixed pageviews, events and exception events fire at the specified points with no event data, and worker settlement and recovery behaviour is unchanged.
-    - [x] `REL-TELEM-5` — A tracker load failure leaves the app usable with no retries, throws, rejected promises or replay.
-    - [x] `REL-TELEM-6` — No unit test fetches or executes a remote script, and no test request reaches an Umami host.
+  - [x] `REL-TELEM-1` — Only the beta production artefact contains both Umami CSP tokens, inserted into the existing directives and keeping every other source (including dataset-plan sources) and isolation headers. Every other artefact's CSP equals `public/_headers`.
+  - [x] `REL-TELEM-2` — No gate combination short of all three produces a script or send, and an accepted document appends at most one script.
+  - [x] `REL-TELEM-3` — Forwarded payloads contain only the allowlisted keys and values. Seeded identifying values never appear, and all non-event types are rejected.
+  - [x] `REL-TELEM-4` — Fixed pageviews, events and exception events fire at the specified points with no event data, and worker settlement and recovery behaviour is unchanged.
+  - [x] `REL-TELEM-5` — A tracker load failure leaves the app usable with no retries, throws, rejected promises or replay.
+  - [x] `REL-TELEM-6` — No unit test fetches or executes a remote script, and no test request reaches an Umami host.
 - **Verification:** `bun test tests/telemetry-privacy.test.ts`; `bun test tests/build-cache-invalidation.test.ts`; `bun test tests/model-assets.test.ts`; `bun run check`; `bun run build`; `bun run format:check <changed files>`.
 - **Progress:** [x] Completed (2026-11-23T14:41:07Z)
 
@@ -350,31 +350,31 @@ A prerelease `minor` or `major` drops the prerelease when the lower components a
 - **Likely files:** `src/types/state.ts`, `src/stores/app.store.ts`, `src/stores/persister.ts`, `src/app.ts`, `.storybook/main.ts`, `src/common/telemetry/telemetry-client.ts`, `src/features/shell/app-welcome-modal.ts`, `src/features/shell/app-welcome-modal.stories.ts`, `content/en/pages/privacy-policy.md`, `specification/components/welcome-modal.md`, `specification/mockups/00-1_beta-welcome.html`, `specification/HUMAN.md`, `tests/state-and-storage.test.ts`, `tests/telemetry-acceptance.e2e.ts`, `tests/content.e2e.ts`, `tests/content-dialog.e2e.ts`, `tests/fixtures/beta-origin-server.ts`, `tests/a11y.e2e.ts`
 - **Must not touch:** `css/`, `vendor/`, `specification/mockups/00_first-load.html`, `specification/mockups/mockups.css`
 - **Implementation:**
-    1. Implement the onboarding state, `mergeOnboarding`, `adoptStoredBetaAcceptance` and welcome behaviour from Interfaces §D, and wire `initBetaTelemetry(() => onboarding.betaTelemetryAccepted)` and the acceptance event.
-    2. Privacy policy: keep "Complete privacy is the only option." (L7) and the phrase "never leaves your machine" verbatim, because `tests/content.e2e.ts` L21–L22, L219 and L242 and `tests/content-dialog.e2e.ts` L264 and L278 assert them. Replace only the final sentence of L9 ("We don't even track pageviews.") with a sentence saying that the beta at `beta.samata.ml` uses cookieless analytics described below. Add an accurate beta section covering:
-        - acceptance is a condition of using the beta;
-        - the provider is Umami Cloud, cookieless, on `beta.samata.ml` only;
-        - what the app sends: workflow page paths, acceptance, dataset selection or upload as a category, training milestones, fixed error categories, screen size and browser language;
-        - what Umami Cloud receives with every request and how it uses it: the IP address and browser user agent, from which it derives approximate location, browser, operating system and device type;
-        - what is never collected: data, names, files, models, messages or stacks;
-        - outside the beta and in V1, nothing is collected.
-    3. Stories: existing open, beta notice, RTL and long-notice. Beta stories set `setBetaDeploymentForTests(true)` in a decorator and restore it afterwards, with no API change. Add the draft mockup and the `HUMAN.md` §6 entry.
-    4. `tests/fixtures/beta-origin-server.ts` (Node `https` on port 0, with the `.cert/` files that `ensureHttpsCert()` creates when the Playwright web servers start; it fails with a clear message if they are missing) serves a directory using `resolveHeaders` and the SPA fallback. `tests/telemetry-acceptance.e2e.ts`:
-        - starts with `test.describe.configure({ mode: 'serial' })` (precedent: `tests/data-flow.e2e.ts` L4, `tests/a11y.e2e.ts` L146) and a file-level `test.skip(({ browserName }) => browserName !== 'chromium')` placed before `beforeAll`, so Firefox and WebKit workers never build;
-        - runs on Chromium with `test.use({ launchOptions: { args: ['--host-resolver-rules=MAP beta.samata.ml 127.0.0.1'] } })`;
-        - in `beforeAll` (with `test.setTimeout(240_000)` inside the hook, since Playwright's 30 s default applies), runs `bun run build --out-dir out/beta-e2e-<workerIndex>` (from `testInfo.workerIndex`, so a retry's new worker never rebuilds a directory another server is serving) with `BETA_TELEMETRY_ENABLED=true`, then starts the server. `afterAll` stops it and removes the directory;
-        - routes `https://cloud.umami.is/script.js` to the fake tracker (with `Access-Control-Allow-Origin: *` and `Cross-Origin-Resource-Policy: cross-origin`) and `https://gateway.umami.is/**` to a recorder;
-        - visits `https://beta.samata.ml:<port>/` and asserts `crossOriginIsolated`, the served beta CSP, the absence of the script before acceptance, one script after acceptance, allowlisted bodies, no `Cookie`, `Referer` or credentials on vendor requests, no repeat of `beta_get_started` after reload, and that a blocked tracker keeps the workflow usable.
+  1. Implement the onboarding state, `mergeOnboarding`, `adoptStoredBetaAcceptance` and welcome behaviour from Interfaces §D, and wire `initBetaTelemetry(() => onboarding.betaTelemetryAccepted)` and the acceptance event.
+  2. Privacy policy: keep "Complete privacy is the only option." (L7) and the phrase "never leaves your machine" verbatim, because `tests/content.e2e.ts` L21–L22, L219 and L242 and `tests/content-dialog.e2e.ts` L264 and L278 assert them. Replace only the final sentence of L9 ("We don't even track pageviews.") with a sentence saying that the beta at `beta.samata.ml` uses cookieless analytics described below. Add an accurate beta section covering:
+     - acceptance is a condition of using the beta;
+     - the provider is Umami Cloud, cookieless, on `beta.samata.ml` only;
+     - what the app sends: workflow page paths, acceptance, dataset selection or upload as a category, training milestones, fixed error categories, screen size and browser language;
+     - what Umami Cloud receives with every request and how it uses it: the IP address and browser user agent, from which it derives approximate location, browser, operating system and device type;
+     - what is never collected: data, names, files, models, messages or stacks;
+     - outside the beta and in V1, nothing is collected.
+  3. Stories: existing open, beta notice, RTL and long-notice. Beta stories set `setBetaDeploymentForTests(true)` in a decorator and restore it afterwards, with no API change. Add the draft mockup and the `HUMAN.md` §6 entry.
+  4. `tests/fixtures/beta-origin-server.ts` (Node `https` on port 0, with the `.cert/` files that `ensureHttpsCert()` creates when the Playwright web servers start; it fails with a clear message if they are missing) serves a directory using `resolveHeaders` and the SPA fallback. `tests/telemetry-acceptance.e2e.ts`:
+     - starts with `test.describe.configure({ mode: 'serial' })` (precedent: `tests/data-flow.e2e.ts` L4, `tests/a11y.e2e.ts` L146) and a file-level `test.skip(({ browserName }) => browserName !== 'chromium')` placed before `beforeAll`, so Firefox and WebKit workers never build;
+     - runs on Chromium with `test.use({ launchOptions: { args: ['--host-resolver-rules=MAP beta.samata.ml 127.0.0.1'] } })`;
+     - in `beforeAll` (with `test.setTimeout(240_000)` inside the hook, since Playwright's 30 s default applies), runs `bun run build --out-dir out/beta-e2e-<workerIndex>` (from `testInfo.workerIndex`, so a retry's new worker never rebuilds a directory another server is serving) with `BETA_TELEMETRY_ENABLED=true`, then starts the server. `afterAll` stops it and removes the directory;
+     - routes `https://cloud.umami.is/script.js` to the fake tracker (with `Access-Control-Allow-Origin: *` and `Cross-Origin-Resource-Policy: cross-origin`) and `https://gateway.umami.is/**` to a recorder;
+     - visits `https://beta.samata.ml:<port>/` and asserts `crossOriginIsolated`, the served beta CSP, the absence of the script before acceptance, one script after acceptance, allowlisted bodies, no `Cookie`, `Referer` or credentials on vendor requests, no repeat of `beta_get_started` after reload, and that a blocked tracker keeps the workflow usable.
 
-        No request reaches the live Umami project. All beta-only E2E cases live in `tests/telemetry-acceptance.e2e.ts`. `tests/welcome-acceptance.e2e.ts` stays unchanged and must still pass against the non-beta servers.
+     No request reaches the live Umami project. All beta-only E2E cases live in `tests/telemetry-acceptance.e2e.ts`. `tests/welcome-acceptance.e2e.ts` stays unchanged and must still pass against the non-beta servers.
 
-    5. Unit and E2E cover legacy v1 blobs, Escape (including a repeated Escape that the browser lets close), route hiding, the privacy link, disconnection and reserved-route loads never accepting. They also cover cross-tab acceptance: `mergeOnboarding` at all three merge sites, an ordinary write from a second tab never clearing a stored acceptance, and in E2E a second page in the same context closing its open beta dialog after the first page accepts, without a second `beta_get_started`.
+  5. Unit and E2E cover legacy v1 blobs, Escape (including a repeated Escape that the browser lets close), route hiding, the privacy link, disconnection and reserved-route loads never accepting. They also cover cross-tab acceptance: `mergeOnboarding` at all three merge sites, an ordinary write from a second tab never clearing a stored acceptance, and in E2E a second page in the same context closing its open beta dialog after the first page accepts, without a second `beta_get_started`.
 
 - **Acceptance criteria:**
-    - [x] `REL-UI-1` — On the beta origin, the notice and privacy link appear before **Get Started**. One click persists acceptance, closes the dialog, sends one acceptance event and opens the workflow. A reload tracks after hydration without repeating the event.
-    - [x] `REL-UI-2` — Legacy blobs, including `welcomeDismissed: true`, keep state and show the beta notice. Acceptance in one tab survives concurrent writes from other tabs and closes their open beta dialogs. Escape (once or repeated), route hiding, the privacy link, disconnection and reserved-route loads never accept, and the dialog reopens on workflow routes until acceptance. Non-beta welcome behaviour and tests are unchanged.
-    - [x] `REL-UI-3` — The notice is the dialog's accessible description, follows reading order, and passes keyboard, 320 px reflow, 400% zoom, RTL and scoped axe checks. Style token checks pass. Visual parity and app-shell suites show no failures beyond the entries in `tests/known-failures.ts`.
-    - [x] `REL-UI-4` — `/privacy` states the condition, the provider, everything the app sends (including screen size and language), what Umami derives from IP address and user agent, the exclusions and the scope. The draft has the required metadata and a styling queue entry.
+  - [x] `REL-UI-1` — On the beta origin, the notice and privacy link appear before **Get Started**. One click persists acceptance, closes the dialog, sends one acceptance event and opens the workflow. A reload tracks after hydration without repeating the event.
+  - [x] `REL-UI-2` — Legacy blobs, including `welcomeDismissed: true`, keep state and show the beta notice. Acceptance in one tab survives concurrent writes from other tabs and closes their open beta dialogs. Escape (once or repeated), route hiding, the privacy link, disconnection and reserved-route loads never accept, and the dialog reopens on workflow routes until acceptance. Non-beta welcome behaviour and tests are unchanged.
+  - [x] `REL-UI-3` — The notice is the dialog's accessible description, follows reading order, and passes keyboard, 320 px reflow, 400% zoom, RTL and scoped axe checks. Style token checks pass. Visual parity and app-shell suites show no failures beyond the entries in `tests/known-failures.ts`.
+  - [x] `REL-UI-4` — `/privacy` states the condition, the provider, everything the app sends (including screen size and language), what Umami derives from IP address and user agent, the exclusions and the scope. The draft has the required metadata and a styling queue entry.
 - **Verification:** `bun test tests/state-and-storage.test.ts`; `bun test tests/style-tokens.test.ts`; `bun run check`; `bun run test:e2e tests/welcome-acceptance.e2e.ts`; `bun run test:e2e tests/telemetry-acceptance.e2e.ts`; `bun run test:e2e tests/a11y.e2e.ts`; `bun run test:e2e tests/content.e2e.ts`; `bun run test:e2e tests/content-dialog.e2e.ts`; `bun run test:e2e tests/visual-parity.e2e.ts` (compare against the inherited list); `bun run test:stories`; `bun run format:check <changed files>`.
 - **Progress:** [x] Completed (2026-11-23T15:00:07Z)
 
@@ -385,16 +385,16 @@ A prerelease `minor` or `major` drops the prerelease when the lower components a
 - **Likely files:** `package.json`, `bun.lock`, `tsdoc.json`, `scripts/lint-tsdoc.ts`, `AGENTS.md`, `SECURITY.md`, `src/**/*.ts`, `scripts/**/*.ts`, `tests/tsdoc-lint.test.ts`, `tests/fixtures/tsdoc/`
 - **Must not touch:** `css/`, `public/`, `specification/mockups/`
 - **Implementation:**
-    1. `bun add -d --exact @microsoft/tsdoc@0.17.1 @microsoft/tsdoc-config@0.18.3 oxc-parser@0.159.0`, then `bun remove eslint-plugin-tsdoc`.
-    2. `scripts/lint-tsdoc.ts` exports `lintTsdoc(paths: string[]): Promise<LintMessage[]>`, where `LintMessage` is `{ file, line, column, messageId, text }`. It expands directories to sorted `.ts` files excluding `.d.ts`, parses each file with `oxc-parser`, and runs `TSDocParser` on each block comment starting with `/**`, using configuration loaded from root `tsdoc.json`. The CLI defaults to `src` and `scripts`, prints `file:line:column messageId text`, and exits 1 when messages exist or a file fails to parse.
-    3. `tsdoc.json` extends nothing and defines only tags used in the codebase that TSDoc does not know (for example Custom Elements Manifest tags such as `@fires`, `@slot`, `@csspart`, `@cssprop`), each as a block or modifier tag, and is listed in the implementation log.
-    4. Run `bun run lint`, and fix malformed TSDoc without behaviour changes.
-    5. `tests/tsdoc-lint.test.ts`: a valid and an invalid fixture under `tests/fixtures/tsdoc/` (unknown tag and unescaped brace), a `/**` inside a string not reported, and the repository passing.
-    6. Add `bun run lint` to `AGENTS.md` §Verification Commands.
-    7. `SECURITY.md`: supported versions (`0.1.x` beta), browser security properties (CSP, COOP/COEP/CORP, SHA-256 checks of datasets and `web-ml` assets, local-only data, beta-only telemetry) and private reporting through GitHub private vulnerability reporting, with the maintainer's contact left as a `HUMAN.md` decision if the repository is not yet public.
+  1. `bun add -d --exact @microsoft/tsdoc@0.17.1 @microsoft/tsdoc-config@0.18.3 oxc-parser@0.159.0`, then `bun remove eslint-plugin-tsdoc`.
+  2. `scripts/lint-tsdoc.ts` exports `lintTsdoc(paths: string[]): Promise<LintMessage[]>`, where `LintMessage` is `{ file, line, column, messageId, text }`. It expands directories to sorted `.ts` files excluding `.d.ts`, parses each file with `oxc-parser`, and runs `TSDocParser` on each block comment starting with `/**`, using configuration loaded from root `tsdoc.json`. The CLI defaults to `src` and `scripts`, prints `file:line:column messageId text`, and exits 1 when messages exist or a file fails to parse.
+  3. `tsdoc.json` extends nothing and defines only tags used in the codebase that TSDoc does not know (for example Custom Elements Manifest tags such as `@fires`, `@slot`, `@csspart`, `@cssprop`), each as a block or modifier tag, and is listed in the implementation log.
+  4. Run `bun run lint`, and fix malformed TSDoc without behaviour changes.
+  5. `tests/tsdoc-lint.test.ts`: a valid and an invalid fixture under `tests/fixtures/tsdoc/` (unknown tag and unescaped brace), a `/**` inside a string not reported, and the repository passing.
+  6. Add `bun run lint` to `AGENTS.md` §Verification Commands.
+  7. `SECURITY.md`: supported versions (`0.1.x` beta), browser security properties (CSP, COOP/COEP/CORP, SHA-256 checks of datasets and `web-ml` assets, local-only data, beta-only telemetry) and private reporting through GitHub private vulnerability reporting, with the maintainer's contact left as a `HUMAN.md` decision if the repository is not yet public.
 - **Acceptance criteria:**
-    - [x] `REL-LINT-1` — `bun run lint` exits 0 on the repository and 1 on the invalid fixture with file, line and message ID. `eslint-plugin-tsdoc` is no longer a dependency.
-    - [x] `REL-LINT-2` — `SECURITY.md` documents supported versions, security invariants and private disclosure.
+  - [x] `REL-LINT-1` — `bun run lint` exits 0 on the repository and 1 on the invalid fixture with file, line and message ID. `eslint-plugin-tsdoc` is no longer a dependency.
+  - [x] `REL-LINT-2` — `SECURITY.md` documents supported versions, security invariants and private disclosure.
 - **Verification:** `bun test tests/tsdoc-lint.test.ts`; `bun run lint`; `bun run check`; `bun run format:check <changed files>`.
 - **Progress:** [x] Completed (2026-11-23T16:47:15Z)
 
@@ -405,52 +405,52 @@ A prerelease `minor` or `major` drops the prerelease when the lower components a
 - **Likely files:** `.github/workflows/ci.yml`, `tests/known-failures.ts`, `AGENTS.md`, `README.md`, `specification/ARCHITECTURE.md`, `specification/standards-and-documentation.md`, `specification/state-and-storage.md`, `specification/README.md`, `specification/FUTURE.md`, `specification/HUMAN.md`, `specification/plans/README.md`, `specification/plans/beta-release-and-ci-cd.md`, `tests/ci-workflow.test.ts`
 - **Must not touch:** `src/`, `css/`, `specification/mockups/`
 - **Implementation:**
-    1. `.github/workflows/ci.yml`:
-        - **Top level:** `name: CI`. `on: pull_request: { branches: [main] }` and `push: { branches: [main] }`. `permissions: { contents: read }`. `env: { WRANGLER_SEND_METRICS: 'false' }`.
-        - **Job `verify`:**
-            - `runs-on: ubuntu-24.04` and `timeout-minutes: 60`;
-            - `concurrency: { group: verify-${{ github.ref }}, cancel-in-progress: ${{ github.event_name == 'pull_request' }} }`;
-            - steps:
-                1. `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1` with `fetch-depth: 0` and `persist-credentials: false`.
-                2. `cd vendor/web-ml && sha256sum -c web-ml-0.2.0.tgz.sha256`.
-                3. `oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0` with `bun-version-file: .bun-version`.
-                4. `bun install --frozen-lockfile --ignore-scripts`.
-                5. Changed-file Prettier: base is `github.event.pull_request.base.sha` for pull requests and `github.event.before` for pushes, passed through `env`, never interpolated into the script. Skip when the base is all zeros. Run `git diff --name-only --diff-filter=ACMR -z "$BASE" HEAD -- '*.ts' '*.mjs' '*.js' '*.json' '*.jsonc' '*.md' '*.css' '*.html' '*.yml' '*.yaml' | xargs -0 -r bun run format:check`.
-                6. `bun run lint`.
-                7. `bun run check`.
-                8. `bun run deploy:dry-run`, or `bun run build` if T1 recorded that the dry run needs credentials.
-                9. `bunx playwright install --with-deps chromium firefox webkit`.
-                10. `bun run test:stories`.
-        - **Job `e2e`:**
-            - `needs: [verify]`, `runs-on: ubuntu-24.04` and `strategy: { fail-fast: false, matrix: { project: [chromium, firefox, webkit] } }`;
-            - the same concurrency group pattern suffixed with the project, and `timeout-minutes: <E>` (below);
-            - steps: checkout (same pin, `persist-credentials: false`), checksum, setup-bun, install, `bunx playwright install --with-deps <project>`, then `bun run test:e2e --project=<project>`. The project comes from the matrix through `env`. The step `env` also sets `SAMATA_SKIP_KNOWN_FAILURES: '1'`.
-            - `<E>`: T7 times `bun run test:e2e --project=<p> --workers=1` locally for each project and records the durations. `<E>` is the smallest multiple of 10 minutes that is at least twice the slowest measurement, and at least 30. If that exceeds 120, stop and escalate rather than raising it further. The `verify` job keeps `timeout-minutes: 60` unless its locally timed steps (lint, check, build, stories), doubled, exceed it, in which case use the same rounding.
-            - The flag applies the T1 known-failure list.
-            - Run the full `bun run test:e2e` locally without the flag first. If another pre-existing failure appears, add a `HUMAN.md` §1 entry with evidence and a `KNOWN_FAILURES` entry scoped to the failing projects, file and title, and rerun `bun test tests/known-failures.test.ts`. Do not change tests.
-        - **Job `deploy`:**
-            - `needs: [verify, e2e]` and `if: github.event_name == 'push' && github.ref == 'refs/heads/main'`;
-            - `runs-on: ubuntu-24.04`, `timeout-minutes: 20` and `environment: cloudflare-beta`;
-            - `concurrency: { group: cloudflare-deploy-main, cancel-in-progress: false }`;
-            - steps: checkout (same pin, `persist-credentials: false`), checksum, setup-bun, install, then `bun run deploy` with step `env` `CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}`, `CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}`, `BETA_TELEMETRY_ENABLED: 'true'` and `SAMATA_CRAWLER_POLICY: closed`.
-        - **Pins:** every `uses:` is pinned to a 40-hex SHA with a version comment.
-    2. Keep `tests/known-failures.ts` current with step 1's local run.
-    3. `tests/ci-workflow.test.ts` parses the YAML with `Bun.YAML.parse` and asserts:
-        - the triggers, root permissions, SHA pins and checksum before install;
-        - the frozen install;
-        - the step order and commands above;
-        - the `e2e` matrix covers exactly the three projects, each step sets `SAMATA_SKIP_KNOWN_FAILURES: '1'` with no `--grep-invert`, and its timeout is a multiple of 10 between 30 and 120;
-        - no `${{` expression inside any `run:` script;
-        - the deploy job's `needs` (`verify` and `e2e`), `if`, environment, concurrency and env (including `closed`);
-        - no Umami or `BETA_TELEMETRY_ENABLED` in `verify`.
-    4. Record the unflagged and flagged local `bun run test:e2e` results and the per-project single-worker durations behind `<E>` in the implementation log.
-    5. `README.md`: release, lint and deploy commands; required secrets and the `cloudflare-beta` environment; the WAF rule and V1 opening procedure (Interfaces §B); and the live smoke. The smoke checks that, before **Get Started**, there are no Umami requests and `crossOriginIsolated` is true; that after a test acceptance the dashboard shows one pageview, `beta_get_started` and a triggered fixed exception event; that the gateway preflight allows the tracker's `x-umami-website-id` and `x-umami-hostname` headers, and that the outgoing bodies contain only allowlisted fields. Also note that `plans:check` is a local-only gate. `AGENTS.md`: confirm the Verification Commands from T1 and T6.
-    6. Apply every item under _Specification changes_ and tick them. Update the optional `agent-workflow` hand-off item in `HUMAN.md` §1 to link the delivered workflow.
+  1. `.github/workflows/ci.yml`:
+     - **Top level:** `name: CI`. `on: pull_request: { branches: [main] }` and `push: { branches: [main] }`. `permissions: { contents: read }`. `env: { WRANGLER_SEND_METRICS: 'false' }`.
+     - **Job `verify`:**
+       - `runs-on: ubuntu-24.04` and `timeout-minutes: 60`;
+       - `concurrency: { group: verify-${{ github.ref }}, cancel-in-progress: ${{ github.event_name == 'pull_request' }} }`;
+       - steps:
+         1. `actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1` with `fetch-depth: 0` and `persist-credentials: false`.
+         2. `cd vendor/web-ml && sha256sum -c web-ml-0.2.0.tgz.sha256`.
+         3. `oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0` with `bun-version-file: .bun-version`.
+         4. `bun install --frozen-lockfile --ignore-scripts`.
+         5. Changed-file Prettier: base is `github.event.pull_request.base.sha` for pull requests and `github.event.before` for pushes, passed through `env`, never interpolated into the script. Skip when the base is all zeros. Run `git diff --name-only --diff-filter=ACMR -z "$BASE" HEAD -- '*.ts' '*.mjs' '*.js' '*.json' '*.jsonc' '*.md' '*.css' '*.html' '*.yml' '*.yaml' | xargs -0 -r bun run format:check`.
+         6. `bun run lint`.
+         7. `bun run check`.
+         8. `bun run deploy:dry-run`, or `bun run build` if T1 recorded that the dry run needs credentials.
+         9. `bunx playwright install --with-deps chromium firefox webkit`.
+         10. `bun run test:stories`.
+     - **Job `e2e`:**
+       - `needs: [verify]`, `runs-on: ubuntu-24.04` and `strategy: { fail-fast: false, matrix: { project: [chromium, firefox, webkit] } }`;
+       - the same concurrency group pattern suffixed with the project, and `timeout-minutes: <E>` (below);
+       - steps: checkout (same pin, `persist-credentials: false`), checksum, setup-bun, install, `bunx playwright install --with-deps <project>`, then `bun run test:e2e --project=<project>`. The project comes from the matrix through `env`. The step `env` also sets `SAMATA_SKIP_KNOWN_FAILURES: '1'`.
+       - `<E>`: T7 times `bun run test:e2e --project=<p> --workers=1` locally for each project and records the durations. `<E>` is the smallest multiple of 10 minutes that is at least twice the slowest measurement, and at least 30. If that exceeds 120, stop and escalate rather than raising it further. The `verify` job keeps `timeout-minutes: 60` unless its locally timed steps (lint, check, build, stories), doubled, exceed it, in which case use the same rounding.
+       - The flag applies the T1 known-failure list.
+       - Run the full `bun run test:e2e` locally without the flag first. If another pre-existing failure appears, add a `HUMAN.md` §1 entry with evidence and a `KNOWN_FAILURES` entry scoped to the failing projects, file and title, and rerun `bun test tests/known-failures.test.ts`. Do not change tests.
+     - **Job `deploy`:**
+       - `needs: [verify, e2e]` and `if: github.event_name == 'push' && github.ref == 'refs/heads/main'`;
+       - `runs-on: ubuntu-24.04`, `timeout-minutes: 20` and `environment: cloudflare-beta`;
+       - `concurrency: { group: cloudflare-deploy-main, cancel-in-progress: false }`;
+       - steps: checkout (same pin, `persist-credentials: false`), checksum, setup-bun, install, then `bun run deploy` with step `env` `CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}`, `CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}`, `BETA_TELEMETRY_ENABLED: 'true'` and `SAMATA_CRAWLER_POLICY: closed`.
+     - **Pins:** every `uses:` is pinned to a 40-hex SHA with a version comment.
+  2. Keep `tests/known-failures.ts` current with step 1's local run.
+  3. `tests/ci-workflow.test.ts` parses the YAML with `Bun.YAML.parse` and asserts:
+     - the triggers, root permissions, SHA pins and checksum before install;
+     - the frozen install;
+     - the step order and commands above;
+     - the `e2e` matrix covers exactly the three projects, each step sets `SAMATA_SKIP_KNOWN_FAILURES: '1'` with no `--grep-invert`, and its timeout is a multiple of 10 between 30 and 120;
+     - no `${{` expression inside any `run:` script;
+     - the deploy job's `needs` (`verify` and `e2e`), `if`, environment, concurrency and env (including `closed`);
+     - no Umami or `BETA_TELEMETRY_ENABLED` in `verify`.
+  4. Record the unflagged and flagged local `bun run test:e2e` results and the per-project single-worker durations behind `<E>` in the implementation log.
+  5. `README.md`: release, lint and deploy commands; required secrets and the `cloudflare-beta` environment; the WAF rule and V1 opening procedure (Interfaces §B); and the live smoke. The smoke checks that, before **Get Started**, there are no Umami requests and `crossOriginIsolated` is true; that after a test acceptance the dashboard shows one pageview, `beta_get_started` and a triggered fixed exception event; that the gateway preflight allows the tracker's `x-umami-website-id` and `x-umami-hostname` headers, and that the outgoing bodies contain only allowlisted fields. Also note that `plans:check` is a local-only gate. `AGENTS.md`: confirm the Verification Commands from T1 and T6.
+  6. Apply every item under _Specification changes_ and tick them. Update the optional `agent-workflow` hand-off item in `HUMAN.md` §1 to link the delivered workflow.
 - **Acceptance criteria:**
-    - [x] `REL-CI-1` — `bun test tests/ci-workflow.test.ts` passes for the workflow specified above.
-    - [x] `REL-CI-2` — `bun test tests/known-failures.test.ts` passes. The unflagged local run fails only on `KNOWN_FAILURES` entries for its projects and platform, and the flagged run passes, with both runs recorded. Confirming the Linux-only entry on the first CI run is a post-merge maintainer step in `HUMAN.md`, not an implementation criterion.
-    - [x] `REL-CRAWL-2` — The runbook covers the deny-all live check, robots content type (not the SPA fallback), 403 for representative crawler user agents, reachability for normal browsers and non-beta hostnames outside the rule.
-    - [x] `REL-DOC-1` — Every specification change is applied and ticked, Known gaps 3, 7 and 10 are resolved, status rows match headers, and `bun run plans:check specification/plans/beta-release-and-ci-cd.md` passes.
+  - [x] `REL-CI-1` — `bun test tests/ci-workflow.test.ts` passes for the workflow specified above.
+  - [x] `REL-CI-2` — `bun test tests/known-failures.test.ts` passes. The unflagged local run fails only on `KNOWN_FAILURES` entries for its projects and platform, and the flagged run passes, with both runs recorded. Confirming the Linux-only entry on the first CI run is a post-merge maintainer step in `HUMAN.md`, not an implementation criterion.
+  - [x] `REL-CRAWL-2` — The runbook covers the deny-all live check, robots content type (not the SPA fallback), 403 for representative crawler user agents, reachability for normal browsers and non-beta hostnames outside the rule.
+  - [x] `REL-DOC-1` — Every specification change is applied and ticked, Known gaps 3, 7 and 10 are resolved, status rows match headers, and `bun run plans:check specification/plans/beta-release-and-ci-cd.md` passes.
 - **Verification:** `bun test tests/ci-workflow.test.ts`; `bun test tests/known-failures.test.ts`; `bun run test:e2e`; `bun run test:e2e --project=chromium --workers=1`; `bun run test:e2e --project=firefox --workers=1`; `bun run test:e2e --project=webkit --workers=1`; `bun run plans:check specification/plans/beta-release-and-ci-cd.md`; `bun run lint`; `bun run check`; `bun run build`; `bun run format:check <changed files>`.
 - **Progress:** [x] Completed (2026-11-23T20:02:11Z)
 
@@ -465,16 +465,16 @@ A prerelease `minor` or `major` drops the prerelease when the lower components a
 
 - **Blocking:** None
 - **Non-blocking:**
-    - **GDPR condition of use (D9):** The maintainer accepted the Art. 7(4) risk on 2026-11-23. If it is revisited, switching to optional consent changes only the welcome actions and a tri-state flag. Owner: maintainer.
-    - **Hosted tracker drift:** The `before-send` payload shape is documented only by example. If the live smoke shows no events because the hook receives a different shape, the hook drops everything (fail closed), and the fix is a plan amendment. Owner: maintainer, at the live smoke.
-    - **Concurrent `public/_headers` changes:** `sample-dataset-publication` T2 edits the CSP line. Whichever lands second rebases onto the other. The renderer inserts tokens into existing directives, and tests compare against the current `public/_headers`. Owner: implementer of the later plan.
-    - **`wrangler deploy --dry-run` without credentials:** It is unverified. T1 records the result, and CI falls back to `bun run build`. Owner: T1 implementer.
-    - **Version URLs:** They are on `workers.dev` and outside the WAF rule, but serve closed crawler directives, and telemetry stays off by hostname. Owner: maintainer.
-    - **Stale hashed URLs and SPA fallback:** A request for a removed `/bundles/` file gets `index.html` with status 200, and possibly the immutable header if Cloudflare matches the requested path. No current build references that URL, so only the stale tab is affected, and it then shows the reload notice. Owner: maintainer.
-    - **Known-failure list drift:** Entries hide real failures until fixed. Measuring the baseline in T1 and rerunning it in T7 limits staleness, and `tests/known-failures.test.ts` ties each entry to `HUMAN.md`. Owner: maintainer.
-    - **Unlisted Linux failures on the first CI run:** The deploy stays blocked (fail closed). The maintainer checks whether the failure reproduces in two runs. A Linux-only pre-existing failure gets a `HUMAN.md` item and a `platforms: ['linux']` entry through a normal `fix:` change. A regression is fixed. This is a post-merge `HUMAN.md` step. Owner: maintainer.
-    - **Changed-file formatting only:** 230 files predate formatting and remain unchecked until edited. Owner: maintainer.
-    - **Offline Service Worker (Known gap 6):** Deferred, so beta hotfixes stay predictable. Owner: maintainer.
+  - **GDPR condition of use (D9):** The maintainer accepted the Art. 7(4) risk on 2026-11-23. If it is revisited, switching to optional consent changes only the welcome actions and a tri-state flag. Owner: maintainer.
+  - **Hosted tracker drift:** The `before-send` payload shape is documented only by example. If the live smoke shows no events because the hook receives a different shape, the hook drops everything (fail closed), and the fix is a plan amendment. Owner: maintainer, at the live smoke.
+  - **Concurrent `public/_headers` changes:** `sample-dataset-publication` T2 edits the CSP line. Whichever lands second rebases onto the other. The renderer inserts tokens into existing directives, and tests compare against the current `public/_headers`. Owner: implementer of the later plan.
+  - **`wrangler deploy --dry-run` without credentials:** It is unverified. T1 records the result, and CI falls back to `bun run build`. Owner: T1 implementer.
+  - **Version URLs:** They are on `workers.dev` and outside the WAF rule, but serve closed crawler directives, and telemetry stays off by hostname. Owner: maintainer.
+  - **Stale hashed URLs and SPA fallback:** A request for a removed `/bundles/` file gets `index.html` with status 200, and possibly the immutable header if Cloudflare matches the requested path. No current build references that URL, so only the stale tab is affected, and it then shows the reload notice. Owner: maintainer.
+  - **Known-failure list drift:** Entries hide real failures until fixed. Measuring the baseline in T1 and rerunning it in T7 limits staleness, and `tests/known-failures.test.ts` ties each entry to `HUMAN.md`. Owner: maintainer.
+  - **Unlisted Linux failures on the first CI run:** The deploy stays blocked (fail closed). The maintainer checks whether the failure reproduces in two runs. A Linux-only pre-existing failure gets a `HUMAN.md` item and a `platforms: ['linux']` entry through a normal `fix:` change. A regression is fixed. This is a post-merge `HUMAN.md` step. Owner: maintainer.
+  - **Changed-file formatting only:** 230 files predate formatting and remain unchecked until edited. Owner: maintainer.
+  - **Offline Service Worker (Known gap 6):** Deferred, so beta hotfixes stay predictable. Owner: maintainer.
 
 ## Escalations
 

@@ -1,11 +1,11 @@
-import { existsSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
-import path from "node:path";
-import { ROOT_DIR } from "./config";
+import { existsSync } from 'node:fs';
+import { mkdir } from 'node:fs/promises';
+import path from 'node:path';
+import { ROOT_DIR } from './config';
 
-export const CERT_DIR = path.join(ROOT_DIR, ".cert");
-export const KEY_PATH = path.join(CERT_DIR, "localhost-key.pem");
-export const CERT_PATH = path.join(CERT_DIR, "localhost.pem");
+export const CERT_DIR = path.join(ROOT_DIR, '.cert');
+export const KEY_PATH = path.join(CERT_DIR, 'localhost-key.pem');
+export const CERT_PATH = path.join(CERT_DIR, 'localhost.pem');
 
 /**
  * Ensures the local HTTPS certificate files exist before the server starts.
@@ -21,24 +21,24 @@ export async function ensureHttpsCert(): Promise<void> {
 	// Browsers will trust mkcert certificates, but not this self-signed fallback.
 	const openssl = Bun.spawnSync(
 		[
-			"openssl",
-			"req",
-			"-x509",
-			"-newkey",
-			"rsa:2048",
-			"-nodes",
-			"-keyout",
+			'openssl',
+			'req',
+			'-x509',
+			'-newkey',
+			'rsa:2048',
+			'-nodes',
+			'-keyout',
 			KEY_PATH,
-			"-out",
+			'-out',
 			CERT_PATH,
-			"-days",
-			"365",
-			"-subj",
-			"/CN=localhost",
-			"-addext",
-			"subjectAltName=DNS:localhost,IP:127.0.0.1",
+			'-days',
+			'365',
+			'-subj',
+			'/CN=localhost',
+			'-addext',
+			'subjectAltName=DNS:localhost,IP:127.0.0.1'
 		],
-		{ stdout: "ignore", stderr: "pipe" },
+		{ stdout: 'ignore', stderr: 'pipe' }
 	);
 
 	if (openssl.exitCode !== 0) {

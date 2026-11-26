@@ -7,9 +7,9 @@ Items the specifications mark as _future_, _later_ or _deferred_. They are **not
 ## Product
 
 - **Column transformations on Load Data** ([workflow-steps §1, Future Development](workflow-steps.md)):
-    - Convert numeric columns to `boolean` or `categorical` using rules.
-    - Delete records based on specific column values.
-    - Delete a column.
+  - Convert numeric columns to `boolean` or `categorical` using rules.
+  - Delete records based on specific column values.
+  - Delete a column.
 - **Richer column statistics & charts:** Interactive graphical distribution charts and standard deviation calculation/display for numeric columns (deferred in Step 1 T4; currently summary stats and discrete histogram bins are stored and displayed).
 - **Editable dataset metadata and fairness audits:** In-browser editing of dataset descriptions/column notes; pedagogical algorithmic fairness exploration on sensitive attributes (e.g. sex/race in COMPAS or Adult Census).
 - **Dataset card repeated-action a11y review:** Human evaluation of `aria-describedby` pointing to card descriptions for repeated action buttons vs clean native button accessible names.
@@ -21,19 +21,19 @@ Items the specifications mark as _future_, _later_ or _deferred_. They are **not
 - **User control over epoch detection.** Let the learner mark an integer column as a timestamp, or not, overriding the ungated epoch detection.
 - **Richer type-specific dataset preview formatting:** Deferred in `virtual-table-component.md`; current display formats numbers with grouping separators while preserving decimals, and escapes cell values as text. Richer boolean indicators, fixed-precision floats, currency, and percentages are deferred.
 - **Richer classification results** (deferred from [Phase 4](plans/archive/web-ml-phase-4-single-model-results.md)):
-    - **Normalised expected cost (NEC)** with a cost-ratio slider.
-    - **Subgroup fairness gap** for a chosen protected attribute (TODO-43).
-    - **Selectable positive class** for the threshold explorer and binary metrics; Phase 4 fixes the second class as positive.
-    - **Prediction latency** alongside fit time.
-    - **Hand-built SVG charts** that replace Observable Plot where a bespoke chart is clearer, such as a Sankey-style confusion flow.
+  - **Normalised expected cost (NEC)** with a cost-ratio slider.
+  - **Subgroup fairness gap** for a chosen protected attribute (TODO-43).
+  - **Selectable positive class** for the threshold explorer and binary metrics; Phase 4 fixes the second class as positive.
+  - **Prediction latency** alongside fit time.
+  - **Hand-built SVG charts** that replace Observable Plot where a bespoke chart is clearer, such as a Sankey-style confusion flow.
 - **Richer model comparison:** Superimposed ROC and precision–recall curves, multi-model reliability plots, a Pareto scatter, a decision-boundary gallery and normalised expected cost with a cost-ratio slider remain future work.
 - **Richer feature importance** (deferred from [compare-feature-importance](plans/compare-feature-importance.md); source [note](notes/feature-importance.md)):
-    - A features × models importance heatmap with per-model normalisation, rank labels and a "highest disagreement" sort.
-    - Permutation importance in each model's Section 6 results, with a top-N toggle, relative share and tooltips.
-    - Decision Tree impurity importance (MDI) beside permutation importance, summed per source column.
-    - Warnings on strongly correlated columns, which needs `web-ml` association diagnostics.
-    - A configurable shuffle count (the note suggests 10; v1 uses 5).
-    - Effect plots (ALE, or PDP with ICE), local explanations for single rows, counterfactuals, a 2D decision-boundary explorer and feature-sliced error analysis.
+  - A features × models importance heatmap with per-model normalisation, rank labels and a "highest disagreement" sort.
+  - Permutation importance in each model's Section 6 results, with a top-N toggle, relative share and tooltips.
+  - Decision Tree impurity importance (MDI) beside permutation importance, summed per source column.
+  - Warnings on strongly correlated columns, which needs `web-ml` association diagnostics.
+  - A configurable shuffle count (the note suggests 10; v1 uses 5).
+  - Effect plots (ALE, or PDP with ICE), local explanations for single rows, counterfactuals, a 2D decision-boundary explorer and feature-sliced error analysis.
 
 ## Engineering
 

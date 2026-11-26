@@ -43,11 +43,11 @@
 - **No partial blocks:** if any fold or holdout measurement fails, the run stores `featureImportance: null` and logs one "unavailable" note. The training result itself still succeeds.
 - **Display arithmetic only:** `samata-ml` computes only the mean and sample SD of stored per-repeat drops, the ranking and the shared axis domain (D5). Negative drops are never clamped.
 - Phase 4/5 element conventions apply (`specification/components/results-comparison.md` §3):
-    - Observable Plot only through `PlotController`;
-    - a figure, a caption and a "Show data table" `<details>`;
-    - `labels` objects with empty-string defaults, with `app-results-view` owning every string;
-    - tokens only; no colour-only meaning;
-    - WCAG 2.2 AA and i18n.
+  - Observable Plot only through `PlotController`;
+  - a figure, a caption and a "Show data table" `<details>`;
+  - `labels` objects with empty-string defaults, with `app-results-view` owning every string;
+  - tokens only; no colour-only meaning;
+  - WCAG 2.2 AA and i18n.
 
 ## Required reading
 
@@ -56,50 +56,50 @@
 - `specification/notes/feature-importance.md` §Grouped Shuffling, §Core Computation Invariants 1, 2, 6 and 7, and §Chart 1 `PFI_BAR` — the source note. Note: the plan deviates from it as recorded in D1 and D6.
 - `specification/workflow-steps.md` §4 Compare Results (section order) and `specification/machine-learning-orchestrator.md` §2 (stored evaluation).
 - `web-ml` public contract, installed package (pin the post-gate release at re-scout):
-    - `node_modules/web-ml/dist/src/inspection/permutation-importance.d.ts` L6-81 and `node_modules/web-ml/specification/public-api/model-inspection.md` L227-254 — signature, scorers, cost, model input space;
-    - `node_modules/web-ml/dist/src/training/fitted-model-hook.d.ts` L6-38 and `node_modules/web-ml/specification/public-api/metrics.md` L97-137 — hook context, ordering, tensor lifetime, cancellation;
-    - `node_modules/web-ml/specification/public-api/tabular-preprocessing.md` L80-90 — `featureNamesOut` encoding.
+  - `node_modules/web-ml/dist/src/inspection/permutation-importance.d.ts` L6-81 and `node_modules/web-ml/specification/public-api/model-inspection.md` L227-254 — signature, scorers, cost, model input space;
+  - `node_modules/web-ml/dist/src/training/fitted-model-hook.d.ts` L6-38 and `node_modules/web-ml/specification/public-api/metrics.md` L97-137 — hook context, ordering, tensor lifetime, cancellation;
+  - `node_modules/web-ml/specification/public-api/tabular-preprocessing.md` L80-90 — `featureNamesOut` encoding.
 
 ## Codebase context
 
 - **Relevant specifications:**
-    - `specification/workflow-steps.md` §4 (L234-242) — section order on `/results`;
-    - `specification/components/results-comparison.md` — connected and presentational contracts;
-    - `specification/machine-learning-orchestrator.md` §2 — stored evaluation;
-    - `specification/VISION.md` §9;
-    - `specification/notes/metrics-and-visuals.md` §3 C item 13 (permutation importance component).
+  - `specification/workflow-steps.md` §4 (L234-242) — section order on `/results`;
+  - `specification/components/results-comparison.md` — connected and presentational contracts;
+  - `specification/machine-learning-orchestrator.md` §2 — stored evaluation;
+  - `specification/VISION.md` §9;
+  - `specification/notes/metrics-and-visuals.md` §3 C item 13 (permutation importance component).
 - **Persisted contract:**
-    - `src/types/model-evaluation.ts` L113-134 `StoredEvaluation` (`schemaVersion: 1`; `protocol`, `classLabels`, `positiveClassIndex`, `partitionFingerprint`, `partitions`, `pooled`, `outputs`, `curves`); L111 says later phases add optional fields and bump `schemaVersion`.
-    - `src/features/models/training/evaluation-mapper.ts` L223-226 `mapEvaluation(runtime, input): Promise<StoredEvaluation>` assembles the literal record at L279-295. It is called from `classifier-adapters.ts` L211 (holdout, `snapshotHoldoutResult` L195) and L260 (CV, `snapshotCrossValidationResult` L241).
-    - `src/features/results/evaluation-decoder.ts`: helpers `record` L44, `count` L51, `finite` L58, `typed` L70, `partitions` L208, `curves` L334. `fail()` throws the internal `Invalid` (L38-42), and `decodeStoredEvaluation` (L454) returns `null` on `Invalid`. The version check is at L457. Optional blocks follow the `curves` pattern (L342, L372, L402), and the result object is at L482-492.
-    - `src/types/model-result.ts` L27-41 `TrainingLogMessage` (a discriminated union, for example `{ key: 'fold-start'; fold; folds }`). `isTrainingLogMessage` is in `src/features/models/training/protocol.ts` L153-154.
+  - `src/types/model-evaluation.ts` L113-134 `StoredEvaluation` (`schemaVersion: 1`; `protocol`, `classLabels`, `positiveClassIndex`, `partitionFingerprint`, `partitions`, `pooled`, `outputs`, `curves`); L111 says later phases add optional fields and bump `schemaVersion`.
+  - `src/features/models/training/evaluation-mapper.ts` L223-226 `mapEvaluation(runtime, input): Promise<StoredEvaluation>` assembles the literal record at L279-295. It is called from `classifier-adapters.ts` L211 (holdout, `snapshotHoldoutResult` L195) and L260 (CV, `snapshotCrossValidationResult` L241).
+  - `src/features/results/evaluation-decoder.ts`: helpers `record` L44, `count` L51, `finite` L58, `typed` L70, `partitions` L208, `curves` L334. `fail()` throws the internal `Invalid` (L38-42), and `decodeStoredEvaluation` (L454) returns `null` on `Invalid`. The version check is at L457. Optional blocks follow the `curves` pattern (L342, L372, L402), and the result object is at L482-492.
+  - `src/types/model-result.ts` L27-41 `TrainingLogMessage` (a discriminated union, for example `{ key: 'fold-start'; fold; folds }`). `isTrainingLogMessage` is in `src/features/models/training/protocol.ts` L153-154.
 - **Training worker:**
-    - `src/features/models/training/classifier-adapters.ts` L97-139 `buildClassificationRequest(classifier, prepared, setup)`:
-        - preprocessing `{ columns, standardize: false }` at L105;
-        - provider `new PartitionDatasetProvider(prepared, prepared.targetCodes.map((_code, index) => index))` at L105-108, identity-mapped over retained rows;
-        - One-Shot `returnFit: true` at L118-127; CV `scoring: 'accuracy'`, `refit: true` at L129-138.
-    - `training-worker.ts`:
-        - `execute` (L41-109) receives `send: (update: TrainingUpdate) => void` (L46) and the signal (L45);
-        - `installTrainingWorker`'s `send` (L146-150) drops progress after abort;
-        - fitted models are disposed in `finally` (L232-234, L277-279).
-    - `prepared.targetCodes[i]` and `prepared.classLabels` (`prepare-classification.ts` L100-115) give the label of provider row `i`, and the hook's `validationIndices` index provider rows. Row `r` of `validationFeatures` is `validationIndices[r]` (`fitted-model-hook.d.ts` L11, L19-26).
-    - `src/features/models/training/progress.ts` L6 `TrainingUpdate = { progress; note? }`; the CV mapper is at L91-124 and the holdout mapper at L60-77.
+  - `src/features/models/training/classifier-adapters.ts` L97-139 `buildClassificationRequest(classifier, prepared, setup)`:
+    - preprocessing `{ columns, standardize: false }` at L105;
+    - provider `new PartitionDatasetProvider(prepared, prepared.targetCodes.map((_code, index) => index))` at L105-108, identity-mapped over retained rows;
+    - One-Shot `returnFit: true` at L118-127; CV `scoring: 'accuracy'`, `refit: true` at L129-138.
+  - `training-worker.ts`:
+    - `execute` (L41-109) receives `send: (update: TrainingUpdate) => void` (L46) and the signal (L45);
+    - `installTrainingWorker`'s `send` (L146-150) drops progress after abort;
+    - fitted models are disposed in `finally` (L232-234, L277-279).
+  - `prepared.targetCodes[i]` and `prepared.classLabels` (`prepare-classification.ts` L100-115) give the label of provider row `i`, and the hook's `validationIndices` index provider rows. Row `r` of `validationFeatures` is `validationIndices[r]` (`fitted-model-hook.d.ts` L11, L19-26).
+  - `src/features/models/training/progress.ts` L6 `TrainingUpdate = { progress; note? }`; the CV mapper is at L91-124 and the holdout mapper at L60-77.
 - **Compare view:**
-    - `app-results-view.ts`:
-        - messages via `i18n('app-results-view', …)` at L65-171 (`model` at L91, `showData` at L118);
-        - `whenSettled` tag list at L304;
-        - `buildViews` at L380-507, taking `num` from `data.activeGroup.models` (L405-408);
-        - sections at L665-820, with the instance agreement section ending at L818;
-        - unavailable-model rendering at L610-633.
-    - `src/features/results/comparison-model.ts` L12-16 `ComparisonModel { num; label; evaluation }` (no `featureNamesOut`; `src/stores/model-results.store.ts` L71-76 keeps only the evaluation). The importance block must therefore carry its own column names.
-    - Horizontal bar precedent: `src/features/results/app-class-error-bars.ts` (`barX` at L83, `<details>` data table at L112-115). `PlotController` mark kinds (`src/features/results/charts/plot-controller.ts` L26) include `barX`, `ruleX` and `ruleY`.
+  - `app-results-view.ts`:
+    - messages via `i18n('app-results-view', …)` at L65-171 (`model` at L91, `showData` at L118);
+    - `whenSettled` tag list at L304;
+    - `buildViews` at L380-507, taking `num` from `data.activeGroup.models` (L405-408);
+    - sections at L665-820, with the instance agreement section ending at L818;
+    - unavailable-model rendering at L610-633.
+  - `src/features/results/comparison-model.ts` L12-16 `ComparisonModel { num; label; evaluation }` (no `featureNamesOut`; `src/stores/model-results.store.ts` L71-76 keeps only the evaluation). The importance block must therefore carry its own column names.
+  - Horizontal bar precedent: `src/features/results/app-class-error-bars.ts` (`barX` at L83, `<details>` data table at L112-115). `PlotController` mark kinds (`src/features/results/charts/plot-controller.ts` L26) include `barX`, `ruleX` and `ruleY`.
 - **Step 5 log:** `app-training-progress` (`src/features/models/app-training-progress.ts` L16-47 English `defaultLabels.formatEntry`, L54-55). It is mounted with `formatEntry` in `src/features/models/app-model-builder-view.ts` L2463-2479, and `formatTrainingLogEntry` is at L1972.
 - **Tests and commands:**
-    - `tests/evaluation-decoder.test.ts`, `tests/evaluation-mapper.test.ts`, `tests/classifier-adapters.test.ts`, `tests/training-progress.test.ts` and `tests/training-protocol.test.ts`;
-    - `tests/training-runtime.e2e.ts` with `tests/fixtures/training/runtime.worker.ts` (real `web-ml` in a worker);
-    - `tests/results-view-model.test.ts`, `tests/comparison.e2e.ts`, `tests/comparison-charts.e2e.ts` and `tests/a11y.e2e.ts` L29-31;
-    - fixtures `tests/fixtures/results/evaluations.ts` (`irisCrossValidation` L200, `breastCancerOneShot` L363), `tests/fixtures/results/comparison.ts` L5 and `tests/helpers/seed-results.ts` (`seedComparablePair` L222, `downgradeEnvelope` L310);
-    - commands: `bun run check`, `bun test <path>`, `bun run test:e2e [file]`, `bun run test:stories`, `bun test tests/style-tokens.test.ts`, `bun run lint`, `bun run build`.
+  - `tests/evaluation-decoder.test.ts`, `tests/evaluation-mapper.test.ts`, `tests/classifier-adapters.test.ts`, `tests/training-progress.test.ts` and `tests/training-protocol.test.ts`;
+  - `tests/training-runtime.e2e.ts` with `tests/fixtures/training/runtime.worker.ts` (real `web-ml` in a worker);
+  - `tests/results-view-model.test.ts`, `tests/comparison.e2e.ts`, `tests/comparison-charts.e2e.ts` and `tests/a11y.e2e.ts` L29-31;
+  - fixtures `tests/fixtures/results/evaluations.ts` (`irisCrossValidation` L200, `breastCancerOneShot` L363), `tests/fixtures/results/comparison.ts` L5 and `tests/helpers/seed-results.ts` (`seedComparablePair` L222, `downgradeEnvelope` L310);
+  - commands: `bun run check`, `bun test <path>`, `bun run test:e2e [file]`, `bun run test:stories`, `bun test tests/style-tokens.test.ts`, `bun run lint`, `bun run build`.
 - **Web guidance:** None. Native `<details>`, `<figure>` and `<table>` follow existing `/results` precedent.
 - **Visual reference:** draft only. `specification/mockups/04_compare-results.html` (status `draft`) gains a "Feature importance" section (T4). No parity entries (visual-design §1.1).
 - **Domain skills:** `lit-component-implementer` for T3 and T4.
@@ -247,8 +247,8 @@ No new persisted UI state: the disclosure keeps its native open state while moun
 - **Must not touch:** `node_modules/`, `vendor/web-ml/` — upstream release.
 - **Implementation:** Add the Interfaces types with TSDoc and widen `schemaVersion` to `1 | 2`. In the decoder, accept versions 1 and 2. Decode `featureImportance` with a local helper that throws `Invalid` inside its own `try`/`catch` and returns `null` (D4). A version 1 evaluation decodes with `featureImportance: null`. Add `featureImportance` to the iris cross-validation fixture (3 columns, 5 folds, 5 repeats) and the breast-cancer One-Shot fixture (1 partition). Keep a version 1 variant.
 - **Acceptance criteria:**
-    - [ ] `CFI-SCHEMA-1` — A version 2 fixture decodes with every stored drop unchanged, and a version 1 fixture decodes with `featureImportance: null` and the other fields unchanged.
-    - [ ] `CFI-SCHEMA-2` — Each invalid block (wrong length, non-finite drop, duplicate column, partition count mismatch, `nRepeats` 0, baseline outside [0, 1]) decodes to `featureImportance: null`, and the rest of the evaluation still decodes. Version 3 still returns `null`.
+  - [ ] `CFI-SCHEMA-1` — A version 2 fixture decodes with every stored drop unchanged, and a version 1 fixture decodes with `featureImportance: null` and the other fields unchanged.
+  - [ ] `CFI-SCHEMA-2` — Each invalid block (wrong length, non-finite drop, duplicate column, partition count mismatch, `nRepeats` 0, baseline outside [0, 1]) decodes to `featureImportance: null`, and the rest of the evaluation still decodes. Version 3 still returns `null`.
 - **Verification:** `bun test tests/evaluation-decoder.test.ts`; `bun run check`
 - **Progress:** [ ] Not started
 
@@ -259,21 +259,21 @@ No new persisted UI state: the disclosure keeps its native open state while moun
 - **Likely files:** `src/features/models/training/importance-collector.ts`, `src/features/models/training/classifier-adapters.ts`, `src/features/models/training/training-worker.ts`, `src/features/models/training/evaluation-mapper.ts`, `src/features/models/training/protocol.ts`, `src/types/model-result.ts`, `src/features/models/app-training-progress.ts`, `src/features/models/app-model-builder-view.ts`, `tests/importance-collector.test.ts`, `tests/evaluation-mapper.test.ts`, `tests/classifier-adapters.test.ts`, `tests/training-protocol.test.ts`, `tests/training-runtime.e2e.ts`, `tests/fixtures/training/runtime.worker.ts`
 - **Must not touch:** `src/features/results/` — display belongs to T3 and T4.
 - **Implementation:** D2, D3 and D7 with the collector contract in Interfaces. `buildClassificationRequest` takes an optional `onModel` and sets it on both protocol requests. In `execute`:
-    1. Create the collector with the real `permutationImportance`, `prepared`, the run signal and an `onNote` that resends the last sent progress with the note.
-    2. Pass `collector.hook` as `onModel`.
-    3. Hand `collector.finish()` to the snapshot.
+  1. Create the collector with the real `permutationImportance`, `prepared`, the run signal and an `onNote` that resends the last sent progress with the note.
+  2. Pass `collector.hook` as `onModel`.
+  3. Hand `collector.finish()` to the snapshot.
 
-    `mapEvaluation` writes `schemaVersion: 2` and `featureImportance` from its input. Measurement time goes only in the implementation log as evidence; no stored timing field is added.
+  `mapEvaluation` writes `schemaVersion: 2` and `featureImportance` from its input. Measurement time goes only in the implementation log as evidence; no stored timing field is added.
 
 - **Acceptance criteria:**
-    - [ ] `CFI-WORKER-1` — With a fake `permutationImportance` and fake hook contexts (3 folds plus a refit, with one-hot names such as `["colour","blue"]`), the collector:
-        - passes groups ordered by first appearance;
-        - passes targets aligned to `validationIndices`, plus balanced-accuracy scoring, `nRepeats` 5, `randomState` 0 and the signal;
-        - ignores the refit;
-        - returns copies whose values survive mutation of the fake's output arrays.
-    - [ ] `CFI-WORKER-2` — Each of these yields `finish() === null`, exactly one `importance-unavailable` note, and a hook that resolves without throwing: a throwing fake; a result of the wrong length; a missing `validationFeatures` on a fold; differing `featureNamesOut` between folds.
-    - [ ] `CFI-WORKER-3` — `isTrainingLogMessage` accepts both new notes and rejects unknown keys. Step 5 renders both English sentences.
-    - [ ] `CFI-WORKER-4` — In `tests/training-runtime.e2e.ts`, real `web-ml` training on iris (CV) and penguins (One-Shot) stores a version 2 evaluation with a valid `featureImportance`. Penguins' categorical columns appear once each, under their source names. Cancelling during measurement settles the run as cancelled.
+  - [ ] `CFI-WORKER-1` — With a fake `permutationImportance` and fake hook contexts (3 folds plus a refit, with one-hot names such as `["colour","blue"]`), the collector:
+    - passes groups ordered by first appearance;
+    - passes targets aligned to `validationIndices`, plus balanced-accuracy scoring, `nRepeats` 5, `randomState` 0 and the signal;
+    - ignores the refit;
+    - returns copies whose values survive mutation of the fake's output arrays.
+  - [ ] `CFI-WORKER-2` — Each of these yields `finish() === null`, exactly one `importance-unavailable` note, and a hook that resolves without throwing: a throwing fake; a result of the wrong length; a missing `validationFeatures` on a fold; differing `featureNamesOut` between folds.
+  - [ ] `CFI-WORKER-3` — `isTrainingLogMessage` accepts both new notes and rejects unknown keys. Step 5 renders both English sentences.
+  - [ ] `CFI-WORKER-4` — In `tests/training-runtime.e2e.ts`, real `web-ml` training on iris (CV) and penguins (One-Shot) stores a version 2 evaluation with a valid `featureImportance`. Penguins' categorical columns appear once each, under their source names. Cancelling during measurement settles the run as cancelled.
 - **Verification:** `bun test tests/importance-collector.test.ts`; `bun test tests/evaluation-mapper.test.ts`; `bun test tests/training-protocol.test.ts`; `bun run test:e2e tests/training-runtime.e2e.ts`; `bun run check`. Record importance time against total training time for iris, penguins and adult-census (KNN and MLP) in the implementation log.
 - **Progress:** [ ] Not started
 
@@ -285,11 +285,11 @@ No new persisted UI state: the disclosure keeps its native open state while moun
 - **Must not touch:** `src/features/results/charts/plot-controller.ts` — shared controller; use only its existing mark kinds.
 - **Implementation:** D5, D6 and D8 with the element contract in Interfaces. The bars use the same chart tokens as `app-class-error-bars`; negative bars use the next chart token. No literal colours. Logical properties only.
 - **Acceptance criteria:**
-    - [ ] `CFI-VM-1` — For hand-computed fixtures, mean, sample SD, rank (ties by source order) and the shared domain (including padding and the zero-span case) match. One-Shot rows have `sd: null`. Negative means stay negative.
-    - [ ] `CFI-VM-2` — Version 1 gives `legacy`, a `null` block gives `unavailable`, all-zero means give `empty`, and `xDomain` is `null` when no panel is ready.
-    - [ ] `CFI-UI-1` — A ready panel draws at most 15 bars ranked by mean, with whiskers only when `sd` is non-null. The data table lists every column with signed values. Negative bars sit left of the zero rule.
-    - [ ] `CFI-UI-2` — Each non-ready status renders its status sentence and no chart. RTL and a 60-character column name render without clipping or horizontal page scroll at 320 px.
-    - [ ] Stories: ready CV, ready One-Shot, negative values, more than 15 columns, legacy, unavailable, empty, Long label, RTL, with Do / Don't usage rules ("Do keep one shared axis across panels"; "Don't present the ranking as causal").
+  - [ ] `CFI-VM-1` — For hand-computed fixtures, mean, sample SD, rank (ties by source order) and the shared domain (including padding and the zero-span case) match. One-Shot rows have `sd: null`. Negative means stay negative.
+  - [ ] `CFI-VM-2` — Version 1 gives `legacy`, a `null` block gives `unavailable`, all-zero means give `empty`, and `xDomain` is `null` when no panel is ready.
+  - [ ] `CFI-UI-1` — A ready panel draws at most 15 bars ranked by mean, with whiskers only when `sd` is non-null. The data table lists every column with signed values. Negative bars sit left of the zero rule.
+  - [ ] `CFI-UI-2` — Each non-ready status renders its status sentence and no chart. RTL and a 60-character column name render without clipping or horizontal page scroll at 320 px.
+  - [ ] Stories: ready CV, ready One-Shot, negative values, more than 15 columns, legacy, unavailable, empty, Long label, RTL, with Do / Don't usage rules ("Do keep one shared axis across panels"; "Don't present the ranking as causal").
 - **Verification:** `bun test tests/feature-importance-view-model.test.ts`; `bun run test:e2e tests/feature-importance.e2e.ts`; `bun run test:stories`; `bun test tests/style-tokens.test.ts`; `bun run check`
 - **Progress:** [ ] Not started
 
@@ -301,9 +301,9 @@ No new persisted UI state: the disclosure keeps its native open state while moun
 - **Must not touch:** `specification/mockups/mockups.css` — human-owned.
 - **Implementation:** Implement the connected view from Interfaces: messages in the `app-results-view` i18n block, the section after instance agreement, `repeat` keyed by `num`, and the `whenSettled` entry. Add a `<!-- {Feature importance} -->` draft section with its legacy-panel state to the 04 draft, with the multi-state comments of visual-design §1.1.
 - **Acceptance criteria:**
-    - [ ] `CFI-UI-3` — On `/results` with the iris pair, the section follows instance agreement and shows one panel per selected model in model order, with matching axis domains. Deselecting a model removes its panel.
-    - [ ] `CFI-UI-4` — A pair where one result is downgraded to version 1 shows the legacy sentence for that model and a chart for the other. `whenSettled` resolves.
-    - [ ] `CFI-UI-5` — `tests/a11y.e2e.ts` scans the populated comparison with the section and finds no new violations.
+  - [ ] `CFI-UI-3` — On `/results` with the iris pair, the section follows instance agreement and shows one panel per selected model in model order, with matching axis domains. Deselecting a model removes its panel.
+  - [ ] `CFI-UI-4` — A pair where one result is downgraded to version 1 shows the legacy sentence for that model and a chart for the other. `whenSettled` resolves.
+  - [ ] `CFI-UI-5` — `tests/a11y.e2e.ts` scans the populated comparison with the section and finds no new violations.
 - **Verification:** `bun run test:e2e tests/comparison-charts.e2e.ts`; `bun run test:e2e tests/comparison.e2e.ts`; `bun run test:e2e tests/a11y.e2e.ts`; `bun run test:stories`; `bun run check`
 - **Progress:** [ ] Not started
 
@@ -315,7 +315,7 @@ No new persisted UI state: the disclosure keeps its native open state while moun
 - **Must not touch:** `specification/plans/web-ml-phase-6-model-specific-results.md` — its revision is a separate planning session.
 - **Implementation:** Tick every _Specification changes_ item. Remove HUMAN.md item (a) once the gate has passed.
 - **Acceptance criteria:**
-    - [ ] Every _Specification changes_ item is ticked, and `bun run plans:check` passes.
+  - [ ] Every _Specification changes_ item is ticked, and `bun run plans:check` passes.
 - **Verification:** `bun run plans:check specification/plans/compare-feature-importance.md`; `bun run lint`; `bun run build`; `bun run check`
 - **Progress:** [ ] Not started
 

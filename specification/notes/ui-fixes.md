@@ -3,11 +3,12 @@
 - Disable scroll on body while a `dialog.modal` is open.
 - `header.page-header` inside `main` should stick to the top of the viewport when scrolling.
 
-
 ## Regressions
 
 ### Train Models Step
+
 In the sidebar Step 3 "Train Models" should display like this before a target variable has been set:
+
 ```
 <li class="step">
 	<a href="/models" class="step-link">
@@ -18,6 +19,7 @@ In the sidebar Step 3 "Train Models" should display like this before a target va
 ```
 
 After a target variable has been set the step should be updated to use `.step-link-small` and the UI updated to:
+
 ```
 <li class="step">
 	<div class="step-link step-model-navigation">
@@ -40,12 +42,10 @@ After a target variable has been set the step should be updated to use `.step-li
 
 ### Fix Dot Emphasis Animation
 
-On Safari running webkit the animation for 
+On Safari running webkit the animation for
 
 - Training progress bar not animated.
-- Make the "View Results" in  `.btn-primary`
-
-
+- Make the "View Results" in `.btn-primary`
 
 - "All Trained Models" in `.step-link-small`
 - CSS missing for `<a class="step-train-new" href="/models/new" aria-describedby="workflow-suggestion">Train New Model<span class="dot" aria-hidden="true"></span></a>`
@@ -53,16 +53,20 @@ On Safari running webkit the animation for
 ## Improve Virtualized Table
 
 ### Navigation from "Select Data"
+
 - Clicking "Load Dataset" should immediately navigate the user to the preview and display a `progress` bar directly inside main while dataset is being loaded into IndexdDB.
 - Custom CSV uploads should first complete parsing with the "Upload Custom Dataset" modal still open. Once the dataset has been parsed to ensure it can be used the UI should then switch to the preview and show a `progress` bar directly inside main while the CSV is being loaded into IndexdDB.
 - Change the `.page-header` on preview to include a button to open the "Datasheet" in a modal:
+
 ```
 <div class="page-actions">
 	<button class="btn">Datasheet</button>
 	<button class="btn btn-red">Change Dataset</button>
 </div>
 ```
+
 - Add `{displayName}` inside `.overlay-title h4` in the slide-over column details panel:
+
 ```
 <div class="overlay-title">
 	<h4>{displayName}<br><span class="col-name">{name}</span></h4>
@@ -71,6 +75,7 @@ On Safari running webkit the animation for
 ```
 
 ### Virtualisation Changes
+
 - Remove `.status-box` and `.controls-bar`.
 - Scrolling the virtual table needs to be moved to `<body>`.
 - Unwrap `ui-virtual-table` so it sits directly inside `<main>`.
@@ -82,14 +87,16 @@ On Safari running webkit the animation for
 - The function `updateVirtualTable` calculates which rows need moving and which need mutating depending on `currentScrollTop`.
 - Smarter calculation of column widths. Use the `max` value for numeric columns to set a more suitable width with a sensible `min` value to ensure `boolean` columns don't become too narrow.
 - Use classes for each data-type e.g. `<div role="cell" class="table-cell table-cell-num" title="1">1</div>`. This will allow:
-	- `numeric` columns to have `font-variant-numeric:tabular-nums;text-align:end;`.
-	- `date` and `datetime` columns to have `font-variant-numeric:tabular-nums;text-align:start;`.
-	- `boolean` and `categorical` columns to use `text-align:center;`.
-	- The default on `div.table-cell` should be `text-align:start;`.
+  - `numeric` columns to have `font-variant-numeric:tabular-nums;text-align:end;`.
+  - `date` and `datetime` columns to have `font-variant-numeric:tabular-nums;text-align:start;`.
+  - `boolean` and `categorical` columns to use `text-align:center;`.
+  - The default on `div.table-cell` should be `text-align:start;`.
 - Cells in columns which are currently unspported e.g. `text` should have the class `.unsupported` on `div.table-header-cell` every `div.table-cell`.
 
 ### Header Cell Format
+
 Change the markup of header cells to contain the `displayName` for pre-configured datasets.
+
 ```
 <div class="table-header-cell" role="columnheader">
 	<button type="button" class="header-btn" data-col-key="id">
@@ -101,8 +108,8 @@ Change the markup of header cells to contain the `displayName` for pre-configure
 	</button>
 </div>
 ```
-The cell header should use `overflow: hidden;white-space:nowrap;text-overflow: ellipsis;` with the text set on a `title` or `aria-` attribute depending on what WCAG best practice says.
 
+The cell header should use `overflow: hidden;white-space:nowrap;text-overflow: ellipsis;` with the text set on a `title` or `aria-` attribute depending on what WCAG best practice says.
 
 ### Open Issues
 
@@ -136,12 +143,12 @@ It is currently used in the following siutations:
 ### Model Workflow
 
 - Clicking "Select Model" on a Model Card should use:
-    1.  Use a css animation to slide `.train-step-content` closed then move the class `.step-active` and `aria-current="step"` to the second step.
-    2.  Change the value of `#step-1-title` to `1. {ModelName}`.
-    3.  Add `.train-step-action` to Step 1 containing the completed label, SVG icon and Edit button.
-    4.  Render the contents of Step 1 and then animate open the `.train-step-content` element.
-    5.  This same process should be repeated each time the user completes a step. Except for the final step where the interface updates as shown in [03-7_train-models-5-results.html](/specification/mockups/03-7_train-models-5-results.html)
-    6.  Update all SVG check icons from `<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg>` to the much clearer `<svg class="icon" aria-hidden="true"><use href="#check" /></svg>`.
+  1. Use a css animation to slide `.train-step-content` closed then move the class `.step-active` and `aria-current="step"` to the second step.
+  2. Change the value of `#step-1-title` to `1. {ModelName}`.
+  3. Add `.train-step-action` to Step 1 containing the completed label, SVG icon and Edit button.
+  4. Render the contents of Step 1 and then animate open the `.train-step-content` element.
+  5. This same process should be repeated each time the user completes a step. Except for the final step where the interface updates as shown in [03-7_train-models-5-results.html](/specification/mockups/03-7_train-models-5-results.html)
+  6. Update all SVG check icons from `<svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"></path></svg>` to the much clearer `<svg class="icon" aria-hidden="true"><use href="#check" /></svg>`.
 
 ### Experiment Names
 

@@ -18,19 +18,19 @@ This is a **Tier 2 (Presentational component)**. `<ui-virtual-table>` is a prese
 
 - **Tag name:** `ui-virtual-table`
 - **Properties:**
-    - `columns` (`readonly VirtualTableColumn[] = []`): Column keys and display labels (property-only, `attribute: false`).
-    - `window` (`VirtualTableWindow = { startIndex: 0, rows: [] }`): Current row slice provided by consumer (property-only, `attribute: false`).
-    - `loading` (`boolean = false`): Whether a fetch is currently in flight (property-only, `attribute: false`).
-    - `totalRows` (`number = 0`): Total row count in the dataset (attribute `total-rows`).
-    - `label` (`string = ''`): Accessible label describing the table contents (attribute `label`).
+  - `columns` (`readonly VirtualTableColumn[] = []`): Column keys and display labels (property-only, `attribute: false`).
+  - `window` (`VirtualTableWindow = { startIndex: 0, rows: [] }`): Current row slice provided by consumer (property-only, `attribute: false`).
+  - `loading` (`boolean = false`): Whether a fetch is currently in flight (property-only, `attribute: false`).
+  - `totalRows` (`number = 0`): Total row count in the dataset (attribute `total-rows`).
+  - `label` (`string = ''`): Accessible label describing the table contents (attribute `label`).
 - **Methods:**
-    - `scrollToRow(index: number, offset?: number, inlineOffset?: number): Promise<void>`: Programmatically scrolls to an absolute zero-based row index, selecting the appropriate segment. Clamps to `[0, min(totalRows, 10_000_000) - 1]`.
-    - `restoreScroll(top: number, left: number): Promise<void>`: Converts logical pixel offsets using measured row height, then calls `scrollToRow`.
-    - `focusColumn(column: string): void`: Programmatically focuses the matching column header button.
+  - `scrollToRow(index: number, offset?: number, inlineOffset?: number): Promise<void>`: Programmatically scrolls to an absolute zero-based row index, selecting the appropriate segment. Clamps to `[0, min(totalRows, 10_000_000) - 1]`.
+  - `restoreScroll(top: number, left: number): Promise<void>`: Converts logical pixel offsets using measured row height, then calls `scrollToRow`.
+  - `focusColumn(column: string): void`: Programmatically focuses the matching column header button.
 - **Events:**
-    - `ui-virtual-table-range-change`: Emitted when the visible window requires new rows. Carries `VirtualTableRange` (`{ startIndex: number, limit: number }`). Dispatches on host, `bubbles: false`, `composed: false`.
-    - `ui-virtual-table-position-change`: Emitted on scroll. Carries `VirtualTablePosition` (`{ rowIndex: number, offset: number, inlineOffset: number, top: number }`). Dispatches on host, `bubbles: false`, `composed: false`.
-    - `ui-virtual-table-column-select`: Emitted when a header button is clicked. Carries `{ column: string }`. Dispatches on host, `bubbles: false`, `composed: false`.
+  - `ui-virtual-table-range-change`: Emitted when the visible window requires new rows. Carries `VirtualTableRange` (`{ startIndex: number, limit: number }`). Dispatches on host, `bubbles: false`, `composed: false`.
+  - `ui-virtual-table-position-change`: Emitted on scroll. Carries `VirtualTablePosition` (`{ rowIndex: number, offset: number, inlineOffset: number, top: number }`). Dispatches on host, `bubbles: false`, `composed: false`.
+  - `ui-virtual-table-column-select`: Emitted when a header button is clicked. Carries `{ column: string }`. Dispatches on host, `bubbles: false`, `composed: false`.
 - **CSS Parts:** None.
 - **CSS Custom Properties:** None beyond global tokens in `css/root.css`.
 
@@ -75,10 +75,10 @@ Structure follows draft `specification/mockups/01-6_virtual-table.html`. Styled 
 
 - **Layout & Geometry:** Host uses `display: block`. Row height is `2.5rem`, measured after render. Viewport has `max-block-size: 25rem` with `overflow: auto`. Column minimum inline size is `12rem`.
 - **Tokens:**
-    - Border: `var(--stone-300)` and `var(--stone-200)`.
-    - Backgrounds: `var(--surface)` for viewport, `var(--stone-150)` for header, `var(--stone-50)` for alternating rows.
-    - Text: `var(--stone-800)`.
-    - Focus ring: `var(--blue-700)`.
+  - Border: `var(--stone-300)` and `var(--stone-200)`.
+  - Backgrounds: `var(--surface)` for viewport, `var(--stone-150)` for header, `var(--stone-50)` for alternating rows.
+  - Text: `var(--stone-800)`.
+  - Focus ring: `var(--blue-700)`.
 
 ## 6. Accessibility
 

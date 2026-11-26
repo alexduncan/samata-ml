@@ -12,24 +12,24 @@ Open questions and missing specification found by reviewing every Markdown and H
 - **TODO-03 — Compare Results** ([workflow-steps §4](workflow-steps.md)): _Resolved for classification_ with compatible-row grouping, metrics and comparison views. Regression comparison remains future work; the [04 draft](mockups/04_compare-results.html) awaits human styling.
 - **TODO-04 — Training.** Phase 3 delivers local One-Shot and fixed CV, progress, safe errors, elapsed time and recovery. Detailed timing tables for nested evaluation and tuning remain later work. The [03-6 draft](mockups/03-6_train-models-5-train.html) awaits styling and promotion.
 - **TODO-05 — Configure Model** ([workflow-steps §3.3](workflow-steps.md)):
-    - Where each model's hyperparameter definitions come from (ranges, types, defaults; `web-ml` or app config).
-    - The hyperparameter-tuning UI: search method, how ranges are entered, and which tuning metric.
-    - How the available multiclass strategies are discovered.
-    - _Resolved for manual configuration (Phase 1):_ hyperparameter definitions come from the `web-ml` catalogue documents; the manual form is implemented ([components/model-configuration.md](components/model-configuration.md)); multiclass strategy is fixed per model and shown read-only. Still open: the hyperparameter-tuning UI (search method, range entry, tuning metric) and user-selectable multiclass strategies.
+  - Where each model's hyperparameter definitions come from (ranges, types, defaults; `web-ml` or app config).
+  - The hyperparameter-tuning UI: search method, how ranges are entered, and which tuning metric.
+  - How the available multiclass strategies are discovered.
+  - _Resolved for manual configuration (Phase 1):_ hyperparameter definitions come from the `web-ml` catalogue documents; the manual form is implemented ([components/model-configuration.md](components/model-configuration.md)); multiclass strategy is fixed per model and shown read-only. Still open: the hyperparameter-tuning UI (search method, range entry, tuning metric) and user-selectable multiclass strategies.
 - **TODO-06 — Select Features** ([workflow-steps §3.2](workflow-steps.md)):
-    - _Resolved for Step 3:_ Implemented in `feature-eligibility.ts` and `app-model-builder-view.ts`: target column displayed with Target badge and no checkbox (never selectable); unsupported (text, date, time, datetime), constant, and all-missing columns disabled with explanatory note codes; identifiers and target-candidate leaky columns default unticked with advisory notes and deliberate selection override; at least one feature required; initial features populated once on Choose Model completion via `initialiseFeatureSelection`.
+  - _Resolved for Step 3:_ Implemented in `feature-eligibility.ts` and `app-model-builder-view.ts`: target column displayed with Target badge and no checkbox (never selectable); unsupported (text, date, time, datetime), constant, and all-missing columns disabled with explanatory note codes; identifiers and target-candidate leaky columns default unticked with advisory notes and deliberate selection override; at least one feature required; initial features populated once on Choose Model completion via `initialiseFeatureSelection`.
 - **TODO-07 — Choose Model** ([workflow-steps §3.1](workflow-steps.md)):
-    - _Resolved for Step 3:_ The [Choose Model workflow](workflow-steps.md#1-choose-model) renders the eight eligible classifiers as illustrated cards in library index order. The current choice is visible and programmatically identified. Descriptions use authored prose or fall back to the model catalogue.
+  - _Resolved for Step 3:_ The [Choose Model workflow](workflow-steps.md#1-choose-model) renders the eight eligible classifiers as illustrated cards in library index order. The current choice is visible and programmatically identified. Descriptions use authored prose or fall back to the model catalogue.
 - **TODO-08 — Models table on `/models`** ([workflow-steps §3](workflow-steps.md)):
-    - _Resolved for Step 3:_ Monotonically numbered sequentially (Model 1, Model 2); Model Name displays `Model {num} — {Library Name}` or `Model {num}`; features listed in dataset order or "Not selected"; configuration shows persisted values or "Not configured"; Training Setup shows the formatted One-Shot split or Cross-Validation fold count, or "Not configured"; duration shows formatted seconds or "Not trained"; Action links to `/models/{num}` ("View Results" if trained, "Continue" if draft); renaming/deleting/duplicating excluded; empty state displays clear guidance; Compare Results disabled with visible hint until ≥ 2 models trained.
+  - _Resolved for Step 3:_ Monotonically numbered sequentially (Model 1, Model 2); Model Name displays `Model {num} — {Library Name}` or `Model {num}`; features listed in dataset order or "Not selected"; configuration shows persisted values or "Not configured"; Training Setup shows the formatted One-Shot split or Cross-Validation fold count, or "Not configured"; duration shows formatted seconds or "Not trained"; Action links to `/models/{num}` ("View Results" if trained, "Continue" if draft); renaming/deleting/duplicating excluded; empty state displays clear guidance; Compare Results disabled with visible hint until ≥ 2 models trained.
 - **TODO-09 — Custom dataset upload** ([workflow-steps §1](workflow-steps.md)):
-    - _Resolved for Step 1:_ Upload dialog (`app-upload-dataset-dialog`), progress phases, error mappings, cancellation lifecycle, and data-quality reporting implemented.
+  - _Resolved for Step 1:_ Upload dialog (`app-upload-dataset-dialog`), progress phases, error mappings, cancellation lifecycle, and data-quality reporting implemented.
 - **TODO-10 — Column details panel** ([workflow-steps §1 Preview](workflow-steps.md)):
-    - _Resolved for Step 1:_ Delivered in `app-column-details` and [components/sidepanel.md](components/sidepanel.md) (stored statistics, discrete histogram bin table, categorical expansion, date, time and UTC datetime display, text identifier candidate, Escape/close focus return).
+  - _Resolved for Step 1:_ Delivered in `app-column-details` and [components/sidepanel.md](components/sidepanel.md) (stored statistics, discrete histogram bin table, categorical expansion, date, time and UTC datetime display, text identifier candidate, Escape/close focus return).
 - **TODO-11 — Set Target rules** ([workflow-steps §2](workflow-steps.md)):
-    - _Resolved for Step 2:_ Implemented in `src/features/target/target-eligibility.ts` and `app-target-view.ts`: unsupported (text, date, time, datetime), constant, and all-missing columns disabled with exact notes; identifier, missing values count, high cardinality, and descriptor candidate hints are advisory.
+  - _Resolved for Step 2:_ Implemented in `src/features/target/target-eligibility.ts` and `app-target-view.ts`: unsupported (text, date, time, datetime), constant, and all-missing columns disabled with exact notes; identifier, missing values count, high cardinality, and descriptor candidate hints are advisory.
 - **TODO-12 — Modal content:**
-    - _Resolved:_ Datasheets rendered via `app-datasheet-dialog`; Model descriptions rendered via `app-model-description-dialog` using safe loader and missing-prose fallback.
+  - _Resolved:_ Datasheets rendered via `app-datasheet-dialog`; Model descriptions rendered via `app-model-description-dialog` using safe loader and missing-prose fallback.
 
 ## 2. Open questions in existing specs
 
@@ -76,14 +76,14 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 - **TODO-34** — _Resolved for shell/cards/column details:_ [sidebar](components/sidebar.md), [welcome](components/welcome-modal.md), [content modal/dialog](components/content-modal.md), [card](components/card.md) and [sidepanel](components/sidepanel.md) have specs. Separate transient datasheet/upload/model-description specs remain backlog; existing behaviour remains covered by feature plans/tests. Feature stories are a follow-up, not a missing Storybook installation.
 - **TODO-35** — Patterns that appear in the mockup CSS but have no spec:
-    - `.notification` (`notifications.css`) — alert variant implemented in `src/styles/notification.styles.ts` and adopted globally.
-    - _Resolved:_ [chiclet](components/chiclet.md), [shared dialog](components/dialog.md), [page header](components/page-header.md) and [sidebar workflow/status](components/sidebar.md) have closed specs and scoped stories/acceptance.
-    - The upload dropzone (`dropzone.css`) — used in `app-upload-dataset-dialog`.
-    - The data tables on `/target` and `/models` (`table.css`) — table style module implemented in `src/styles/table.styles.ts` and adopted globally.
-    - The `.train-step` sections (`train-model.css`) — implemented in `src/styles/train-model.styles.ts` and adopted globally.
-    - Any general status-dot primitive beyond the sidebar-local implementation.
-    - _Resolved:_ the native bar and log are specified in [Training Progress](components/training-progress.md).
-    - The histogram chart.
+  - `.notification` (`notifications.css`) — alert variant implemented in `src/styles/notification.styles.ts` and adopted globally.
+  - _Resolved:_ [chiclet](components/chiclet.md), [shared dialog](components/dialog.md), [page header](components/page-header.md) and [sidebar workflow/status](components/sidebar.md) have closed specs and scoped stories/acceptance.
+  - The upload dropzone (`dropzone.css`) — used in `app-upload-dataset-dialog`.
+  - The data tables on `/target` and `/models` (`table.css`) — table style module implemented in `src/styles/table.styles.ts` and adopted globally.
+  - The `.train-step` sections (`train-model.css`) — implemented in `src/styles/train-model.styles.ts` and adopted globally.
+  - Any general status-dot primitive beyond the sidebar-local implementation.
+  - _Resolved:_ the native bar and log are specified in [Training Progress](components/training-progress.md).
+  - The histogram chart.
 
 ## 4. Mockups missing or out of date ([mockups/](mockups/))
 
@@ -116,20 +116,20 @@ Open questions and missing specification found by reviewing every Markdown and H
 
 - **TODO-53 — Mockup styles WCAG 2.2 AA violations** ([mockups/css/](mockups/css/)):
   Normative mockup CSS still contains the defects below; it is not imported or mirrored wholesale into production. Shared default buttons, shell footer/current state, amber chiclets, named headings/dialogs, keyboard outlines and sidebar status/motion are repaired in the app under the visual-design registers. Remaining feature findings include the 24 exact data/model contrast elements in `tests/a11y-feature-findings.ts`, separately owned in HUMAN.md. This list remains open for feature repairs and human mockup cleanup:
-    1. **SC 1.4.3 Contrast (Minimum) — Text**:
-        - `.badge-amber` (`badges.css`): White on amber-500 is 2.15:1. App chiclet/welcome uses stone-900 (6.60:1, A11Y-04); mockup cleanup remains human work.
-        - `.btn` default secondary button (`button.css`): Text colour `--stone-600` (`#887b71`) on `--stone-50` (`#fcfbfa`) achieves only 3.97:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (`#6d6056`) for 5.88:1 contrast.
-        - `.card-text` (`card.css`): Text colour `--stone-600` (`#887b71`) on `#fff` achieves only 4.10:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (`#6d6056`, 6.07:1) or `--stone-800` (`#4d413b`, 9.84:1), as implemented in `card.styles.ts`.
-        - `.file-picker-button` (`base.css`): Text colour `--stone-600` (`#887b71`) on `--stone-150` (`#f3f2ef`) achieves 3.66:1, and on hover with `--blue-100` (`#dbeafe`) achieves 3.36:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (5.42:1) or `--stone-800` (8.79:1).
-        - `sidebar footer` (`sidebar.css`): Text colour `--stone-600` (`#887b71`) on `--stone-150` (`#f3f2ef`) achieves only 3.66:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (5.42:1) or `--stone-800` (8.79:1).
-        - `.train-step-pending` (`train-model.css`): Text colour `--stone-500` (`#a6988e`) on `--stone-100` (`#f8f7f5`) achieves only 2.61:1 (minimum 4.5:1 required). _Remediation_: Ensure pending state is conveyed using an accessible badge/icon or `aria-disabled`, rather than low-contrast text alone.
-    2. **SC 1.4.11 Non-text Contrast — Focus Indicators & Boundaries**:
-        - `select:focus-visible` and `select:open` (`base.css`): Focus indicator outline `3px solid var(--blue-300)` (`#93c5fd`) against `--stone-50` achieves only 1.48:1 contrast (minimum 3:1 required for focus indicators). _Remediation_: Use `--blue-700` (`#1d4ed8`, 6.48:1), matching `:has(input:focus-visible) .file-picker-button`.
-        - Form input borders (`base.css`): Borders on `input` and `select` use `1.5px solid var(--stone-300)` (`#e3d9d1`) against `--stone-100` (`#f8f7f5`), yielding a contrast ratio of 1.33:1 (minimum 3:1 required if border is the sole visual indicator of the control's boundary).
-    3. **SC 2.4.7 Focus Visible**:
-        - Interactive elements (`button.css`, `sidebar.css`, `steps.css`): `.btn`, `.btn-icon`, `.step-link`, `.step-model-link`, and `.project-settings` define `:hover` states but omit explicit `:focus-visible` outlines. `COMPONENTS.md §6.3` requires an outline of at least 2px using a token colour.
-    4. **SC 2.3.3 Animation from Interactions & SC 2.2.2 Pause, Stop, Hide**:
-        - Infinite animations (`dot.css`): The continuous pulsing animations (`pulse-core` and `pulse-ring`) run unconditionally without being enclosed in `@media (prefers-reduced-motion: no-preference)`.
-        - Sidebar transitions (`sidebar.css`): `.project-settings` transition is declared outside a `prefers-reduced-motion` media query.
-    5. **SC 1.4.1 Use of Colour**:
-        - Status dot (`dot.css`, `steps.css`): The pulsing `.dot` conveys state (e.g. training active) via colour/pulsing alone; must always be accompanied by accessible text (e.g. `.visually-hidden`).
+  1. **SC 1.4.3 Contrast (Minimum) — Text**:
+     - `.badge-amber` (`badges.css`): White on amber-500 is 2.15:1. App chiclet/welcome uses stone-900 (6.60:1, A11Y-04); mockup cleanup remains human work.
+     - `.btn` default secondary button (`button.css`): Text colour `--stone-600` (`#887b71`) on `--stone-50` (`#fcfbfa`) achieves only 3.97:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (`#6d6056`) for 5.88:1 contrast.
+     - `.card-text` (`card.css`): Text colour `--stone-600` (`#887b71`) on `#fff` achieves only 4.10:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (`#6d6056`, 6.07:1) or `--stone-800` (`#4d413b`, 9.84:1), as implemented in `card.styles.ts`.
+     - `.file-picker-button` (`base.css`): Text colour `--stone-600` (`#887b71`) on `--stone-150` (`#f3f2ef`) achieves 3.66:1, and on hover with `--blue-100` (`#dbeafe`) achieves 3.36:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (5.42:1) or `--stone-800` (8.79:1).
+     - `sidebar footer` (`sidebar.css`): Text colour `--stone-600` (`#887b71`) on `--stone-150` (`#f3f2ef`) achieves only 3.66:1 (minimum 4.5:1 required). _Remediation_: Change text colour to `--stone-700` (5.42:1) or `--stone-800` (8.79:1).
+     - `.train-step-pending` (`train-model.css`): Text colour `--stone-500` (`#a6988e`) on `--stone-100` (`#f8f7f5`) achieves only 2.61:1 (minimum 4.5:1 required). _Remediation_: Ensure pending state is conveyed using an accessible badge/icon or `aria-disabled`, rather than low-contrast text alone.
+  2. **SC 1.4.11 Non-text Contrast — Focus Indicators & Boundaries**:
+     - `select:focus-visible` and `select:open` (`base.css`): Focus indicator outline `3px solid var(--blue-300)` (`#93c5fd`) against `--stone-50` achieves only 1.48:1 contrast (minimum 3:1 required for focus indicators). _Remediation_: Use `--blue-700` (`#1d4ed8`, 6.48:1), matching `:has(input:focus-visible) .file-picker-button`.
+     - Form input borders (`base.css`): Borders on `input` and `select` use `1.5px solid var(--stone-300)` (`#e3d9d1`) against `--stone-100` (`#f8f7f5`), yielding a contrast ratio of 1.33:1 (minimum 3:1 required if border is the sole visual indicator of the control's boundary).
+  3. **SC 2.4.7 Focus Visible**:
+     - Interactive elements (`button.css`, `sidebar.css`, `steps.css`): `.btn`, `.btn-icon`, `.step-link`, `.step-model-link`, and `.project-settings` define `:hover` states but omit explicit `:focus-visible` outlines. `COMPONENTS.md §6.3` requires an outline of at least 2px using a token colour.
+  4. **SC 2.3.3 Animation from Interactions & SC 2.2.2 Pause, Stop, Hide**:
+     - Infinite animations (`dot.css`): The continuous pulsing animations (`pulse-core` and `pulse-ring`) run unconditionally without being enclosed in `@media (prefers-reduced-motion: no-preference)`.
+     - Sidebar transitions (`sidebar.css`): `.project-settings` transition is declared outside a `prefers-reduced-motion` media query.
+  5. **SC 1.4.1 Use of Colour**:
+     - Status dot (`dot.css`, `steps.css`): The pulsing `.dot` conveys state (e.g. training active) via colour/pulsing alone; must always be accompanied by accessible text (e.g. `.visually-hidden`).

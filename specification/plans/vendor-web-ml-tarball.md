@@ -59,21 +59,21 @@ Facts verified by `codebase-scout`, so downstream agents need not re-sweep the t
 
 - **Relevant specifications:** `specification/ARCHITECTURE.md` (status `partial`, L50 mandates sibling `../web-ml` closure check; L20–40 directory map lacks `/vendor/`); `specification/machine-learning-orchestrator.md` (status `implemented`, L7 cites frozen local dependency and Phase 3 revision/hashes); `specification/README.md` (L35, L43 index rows); `specification/TODO.md` (L109 `TODO-51` notes pinned prebuilt `web-ml` via frozen Bun install). `specification/decision-checklist.md` does not exist.
 - **Relevant implementation:**
-    - `package.json` L67: `"web-ml": "file:../web-ml"`.
-    - `bun.lock` L14, L904, L970: `file:../web-ml` has no tarball integrity hash and pulls in upstream `devDependencies` (`web-ml/prettier`, etc.).
-    - `.gitignore` L8: global `*.tgz` currently ignores all tarballs repo-wide; no `vendor/` ignore rule exists.
-    - `scripts/build-model-assets.ts` L1–157: exports `WEB_ML_REVISION` (L8) and `buildModelAssets(outDir: string, appDir = ROOT_DIR): Promise<string>` (L108–157). L6 pins `webMlVersion = '0.1.0'`; L12–47 pin 19 `runtimeHashes`; L49–77 pin 25 `publicFiles` and `publicDigest`; L119 pins `package.json` SHA-256. L109–115 hard-require `../web-ml` via `stat(path.resolve(appDir, '../web-ml'))`. L79–86 `setupError` instructs placing `samata-ml` beside `../web-ml`.
-    - `scripts/build-assets.ts` L5, L59–64, L108, L137: calls `buildModelAssets(DEV_DIR | DIST_DIR)`, marks `modelRuntimeUrl` external in `Bun.build`, and injects `WEB_ML_RUNTIME_URL` and `WEB_ML_RUNTIME_REVISION` (`WEB_ML_REVISION`).
-    - `src/features/models/model-catalogue.ts` L1–92: imports types from `'web-ml'` and static JSON via package `exports` subpaths (`web-ml/model-specifications`, `web-ml/model-specifications/<id>`); no dependency on `build-model-assets.ts`.
-    - `src/features/models/training/training.worker.ts` L1–10 & `training-worker.ts` L41–140: dynamically imports `WEB_ML_RUNTIME_URL` and persists `WEB_ML_RUNTIME_REVISION` as `webMlRevision` (validated as a non-empty string in `src/features/models/training/result-validation.ts` L315).
-    - `README.md` L14–18 (`## Install Dependencies`) & L44–68 (`## Build System Overview`): omits `web-ml` installation notes and `scripts/build-model-assets.ts`.
-    - `AGENTS.md` L3–17, L71: describes `../web-ml` as primary spec/model-catalogue lookup and installed `node_modules/web-ml` as fallback.
-    - `scripts/server.ts` L293 watches only `SRC_DIR`, `CSS_DIR`, `PUBLIC_DIR`, `CONTENT_DIR` (unaffected by `vendor/`). `tests/repository-conventions.test.ts` L65 scans only `['src', 'tests', 'scripts', 'css']` (unaffected by `vendor/`).
+  - `package.json` L67: `"web-ml": "file:../web-ml"`.
+  - `bun.lock` L14, L904, L970: `file:../web-ml` has no tarball integrity hash and pulls in upstream `devDependencies` (`web-ml/prettier`, etc.).
+  - `.gitignore` L8: global `*.tgz` currently ignores all tarballs repo-wide; no `vendor/` ignore rule exists.
+  - `scripts/build-model-assets.ts` L1–157: exports `WEB_ML_REVISION` (L8) and `buildModelAssets(outDir: string, appDir = ROOT_DIR): Promise<string>` (L108–157). L6 pins `webMlVersion = '0.1.0'`; L12–47 pin 19 `runtimeHashes`; L49–77 pin 25 `publicFiles` and `publicDigest`; L119 pins `package.json` SHA-256. L109–115 hard-require `../web-ml` via `stat(path.resolve(appDir, '../web-ml'))`. L79–86 `setupError` instructs placing `samata-ml` beside `../web-ml`.
+  - `scripts/build-assets.ts` L5, L59–64, L108, L137: calls `buildModelAssets(DEV_DIR | DIST_DIR)`, marks `modelRuntimeUrl` external in `Bun.build`, and injects `WEB_ML_RUNTIME_URL` and `WEB_ML_RUNTIME_REVISION` (`WEB_ML_REVISION`).
+  - `src/features/models/model-catalogue.ts` L1–92: imports types from `'web-ml'` and static JSON via package `exports` subpaths (`web-ml/model-specifications`, `web-ml/model-specifications/<id>`); no dependency on `build-model-assets.ts`.
+  - `src/features/models/training/training.worker.ts` L1–10 & `training-worker.ts` L41–140: dynamically imports `WEB_ML_RUNTIME_URL` and persists `WEB_ML_RUNTIME_REVISION` as `webMlRevision` (validated as a non-empty string in `src/features/models/training/result-validation.ts` L315).
+  - `README.md` L14–18 (`## Install Dependencies`) & L44–68 (`## Build System Overview`): omits `web-ml` installation notes and `scripts/build-model-assets.ts`.
+  - `AGENTS.md` L3–17, L71: describes `../web-ml` as primary spec/model-catalogue lookup and installed `node_modules/web-ml` as fallback.
+  - `scripts/server.ts` L293 watches only `SRC_DIR`, `CSS_DIR`, `PUBLIC_DIR`, `CONTENT_DIR` (unaffected by `vendor/`). `tests/repository-conventions.test.ts` L65 scans only `['src', 'tests', 'scripts', 'css']` (unaffected by `vendor/`).
 - **Tests and commands:**
-    - `tests/model-assets.test.ts` L1–91: four tests (`WML-P3-ASSET-1`); L55–60 tests missing `../web-ml` sibling error; L67 creates a dummy sibling `web-ml` directory to reach the `node_modules/web-ml` manifest check.
-    - `tests/training-runtime.e2e.ts` L50: asserts `reply.runtimeUrl` matches `/^\/web-ml\/0\.1\.0-[0-9a-f]{64}\/index\.js$/`.
-    - Unit tests importing `'web-ml'` directly: `tests/classification-preparation.test.ts`, `tests/classifier-adapters.test.ts`, `tests/training-protocol.test.ts`.
-    - Verification commands from `AGENTS.md`: `bun run check`, `bun test <path>`, `bun run typecheck`, `bun run build`, `bun run format <files>`, `bun run format:check`, `bun run test:e2e [file]`, `bun run plans:check`. Baseline not run during planning; record baseline before T1.
+  - `tests/model-assets.test.ts` L1–91: four tests (`WML-P3-ASSET-1`); L55–60 tests missing `../web-ml` sibling error; L67 creates a dummy sibling `web-ml` directory to reach the `node_modules/web-ml` manifest check.
+  - `tests/training-runtime.e2e.ts` L50: asserts `reply.runtimeUrl` matches `/^\/web-ml\/0\.1\.0-[0-9a-f]{64}\/index\.js$/`.
+  - Unit tests importing `'web-ml'` directly: `tests/classification-preparation.test.ts`, `tests/classifier-adapters.test.ts`, `tests/training-protocol.test.ts`.
+  - Verification commands from `AGENTS.md`: `bun run check`, `bun test <path>`, `bun run typecheck`, `bun run build`, `bun run format <files>`, `bun run format:check`, `bun run test:e2e [file]`, `bun run plans:check`. Baseline not run during planning; record baseline before T1.
 - **Web guidance:** None — build tooling, dependency management and documentation change only; no browser platform APIs or UI changes.
 - **Visual reference:** None — no user-facing UI changes.
 - **Domain skills:** None — no Lit components, dataset curation or browser platform API changes.
@@ -95,22 +95,22 @@ Facts verified by `codebase-scout`, so downstream agents need not re-sweep the t
 #### A. `scripts/build-model-assets.ts`
 
 - Public exports remain unchanged:
-    - `export const WEB_ML_REVISION: string` — pinned to the shipped release's provenance identifier (rescouted before `ready-for-review`).
-    - `export async function buildModelAssets(outDir: string, appDir = ROOT_DIR): Promise<string>` — returns `/web-ml/${webMlVersion}-${graphDigest}/index.js`.
+  - `export const WEB_ML_REVISION: string` — pinned to the shipped release's provenance identifier (rescouted before `ready-for-review`).
+  - `export async function buildModelAssets(outDir: string, appDir = ROOT_DIR): Promise<string>` — returns `/web-ml/${webMlVersion}-${graphDigest}/index.js`.
 - Constants pinned from the rescouted tarball before submission:
-    - `webMlVersion`: exact semver string from the shipped tarball's `package.json`.
-    - `webMlTarball`: `vendor/web-ml-${webMlVersion}.tgz` (used in `setupError` remediation text).
-    - `manifestHash`: expected SHA-256 hex of `node_modules/web-ml/package.json`.
-    - `publicFiles` and `publicDigest`: exact public declarations, public Markdown prose, and model-specification JSON catalogue files shipped in the tarball and their `digestGraph` SHA-256 hex.
-    - `runtimeHashes`: exact map of package-relative runtime JS/WASM/notice files shipped in the tarball to their SHA-256 hex digests.
+  - `webMlVersion`: exact semver string from the shipped tarball's `package.json`.
+  - `webMlTarball`: `vendor/web-ml-${webMlVersion}.tgz` (used in `setupError` remediation text).
+  - `manifestHash`: expected SHA-256 hex of `node_modules/web-ml/package.json`.
+  - `publicFiles` and `publicDigest`: exact public declarations, public Markdown prose, and model-specification JSON catalogue files shipped in the tarball and their `digestGraph` SHA-256 hex.
+  - `runtimeHashes`: exact map of package-relative runtime JS/WASM/notice files shipped in the tarball to their SHA-256 hex digests.
 - Verification sequence in `buildModelAssets(outDir, appDir = ROOT_DIR)`:
-    1. Resolve `packageDirectory = path.join(appDir, 'node_modules', 'web-ml')`. Verify `stat(packageDirectory)` succeeds and `isDirectory()` is true; otherwise throw `setupError(packageDirectory, 'installed web-ml package is unavailable' | 'expected a directory', cause)`. Do **not** inspect `path.resolve(appDir, '../web-ml')`.
-    2. Read `package.json` via `readInput(packageDirectory, 'package.json')` and assert `manifest.hash === manifestHash`; mismatch throws `setupError(path.join(packageDirectory, 'package.json'), 'package manifest does not match the verified build')`.
-    3. Read every file in `publicFiles`, append `manifest`, and assert `digestGraph(publicInputs) === publicDigest`; mismatch throws `setupError(packageDirectory, 'public declarations or catalogue do not match the verified build')`.
-    4. Read every entry in `runtimeHashes` and assert `input.hash === expectedHash`; mismatch throws `setupError(path.join(packageDirectory, name), 'runtime file does not match the verified build')`.
-    5. Only after all checks pass, compute `graphDigest = digestGraph(runtime)` (with leading `dist/` stripped from output names), write every runtime file under `path.join(outDir, 'web-ml', `${webMlVersion}-${graphDigest}`)`, and return `/${relativeDirectory}/index.js`.
+  1. Resolve `packageDirectory = path.join(appDir, 'node_modules', 'web-ml')`. Verify `stat(packageDirectory)` succeeds and `isDirectory()` is true; otherwise throw `setupError(packageDirectory, 'installed web-ml package is unavailable' | 'expected a directory', cause)`. Do **not** inspect `path.resolve(appDir, '../web-ml')`.
+  2. Read `package.json` via `readInput(packageDirectory, 'package.json')` and assert `manifest.hash === manifestHash`; mismatch throws `setupError(path.join(packageDirectory, 'package.json'), 'package manifest does not match the verified build')`.
+  3. Read every file in `publicFiles`, append `manifest`, and assert `digestGraph(publicInputs) === publicDigest`; mismatch throws `setupError(packageDirectory, 'public declarations or catalogue do not match the verified build')`.
+  4. Read every entry in `runtimeHashes` and assert `input.hash === expectedHash`; mismatch throws `setupError(path.join(packageDirectory, name), 'runtime file does not match the verified build')`.
+  5. Only after all checks pass, compute `graphDigest = digestGraph(runtime)` (with leading `dist/` stripped from output names), write every runtime file under `path.join(outDir, 'web-ml', `${webMlVersion}-${graphDigest}`)`, and return `/${relativeDirectory}/index.js`.
 - `setupError(location, reason, cause?)` format:
-    - Names `location`, `reason`, expected vendored tarball (`${webMlTarball}`), expected `webMlVersion`, `WEB_ML_REVISION`, and the fix command `bun install --frozen-lockfile --ignore-scripts`. Must never mention `../web-ml` or a sibling directory.
+  - Names `location`, `reason`, expected vendored tarball (`${webMlTarball}`), expected `webMlVersion`, `WEB_ML_REVISION`, and the fix command `bun install --frozen-lockfile --ignore-scripts`. Must never mention `../web-ml` or a sibling directory.
 
 #### B. `.gitignore`, `vendor/` and `package.json`
 
@@ -135,20 +135,20 @@ Facts verified by `codebase-scout`, so downstream agents need not re-sweep the t
 - **Likely files:** `.gitignore`, `vendor/*.tgz`, `package.json`, `bun.lock`, `scripts/build-model-assets.ts`, `tests/model-assets.test.ts`, `tests/training-runtime.e2e.ts` — narrow `vendor/*.tgz` to the exact shipped tarball filename before submission; edit `tests/training-runtime.e2e.ts` only if the shipped semver differs from `0.1.0`.
 - **Must not touch:** `node_modules/`, `src/`, `css/`, `public/`, `specification/` — runtime code, styles, headers and specifications do not change in T1 (`node_modules/` changes only via Bun install).
 - **Implementation:**
-    1. Record the pre-change `bun run check` baseline in the log.
-    2. Add `!vendor/web-ml-*.tgz` beneath `*.tgz` in `.gitignore`. Copy the shipped upstream tarball into `vendor/web-ml-<version>.tgz` (exact filename rescouted before submission).
-    3. Update `package.json` L67 from `"web-ml": "file:../web-ml"` to `"web-ml": "file:./vendor/web-ml-<version>.tgz"`. Run `bun install` to update `bun.lock` and populate `node_modules/web-ml`, then verify with `bun install --frozen-lockfile --ignore-scripts`. Confirm `bun.lock` no longer contains leaked upstream `devDependencies` (e.g. `web-ml/prettier`).
-    4. Update `scripts/build-model-assets.ts` per Interfaces §A: remove the `../web-ml` `stat` check (L109–115), validate `node_modules/web-ml` directory presence directly, update `webMlVersion`, `WEB_ML_REVISION`, `manifestHash`, `publicFiles`, `publicDigest` and `runtimeHashes` to the rescouted values for the shipped tarball, and update `setupError` to reference `vendor/web-ml-<version>.tgz`, `webMlVersion`, `WEB_ML_REVISION` and `bun install --frozen-lockfile --ignore-scripts` (with no reference to `../web-ml`).
-    5. Update `tests/model-assets.test.ts`: update the expected URL/file list to the shipped tarball's `webMlVersion` and `graphDigest`; replace the missing-sibling test with a standalone test proving `buildModelAssets(output, tempAppDir)` succeeds with a valid `node_modules/web-ml` and **no** `../web-ml` sibling directory; remove the dummy sibling directory setup from the failure test; add negative assertions covering missing `node_modules/web-ml`, non-directory `node_modules/web-ml`, missing/mismatched `package.json`, mismatched `publicFiles`/`publicDigest`, and mismatched `runtimeHashes`, confirming no `output` directory is created on failure and no error mentions `../web-ml`. Keep the `public/_headers` isolation assertion intact.
-    6. If `webMlVersion` differs from `0.1.0`, update the regex in `tests/training-runtime.e2e.ts` L50 to match the shipped semver.
-    7. Run `bun run format scripts/build-model-assets.ts tests/model-assets.test.ts` (plus `tests/training-runtime.e2e.ts` if edited).
+  1. Record the pre-change `bun run check` baseline in the log.
+  2. Add `!vendor/web-ml-*.tgz` beneath `*.tgz` in `.gitignore`. Copy the shipped upstream tarball into `vendor/web-ml-<version>.tgz` (exact filename rescouted before submission).
+  3. Update `package.json` L67 from `"web-ml": "file:../web-ml"` to `"web-ml": "file:./vendor/web-ml-<version>.tgz"`. Run `bun install` to update `bun.lock` and populate `node_modules/web-ml`, then verify with `bun install --frozen-lockfile --ignore-scripts`. Confirm `bun.lock` no longer contains leaked upstream `devDependencies` (e.g. `web-ml/prettier`).
+  4. Update `scripts/build-model-assets.ts` per Interfaces §A: remove the `../web-ml` `stat` check (L109–115), validate `node_modules/web-ml` directory presence directly, update `webMlVersion`, `WEB_ML_REVISION`, `manifestHash`, `publicFiles`, `publicDigest` and `runtimeHashes` to the rescouted values for the shipped tarball, and update `setupError` to reference `vendor/web-ml-<version>.tgz`, `webMlVersion`, `WEB_ML_REVISION` and `bun install --frozen-lockfile --ignore-scripts` (with no reference to `../web-ml`).
+  5. Update `tests/model-assets.test.ts`: update the expected URL/file list to the shipped tarball's `webMlVersion` and `graphDigest`; replace the missing-sibling test with a standalone test proving `buildModelAssets(output, tempAppDir)` succeeds with a valid `node_modules/web-ml` and **no** `../web-ml` sibling directory; remove the dummy sibling directory setup from the failure test; add negative assertions covering missing `node_modules/web-ml`, non-directory `node_modules/web-ml`, missing/mismatched `package.json`, mismatched `publicFiles`/`publicDigest`, and mismatched `runtimeHashes`, confirming no `output` directory is created on failure and no error mentions `../web-ml`. Keep the `public/_headers` isolation assertion intact.
+  6. If `webMlVersion` differs from `0.1.0`, update the regex in `tests/training-runtime.e2e.ts` L50 to match the shipped semver.
+  7. Run `bun run format scripts/build-model-assets.ts tests/model-assets.test.ts` (plus `tests/training-runtime.e2e.ts` if edited).
 - **Acceptance criteria:**
-    - [ ] `VEND-INSTALL-1` — `git check-ignore -v vendor/web-ml-<version>.tgz` shows it is unignored via `!vendor/web-ml-*.tgz`, while a stray root `foo.tgz` remains ignored by `*.tgz`.
-    - [ ] `VEND-INSTALL-2` — `bun install --frozen-lockfile --ignore-scripts` exits 0 and `bun.lock` resolves `web-ml` from `file:./vendor/web-ml-<version>.tgz` without upstream `devDependencies` (such as `web-ml/prettier`).
-    - [ ] `VEND-ASSET-1` — `buildModelAssets(output)` against the repository checkout emits the exact verified runtime/WASM/notice files to `/web-ml/<version>-<graphDigest>/` with zero `.ts`/`.d.ts` files and valid WASM magic bytes.
-    - [ ] `VEND-ASSET-2` — `buildModelAssets(output, tempAppDir)` succeeds when `tempAppDir` has a valid `node_modules/web-ml` closure and **no** `../web-ml` sibling directory exists.
-    - [ ] `VEND-ASSET-3` — Missing/non-directory `node_modules/web-ml`, missing/mismatched `package.json`, tampered `publicFiles` (`publicDigest` mismatch), and tampered `runtimeHashes` each reject with a `web-ml setup error` naming the failing path, `vendor/web-ml-<version>.tgz`, `bun install --frozen-lockfile --ignore-scripts`, and never mentioning `../web-ml`; `output` is not created on any failure.
-    - [ ] `VEND-RUNTIME-1` — `bun run build`, `bun run check`, and `bun run test:e2e tests/training-runtime.e2e.ts` pass end-to-end against the vendored package.
+  - [ ] `VEND-INSTALL-1` — `git check-ignore -v vendor/web-ml-<version>.tgz` shows it is unignored via `!vendor/web-ml-*.tgz`, while a stray root `foo.tgz` remains ignored by `*.tgz`.
+  - [ ] `VEND-INSTALL-2` — `bun install --frozen-lockfile --ignore-scripts` exits 0 and `bun.lock` resolves `web-ml` from `file:./vendor/web-ml-<version>.tgz` without upstream `devDependencies` (such as `web-ml/prettier`).
+  - [ ] `VEND-ASSET-1` — `buildModelAssets(output)` against the repository checkout emits the exact verified runtime/WASM/notice files to `/web-ml/<version>-<graphDigest>/` with zero `.ts`/`.d.ts` files and valid WASM magic bytes.
+  - [ ] `VEND-ASSET-2` — `buildModelAssets(output, tempAppDir)` succeeds when `tempAppDir` has a valid `node_modules/web-ml` closure and **no** `../web-ml` sibling directory exists.
+  - [ ] `VEND-ASSET-3` — Missing/non-directory `node_modules/web-ml`, missing/mismatched `package.json`, tampered `publicFiles` (`publicDigest` mismatch), and tampered `runtimeHashes` each reject with a `web-ml setup error` naming the failing path, `vendor/web-ml-<version>.tgz`, `bun install --frozen-lockfile --ignore-scripts`, and never mentioning `../web-ml`; `output` is not created on any failure.
+  - [ ] `VEND-RUNTIME-1` — `bun run build`, `bun run check`, and `bun run test:e2e tests/training-runtime.e2e.ts` pass end-to-end against the vendored package.
 - **Verification:** `bun install --frozen-lockfile --ignore-scripts`; `bun test tests/model-assets.test.ts`; `bun run check`; `bun run build`; `bun run test:e2e tests/training-runtime.e2e.ts`; `bun run format:check`.
 - **Progress:** [ ] Not started
 
@@ -159,18 +159,18 @@ Facts verified by `codebase-scout`, so downstream agents need not re-sweep the t
 - **Likely files:** `AGENTS.md`, `README.md`, `specification/ARCHITECTURE.md`, `specification/machine-learning-orchestrator.md`, `specification/README.md`, `specification/HUMAN.md`, `specification/plans/README.md`, `specification/plans/vendor-web-ml-tarball.md`
 - **Must not touch:** `src/`, `scripts/`, `tests/`, `vendor/`, `package.json`, `bun.lock`, `node_modules/`, `specification/mockups/` — no code, dependency or mockup changes.
 - **Implementation:**
-    1. Update `AGENTS.md`:
-        - Intro & `## Repository boundary`: clarify that `samata-ml` builds and runs against the vendored semver `web-ml` tarball in `vendor/` installed into `node_modules/web-ml` (no sibling `../web-ml` checkout is needed to install, build or test), while `../web-ml` remains the upstream repository and `../web-ml/specification/requests/` remains the upstream capability-request drop-off.
-        - `## Upstream Library Specs`: make the installed package (`./node_modules/web-ml/specification/public-api/model-specifications/{schema.json,index.json,models/*.json}`, `./node_modules/web-ml/dist/index.d.ts` and `./node_modules/web-ml/specification/public-api/`) the primary contract authority for the currently vendored build; specify that `../web-ml/specification/public-api/` is only consulted when inspecting unreleased upstream work or planning an upgrade, and keep the strict cross-repo scout deny boundary intact.
-        - `## Map` & `## Rules`: list `vendor/` (`vendored web-ml release tarball`) in Map and state under Rules that `vendor/*.tgz` is replaced only during a planned `web-ml` upgrade (and `bun.lock` only via Bun install/add/remove when planned).
-    2. Update `README.md`:
-        - `## Install Dependencies`: explain that `web-ml` is vendored as a packed semver tarball under `vendor/` (no sibling `../web-ml` checkout needed), recommend `bun install --frozen-lockfile --ignore-scripts` (or `bun install`), and document the upgrade steps (replace `vendor/web-ml-<version>.tgz`, update `package.json`, run `bun install`, update pinned version/revision/hashes in `scripts/build-model-assets.ts` and `tests/model-assets.test.ts`).
-        - `## Build System Overview`: list `scripts/build-model-assets.ts` and summarise how it verifies `node_modules/web-ml` hashes and emits `/web-ml/{version}-{digest}/`.
-    3. Apply every item under `## Specification changes` (`specification/ARCHITECTURE.md`, `specification/machine-learning-orchestrator.md`, `specification/README.md`, `specification/HUMAN.md`), tick the checklist items in this plan, and run `bun run format` on every edited file.
+  1. Update `AGENTS.md`:
+     - Intro & `## Repository boundary`: clarify that `samata-ml` builds and runs against the vendored semver `web-ml` tarball in `vendor/` installed into `node_modules/web-ml` (no sibling `../web-ml` checkout is needed to install, build or test), while `../web-ml` remains the upstream repository and `../web-ml/specification/requests/` remains the upstream capability-request drop-off.
+     - `## Upstream Library Specs`: make the installed package (`./node_modules/web-ml/specification/public-api/model-specifications/{schema.json,index.json,models/*.json}`, `./node_modules/web-ml/dist/index.d.ts` and `./node_modules/web-ml/specification/public-api/`) the primary contract authority for the currently vendored build; specify that `../web-ml/specification/public-api/` is only consulted when inspecting unreleased upstream work or planning an upgrade, and keep the strict cross-repo scout deny boundary intact.
+     - `## Map` & `## Rules`: list `vendor/` (`vendored web-ml release tarball`) in Map and state under Rules that `vendor/*.tgz` is replaced only during a planned `web-ml` upgrade (and `bun.lock` only via Bun install/add/remove when planned).
+  2. Update `README.md`:
+     - `## Install Dependencies`: explain that `web-ml` is vendored as a packed semver tarball under `vendor/` (no sibling `../web-ml` checkout needed), recommend `bun install --frozen-lockfile --ignore-scripts` (or `bun install`), and document the upgrade steps (replace `vendor/web-ml-<version>.tgz`, update `package.json`, run `bun install`, update pinned version/revision/hashes in `scripts/build-model-assets.ts` and `tests/model-assets.test.ts`).
+     - `## Build System Overview`: list `scripts/build-model-assets.ts` and summarise how it verifies `node_modules/web-ml` hashes and emits `/web-ml/{version}-{digest}/`.
+  3. Apply every item under `## Specification changes` (`specification/ARCHITECTURE.md`, `specification/machine-learning-orchestrator.md`, `specification/README.md`, `specification/HUMAN.md`), tick the checklist items in this plan, and run `bun run format` on every edited file.
 - **Acceptance criteria:**
-    - [ ] `VEND-DOC-1` — `AGENTS.md`, `README.md`, `specification/ARCHITECTURE.md` and `specification/machine-learning-orchestrator.md` state consistently that `samata-ml` installs and verifies the vendored tarball from `vendor/` via `node_modules/web-ml` without requiring a sibling `../web-ml` checkout, while preserving the upstream boundary for `../web-ml/specification/requests/`.
-    - [ ] `VEND-DOC-2` — Every item under _Specification changes_ is applied and ticked, `specification/README.md` status rows match spec headers, and `bun run plans:check specification/plans/vendor-web-ml-tarball.md` plus `bun run plans:task specification/plans/vendor-web-ml-tarball.md --check-complete` pass.
-    - [ ] `VEND-DOC-3` — `bun run format:check` and `bun run check` pass with no unintended diffs outside T2's likely files.
+  - [ ] `VEND-DOC-1` — `AGENTS.md`, `README.md`, `specification/ARCHITECTURE.md` and `specification/machine-learning-orchestrator.md` state consistently that `samata-ml` installs and verifies the vendored tarball from `vendor/` via `node_modules/web-ml` without requiring a sibling `../web-ml` checkout, while preserving the upstream boundary for `../web-ml/specification/requests/`.
+  - [ ] `VEND-DOC-2` — Every item under _Specification changes_ is applied and ticked, `specification/README.md` status rows match spec headers, and `bun run plans:check specification/plans/vendor-web-ml-tarball.md` plus `bun run plans:task specification/plans/vendor-web-ml-tarball.md --check-complete` pass.
+  - [ ] `VEND-DOC-3` — `bun run format:check` and `bun run check` pass with no unintended diffs outside T2's likely files.
 - **Verification:** `bun run format:check`; `bun run plans:check specification/plans/vendor-web-ml-tarball.md`; `bun run plans:task specification/plans/vendor-web-ml-tarball.md --check-complete`; `bun run check`.
 - **Progress:** [ ] Not started
 

@@ -33,14 +33,16 @@ Audience: a coding agent that will produce an implementation plan, then code. No
 
 **I2. Which model scores which row.** Each outer test row MUST be scored by the model of its own outer fold (the tuned model that did not see it). Results are aggregated across the K outer models. Structural views that need a single model (Gaussian curves, tree structure) use the final refitted model and MUST show the badge "Final model structure (not the cross-validated estimate)".
 
-**I3. Permute raw columns before preprocessing.** Shuffle the raw column in the held-out split, then apply the fold's fitted preprocessor (encoder, scaler, imputer), then predict. Never shuffle encoded columns independently. The engine operates on *permutation units* (`PermutationUnit`): a unit is a list of raw columns shuffled together with the same row permutation. In v1 every unit holds exactly one raw column; the grouped toggle (Phase 2) only changes how units are built.
+**I3. Permute raw columns before preprocessing.** Shuffle the raw column in the held-out split, then apply the fold's fitted preprocessor (encoder, scaler, imputer), then predict. Never shuffle encoded columns independently. The engine operates on _permutation units_ (`PermutationUnit`): a unit is a list of raw columns shuffled together with the same row permutation. In v1 every unit holds exactly one raw column; the grouped toggle (Phase 2) only changes how units are built.
 
 **I4. Metric and orientation.**
+
 - The importance metric defaults to the application's headline metric (`metricId`). One metric MUST be used for all models on the Comparison page.
 - Support a probabilistic alternative (log loss) where the model yields probabilities. Do not offer it for any model whose probabilities are not consistent with its predictions.
 - Orient every importance so that positive means "performance got worse after shuffling": `baseline - permuted` for higher-is-better metrics, `permuted - baseline` for loss metrics. Never clamp negatives in stored data.
 
 **I5. Aggregation and spread.**
+
 1. For each outer fold k and repeat r, compute `delta[k][r]`.
 2. Fold value `v[k] = mean_r delta[k][r]`.
 3. `meanImportance = mean_k v[k]`; `sdAcrossFolds = sd_k v[k]` (null if K < 2); `positiveFolds = count(v[k] > 0)`.
@@ -53,6 +55,7 @@ Audience: a coding agent that will produce an implementation plan, then code. No
 **I7. Skill gate.** Before showing a model's importances, compare its outer-fold score to the dummy baseline (majority-class predictor). If the model does not beat it (mean score not above baseline), set `modelBeatsDummy = false`. Show the banner "This model barely beats guessing, so its feature importances say little." Keep the chart visible but greyed. Exclude the model from comparison fills (`eligible = false`). Do NOT infer this from importances being near zero.
 
 **I8. Association metadata.** On the raw feature columns (no target involved), compute pairwise association once per dataset version:
+
 - numeric-numeric: Spearman |rho|;
 - categorical-categorical: bias-corrected Cramér's V;
 - numeric-categorical: correlation ratio (eta).
@@ -64,6 +67,7 @@ Attach `correlatedPeers` to any feature with an association of at least `ASSOC_W
 **I10. Multi-class.** Unsigned global charts (`PFI_DOTS`, `MDI_VS_PFI`, comparison charts) use multi-class metrics directly. Signed and probability-based charts (`SIGNED_WEIGHTS`, `EFFECT_PLOT`, `LOCAL_EXPLAIN`) bind to one shared `selectedClass` control when classes > 2. Default `selectedClass` = the dataset's configured positive class (binary) or the class with the most rows (multi-class). Changing it updates every signed chart on the page.
 
 **I11. Compute budget.**
+
 - Run in Web Workers, cancellable, with progress per model.
 - Cache results by (dataset hash, model id, fold seed, metric, repeats, unit set).
 - Default `REPEATS_DEFAULT`; offer a "More precise" option (`REPEATS_PRECISE`).
@@ -72,17 +76,17 @@ Attach `correlatedPeers` to any feature with an association of at least `ASSOC_W
 
 ## 4. Routing matrix
 
-| Model | PFI_DOTS | SIGNED_WEIGHTS | MDI_VS_PFI | GAUSSIAN_DIST | EFFECT_PLOT | LOCAL_EXPLAIN |
-| --- | --- | --- | --- | --- | --- | --- |
-| Logistic Regression | Default | Tab | n/a | n/a | Tier 2 | Exact additive waterfall |
-| SVC, linear kernel | Default | Tab | n/a | n/a | Tier 2 | Exact additive waterfall |
-| SVC, non-linear kernel | Default | n/a (show explanatory note) | n/a | n/a | Tier 2 | Approximate Shapley waterfall (Phase 2) |
-| Bernoulli NB | Default | Tab | n/a | n/a | Tier 2 | Exact additive waterfall |
-| Multinomial NB | Default | Tab | n/a | n/a | Tier 2 | Exact additive waterfall |
-| Gaussian NB | Default | n/a | n/a | Tab | Tier 2 | Exact additive waterfall |
-| Decision Tree | Default | n/a | Tab | n/a | Tier 2 | Rule-path stepper |
-| KNN | Default | n/a | n/a | n/a | Tier 2 | Neighbour table |
-| MLP | Default | n/a | n/a | n/a | Tier 2 | Approximate Shapley waterfall (Phase 2) |
+| Model                  | PFI_DOTS | SIGNED_WEIGHTS              | MDI_VS_PFI | GAUSSIAN_DIST | EFFECT_PLOT | LOCAL_EXPLAIN                           |
+| ---------------------- | -------- | --------------------------- | ---------- | ------------- | ----------- | --------------------------------------- |
+| Logistic Regression    | Default  | Tab                         | n/a        | n/a           | Tier 2      | Exact additive waterfall                |
+| SVC, linear kernel     | Default  | Tab                         | n/a        | n/a           | Tier 2      | Exact additive waterfall                |
+| SVC, non-linear kernel | Default  | n/a (show explanatory note) | n/a        | n/a           | Tier 2      | Approximate Shapley waterfall (Phase 2) |
+| Bernoulli NB           | Default  | Tab                         | n/a        | n/a           | Tier 2      | Exact additive waterfall                |
+| Multinomial NB         | Default  | Tab                         | n/a        | n/a           | Tier 2      | Exact additive waterfall                |
+| Gaussian NB            | Default  | n/a                         | n/a        | Tab           | Tier 2      | Exact additive waterfall                |
+| Decision Tree          | Default  | n/a                         | Tab        | n/a           | Tier 2      | Rule-path stepper                       |
+| KNN                    | Default  | n/a                         | n/a        | n/a           | Tier 2      | Neighbour table                         |
+| MLP                    | Default  | n/a                         | n/a        | n/a           | Tier 2      | Approximate Shapley waterfall (Phase 2) |
 
 Comparison page: `COMPARISON_DOTS` (default) and `COMPARISON_HEATMAP` (secondary tab).
 
@@ -374,6 +378,7 @@ export type LocalExplainPayload =
 Always show the true label, the predicted label, and the predicted probability or score at the top. Always use the model of the row's own fold, and say so ("Explained by the model that never saw this row").
 
 **7a. Additive waterfall (Logistic Regression, linear SVC, Bernoulli NB, Multinomial NB, Gaussian NB; Phase 1)**
+
 - Output scale is the model's natural additive scale: log-odds (LR, NB) or decision score (linear SVC), shown with the final probability beside it when available. Multi-class: the selected class's score minus the average score of the other classes.
 - Baseline = mean model output over the fold's training rows (the background). Contribution of feature j = `w_j x (x_j - mean(x_j))` for linear models; for NB, the feature's log-likelihood-ratio term minus its mean over the background. This is exact and equals Shapley values for these models.
 - Sum encoded columns into their raw feature before display.
@@ -381,35 +386,38 @@ Always show the true label, the predicted label, and the predicted probability o
 - Test: `baseline + sum(all contributions)` equals the model's own output within 1e-9.
 
 **7b. Approximate Shapley waterfall (MLP, non-linear SVC; Phase 2)**
+
 - Players are raw features (not encoded columns). Background: up to `SHAPLEY_BACKGROUND` training rows of the row's fold model, features replaced jointly by a background row.
 - If the number of raw features is at most `ENUM_MAX_FEATURES`, enumerate all coalitions exactly (`method = 'shapley_enumerated'`). Otherwise use a sampling estimator with a fixed seed, a convergence check, and a reported `approxStdError` (`method = 'shapley_sampled'`).
 - Badge: "Approximate. Explains this model's behaviour, not cause and effect." Show the residual, `finalOutput - (baseline + sum)`, if non-zero.
 - Because the background breaks correlations, add the note "Some combinations tried here may not occur in real data" when the row's top features have `correlatedPeers`.
 
 **7c. Rule-path stepper (Decision Tree)**
+
 - Vertical cards from root to leaf. Each card: the plain-language condition, the row's value with a tick or cross, sample count, and a class-share bar that updates down the path.
 - Translate encoded splits: a split on a one-hot column reads "[feature] is [level]" or "[feature] is not [level]". Convert thresholds on scaled columns back to original units.
 
 **7d. Neighbour table (KNN)**
+
 - Show k, the weighting rule, and the vote tally.
 - List the k neighbours (from the fold model's training rows) by distance: true label, total distance in the model's preprocessed space, and mini bars for each raw feature's share of that distance. Highlight up to 3 closest and 3 most different features, summing encoded columns per raw feature.
 
 ## 7. Named constants
 
-| Constant | Default | Note |
-| --- | --- | --- |
-| `TOP_N` | 15 | Ranked chart truncation |
-| `ASSOC_WARN` | 0.7 | Heuristic; tune in pilot |
-| `REPEATS_DEFAULT` / `REPEATS_MIN` / `REPEATS_PRECISE` | 5 / 3 / 20 | Per fold; browser budget |
-| `MDI_PFI_GAP_FLAG` | 0.15 | Share gap, heuristic |
-| `MIN_ROWS_PER_REGION` | 5 | Sparse-region guard |
-| `PDP_GRID_POINTS` | 20 | Within 1st to 99th percentile |
-| `ICE_MAX_ROWS` / `ICE_ALPHA` | 50 / 0.12 | |
-| `ALE_BINS` | 10 | Quantile bins before merging |
-| `SHAPLEY_BACKGROUND` | 50 | Up to 100 allowed |
-| `ENUM_MAX_FEATURES` | 10 | Exact Shapley enumeration limit |
-| `WATERFALL_TOP` | 8 | |
-| `ROPE` | the project's existing value | "Scores about the same" |
+| Constant                                              | Default                      | Note                            |
+| ----------------------------------------------------- | ---------------------------- | ------------------------------- |
+| `TOP_N`                                               | 15                           | Ranked chart truncation         |
+| `ASSOC_WARN`                                          | 0.7                          | Heuristic; tune in pilot        |
+| `REPEATS_DEFAULT` / `REPEATS_MIN` / `REPEATS_PRECISE` | 5 / 3 / 20                   | Per fold; browser budget        |
+| `MDI_PFI_GAP_FLAG`                                    | 0.15                         | Share gap, heuristic            |
+| `MIN_ROWS_PER_REGION`                                 | 5                            | Sparse-region guard             |
+| `PDP_GRID_POINTS`                                     | 20                           | Within 1st to 99th percentile   |
+| `ICE_MAX_ROWS` / `ICE_ALPHA`                          | 50 / 0.12                    |                                 |
+| `ALE_BINS`                                            | 10                           | Quantile bins before merging    |
+| `SHAPLEY_BACKGROUND`                                  | 50                           | Up to 100 allowed               |
+| `ENUM_MAX_FEATURES`                                   | 10                           | Exact Shapley enumeration limit |
+| `WATERFALL_TOP`                                       | 8                            |                                 |
+| `ROPE`                                                | the project's existing value | "Scores about the same"         |
 
 ## 8. Phasing
 
