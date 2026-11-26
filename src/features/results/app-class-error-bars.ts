@@ -116,7 +116,7 @@ export class AppClassErrorBars extends LitElement {
 				zero: true,
 				ticks: [0, 0.2, 0.4, 0.6, 0.8, 1],
 				grid: true,
-				label: this.labels.xAxis,
+				label: null,
 				tickFormat: this.formatPercent
 			},
 			y: {
@@ -190,6 +190,7 @@ export class AppClassErrorBars extends LitElement {
 			</ul>
 			<p>${this.labels.yAxis}</p>
 			<div class="chart"></div>
+			<p>${this.labels.xAxis}</p>
 			<details>
 				<summary>${this.labels.showData}</summary>
 				<div class="table-region" role="region" tabindex="0" aria-labelledby="caption">

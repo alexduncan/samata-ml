@@ -47,7 +47,8 @@ export class AppInstanceAgreement extends LitElement {
 	private readonly plot = new PlotController(
 		this,
 		() => this.renderRoot.querySelector<HTMLElement>('.chart'),
-		(chart, tokens, width) => this.draw(chart, tokens, width),
+		(chart, tokens, width, fontSize, measureText) =>
+			this.draw(chart, tokens, width, fontSize, measureText),
 		() => 'description'
 	);
 
@@ -56,22 +57,36 @@ export class AppInstanceAgreement extends LitElement {
 		return this.updateComplete.then(() => this.plot.whenSettled());
 	}
 
-	private draw(chart: ChartLibrary, tokens: ChartTokens, width: number) {
+	private draw(
+		chart: ChartLibrary,
+		tokens: ChartTokens,
+		width: number,
+		fontSize: number,
+		measureText: (text: string) => number
+	) {
 		if (!this.counts || !this.caption) return null;
 		const rows = this.counts.counts.map((count, index) => ({
 			index,
 			count,
 			label: this.labels.bucket(index)
 		}));
+		const ticks = integerTicks(0, Math.max(0, ...rows.map((row) => row.count)));
 		return chart.plot({
 			width,
-			height: 220,
-			x: { domain: rows.map((row) => row.index), label: this.labels.xAxis(rows.length - 1) },
+			height: 220 + fontSize,
+			marginLeft: Math.ceil(
+				Math.max(
+					fontSize * 2,
+					...ticks.map((tick) => measureText(this.formatCount(tick)) + fontSize)
+				)
+			),
+			marginTop: Math.ceil(fontSize * 1.5),
+			x: { domain: rows.map((row) => row.index), label: null },
 			y: {
-				label: this.labels.yAxis,
+				label: null,
 				zero: true,
 				nice: true,
-				ticks: integerTicks(0, Math.max(0, ...rows.map((row) => row.count))),
+				ticks,
 				grid: true,
 				tickFormat: this.formatCount
 			},
@@ -111,7 +126,9 @@ export class AppInstanceAgreement extends LitElement {
 			<p id="description" class="visually-hidden">
 				${this.labels.description(this.counts.counts)}
 			</p>
+			<p class="chart-axis-label">${this.labels.yAxis}</p>
 			<div class="chart"></div>
+			<p class="chart-axis-label">${this.labels.xAxis(this.counts.counts.length - 1)}</p>
 			<details>
 				<summary>${this.labels.showData}</summary>
 				<div class="table-region" role="region" tabindex="0" aria-labelledby="caption">

@@ -114,7 +114,12 @@ export const SmallCounts: Story = {
 export const NoProbabilities: Story = {
 	args: { evaluation: svcBinaryNoProbabilities() }
 };
-/** Long class and facet names are shortened in the chart and complete in the readout. */
+/** Long class and facet names wrap and remain complete. */
 export const LongLabel: Story = { args: { evaluation: withLongLabels(breastCancerOneShot()) } };
 /** Logical layout under right-to-left direction. */
 export const RTL: Story = { args: { evaluation: breastCancerOneShot(), dir: 'rtl' } };
+
+/** Long labels in right-to-left layout. */
+export const LongLabelRTL: Story = {
+	args: { evaluation: withLongLabels(breastCancerOneShot()), dir: 'rtl' }
+};

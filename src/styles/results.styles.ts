@@ -30,6 +30,17 @@ export const resultsStyles: CSSResult = css`
 		inline-size: 100%;
 	}
 
+	.chart-sides {
+		display: flex;
+		justify-content: space-between;
+		gap: 1rem;
+	}
+
+	.chart-sides > span {
+		max-inline-size: 50%;
+		overflow-wrap: anywhere;
+	}
+
 	.visually-hidden {
 		position: absolute;
 		clip-path: inset(50%);

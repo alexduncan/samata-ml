@@ -79,7 +79,8 @@ export class AppReliabilityDiagram extends LitElement {
 	private readonly reliabilityPlot = new PlotController(
 		this,
 		() => this.renderRoot.querySelector<HTMLElement>('.reliability'),
-		(chart, tokens, width, fontSize) => this.drawReliability(chart, tokens, width, fontSize),
+		(chart, tokens, width, fontSize, measureText) =>
+			this.drawReliability(chart, tokens, width, fontSize, measureText),
 		() => 'description'
 	);
 	private readonly countsPlot = new PlotController(
@@ -102,7 +103,8 @@ export class AppReliabilityDiagram extends LitElement {
 		chart: ChartLibrary,
 		tokens: ChartTokens,
 		width: number,
-		fontSize: number
+		fontSize: number,
+		measureText: (text: string) => number
 	) {
 		const view = this.calibration;
 		if (!view || !this.caption) return null;
@@ -115,11 +117,24 @@ export class AppReliabilityDiagram extends LitElement {
 			return defined ? [{ x: bin.meanPredicted!, y: bin.observed!, run }] : [];
 		});
 		const size = Math.min(width, 420);
+		const marginLeft = Math.ceil(fontSize * 3.5);
+		const marginRight = Math.ceil(fontSize * 1.5);
+		const centre = (marginLeft + size - marginRight) / 2;
+		const available = Math.max(fontSize, 2 * Math.min(centre, size - centre) - fontSize);
+		const lines: string[] = [];
+		for (const word of this.labels.diagonal.split(/\s+/)) {
+			const last = lines.at(-1);
+			if (last && measureText(`${last} ${word}`) <= available) {
+				lines[lines.length - 1] = `${last} ${word}`;
+			} else {
+				lines.push(word);
+			}
+		}
 		return chart.plot({
 			width: size,
 			height: size,
-			marginLeft: Math.ceil(fontSize * 3.5),
-			marginRight: Math.ceil(fontSize * 1.5),
+			marginLeft,
+			marginRight,
 			marginTop: 32,
 			marginBottom: width < 400 ? Math.ceil(fontSize * 2.8) : 44,
 			x: {
@@ -158,12 +173,12 @@ export class AppReliabilityDiagram extends LitElement {
 						strokeWidth: 1.5
 					}
 				),
-				chart.text([{ x: 0.5, y: 0.5, label: this.labels.diagonal }], {
+				chart.text([{ x: 0.5, y: 0.5, label: lines.join('\n') }], {
 					x: 'x',
 					y: 'y',
 					text: 'label',
 					fill: tokens['--chart-axis'],
-					dy: -12
+					dy: -fontSize
 				}),
 				chart.lineY(points, {
 					x: 'x',

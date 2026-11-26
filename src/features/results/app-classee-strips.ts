@@ -137,7 +137,7 @@ export class AppClasseeStrips extends LitElement {
 			marginRight,
 			x: {
 				domain: [min, max],
-				label: this.labels.xAxis,
+				label: null,
 				grid: true,
 				ticks: integerTicks(min, max),
 				tickFormat: (value: number) => this.formatCount(Math.abs(value))
@@ -182,19 +182,7 @@ export class AppClasseeStrips extends LitElement {
 					wrong.filter((d) => d.wide),
 					{ x: mid, y: 'label', text: 'text', fill: surface }
 				),
-				chart.ruleX([0], { stroke: tokens['--chart-axis'], strokeWidth: 2 }),
-				chart.text(view.totalErrors > 0 ? [this.labels.errorsSide] : [], {
-					frameAnchor: 'top-left',
-					text: (d: string) => d,
-					fill: tokens['--chart-axis'],
-					dy: -20
-				}),
-				chart.text([this.labels.correctSide], {
-					frameAnchor: 'top-right',
-					text: (d: string) => d,
-					fill: tokens['--chart-axis'],
-					dy: -20
-				})
+				chart.ruleX([0], { stroke: tokens['--chart-axis'], strokeWidth: 2 })
 			]
 		});
 	}
@@ -225,7 +213,12 @@ export class AppClasseeStrips extends LitElement {
 				</ul>
 				${view.totalErrors === 0 ? html`<p>${labels.noErrors}</p>` : nothing}
 				<p>${labels.yAxis}</p>
+				<div class="chart-sides" dir="ltr">
+					<span dir="auto">${view.totalErrors > 0 ? labels.errorsSide : nothing}</span>
+					<span dir="auto">${labels.correctSide}</span>
+				</div>
 				<div class="chart"></div>
+				<p>${labels.xAxis}</p>
 				<details>
 					<summary>${labels.showTable}</summary>
 					<div class="table-region" role="region" tabindex="0" aria-labelledby="caption">

@@ -168,7 +168,7 @@ export class AppRopeBar extends LitElement {
 			x: {
 				domain: [0, 1],
 				ticks: [0, 0.25, 0.5, 0.75, 1],
-				label: this.labels.xAxis,
+				label: null,
 				tickFormat: this.formatPercent
 			},
 			y: { axis: null },
@@ -302,6 +302,7 @@ export class AppRopeBar extends LitElement {
 							})}
 						</ul>
 						<div class="chart"></div>
+						<p>${this.labels.xAxis}</p>
 						<details>
 							<summary>${this.labels.showData}</summary>
 							<div

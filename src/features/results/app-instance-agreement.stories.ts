@@ -61,3 +61,6 @@ type Story = StoryObj<Args>;
 /** Right-to-left layout. */ export const RTL: Story = {
 	args: { counts: [4, 7, 12, 27], dir: 'rtl' }
 };
+
+/** Long labels in right-to-left layout. */
+export const LongLabelRTL: Story = { args: { counts: [4, 70, 120, 270], long: true, dir: 'rtl' } };

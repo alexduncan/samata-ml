@@ -294,14 +294,11 @@ export class AppThresholdExplorer extends LitElement {
 				}),
 				chart.text(names, {
 					fy: (name: string) => name,
-					text: (name: string) =>
-						truncateLabel(
-							labels.trueClass(name),
-							Math.max(0, width - marginLeft - marginRight),
-							measureText
-						),
-					frameAnchor: 'top-left',
+					text: (name: string) => labels.trueClass(name),
+					frameAnchor: 'top',
+					textAnchor: 'middle',
 					lineAnchor: 'bottom',
+					lineWidth: Math.max(1, ((width - marginLeft - marginRight) / fontSize) * 0.7),
 					dy: -4,
 					fill: tokens['--chart-axis'],
 					fontWeight: 600
@@ -332,12 +329,12 @@ export class AppThresholdExplorer extends LitElement {
 					<li>
 						<svg aria-hidden="true" width="16" height="16">
 							<rect width="16" height="16" fill="var(--chart-neutral)"></rect></svg
-						>${view.negative}
+						>${labels.trueClass(view.negative)}
 					</li>
 					<li>
 						<svg aria-hidden="true" width="16" height="16">
 							<rect width="16" height="16" fill="var(--chart-1)"></rect></svg
-						>${view.positive}
+						>${labels.trueClass(view.positive)}
 					</li>
 				</ul>
 				<p>${labels.yAxis}</p>

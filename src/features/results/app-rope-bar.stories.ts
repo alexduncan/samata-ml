@@ -48,7 +48,9 @@ const meta = {
 			outcome: 'Outcome',
 			probability: 'Probability',
 			showData: 'Show data table',
-			xAxis: 'Posterior probability (%)',
+			xAxis: args.long
+				? 'Posterior probability for the compared model outcomes (%)'
+				: 'Posterior probability (%)',
 			frequencyHeading: 'Frequency',
 			inHundred: (count) => `${count} in 100`,
 			description: (a, b, ap, eq, bp) => `${a} and ${b}: ${ap}, ${eq}, ${bp}.`,
@@ -117,5 +119,14 @@ export const NarrowOutcome: Story = {
 		result: { probabilityLower: 0.2, probabilityEquivalent: 0.3, probabilityHigher: 0.5 },
 		status: 'ready',
 		dir: 'rtl'
+	}
+};
+/** A long probability-axis label wraps in right-to-left layout. */
+export const LongLabelRTL: Story = {
+	args: {
+		result: { probabilityLower: 0.2, probabilityEquivalent: 0.3, probabilityHigher: 0.5 },
+		status: 'ready',
+		dir: 'rtl',
+		long: true
 	}
 };

@@ -94,3 +94,30 @@ test('CHT-COMP-4: model identity and zero-width outcome remain in the legend and
 	await expect(rope.getByRole('cell', { name: '0%', exact: true })).toBeVisible();
 	await expect(rope.locator('p[aria-live="polite"]')).toBeAttached();
 });
+
+for (const dir of ['ltr', 'rtl'] as const) {
+	test(`CHT-A11Y-1: ROPE axis label remains visible and fitted through resize (${dir})`, async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 320, height: 800 });
+		await page.addStyleTag({ content: 'html { font-size: 32px }' });
+		await page.evaluate((direction) => {
+			document.documentElement.dir = direction;
+		}, dir);
+		const rope = page.locator('app-rope-bar');
+		const label = rope.getByText('Posterior probability (%)', { exact: true });
+		for (const width of [320, 280, 320]) {
+			await page.setViewportSize({ width, height: 800 });
+			await rope.evaluate(async (element) => (element as AppRopeBar).whenSettled());
+			await expect(label).toBeVisible();
+			const bounds = await label.evaluate((element) => {
+				const rect = element.getBoundingClientRect();
+				const host = (element.getRootNode() as ShadowRoot).host.getBoundingClientRect();
+				return { left: rect.left - host.left, right: host.right - rect.right };
+			});
+			expect(bounds.left).toBeGreaterThanOrEqual(-1);
+			expect(bounds.right).toBeGreaterThanOrEqual(-1);
+		}
+		await expect(rope.locator('svg[role="img"]')).toHaveAttribute('aria-describedby', /.+/);
+	});
+}
