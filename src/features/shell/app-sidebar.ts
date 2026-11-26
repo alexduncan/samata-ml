@@ -17,6 +17,7 @@ const messages = i18n('app-sidebar', {
 	workflow: 'Workflow',
 	loadData: 'Load Data',
 	setTarget: 'Set Target',
+	trainModels: 'Train Models',
 	allTrained: 'All Trained Models',
 	trainNew: 'Train New Model',
 	trainAnother: 'Train Another Model',
@@ -224,9 +225,7 @@ export class AppSidebar extends LitElement {
 				color: var(--blue-800);
 			}
 			.step-train-new {
-				grid-area: value;
-				margin-inline-end: 0.5rem;
-				margin-block: 0.25rem 0.5rem;
+				display: block;
 			}
 			.step-models {
 				display: flex;
@@ -258,7 +257,9 @@ export class AppSidebar extends LitElement {
 			.step-model-name {
 				flex: 1 1 7rem;
 				min-inline-size: 0;
-				overflow-wrap: anywhere;
+				overflow: hidden;
+				text-overflow: ellipsis;
+				white-space: nowrap;
 			}
 			.step-trained-model .chiclet {
 				margin-inline-start: auto;
@@ -460,16 +461,23 @@ export class AppSidebar extends LitElement {
 						</a>
 					</li>
 					<li class="step">
-						<div class="step-link step-model-navigation">
-							<span class="step-num">3</span>
-							<a
-								href="/models"
-								class="step-link-small"
-								aria-current=${state.current.models ?? nothing}>
-								${t.allTrained}
-							</a>
-							${state.models.length || state.provisionalVisible
-								? html`<ul class="step-models">
+						${!state.canTrain
+							? html`<a
+									class="step-link"
+									href="/models"
+									aria-current=${state.current.models ?? nothing}>
+									<span class="step-num">3</span>
+									<span class="step-label">${t.trainModels}</span>
+								</a>`
+							: html`<div class="step-link step-model-navigation">
+									<span class="step-num">3</span>
+									<a
+										href="/models"
+										class="step-link-small"
+										aria-current=${state.current.models ?? nothing}>
+										${t.allTrained}
+									</a>
+									<ul class="step-models">
 										${repeat(
 											state.models,
 											(model) => model.num,
@@ -507,18 +515,17 @@ export class AppSidebar extends LitElement {
 												</li>
 											`
 										)}
-										${!state.canTrain
-											? nothing
-											: state.provisionalVisible
+										${state.provisionalVisible
+											? html`<li class="step-model">
+													<span
+														class="step-model-link"
+														aria-current=${state.current.provisional ??
+														nothing}
+														>${t.trainingNew}</span
+													>
+												</li>`
+											: state.models.length
 												? html`<li class="step-model">
-														<span
-															class="step-model-link"
-															aria-current=${state.current
-																.provisional ?? nothing}
-															>${t.trainingNew}</span
-														>
-													</li>`
-												: html`<li class="step-model">
 														<a
 															class="step-model-link"
 															href="/models/new"
@@ -531,19 +538,21 @@ export class AppSidebar extends LitElement {
 																? dot
 																: nothing}</a
 														>
+													</li>`
+												: html`<li class="step-model">
+														<a
+															class="step-train-new"
+															href="/models/new"
+															aria-describedby=${cue === 'train-new'
+																? suggestionId
+																: nothing}
+															>${t.trainNew}${cue === 'train-new'
+																? dot
+																: nothing}</a
+														>
 													</li>`}
-									</ul>`
-								: state.canTrain
-									? html`<a
-											class="step-train-new"
-											href="/models/new"
-											aria-describedby=${cue === 'train-new'
-												? suggestionId
-												: nothing}
-											>${t.trainNew}${cue === 'train-new' ? dot : nothing}</a
-										>`
-									: nothing}
-						</div>
+									</ul>
+								</div>`}
 					</li>
 					<li class="step">
 						<a

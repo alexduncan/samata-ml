@@ -673,13 +673,32 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await page.locator('app-sidebar footer a[href="/about"]').click();
 		const modal = page.locator('app-content-modal dialog');
 		await expect(modal).toBeVisible();
+		await expect(page.locator('html')).toHaveCSS('overflow-y', 'hidden');
+		await page.mouse.move(2, 2);
+		await page.mouse.wheel(0, 300);
+		await modal.evaluate((dialog) => {
+			const spacer = document.createElement('div');
+			spacer.style.minBlockSize = '150vh';
+			dialog.append(spacer);
+		});
+		const bounds = (await modal.boundingBox())!;
+		await page.mouse.move(bounds.x + bounds.width / 2, bounds.y + bounds.height / 2);
+		await page.mouse.wheel(0, 300);
+		await expect.poll(() => modal.evaluate((dialog) => dialog.scrollTop)).toBeGreaterThan(0);
+		expect(await page.evaluate(() => window.scrollY)).toBe(scrollYOnReturn);
 
 		// Close /about
 		await modal.locator('button.btn-icon').click();
 		await expect(modal).not.toBeVisible();
+		await expect(page.locator('html')).toHaveCSS('overflow-y', 'visible');
 
 		const scrollYAfterModal = await page.evaluate(() => window.scrollY);
 		expect(scrollYAfterModal).toBe(scrollYOnReturn);
+		await page.mouse.move(790, 500);
+		await page.mouse.wheel(0, 300);
+		await expect
+			.poll(() => page.evaluate(() => window.scrollY))
+			.toBeGreaterThan(scrollYOnReturn);
 	});
 
 	test('SNC-16: Link clicks in sidebar and reserved dialog trigger client-side navigation without page reload', async ({

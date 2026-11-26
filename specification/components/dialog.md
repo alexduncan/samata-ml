@@ -44,7 +44,7 @@ Shared appearance for native content modals and confirmation dialogs. Consumers 
 </dialog>
 ```
 
-The owner uses native `showModal()` and `close()`, and names the dialog through its visible h2. Buttons use the shared button primitive. Native dialogs supply their own role and modal semantics. Keep document scroll ownership with the page.
+The owner uses native `showModal()` and `close()`, and names the dialog through its visible h2. Buttons use the shared button primitive. Native dialogs supply their own role and modal semantics. The shell locks page scrolling until the last modal closes or is removed, while the dialog retains its own scrolling.
 
 ### Content modals
 

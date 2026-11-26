@@ -357,11 +357,80 @@ export function renderAppShell(container: HTMLElement): void {
 	}
 }
 
+function initModalScrollLock(): void {
+	const root = document.documentElement;
+	const modals = new Set<HTMLDialogElement>();
+	const lock = new CSSStyleSheet();
+	const observedRoots = new WeakSet<ShadowRoot>();
+	const options: MutationObserverInit = {
+		subtree: true,
+		childList: true,
+		attributes: true,
+		attributeFilter: ['open']
+	};
+	const observer = new MutationObserver((changes) => {
+		for (const change of changes) {
+			if (change.type === 'attributes') {
+				const dialog = change.target;
+				if (dialog instanceof HTMLDialogElement && dialog.matches(':modal')) {
+					modals.add(dialog);
+				}
+			} else {
+				for (const node of change.addedNodes) {
+					if (node instanceof Element && node.isConnected) scan(node);
+				}
+			}
+		}
+		syncLock();
+	});
+
+	function scan(container: Element | ShadowRoot): void {
+		// Lit creates each open shadow root when its host connects. Observe
+		// that root separately because document observation stops at the host.
+		const elements =
+			container instanceof Element
+				? [container, ...container.querySelectorAll('*')]
+				: container.querySelectorAll('*');
+		for (const element of elements) {
+			if (element instanceof HTMLDialogElement && element.matches(':modal')) {
+				modals.add(element);
+			}
+			const shadow = element.shadowRoot;
+			if (shadow && !observedRoots.has(shadow)) {
+				observedRoots.add(shadow);
+				observer.observe(shadow, options);
+				scan(shadow);
+			}
+		}
+	}
+
+	function syncLock(): void {
+		for (const dialog of modals) {
+			if (!dialog.isConnected || !dialog.matches(':modal')) modals.delete(dialog);
+		}
+		const sheets = document.adoptedStyleSheets;
+		if (modals.size && !sheets.includes(lock)) {
+			const reserveGutter = root.clientWidth < window.innerWidth;
+			lock.replaceSync(
+				`:root { overflow: hidden; ${reserveGutter ? 'scrollbar-gutter: stable;' : ''} }`
+			);
+			document.adoptedStyleSheets = [...sheets, lock];
+		} else if (!modals.size && sheets.includes(lock)) {
+			document.adoptedStyleSheets = sheets.filter((sheet) => sheet !== lock);
+		}
+	}
+
+	observer.observe(root, options);
+	scan(root);
+	syncLock();
+}
+
 /**
  * Bootstraps the full application runtime.
  */
 export async function bootstrapApp(): Promise<void> {
 	initGlobalStyles();
+	initModalScrollLock();
 
 	// 1. Reconcile storage and IndexedDB
 	const startup = await reconcileProtectedStartup();
