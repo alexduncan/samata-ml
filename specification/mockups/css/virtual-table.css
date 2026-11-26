@@ -1,4 +1,6 @@
 .ui-virtual-table {
+	--column-width: 12rem;
+
 	.table-viewport {
 		position: relative;
 		box-sizing: border-box;
@@ -32,9 +34,13 @@
 				flex: 0 0 auto;
 				box-sizing: border-box;
 				border-inline-end: 1px solid var(--stone-200);
-				min-inline-size: 12rem;
+				inline-size: var(--column-width);
+				min-inline-size: var(--column-width);
+				max-inline-size: var(--column-width);
 				color: var(--stone-800);
 				font-weight: 600;
+				font-size: 0.75rem;
+				line-height: 2rem;
 				text-align: start;
 
 				.header-btn {
@@ -45,31 +51,14 @@
 					background: none;
 					padding: 0.25rem 0.5rem;
 					inline-size: 100%;
+					overflow: hidden;
 					color: inherit;
 					font-weight: inherit;
 					font-size: inherit;
 					line-height: inherit;
 					text-align: start;
-
-					&:hover {
-						background-color: var(--stone-300);
-					}
-				}
-
-				.header-edit-btn {
-					display: flex;
-					justify-content: center;
-					align-items: center;
-					cursor: pointer;
-					border: medium;
-					background: none;
-					padding: 0.25rem 0.5rem;
-					inline-size: 100%;
-					color: inherit;
-					font-weight: inherit;
-					font-size: inherit;
-					line-height: inherit;
-					text-align: start;
+					text-overflow: ellipsis;
+					white-space: nowrap;
 
 					&:hover {
 						background-color: var(--stone-300);
@@ -101,7 +90,9 @@
 				box-sizing: border-box;
 				border-inline-end: 1px solid var(--stone-200);
 				padding: 0 0.5rem;
-				min-inline-size: 10rem;
+				inline-size: var(--column-width);
+				min-inline-size: var(--column-width);
+				max-inline-size: var(--column-width);
 				overflow: hidden;
 				color: var(--stone-800);
 				font-size: 0.75rem;
@@ -119,8 +110,9 @@
 					text-align: start;
 				}
 
+				&.table-cell-boolean,
 				&.table-cell-categorical {
-					text-align: start;
+					text-align: center;
 				}
 			}
 		}

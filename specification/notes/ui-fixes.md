@@ -3,131 +3,63 @@
 - Disable scroll on body while a `dialog.modal` is open.
 - `header.page-header` inside `main` should stick to the top of the viewport when scrolling.
 
-## Better Mockup Navigation
+## Improve Virtualized Table
 
-To help me navigate the mockups I propose the following changes:
-
-### 1) Change the `#__mockup-review-helper-host` HTML
-
-Move the `#__mockup-review-helper-host element` to before the closing `</body>` tag. CSS in `mockup.css` will position it at the top of the viewport.
-
-Here is my proposed updated HTML:
-
-```html
-<div id="__mockup-review-helper-host">
-	<!-- Wrap details about this mockup in a <div> -->
-	<div id="mockup-details">
-		<h4 class="mockup-name">
-			<!-- Give each mockup a simple plain English name -->
-			{MockupName: Simple Plain English Name of Mockup}
-
-			<!-- Add a status to each mockup (draft, ready, implemented) -->
-			<span class="mockup-status mockup-status-{status}">
-				{MockupStatus: draft|ready|implemented}
-			</span>
-		</h4>
-		<!-- Add a simple description of the mockup to help reviewers understand its context -->
-		<p class="mockup-description">
-			{MockupDescription: Simple description of the situation in which a user will encounter
-			this ui.}
-		</p>
-	</div>
-	<nav id="mockup-controls" aria-label="Mockup review">
-		<!-- Removed label for the select element. WCAG comliance isn't important for this mockup review tool -->
-		<select id="preview-page">
-			<option value="{file-name.html}">{Mockup Name} ({file-name.html})</option>
-			<!-- {remaining mockup options} -->
-		</select>
-		<!-- Removed the "Go" button, navigation will happen automatically on select change -->
-		<!-- Move index link to the end of the mockup controls -->
-		<a href="/" class="index-link">
-			<!-- Added simple SVG icon for the index link -->
-			<svg
-				class="index-link-icon"
-				xmlns="http://www.w3.org/2000/svg"
-				width="24"
-				height="24"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="1.5"
-				stroke-linecap="round"
-				stroke-linejoin="round">
-				<path d="M14 3v4a1 1 0 0 0 1 1h4" />
-				<path d="M17 21h-10a2 2 0 0 1 -2 -2v-14a2 2 0 0 1 2 -2h7l5 5v11a2 2 0 0 1 -2 2" />
-				<path d="M9 9l1 0" />
-				<path d="M9 13l6 0" />
-				<path d="M9 17l6 0" />
-			</svg>
-			<span class="index-link-text">Index</span>
-		</a>
-	</nav>
+### Navigation from "Select Data"
+- Clicking "Load Dataset" should immediately navigate the user to the preview and display a `progress` bar directly inside main while dataset is being loaded into IndexdDB.
+- Custom CSV uploads should first complete parsing with the "Upload Custom Dataset" modal still open. Once the dataset has been parsed to ensure it can be used the UI should then switch to the preview and show a `progress` bar directly inside main while the CSV is being loaded into IndexdDB.
+- Change the `.page-header` on preview to include a button to open the "Datasheet" in a modal:
+```
+<div class="page-actions">
+	<button class="btn">Datasheet</button>
+	<button class="btn btn-red">Change Dataset</button>
+</div>
+```
+- Add `{displayName}` inside `.overlay-title h4` in the slide-over column details panel:
+```
+<div class="overlay-title">
+	<h4>{displayName}<br><span class="col-name">{name}</span></h4>
+	{...}
 </div>
 ```
 
-### 2) Mockup Styling
+### Virtualisation Changes
+- Remove `.status-box` and `.controls-bar`.
+- Scrolling the virtual table needs to be moved to `<body>`.
+- Unwrap `ui-virtual-table` so it sits directly inside `<main>`.
+- Set the height on `div.table-body` by multiplying row height by the number of rows.
+- Each row `div.table-row` is positioned using `transform: translateY({scroll-distance});will-change: transform;`.
+- Maintain an **overscan buffer** of `visibleRows * 2` to avoid the user seeing empty space.
+- Synchronize DOM updates using `requestAnimationFrame`.
+- Decouple the scroll listener from DOM updates. The scroll event listener should update a variable e.g. `currentScrollTop` and flags that an update is pending. If an update is pending and no `requestAnimationFrame` is currently queued then call `requestAnimationFrame(updateVirtualTable)` the `updateVirtualTable` function reads `currentScrollTop`, performs the row math, executes the DOM mutations, and clears the pending flag.
+- The function `updateVirtualTable` calculates which rows need moving and which need mutating depending on `currentScrollTop`.
+- Smarter calculation of column widths. Use the `max` value for numeric columns to set a more suitable width with a sensible `min` value to ensure `boolean` columns don't become too narrow.
+- Use classes for each data-type e.g. `<div role="cell" class="table-cell table-cell-num" title="1">1</div>`. This will allow:
+	- `numeric` columns to have `font-variant-numeric:tabular-nums;text-align:end;`.
+	- `date` and `datetime` columns to have `font-variant-numeric:tabular-nums;text-align:start;`.
+	- `boolean` and `categorical` columns to use `text-align:center;`.
+	- The default on `div.table-cell` should be `text-align:start;`.
+- Cells in columns which are currently unspported e.g. `text` should have the class `.unsupported` on `div.table-header-cell` every `div.table-cell`.
 
-Add `mockup.css` to the `<head>` containing styles for the `#__mockup-review-helper-host`.  
-See example in `./samata-ml/specification/mockups/ui-scaffold/drafts/01-6_virtual-table.html`.
-
-### 3) Change `scaffold` to `mockups`
-
-I used the term `scaffold` when first creating ui for the app. Now that the basics are established change all references to `scaffold` to `mockups` for ongoing ui refinement.
-
-Change the command `bun run serve:scaffold` to `bun run mockups`.
-
-### 4) Create a Mockups Index
-
-Flatten the structure of `./samata-ml/specification/mockups/`. All HTML files should live directly inside the folder.
-
-When an agent creates a mockup it should add the metadata to the `<head>` of the HTML file using:
-
-- `<meta name="name" content="{Name of The Mockup}"/>`
-- `<meta name="description" content="{Description The Mockup}"/>`
-- `<meta name="status" content="{draft|ready|implemented}"/>`
-
-The bun script which serves mockups should use this meta data to generate `/index.json` which can be fetched by a script in each page to generate the `<select>` options for switching between mockups.
-
-Javascript can render the table of mockups when the user loads `http://localhost:3000/` in a browser.
-
-### 5) HTML Comments For Clearer Explainations
-
-Whenever an agent combines multiple HTML fragments representing different possible UI states into a single file it should wrap each fragment in opening and closing HTML comments to make it clear for me. For example:
-
-```html
-<!-- Empty -->
-<!-- This will display when... -->
-<section>
-	<h2>Empty</h2>
-	<p>This model has not completed training.</p>
-</section>
-<!-- / Empty -->
-
-<!-- Result Error -->
-<!-- This will display when... -->
-<section>
-	<h2>Result error</h2>
-	<p role="alert">The result layout could not be loaded or uses an unsupported version.</p>
-	<button class="btn" type="button">Retry</button>
-</section>
-<!-- / Result Error -->
+### Header Cell Format
+Change the markup of header cells to contain the `displayName` for pre-configured datasets.
 ```
+<div class="table-header-cell" role="columnheader">
+	<button type="button" class="header-btn" data-col-key="id">
+		<!-- Pre-configured Datasets -->
+		<span class="col-display-name">{displayName}</span>
+		<span class="col-name">{name}</span>
+		<!-- Custom Uploded Datasets -->
+		<span class="col-name">{name}</span>
+	</button>
+</div>
+```
+The cell header should use `overflow: hidden;white-space:nowrap;text-overflow: ellipsis;` with the text set on a `title` or `aria-` attribute depending on what WCAG best practice says.
 
-## Improve Virtualized Table
-
-1. Remove the loading element and table navigation elements.
-2. Move scroll to body. Unwrap `ui-virtual-table` so it sits directly inside `<main>`.
-3. Set the height on `div.table-body` by multiplying row height by the number of rows.
-4. Each row `div.table-row` is positioned using `transform: translateY({scroll-distance});will-change: transform;`.
-5. Maintain an **overscan buffer** of `visibleRows * 2` to avoid the user seeing empty space.
-6. Synchronize DOM updates using `requestAnimationFrame`.
-7. Decouple the scroll listener from DOM updates. The scroll event listener should update a variable e.g. `currentScrollTop` and flags that an update is pending. If an update is pending and no `requestAnimationFrame` is currently queued then call `requestAnimationFrame(updateVirtualTable)` the `updateVirtualTable` function reads `currentScrollTop`, performs the row math, executes the DOM mutations, and clears the pending flag.
-8. The function `updateVirtualTable` calculates which rows need moving and which need mutating depending on `currentScrollTop`.
-9. Add edit buttons to the header row.
-10. Unsupported columns need an `<svg><use href="" /><svg>`
 
 ### Open Issues
 
+- Unsupported columns need an `<svg><use href="alert" /><svg>` on the right of the column header.
 - [ ] Multiple column widths.
 - [ ] Style column types.
 - [ ] Format Dates & times better.
