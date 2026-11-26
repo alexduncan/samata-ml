@@ -1,6 +1,6 @@
 # Future development
 
-**Updated:** 2026-11-24
+**Updated:** 2026-11-26
 
 Items the specifications mark as _future_, _later_ or _deferred_. They are **not** to be planned or built until a human moves them into a spec. Open questions about current scope are in [TODO.md](TODO.md). Deliberate exclusions are listed under **Non-goals** in each component spec (§11) and are not future work.
 
@@ -27,6 +27,13 @@ Items the specifications mark as _future_, _later_ or _deferred_. They are **not
     - **Prediction latency** alongside fit time.
     - **Hand-built SVG charts** that replace Observable Plot where a bespoke chart is clearer, such as a Sankey-style confusion flow.
 - **Richer model comparison:** Superimposed ROC and precision–recall curves, multi-model reliability plots, a Pareto scatter, a decision-boundary gallery and normalised expected cost with a cost-ratio slider remain future work.
+- **Richer feature importance** (deferred from [compare-feature-importance](plans/compare-feature-importance.md); source [note](notes/feature-importance.md)):
+    - A features × models importance heatmap with per-model normalisation, rank labels and a "highest disagreement" sort.
+    - Permutation importance in each model's Section 6 results, with a top-N toggle, relative share and tooltips.
+    - Decision Tree impurity importance (MDI) beside permutation importance, summed per source column.
+    - Warnings on strongly correlated columns, which needs `web-ml` association diagnostics.
+    - A configurable shuffle count (the note suggests 10; v1 uses 5).
+    - Effect plots (ALE, or PDP with ICE), local explanations for single rows, counterfactuals, a 2D decision-boundary explorer and feature-sliced error analysis.
 
 ## Engineering
 
