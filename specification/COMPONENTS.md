@@ -126,12 +126,12 @@ Styling crosses shadow boundaries in exactly two sanctioned ways.
 
 - Components include it in `static styles = [buttonStyles, css`…`];`.
 - `src/styles/global.ts` adopts the same sheets into the document:
-    ```ts
-    document.adoptedStyleSheets = [
-    	...document.adoptedStyleSheets,
-    	...[buttonStyles].map((s) => s.styleSheet!).filter(Boolean)
-    ];
-    ```
+  ```ts
+  document.adoptedStyleSheets = [
+      ...document.adoptedStyleSheets,
+      ...[buttonStyles].map((s) => s.styleSheet!).filter(Boolean)
+  ];
+  ```
 - The rules MUST NOT be duplicated into a `.css` file.
 
 **6.3 Rules for all CSS**

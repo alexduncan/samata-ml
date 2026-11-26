@@ -33,6 +33,12 @@
 			"Bash(git merge-base*)"
 		],
 		"deny": [
+			"Bash(git commit --no-verify)",
+			"Bash(git commit *--no-verify*)",
+			"Bash(git commit -n)",
+			"Bash(git commit -n *)",
+			"Bash(git commit * -n)",
+			"Bash(git commit * -n *)",
 			"Bash(git add -A*)",
 			"Bash(git add --all*)",
 			"Bash(git add -u*)",

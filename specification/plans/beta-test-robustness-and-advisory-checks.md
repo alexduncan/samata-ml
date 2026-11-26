@@ -57,21 +57,21 @@ Facts verified by `codebase-scout`:
 
 - **Relevant specifications:** `specification/testing.md` (status `partial`) documents unit, story, E2E, visual parity, and a11y suites; `specification/visual-design.md` § 6 (status `partial`) specifies parity and axe verification; `specification/HUMAN.md` § 1 tracks the 19 `KNOWN_FAILURES` items.
 - **Relevant implementation:**
-    - `.github/workflows/ci.yml#L1-L145` — `verify`, 3-browser `e2e` (`SAMATA_SKIP_KNOWN_FAILURES: '1'`), and `deploy` (`needs: [verify, e2e]`).
-    - `playwright.config.ts#L1-L64` — `chromium`, `firefox`, `webkit` projects with `projectGrepInvert(name)` and 3 `webServer` entries from `scripts/ports.ts`.
-    - `.storybook/preview.ts#L16-L21` — hardcodes `parameters.a11y: { test: 'error' }`; `.storybook/main.ts#L9-L14` injects Vite `define` constants via `viteFinal`.
-    - `package.json#L6-L36` — `test`, `test:e2e`, `test:stories`, `audit:mockups`, `check`, `typecheck`, `lint`, `format`, `format:check`.
-    - `src/features/data/sample-datasets.ts#L9-L34` and `scripts/generate-datasets.ts#L531-L553` — authoritative sample dataset catalogue served at `/datasets/index.json` (`{ version: 1, entries }`, currently 11 entries).
-    - `scripts/serve-mockups.ts#L168-L203,L656-L661` — authoritative mockup catalogue served at `MOCKUPS_URL + '/index.json'` (currently 29 entries).
-    - `src/stores/persister.ts#L956-L969,L1048,L1128,L1270-L1279,L1323` — `selectedColumn` triggers `writeAppStateNow`, which under `protectedPersistence` performs async `writeOrdinaryGuarded`; `pagehide` (`flushNow`) only flushes pending timers, explaining why `DATA-PRE-2` can race `page.reload()`.
+  - `.github/workflows/ci.yml#L1-L145` — `verify`, 3-browser `e2e` (`SAMATA_SKIP_KNOWN_FAILURES: '1'`), and `deploy` (`needs: [verify, e2e]`).
+  - `playwright.config.ts#L1-L64` — `chromium`, `firefox`, `webkit` projects with `projectGrepInvert(name)` and 3 `webServer` entries from `scripts/ports.ts`.
+  - `.storybook/preview.ts#L16-L21` — hardcodes `parameters.a11y: { test: 'error' }`; `.storybook/main.ts#L9-L14` injects Vite `define` constants via `viteFinal`.
+  - `package.json#L6-L36` — `test`, `test:e2e`, `test:stories`, `audit:mockups`, `check`, `typecheck`, `lint`, `format`, `format:check`.
+  - `src/features/data/sample-datasets.ts#L9-L34` and `scripts/generate-datasets.ts#L531-L553` — authoritative sample dataset catalogue served at `/datasets/index.json` (`{ version: 1, entries }`, currently 11 entries).
+  - `scripts/serve-mockups.ts#L168-L203,L656-L661` — authoritative mockup catalogue served at `MOCKUPS_URL + '/index.json'` (currently 29 entries).
+  - `src/stores/persister.ts#L956-L969,L1048,L1128,L1270-L1279,L1323` — `selectedColumn` triggers `writeAppStateNow`, which under `protectedPersistence` performs async `writeOrdinaryGuarded`; `pagehide` (`flushNow`) only flushes pending timers, explaining why `DATA-PRE-2` can race `page.reload()`.
 - **Tests and commands:**
-    - `tests/known-failures.ts#L33-L168` (19 entries) and `tests/known-failures.test.ts#L88-L147` (`REL-KF-1`, validates `HUMAN.md` references and 1-to-1 Playwright `--list` filtering).
-    - `tests/ci-workflow.test.ts#L53-L271` (`REL-CI-1`, validates `.github/workflows/ci.yml` pins, step order, env vars, matrix, and `deploy` gates).
-    - `tests/a11y.e2e.ts#L1-L544` (dedicated WCAG suite using `AXE_TAGS` and `tests/a11y-feature-findings.ts#L21-L304`) plus 14 mixed functional E2E files importing `@axe-core/playwright` (`tests/app-shell.e2e.ts`, `tests/sidebar-acceptance.e2e.ts`, `tests/content-dialog.e2e.ts`, `tests/welcome-acceptance.e2e.ts`, `tests/telemetry-acceptance.e2e.ts`, `tests/virtual-table.e2e.ts`, `tests/model-card.e2e.ts`, `tests/model-configuration.e2e.ts`, `tests/models-overview.e2e.ts`, `tests/models-setup.e2e.ts`, `tests/training-panels.e2e.ts`, `tests/results-summary.e2e.ts`, `tests/results-errors.e2e.ts`, `tests/results-probability.e2e.ts`).
-    - `tests/visual-parity.e2e.ts#L1-L395` & `tests/visual-parity/map.ts#L1-L748` (Chromium 1440×900 parity suite, 48 mapped entries + `SIDE-AC-10` `maxDiffPixels: 0` + `SIDE-AC-11` + `DOT-AC-7`).
-    - Brittle/stale tests: `tests/app-shell.e2e.ts#L1201-L1273` (`PH-AC-2`), `#L974-L1003` (`FOCUS-AC-5`); `tests/content.e2e.ts#L7-L38` (`TERM-AC-1`), `#L135-L182` (`WML-P2-ROUTE-2`); `tests/results-probability.e2e.ts#L142-L165` (`WML-P4-UI-7`); `tests/data-preview.e2e.ts#L249-L321` (`DATA-PRE-2`); `tests/data-flow.e2e.ts#L81-L129` (`DATA-FLOW-2`); `tests/data-upload.e2e.ts#L200-L230` (`DATA-UP-2`); `tests/mockup-review.e2e.ts#L9-L128` (`MOCKUP-REVIEW-1..3`).
-    - Existing shared helpers: `tests/journeys/helpers.ts` (`dismissWelcomeModal`, `loadSampleDataset`), `tests/helpers/seed-results.ts`.
-    - Baseline: `bun run check` (682/682 pass), `bun run lint` (pass), `bun test tests/style-tokens.test.ts` (11/11 pass).
+  - `tests/known-failures.ts#L33-L168` (19 entries) and `tests/known-failures.test.ts#L88-L147` (`REL-KF-1`, validates `HUMAN.md` references and 1-to-1 Playwright `--list` filtering).
+  - `tests/ci-workflow.test.ts#L53-L271` (`REL-CI-1`, validates `.github/workflows/ci.yml` pins, step order, env vars, matrix, and `deploy` gates).
+  - `tests/a11y.e2e.ts#L1-L544` (dedicated WCAG suite using `AXE_TAGS` and `tests/a11y-feature-findings.ts#L21-L304`) plus 14 mixed functional E2E files importing `@axe-core/playwright` (`tests/app-shell.e2e.ts`, `tests/sidebar-acceptance.e2e.ts`, `tests/content-dialog.e2e.ts`, `tests/welcome-acceptance.e2e.ts`, `tests/telemetry-acceptance.e2e.ts`, `tests/virtual-table.e2e.ts`, `tests/model-card.e2e.ts`, `tests/model-configuration.e2e.ts`, `tests/models-overview.e2e.ts`, `tests/models-setup.e2e.ts`, `tests/training-panels.e2e.ts`, `tests/results-summary.e2e.ts`, `tests/results-errors.e2e.ts`, `tests/results-probability.e2e.ts`).
+  - `tests/visual-parity.e2e.ts#L1-L395` & `tests/visual-parity/map.ts#L1-L748` (Chromium 1440×900 parity suite, 48 mapped entries + `SIDE-AC-10` `maxDiffPixels: 0` + `SIDE-AC-11` + `DOT-AC-7`).
+  - Brittle/stale tests: `tests/app-shell.e2e.ts#L1201-L1273` (`PH-AC-2`), `#L974-L1003` (`FOCUS-AC-5`); `tests/content.e2e.ts#L7-L38` (`TERM-AC-1`), `#L135-L182` (`WML-P2-ROUTE-2`); `tests/results-probability.e2e.ts#L142-L165` (`WML-P4-UI-7`); `tests/data-preview.e2e.ts#L249-L321` (`DATA-PRE-2`); `tests/data-flow.e2e.ts#L81-L129` (`DATA-FLOW-2`); `tests/data-upload.e2e.ts#L200-L230` (`DATA-UP-2`); `tests/mockup-review.e2e.ts#L9-L128` (`MOCKUP-REVIEW-1..3`).
+  - Existing shared helpers: `tests/journeys/helpers.ts` (`dismissWelcomeModal`, `loadSampleDataset`), `tests/helpers/seed-results.ts`.
+  - Baseline: `bun run check` (682/682 pass), `bun run lint` (pass), `bun test tests/style-tokens.test.ts` (11/11 pass).
 - **Web guidance:** None — no browser platform APIs are being newly implemented; changes are test-harness, Storybook, and CI configuration.
 - **Visual reference:** None — no UI appearance changes.
 - **Domain skills:** None — no Lit components, datasets, or upstream `web-ml` contracts are modified.
@@ -170,13 +170,13 @@ export async function fetchMockupIndex(
 #### 3. Playwright & `package.json` tier selection
 
 - `playwright.config.ts`:
-    - Defines `const ADVISORY_SPEC_FILES = ['**/visual-parity.e2e.ts', '**/a11y.e2e.ts'];`.
-    - When `process.env.SAMATA_E2E_TIER === 'blocking'`, sets `testIgnore: ADVISORY_SPEC_FILES` on the Playwright config so blocking runs execute all functional, journey, security, CSP, router, focus, and storage specs without running visual parity or dedicated WCAG audits.
-    - When `SAMATA_E2E_TIER` is unset (ordinary local `bun run test:e2e [file]`), `testIgnore` is omitted so any explicitly requested file runs normally.
+  - Defines `const ADVISORY_SPEC_FILES = ['**/visual-parity.e2e.ts', '**/a11y.e2e.ts'];`.
+  - When `process.env.SAMATA_E2E_TIER === 'blocking'`, sets `testIgnore: ADVISORY_SPEC_FILES` on the Playwright config so blocking runs execute all functional, journey, security, CSP, router, focus, and storage specs without running visual parity or dedicated WCAG audits.
+  - When `SAMATA_E2E_TIER` is unset (ordinary local `bun run test:e2e [file]`), `testIgnore` is omitted so any explicitly requested file runs normally.
 - `package.json`:
-    - Keeps `"test:e2e": "playwright test"`.
-    - Adds `"test:e2e:blocking": "SAMATA_E2E_TIER=blocking playwright test"`.
-    - Adds `"test:e2e:advisory": "playwright test tests/visual-parity.e2e.ts tests/a11y.e2e.ts --project=chromium"`.
+  - Keeps `"test:e2e": "playwright test"`.
+  - Adds `"test:e2e:blocking": "SAMATA_E2E_TIER=blocking playwright test"`.
+  - Adds `"test:e2e:advisory": "playwright test tests/visual-parity.e2e.ts tests/a11y.e2e.ts --project=chromium"`.
 
 #### 4. `.github/workflows/ci.yml` job graph
 
@@ -201,15 +201,15 @@ export async function fetchMockupIndex(
 - **Likely files:** `tests/helpers/advisory-a11y.ts`, `tests/helpers/e2e-settlement.ts`, `tests/advisory-a11y.test.ts`, `.storybook/main.ts`, `.storybook/preview.ts`, `.storybook/env.d.ts`
 - **Must not touch:** `src/`, `css/`, `content/`, `public/`, `specification/mockups/`, `vendor/` — production code and mockups stay unchanged.
 - **Implementation:**
-    1. Create `tests/helpers/advisory-a11y.ts` exporting `AdvisoryCheckMode`, `advisoryCheckMode()`, and `runAdvisoryAxe()` with TSDoc and strict TypeScript types matching § Interfaces and behaviour.
-    2. Create `tests/helpers/e2e-settlement.ts` exporting `expectReservedModalClosed()`, `waitForPersistedAppState()`, `fetchSampleDatasetCount()`, and `fetchMockupIndex()` with TSDoc and strict types (reading URLs only from arguments or `scripts/ports.ts`, never hardcoded `localhost:3000`/`3333`).
-    3. Create `tests/advisory-a11y.test.ts` covering: default `'warn'` mode when unset; `'error'` mode when `SAMATA_ADVISORY_CHECKS='error'`; Chromium `'warn'` mode recording `'a11y-warning'` annotations and calling `warn` without throwing on violations or scan errors; non-Chromium `'warn'` mode skipping `scan()` and recording `'a11y-skipped'`; `'error'` mode failing on violations and rethrowing scan errors across all browser names.
-    4. Update `.storybook/main.ts` (`viteFinal`) to define `__SAMATA_STORYBOOK_A11Y_TEST__` as `JSON.stringify(process.env.SAMATA_ADVISORY_CHECKS === 'error' ? 'error' : 'todo')`, declare the constant type in `.storybook/env.d.ts` (included by `tsconfig.json`), and update `.storybook/preview.ts` to use `a11y: { test: __SAMATA_STORYBOOK_A11Y_TEST__ }`.
+  1. Create `tests/helpers/advisory-a11y.ts` exporting `AdvisoryCheckMode`, `advisoryCheckMode()`, and `runAdvisoryAxe()` with TSDoc and strict TypeScript types matching § Interfaces and behaviour.
+  2. Create `tests/helpers/e2e-settlement.ts` exporting `expectReservedModalClosed()`, `waitForPersistedAppState()`, `fetchSampleDatasetCount()`, and `fetchMockupIndex()` with TSDoc and strict types (reading URLs only from arguments or `scripts/ports.ts`, never hardcoded `localhost:3000`/`3333`).
+  3. Create `tests/advisory-a11y.test.ts` covering: default `'warn'` mode when unset; `'error'` mode when `SAMATA_ADVISORY_CHECKS='error'`; Chromium `'warn'` mode recording `'a11y-warning'` annotations and calling `warn` without throwing on violations or scan errors; non-Chromium `'warn'` mode skipping `scan()` and recording `'a11y-skipped'`; `'error'` mode failing on violations and rethrowing scan errors across all browser names.
+  4. Update `.storybook/main.ts` (`viteFinal`) to define `__SAMATA_STORYBOOK_A11Y_TEST__` as `JSON.stringify(process.env.SAMATA_ADVISORY_CHECKS === 'error' ? 'error' : 'todo')`, declare the constant type in `.storybook/env.d.ts` (included by `tsconfig.json`), and update `.storybook/preview.ts` to use `a11y: { test: __SAMATA_STORYBOOK_A11Y_TEST__ }`.
 - **Acceptance criteria:**
-    - [ ] `advisoryCheckMode()` defaults to `'warn'` and returns `'error'` only when `SAMATA_ADVISORY_CHECKS === 'error'`.
-    - [ ] `runAdvisoryAxe()` skips non-Chromium scans in `'warn'` mode with an `'a11y-skipped'` annotation, warns without throwing on Chromium violations or scan exceptions in `'warn'` mode, and fails deterministically in `'error'` mode.
-    - [ ] `bun run test:stories` passes with Storybook `a11y.test` defaulting to `'todo'` while retaining all story interaction assertions.
-    - [ ] `bun run check`, `bun run lint`, and `bun test tests/advisory-a11y.test.ts` pass.
+  - [ ] `advisoryCheckMode()` defaults to `'warn'` and returns `'error'` only when `SAMATA_ADVISORY_CHECKS === 'error'`.
+  - [ ] `runAdvisoryAxe()` skips non-Chromium scans in `'warn'` mode with an `'a11y-skipped'` annotation, warns without throwing on Chromium violations or scan exceptions in `'warn'` mode, and fails deterministically in `'error'` mode.
+  - [ ] `bun run test:stories` passes with Storybook `a11y.test` defaulting to `'todo'` while retaining all story interaction assertions.
+  - [ ] `bun run check`, `bun run lint`, and `bun test tests/advisory-a11y.test.ts` pass.
 - **Verification:** `bun test tests/advisory-a11y.test.ts`, `bun run check`, `bun run lint`, `bun run test:stories`, `bun run format:check tests/helpers/advisory-a11y.ts tests/helpers/e2e-settlement.ts tests/advisory-a11y.test.ts .storybook/main.ts .storybook/preview.ts .storybook/env.d.ts`
 - **Progress:** [ ] Not started
 
@@ -220,14 +220,14 @@ export async function fetchMockupIndex(
 - **Likely files:** `tests/app-shell.e2e.ts`, `tests/sidebar-acceptance.e2e.ts`, `tests/content-dialog.e2e.ts`, `tests/welcome-acceptance.e2e.ts`, `tests/telemetry-acceptance.e2e.ts`, `tests/virtual-table.e2e.ts`, `tests/model-card.e2e.ts`, `tests/model-configuration.e2e.ts`, `tests/models-overview.e2e.ts`, `tests/models-setup.e2e.ts`, `tests/training-panels.e2e.ts`, `tests/results-summary.e2e.ts`, `tests/results-errors.e2e.ts`, `tests/results-probability.e2e.ts`
 - **Must not touch:** `src/`, `css/`, `tests/a11y.e2e.ts`, `tests/visual-parity.e2e.ts` — keep dedicated advisory suites and production code untouched.
 - **Implementation:**
-    1. In each of the 14 mixed functional E2E files identified in Codebase context, pass Playwright's `testInfo` fixture into tests that invoke `AxeBuilder` (and into `assertPanelAccessibility(page, testInfo)` in `tests/training-panels.e2e.ts`) and wrap only the `AxeBuilder.analyze()` + violation-filtering assertion inside `runAdvisoryAxe(testInfo, async () => { ... }, { label })`.
-    2. Preserve every existing rule filter (such as `color-contrast` or `featureA11yFindings` matching in `model-card.e2e.ts`, `model-configuration.e2e.ts`, `models-overview.e2e.ts`, `models-setup.e2e.ts`) inside the `scan` callback so `SAMATA_ADVISORY_CHECKS=error` retains exact parity with prior strict checks.
-    3. Never weaken or remove any functional, keyboard, focus, scroll, reflow, or ARIA-name assertion in any of the 14 files.
+  1. In each of the 14 mixed functional E2E files identified in Codebase context, pass Playwright's `testInfo` fixture into tests that invoke `AxeBuilder` (and into `assertPanelAccessibility(page, testInfo)` in `tests/training-panels.e2e.ts`) and wrap only the `AxeBuilder.analyze()` + violation-filtering assertion inside `runAdvisoryAxe(testInfo, async () => { ... }, { label })`.
+  2. Preserve every existing rule filter (such as `color-contrast` or `featureA11yFindings` matching in `model-card.e2e.ts`, `model-configuration.e2e.ts`, `models-overview.e2e.ts`, `models-setup.e2e.ts`) inside the `scan` callback so `SAMATA_ADVISORY_CHECKS=error` retains exact parity with prior strict checks.
+  3. Never weaken or remove any functional, keyboard, focus, scroll, reflow, or ARIA-name assertion in any of the 14 files.
 - **Acceptance criteria:**
-    - [ ] Every inline `AxeBuilder` call across the 14 mixed functional E2E files executes via `runAdvisoryAxe()`.
-    - [ ] In Firefox (`SAMATA_ADVISORY_CHECKS=warn`), `tests/training-panels.e2e.ts` and `tests/models-setup.e2e.ts` pass all functional assertions without triggering Firefox Nightly `AxeBuilder` `signal 11` crashes.
-    - [ ] In Chromium (`SAMATA_ADVISORY_CHECKS=warn`), functional assertions still fail on real regressions while inline `AxeBuilder` scans execute and emit warnings only on unexpected violations.
-    - [ ] Under `SAMATA_ADVISORY_CHECKS=error`, the wrapped scans enforce violations as hard errors identically to before.
+  - [ ] Every inline `AxeBuilder` call across the 14 mixed functional E2E files executes via `runAdvisoryAxe()`.
+  - [ ] In Firefox (`SAMATA_ADVISORY_CHECKS=warn`), `tests/training-panels.e2e.ts` and `tests/models-setup.e2e.ts` pass all functional assertions without triggering Firefox Nightly `AxeBuilder` `signal 11` crashes.
+  - [ ] In Chromium (`SAMATA_ADVISORY_CHECKS=warn`), functional assertions still fail on real regressions while inline `AxeBuilder` scans execute and emit warnings only on unexpected violations.
+  - [ ] Under `SAMATA_ADVISORY_CHECKS=error`, the wrapped scans enforce violations as hard errors identically to before.
 - **Verification:** `bun run typecheck`, `bun run test:e2e tests/training-panels.e2e.ts tests/models-setup.e2e.ts --project=firefox`, `bun run test:e2e tests/training-panels.e2e.ts tests/models-setup.e2e.ts --project=chromium`
 - **Progress:** [ ] Not started
 
@@ -238,19 +238,19 @@ export async function fetchMockupIndex(
 - **Likely files:** `tests/data-flow.e2e.ts`, `tests/data-upload.e2e.ts`, `tests/mockup-review.e2e.ts`, `tests/app-shell.e2e.ts`, `tests/data-preview.e2e.ts`, `tests/content.e2e.ts`, `tests/results-probability.e2e.ts`
 - **Must not touch:** `src/`, `css/`, `content/`, `specification/mockups/`, `tests/visual-parity.e2e.ts` — test hardening only.
 - **Implementation:**
-    1. **Dynamic dataset counts (`tests/data-flow.e2e.ts` `DATA-FLOW-2`, `tests/data-upload.e2e.ts` `DATA-UP-2`):** Replace hardcoded `toHaveCount(12)` with `const expectedCount = await fetchSampleDatasetCount(page); expect(expectedCount).toBeGreaterThan(0); await expect(cards).toHaveCount(expectedCount);`.
-    2. **Dynamic mockup counts (`tests/mockup-review.e2e.ts` `MOCKUP-REVIEW-1..3`):** Fetch `/index.json` via `fetchMockupIndex(page, MOCKUP_SERVER)` to compute `total`, `implementedCount`, and `draftCount` dynamically (`expect(total).toBeGreaterThan(0)` and `expect(implementedCount).toBeGreaterThan(0)` and `expect(draftCount).toBeGreaterThan(0)`), and assert table rows, `#results-count` text, and `#preview-page option` count against those derived values. Rename the first test title from `with all 26 mockups` to `catalogue renders mockup-index table from /index.json with every listed mockup`.
-    3. **Split `PH-AC-2` (`tests/app-shell.e2e.ts#L1201-L1273`):** Keep all semantic header/heading/notification assertions and non-padding `<main>` geometry checks (`marginInlineStart`, `minBlockSize`, `boxSizing`) in `PH-AC-2`; remove the duplicated mockup `padding` equality check (mockup `<main>` padding parity belongs exclusively to `PARITY-main` in `tests/visual-parity.e2e.ts`).
-    4. **Harden `DATA-PRE-2` (`tests/data-preview.e2e.ts#L310-L321`):** Before `await page.reload()`, call `await waitForPersistedAppState(page, (state) => (state.data as { selectedColumn?: string } | undefined)?.selectedColumn === 'petal length')` so asynchronous guarded persistence completes before reload.
-    5. **Harden `WML-P2-ROUTE-2` and `TERM-AC-1` (`tests/content.e2e.ts`):**
-        - In `TERM-AC-1` (`#L30-L35`): replace `await expect(dialog).toBeHidden()` with `await expectReservedModalClosed(page, dialog, /\/data$/)` before `await help.tap()`.
-        - In `WML-P2-ROUTE-2` (`#L135-L182`): use `dismissWelcomeModal(page)` and `loadSampleDataset(page, 'iris')` from `tests/journeys/helpers.ts` (avoiding unawaited welcome-dismissal and dataset-ingestion races before `page.goto('/target')`), wait for target persistence via `waitForPersistedAppState` before `page.goto('/models')`, and use `expectReservedModalClosed(page, modal, /\/models\/new$/)` on close.
-    6. **Harden `WML-P4-UI-7` (`tests/results-probability.e2e.ts#L156-L165`):** Move `slider.fill('0')` + `whenSettled()` and `slider.fill('100')` + `whenSettled()` out of `expect.poll` so `expect.poll` performs only a read-only check on `ruleX(page)`.
-    7. **Harden `FOCUS-AC-5` (`tests/app-shell.e2e.ts#L974-L1003`):** Replace one-shot `expect(await outline(heading)).toMatchObject(...)` calls with `await expect.poll(() => outline(heading)).toMatchObject(...)`.
+  1. **Dynamic dataset counts (`tests/data-flow.e2e.ts` `DATA-FLOW-2`, `tests/data-upload.e2e.ts` `DATA-UP-2`):** Replace hardcoded `toHaveCount(12)` with `const expectedCount = await fetchSampleDatasetCount(page); expect(expectedCount).toBeGreaterThan(0); await expect(cards).toHaveCount(expectedCount);`.
+  2. **Dynamic mockup counts (`tests/mockup-review.e2e.ts` `MOCKUP-REVIEW-1..3`):** Fetch `/index.json` via `fetchMockupIndex(page, MOCKUP_SERVER)` to compute `total`, `implementedCount`, and `draftCount` dynamically (`expect(total).toBeGreaterThan(0)` and `expect(implementedCount).toBeGreaterThan(0)` and `expect(draftCount).toBeGreaterThan(0)`), and assert table rows, `#results-count` text, and `#preview-page option` count against those derived values. Rename the first test title from `with all 26 mockups` to `catalogue renders mockup-index table from /index.json with every listed mockup`.
+  3. **Split `PH-AC-2` (`tests/app-shell.e2e.ts#L1201-L1273`):** Keep all semantic header/heading/notification assertions and non-padding `<main>` geometry checks (`marginInlineStart`, `minBlockSize`, `boxSizing`) in `PH-AC-2`; remove the duplicated mockup `padding` equality check (mockup `<main>` padding parity belongs exclusively to `PARITY-main` in `tests/visual-parity.e2e.ts`).
+  4. **Harden `DATA-PRE-2` (`tests/data-preview.e2e.ts#L310-L321`):** Before `await page.reload()`, call `await waitForPersistedAppState(page, (state) => (state.data as { selectedColumn?: string } | undefined)?.selectedColumn === 'petal length')` so asynchronous guarded persistence completes before reload.
+  5. **Harden `WML-P2-ROUTE-2` and `TERM-AC-1` (`tests/content.e2e.ts`):**
+     - In `TERM-AC-1` (`#L30-L35`): replace `await expect(dialog).toBeHidden()` with `await expectReservedModalClosed(page, dialog, /\/data$/)` before `await help.tap()`.
+     - In `WML-P2-ROUTE-2` (`#L135-L182`): use `dismissWelcomeModal(page)` and `loadSampleDataset(page, 'iris')` from `tests/journeys/helpers.ts` (avoiding unawaited welcome-dismissal and dataset-ingestion races before `page.goto('/target')`), wait for target persistence via `waitForPersistedAppState` before `page.goto('/models')`, and use `expectReservedModalClosed(page, modal, /\/models\/new$/)` on close.
+  6. **Harden `WML-P4-UI-7` (`tests/results-probability.e2e.ts#L156-L165`):** Move `slider.fill('0')` + `whenSettled()` and `slider.fill('100')` + `whenSettled()` out of `expect.poll` so `expect.poll` performs only a read-only check on `ruleX(page)`.
+  7. **Harden `FOCUS-AC-5` (`tests/app-shell.e2e.ts#L974-L1003`):** Replace one-shot `expect(await outline(heading)).toMatchObject(...)` calls with `await expect.poll(() => outline(heading)).toMatchObject(...)`.
 - **Acceptance criteria:**
-    - [ ] `DATA-FLOW-2`, `DATA-UP-2`, `MOCKUP-REVIEW-1..3`, `PH-AC-2`, `DATA-PRE-2`, `WML-P2-ROUTE-2`, `TERM-AC-1`, `WML-P4-UI-7`, and `FOCUS-AC-5` all pass without `SAMATA_SKIP_KNOWN_FAILURES=1` across Chromium, Firefox, and WebKit (3/3 repeats on `WML-P4-UI-7`, `DATA-PRE-2`, `WML-P2-ROUTE-2`, `TERM-AC-1`, and `FOCUS-AC-5` in Chromium).
-    - [ ] No test in the modified files hardcodes literal dataset (`12`/`11`) or mockup (`26`/`29`) counts.
-    - [ ] `tests/test-server-urls.test.ts` continues to pass.
+  - [ ] `DATA-FLOW-2`, `DATA-UP-2`, `MOCKUP-REVIEW-1..3`, `PH-AC-2`, `DATA-PRE-2`, `WML-P2-ROUTE-2`, `TERM-AC-1`, `WML-P4-UI-7`, and `FOCUS-AC-5` all pass without `SAMATA_SKIP_KNOWN_FAILURES=1` across Chromium, Firefox, and WebKit (3/3 repeats on `WML-P4-UI-7`, `DATA-PRE-2`, `WML-P2-ROUTE-2`, `TERM-AC-1`, and `FOCUS-AC-5` in Chromium).
+  - [ ] No test in the modified files hardcodes literal dataset (`12`/`11`) or mockup (`26`/`29`) counts.
+  - [ ] `tests/test-server-urls.test.ts` continues to pass.
 - **Verification:** `bun run test:e2e tests/data-flow.e2e.ts tests/data-upload.e2e.ts tests/mockup-review.e2e.ts tests/data-preview.e2e.ts tests/content.e2e.ts tests/results-probability.e2e.ts tests/app-shell.e2e.ts --grep "DATA-FLOW-2|DATA-UP-2|catalogue renders|client-side search|normal preview|PH-AC-2|DATA-PRE-2|WML-P2-ROUTE-2|TERM-AC-1|WML-P4-UI-7: the rule moves|FOCUS-AC-5: heading outlines"`, `bun test tests/test-server-urls.test.ts`
 - **Progress:** [ ] Not started
 
@@ -261,27 +261,27 @@ export async function fetchMockupIndex(
 - **Likely files:** `playwright.config.ts`, `package.json`, `tests/known-failures.ts`, `tests/known-failures.test.ts`, `.github/workflows/ci.yml`, `tests/ci-workflow.test.ts`
 - **Must not touch:** `src/`, `css/`, `content/`, `vendor/`, `bun.lock` — no dependency or product-code edits.
 - **Implementation:**
-    1. Update `playwright.config.ts` to add `testIgnore: process.env.SAMATA_E2E_TIER === 'blocking' ? ['**/visual-parity.e2e.ts', '**/a11y.e2e.ts'] : undefined` while preserving existing `projectGrepInvert` support and `webServer` configuration.
-    2. Update `package.json` scripts to add `"test:e2e:blocking": "SAMATA_E2E_TIER=blocking playwright test"` and `"test:e2e:advisory": "playwright test tests/visual-parity.e2e.ts tests/a11y.e2e.ts --project=chromium"`.
-    3. Empty `KNOWN_FAILURES` in `tests/known-failures.ts` (`export const KNOWN_FAILURES: readonly KnownFailure[] = [];`), retaining the exported types and `knownFailureGrep()` utility (plus an optional `entries` parameter defaulting to `KNOWN_FAILURES` so unit tests can exercise matching behaviour cleanly even when `KNOWN_FAILURES` is empty).
-    4. Update `tests/known-failures.test.ts` to verify:
-        - `KNOWN_FAILURES` is empty (or every future entry maps to `specification/HUMAN.md` and removes exactly one spec per project/platform under `SAMATA_E2E_TIER=blocking`).
-        - `knownFailureGrep()` returns `undefined` when empty and builds exact anchored regexes for synthetic entries.
-        - `SAMATA_E2E_TIER=blocking` excludes `visual-parity.e2e.ts` and `a11y.e2e.ts` while retaining all functional suites, and unflagged `playwright test --list` still includes both advisory files.
-    5. Update `.github/workflows/ci.yml`:
-        - In `e2e`: set `SAMATA_ADVISORY_CHECKS: 'warn'` alongside `PROJECT` and `SAMATA_SKIP_KNOWN_FAILURES: '1'`, and run `bun run test:e2e:blocking --project="$PROJECT"`.
-        - Add `advisory` job (`name: Advisory (Visual Parity & WCAG)`, `needs: [verify]`, `runs-on: ubuntu-24.04`, `timeout-minutes: 30`, `continue-on-error: true`, `concurrency: { group: advisory-${{ github.ref }}, cancel-in-progress: ${{ github.event_name == 'pull_request' }} }`) using the exact same SHA-pinned checkout/checksum/setup-bun/install steps, installing `chromium` only, and running `bun run test:e2e:advisory` with `SAMATA_ADVISORY_CHECKS: 'error'`.
-        - Keep `deploy` `needs: [verify, e2e]` (never `advisory`).
-    6. Update `tests/ci-workflow.test.ts` (`collectWorkflowViolations` and regression tests) to enforce:
-        - All existing security/pin/checksum/`verify`/`deploy` invariants.
-        - `e2e` runs `bun run test:e2e:blocking --project="$PROJECT"` with `SAMATA_ADVISORY_CHECKS: 'warn'` and `SAMATA_SKIP_KNOWN_FAILURES: '1'`.
-        - `advisory` has `needs: ['verify']`, `continue-on-error: true`, installs `chromium`, runs `bun run test:e2e:advisory` with `SAMATA_ADVISORY_CHECKS: 'error'`, and is NOT in `deploy.needs`.
-        - Regression test confirms adding `advisory` to `deploy.needs`, omitting `continue-on-error: true`, or breaking pins fails `collectWorkflowViolations`.
+  1. Update `playwright.config.ts` to add `testIgnore: process.env.SAMATA_E2E_TIER === 'blocking' ? ['**/visual-parity.e2e.ts', '**/a11y.e2e.ts'] : undefined` while preserving existing `projectGrepInvert` support and `webServer` configuration.
+  2. Update `package.json` scripts to add `"test:e2e:blocking": "SAMATA_E2E_TIER=blocking playwright test"` and `"test:e2e:advisory": "playwright test tests/visual-parity.e2e.ts tests/a11y.e2e.ts --project=chromium"`.
+  3. Empty `KNOWN_FAILURES` in `tests/known-failures.ts` (`export const KNOWN_FAILURES: readonly KnownFailure[] = [];`), retaining the exported types and `knownFailureGrep()` utility (plus an optional `entries` parameter defaulting to `KNOWN_FAILURES` so unit tests can exercise matching behaviour cleanly even when `KNOWN_FAILURES` is empty).
+  4. Update `tests/known-failures.test.ts` to verify:
+     - `KNOWN_FAILURES` is empty (or every future entry maps to `specification/HUMAN.md` and removes exactly one spec per project/platform under `SAMATA_E2E_TIER=blocking`).
+     - `knownFailureGrep()` returns `undefined` when empty and builds exact anchored regexes for synthetic entries.
+     - `SAMATA_E2E_TIER=blocking` excludes `visual-parity.e2e.ts` and `a11y.e2e.ts` while retaining all functional suites, and unflagged `playwright test --list` still includes both advisory files.
+  5. Update `.github/workflows/ci.yml`:
+     - In `e2e`: set `SAMATA_ADVISORY_CHECKS: 'warn'` alongside `PROJECT` and `SAMATA_SKIP_KNOWN_FAILURES: '1'`, and run `bun run test:e2e:blocking --project="$PROJECT"`.
+     - Add `advisory` job (`name: Advisory (Visual Parity & WCAG)`, `needs: [verify]`, `runs-on: ubuntu-24.04`, `timeout-minutes: 30`, `continue-on-error: true`, `concurrency: { group: advisory-${{ github.ref }}, cancel-in-progress: ${{ github.event_name == 'pull_request' }} }`) using the exact same SHA-pinned checkout/checksum/setup-bun/install steps, installing `chromium` only, and running `bun run test:e2e:advisory` with `SAMATA_ADVISORY_CHECKS: 'error'`.
+     - Keep `deploy` `needs: [verify, e2e]` (never `advisory`).
+  6. Update `tests/ci-workflow.test.ts` (`collectWorkflowViolations` and regression tests) to enforce:
+     - All existing security/pin/checksum/`verify`/`deploy` invariants.
+     - `e2e` runs `bun run test:e2e:blocking --project="$PROJECT"` with `SAMATA_ADVISORY_CHECKS: 'warn'` and `SAMATA_SKIP_KNOWN_FAILURES: '1'`.
+     - `advisory` has `needs: ['verify']`, `continue-on-error: true`, installs `chromium`, runs `bun run test:e2e:advisory` with `SAMATA_ADVISORY_CHECKS: 'error'`, and is NOT in `deploy.needs`.
+     - Regression test confirms adding `advisory` to `deploy.needs`, omitting `continue-on-error: true`, or breaking pins fails `collectWorkflowViolations`.
 - **Acceptance criteria:**
-    - [ ] `KNOWN_FAILURES` has length `0`.
-    - [ ] `bun test tests/known-failures.test.ts tests/ci-workflow.test.ts` passes.
-    - [ ] `bun run test:e2e:blocking --project=chromium`, `bun run test:e2e:blocking --project=firefox`, and `bun run test:e2e:blocking --project=webkit` pass with 0 failures.
-    - [ ] `SAMATA_ADVISORY_CHECKS=error bun run test:e2e:advisory` runs `tests/visual-parity.e2e.ts` and `tests/a11y.e2e.ts` in Chromium (reporting any known V1 visual-parity/contrast diffs without blocking `test:e2e:blocking`).
+  - [ ] `KNOWN_FAILURES` has length `0`.
+  - [ ] `bun test tests/known-failures.test.ts tests/ci-workflow.test.ts` passes.
+  - [ ] `bun run test:e2e:blocking --project=chromium`, `bun run test:e2e:blocking --project=firefox`, and `bun run test:e2e:blocking --project=webkit` pass with 0 failures.
+  - [ ] `SAMATA_ADVISORY_CHECKS=error bun run test:e2e:advisory` runs `tests/visual-parity.e2e.ts` and `tests/a11y.e2e.ts` in Chromium (reporting any known V1 visual-parity/contrast diffs without blocking `test:e2e:blocking`).
 - **Verification:** `bun test tests/known-failures.test.ts tests/ci-workflow.test.ts`, `bun run check`, `bun run test:e2e:blocking --project=chromium`, `bun run test:e2e:blocking --project=firefox`, `bun run test:e2e:blocking --project=webkit`
 - **Progress:** [ ] Not started
 
@@ -292,14 +292,14 @@ export async function fetchMockupIndex(
 - **Likely files:** `specification/testing.md`, `specification/visual-design.md`, `specification/HUMAN.md`, `AGENTS.md`
 - **Must not touch:** `src/`, `css/`, `tests/`, `specification/mockups/` — documentation sync only.
 - **Implementation:**
-    1. Update `specification/testing.md` (present tense, no history) to describe the blocking vs advisory beta test tiers, `test:e2e:blocking`, `test:e2e:advisory`, `SAMATA_ADVISORY_CHECKS` (`warn` default vs `error` for V1), Storybook `'todo'`/`'error'` a11y mode, Chromium-only advisory scope, and E2E settlement/dynamic-count rules.
-    2. Update `specification/visual-design.md` § 6 to record that visual-parity and WCAG automated suites run as non-blocking Chromium advisory checks during beta (`test:e2e:advisory`) while `tests/style-tokens.test.ts` remains blocking, and that `SAMATA_ADVISORY_CHECKS=error` restores strict V1 enforcement.
-    3. Update `specification/HUMAN.md` § 1: remove the resolved items (`Update stale dataset-count and mockup-count E2E expectations`, `Repair Chromium content-modal and data-preview E2E failures`, `Fix intermittent full-suite Firefox crash in remote training recovery`), update the V1 visual-parity / `SIDE-AC-10` / main-padding items to reference the advisory suite instead of `tests/known-failures.ts`, and add a non-blocking pointer to `../../agent-workflow/specification/requests/2026-11-26-tiered-test-severity-and-e2e-hardening-guidance.md`. Refresh `**Updated:**`.
-    4. Update `AGENTS.md` § Verification Commands and § Rules with `bun run test:e2e:blocking`, `bun run test:e2e:advisory`, and a concise beta severity rule (blocking functional checks vs advisory visual/WCAG warnings) so future agents follow the policy consistently.
+  1. Update `specification/testing.md` (present tense, no history) to describe the blocking vs advisory beta test tiers, `test:e2e:blocking`, `test:e2e:advisory`, `SAMATA_ADVISORY_CHECKS` (`warn` default vs `error` for V1), Storybook `'todo'`/`'error'` a11y mode, Chromium-only advisory scope, and E2E settlement/dynamic-count rules.
+  2. Update `specification/visual-design.md` § 6 to record that visual-parity and WCAG automated suites run as non-blocking Chromium advisory checks during beta (`test:e2e:advisory`) while `tests/style-tokens.test.ts` remains blocking, and that `SAMATA_ADVISORY_CHECKS=error` restores strict V1 enforcement.
+  3. Update `specification/HUMAN.md` § 1: remove the resolved items (`Update stale dataset-count and mockup-count E2E expectations`, `Repair Chromium content-modal and data-preview E2E failures`, `Fix intermittent full-suite Firefox crash in remote training recovery`), update the V1 visual-parity / `SIDE-AC-10` / main-padding items to reference the advisory suite instead of `tests/known-failures.ts`, and add a non-blocking pointer to `../../agent-workflow/specification/requests/2026-11-26-tiered-test-severity-and-e2e-hardening-guidance.md`. Refresh `**Updated:**`.
+  4. Update `AGENTS.md` § Verification Commands and § Rules with `bun run test:e2e:blocking`, `bun run test:e2e:advisory`, and a concise beta severity rule (blocking functional checks vs advisory visual/WCAG warnings) so future agents follow the policy consistently.
 - **Acceptance criteria:**
-    - [ ] Every item under `## Specification changes` is satisfied and ticked.
-    - [ ] `specification/README.md` status column matches every modified spec's `**Status:**` header.
-    - [ ] `bun run plans:check`, `bun run check`, `bun run lint`, `bun run deploy:dry-run`, `bun run test:stories`, and `bun run format:check` on all changed files pass.
+  - [ ] Every item under `## Specification changes` is satisfied and ticked.
+  - [ ] `specification/README.md` status column matches every modified spec's `**Status:**` header.
+  - [ ] `bun run plans:check`, `bun run check`, `bun run lint`, `bun run deploy:dry-run`, `bun run test:stories`, and `bun run format:check` on all changed files pass.
 - **Verification:** `bun run plans:check specification/plans/beta-test-robustness-and-advisory-checks.md`, `bun run check`, `bun run lint`, `bun run deploy:dry-run`, `bun run test:stories`, `bun run format:check specification/testing.md specification/visual-design.md specification/HUMAN.md AGENTS.md`
 - **Progress:** [ ] Not started
 
@@ -317,9 +317,9 @@ export async function fetchMockupIndex(
 
 - **Blocking:** None
 - **Non-blocking:**
-    - **Upstream `agent-workflow` guidance alignment:** Global lifecycle skills (`create-plan`, `verify-plan`, `implement`, `verify-implementation`) still treat WCAG 2.2 AA and visual parity as uniform hard criteria until `../agent-workflow/specification/requests/2026-11-26-tiered-test-severity-and-e2e-hardening-guidance.md` is planned and adopted. Mitigation: this plan updates `samata-ml`'s `AGENTS.md` and `specification/testing.md` directly so `samata-ml` sessions honour the beta tiering immediately; the upstream request aligns shared skills across repositories.
-    - **Hidden production persistence race in `DATA-PRE-2` / `WML-P2-ROUTE-2`:** If awaiting `waitForPersistedAppState` or `loadSampleDataset` does not resolve `DATA-PRE-2` or `WML-P2-ROUTE-2` in Chromium, that indicates a real product persistence bug in `src/stores/persister.ts`. Mitigation: T3 explicitly escalates rather than modifying `src/` out of scope.
-    - **V1 strictness re-enablement:** Keeping `SAMATA_ADVISORY_CHECKS` as a single flag (default `'warn'` in beta, `'error'` in V1) ensures visual parity and WCAG checks do not rot out of sight — the `advisory` CI job continues running them on every PR and push to `main`.
+  - **Upstream `agent-workflow` guidance alignment:** Global lifecycle skills (`create-plan`, `verify-plan`, `implement`, `verify-implementation`) still treat WCAG 2.2 AA and visual parity as uniform hard criteria until `../agent-workflow/specification/requests/2026-11-26-tiered-test-severity-and-e2e-hardening-guidance.md` is planned and adopted. Mitigation: this plan updates `samata-ml`'s `AGENTS.md` and `specification/testing.md` directly so `samata-ml` sessions honour the beta tiering immediately; the upstream request aligns shared skills across repositories.
+  - **Hidden production persistence race in `DATA-PRE-2` / `WML-P2-ROUTE-2`:** If awaiting `waitForPersistedAppState` or `loadSampleDataset` does not resolve `DATA-PRE-2` or `WML-P2-ROUTE-2` in Chromium, that indicates a real product persistence bug in `src/stores/persister.ts`. Mitigation: T3 explicitly escalates rather than modifying `src/` out of scope.
+  - **V1 strictness re-enablement:** Keeping `SAMATA_ADVISORY_CHECKS` as a single flag (default `'warn'` in beta, `'error'` in V1) ensures visual parity and WCAG checks do not rot out of sight — the `advisory` CI job continues running them on every PR and push to `main`.
 
 ## Escalations
 

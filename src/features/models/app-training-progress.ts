@@ -117,6 +117,28 @@ export class AppTrainingProgress extends LitElement {
 			.progress-bar:indeterminate {
 				background: var(--progress-stripes) var(--progress-fill);
 			}
+			@keyframes progress-stripes {
+				from {
+					background-position: 0 0;
+				}
+				to {
+					background-position: 2rem 0;
+				}
+			}
+			@media (prefers-reduced-motion: no-preference) {
+				.training-active .progress-bar::-webkit-progress-value {
+					animation: progress-stripes 0.8s linear infinite;
+					background-size: 2rem 100%;
+				}
+				.training-active .progress-bar::-moz-progress-bar {
+					animation: progress-stripes 0.8s linear infinite;
+					background-size: 2rem 100%;
+				}
+				.training-active .progress-bar:indeterminate {
+					animation: progress-stripes 0.8s linear infinite;
+					background-size: 2rem 100%;
+				}
+			}
 			.progress-percent {
 				min-inline-size: 4ch;
 				font-variant-numeric: tabular-nums;

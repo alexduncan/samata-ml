@@ -15,8 +15,8 @@ All functionality must be created alongside a comprehensive test setup. Code sub
 
 - **Runner:** Playwright MUST be used for integration and E2E testing.
 - Playwright is mandatory for verifying features that cannot be perfectly mocked in a terminal, specifically:
-    - Writing raw CSV data to the actual browser IndexedDB.
-    - Verifying Web Worker initialisation and the application's typed request/response protocol.
+  - Writing raw CSV data to the actual browser IndexedDB.
+  - Verifying Web Worker initialisation and the application's typed request/response protocol.
 - The model-card and builder suites cover image decoding, reserved space on image failure, accessible action names, native focus restoration, selection persistence and catalogue eligibility in the connected browser workflow.
 - The shell suite covers cancellable component-owned heading focus independently of scroll restoration, native modal intent/history, responsive/RTL layouts and reduced-motion/forced-colours emulation. Real browser zoom and screen-reader observations are recorded separately from emulation.
 - `tests/visual-parity.e2e.ts` compares clean reference/app styles and relative geometry at Chromium 1440×900, with reviewed Empty/Models sidebar screenshot baselines and a negative layout probe. Parity is intentionally Chromium-only; component acceptance remains three-browser. No mapped surface has a drift exemption.

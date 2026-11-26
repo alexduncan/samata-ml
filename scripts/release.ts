@@ -238,7 +238,10 @@ async function runCli(argv: string[]): Promise<void> {
 	await writeFile(pkgPath, updatedPkg, 'utf8');
 	await writeFile(changelogPath, updatedChangelog, 'utf8');
 
-	runCommandOrThrow(['bun', 'run', 'format', 'package.json', 'CHANGELOG.md'], 'bun run format');
+	runCommandOrThrow(
+		['bun', 'run', 'format', '--paths', 'package.json', 'CHANGELOG.md'],
+		'bun run format'
+	);
 
 	console.log(`${currentVersion} → ${nextVersion}`);
 	console.log('');

@@ -18,19 +18,19 @@ A missing mockup does not block a feature. When a surface has no `ready` or `imp
 
 - **Location and governance:** `mockups/<name>.html`, named as the promoted mockup will be (e.g. `03-4_train-models-3-configure-model.html`). Agents may create and edit files in `specification/mockups/` only when `<meta name="status" content="draft" />` (or when explicitly authorised by a plan); `ready` and `implemented` mockups and `mockups.css` are human-owned. `bun run mockups` serves files flat at `<checkout mockup URL>/<name>.html` (`http://localhost:3333/` in the primary checkout) and lists them via `/index.json` in the `/` catalogue.
 - **Required metadata:** every HTML file in `mockups/` declares three `<meta>` elements in `<head>`:
-    - `<meta name="name" content="{Plain English Name}" />`
-    - `<meta name="description" content="{When the user encounters this UI}" />`
-    - `<meta name="status" content="draft|ready|implemented" />` (new agent drafts always start at `draft`)
+  - `<meta name="name" content="{Plain English Name}" />`
+  - `<meta name="description" content="{When the user encounters this UI}" />`
+  - `<meta name="status" content="draft|ready|implemented" />` (new agent drafts always start at `draft`)
 - **Shell:** copy the document shell (head, sidebar, page header) unchanged from the nearest existing mockup, and link `./style.css`. Do not hardcode `<link rel="stylesheet" href="./mockups.css" />` or `#__mockup-review-helper-host` markup in product mockups. Only the new content area is drafted.
 - **Semantic HTML only:** landmarks, headings in order, lists, tables with a `<caption>` and `<th scope>`, forms with `<label>`, `<fieldset>` and `<legend>`, and native `<button>`, `<dialog>` and `<details>`. Use ARIA only where no native element fits. Follow the SEM register (§5.2).
 - **No design:** no `<style>` element, `style` attribute, new CSS file, token, icon or image. Reuse an existing class only where an existing pattern is reused unchanged (e.g. `.btn`, `.notification`, `.chiclet`); add no other classes.
 - **Content and multi-state comments:** copy from the behaviour spec in British English, with realistic sample data (Palmer Penguins). Every state the spec describes (empty, blocked, loading, error, populated) gets its own file or its own fragment wrapped in opening and closing HTML comments:
-    ```html
-    <!-- {State Name} -->
-    <!-- This will display when {condition}. -->
-    <section>...</section>
-    <!-- / {State Name} -->
-    ```
+  ```html
+  <!-- {State Name} -->
+  <!-- This will display when {condition}. -->
+  <section>...</section>
+  <!-- / {State Name} -->
+  ```
 - **Header comment:** directly after `<!doctype html>`: `<!-- DRAFT: structure only, not normative for appearance. Source: <spec § or plan>. Open questions: <TODO IDs or none>. -->`
 - **Human queue:** add an item to [HUMAN.md](HUMAN.md) §6 to style the draft.
 
@@ -202,21 +202,21 @@ Visual fidelity uses static guards, computed styles/geometry, reviewed screensho
 
 1. **Token use static guard (`bun test tests/style-tokens.test.ts`):**
    Parses `css/root.css` to determine the canonical token set. Scans `src/**/*.ts` and `css/**/*.css` to assert:
-    - Every `var(--name)` references a known global or local token.
-    - TOK-2 checks literal colours in TypeScript style declarations and var fallbacks outside css/root.css. Direct CSS declaration coverage remains limited (Known gap 13); the normative token-only rule still applies to every style and requires review beyond the guard.
-    - No `<style>` tags appear inside HTML templates (`render()`).
-    - `KNOWN_DRIFT` is empty; TOK-4 prevents repaired shell exemptions returning.
-    - TOK-5/6 reject physical inline-direction CSS, `!important` and `:host-context()` in actual CSS/template declarations, without treating JavaScript scroll coordinates as styles.
+   - Every `var(--name)` references a known global or local token.
+   - TOK-2 checks literal colours in TypeScript style declarations and var fallbacks outside css/root.css. Direct CSS declaration coverage remains limited (Known gap 13); the normative token-only rule still applies to every style and requires review beyond the guard.
+   - No `<style>` tags appear inside HTML templates (`render()`).
+   - `KNOWN_DRIFT` is empty; TOK-4 prevents repaired shell exemptions returning.
+   - TOK-5/6 reject physical inline-direction CSS, `!important` and `:host-context()` in actual CSS/template declarations, without treating JavaScript scroll coordinates as styles.
 
 2. **Visual parity test harness (`bun run test:e2e tests/visual-parity.e2e.ts`):**
    A Playwright test running in Chromium at a 1440×900 viewport. It compares computed CSS styles between clean mockup pages served by `bun run mockups` (`<checkout mockup URL>/<filename>?clean=1`) and the running application routes (the checkout's app URL); the primary checkout uses 3333 and 3000.
-    - Mapped elements are defined in `tests/visual-parity/map.ts`.
-    - Checks background, borders, typography, spacing, explicit grid areas/tracks and fixture-relative numeric geometry within at most 1 CSS px. Content-dependent tracks are compared numerically rather than as identical strings.
-    - Deviations are validated against the approved deviation registers.
-    - No mapped surface has knownDrift; PARITY-contract prevents exemptions returning. Existing feature mappings remain blocking.
-    - Full-page screenshots of both the mockup and the app are captured and attached to the test run.
-    - Empty/Models sidebar fixtures have platform-specific `toHaveScreenshot` baselines after paired reference review, with animations disabled, caret hidden and zero allowed changed pixels at the default colour threshold. Never update baselines to hide unexpected differences. A temporary 4px workflow-gap mutation must fail geometry/screenshot checks before restoration passes.
-    - Reference fixtures may normalise text/counts/current state only; CSS, wrappers and dimensions remain unchanged. Draft-only content has paired structure captures, no appearance mapping or baseline approval claim.
+   - Mapped elements are defined in `tests/visual-parity/map.ts`.
+   - Checks background, borders, typography, spacing, explicit grid areas/tracks and fixture-relative numeric geometry within at most 1 CSS px. Content-dependent tracks are compared numerically rather than as identical strings.
+   - Deviations are validated against the approved deviation registers.
+   - No mapped surface has knownDrift; PARITY-contract prevents exemptions returning. Existing feature mappings remain blocking.
+   - Full-page screenshots of both the mockup and the app are captured and attached to the test run.
+   - Empty/Models sidebar fixtures have platform-specific `toHaveScreenshot` baselines after paired reference review, with animations disabled, caret hidden and zero allowed changed pixels at the default colour threshold. Never update baselines to hide unexpected differences. A temporary 4px workflow-gap mutation must fail geometry/screenshot checks before restoration passes.
+   - Reference fixtures may normalise text/counts/current state only; CSS, wrappers and dimensions remain unchanged. Draft-only content has paired structure captures, no appearance mapping or baseline approval claim.
 
 3. **Accessibility scan (`bun run test:e2e tests/a11y.e2e.ts`):**
    Uses `@axe-core/playwright` with `wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa`. Shell-scoped scans have zero violations and no exclusions. Broad audits match only separately owned exact feature elements and measured evidence in `tests/a11y-feature-findings.ts`. Unlisted rules and elements fail. Phase 2 resolved the Section 4 notice contrast finding. The remaining 23 data and model contrast targets are tracked in [the human queue](HUMAN.md#1-workflow-and-plan-review).
@@ -226,15 +226,15 @@ Visual fidelity uses static guards, computed styles/geometry, reviewed screensho
 
 5. **Adding a parity entry for a new view:**
    When introducing or refactoring a view:
-    - Identify the corresponding mockup page in `specification/mockups/`.
-    - Add a `ParityEntry` to `tests/visual-parity/map.ts` specifying the `mockupPage`, `mockupSelector`, `appRoute`, `appSelector`, and `properties` to compare.
-    - If a known deviation exists, document it with the register ID (`A11Y-nn` or `SEM-nn`) in the entry's `deviations` map.
+   - Identify the corresponding mockup page in `specification/mockups/`.
+   - Add a `ParityEntry` to `tests/visual-parity/map.ts` specifying the `mockupPage`, `mockupSelector`, `appRoute`, `appSelector`, and `properties` to compare.
+   - If a known deviation exists, document it with the register ID (`A11Y-nn` or `SEM-nn`) in the entry's `deviations` map.
 
 6. **Manual side-by-side verification:**
    Start both servers:
-    ```sh
-    bun run mockups
-    bun run server
-    ```
-    Open Chromium at a 1440×900 viewport side by side with the mockup page and the application route. Inspect visual alignment, fonts, colours, and interactive states. Attach screenshots of both views to the task report.
-    Review keyboard journeys, screen-reader current links/dialog/control names, real 200% browser zoom, 320px/RTL/long text, forced colours and reduced motion separately. Browser emulation is automated evidence, not a claim of native assistive-technology or real zoom testing. Production component stories provide the editing/review surface after porting; mockups remain normative.
+   ```sh
+   bun run mockups
+   bun run server
+   ```
+   Open Chromium at a 1440×900 viewport side by side with the mockup page and the application route. Inspect visual alignment, fonts, colours, and interactive states. Attach screenshots of both views to the task report.
+   Review keyboard journeys, screen-reader current links/dialog/control names, real 200% browser zoom, 320px/RTL/long text, forced colours and reduced motion separately. Browser emulation is automated evidence, not a claim of native assistive-technology or real zoom testing. Production component stories provide the editing/review surface after porting; mockups remain normative.

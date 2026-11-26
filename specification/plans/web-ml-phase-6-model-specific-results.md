@@ -1,6 +1,6 @@
 # Phase 6: Display model-specific internals for the eight classifiers in Section 6
 
-**Status:** ready-for-review | **Updated:** 2026-11-23T09:52:02Z
+**Status:** draft | **Updated:** 2026-11-26T13:49:27Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-19T08:47:35Z
 **Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
@@ -34,6 +34,43 @@
 - Fourteen presentational elements (Interfaces §C), their stories and three-browser tests; wiring into `app-model-results`; two new `ModelResultsUi` fields.
 - Configure Model: an MLP **Validation share** option (D11) and its configuration-key rule.
 
+**v2 feature-importance requirements to integrate (added 2026-11-26)**
+
+The user placed the model-specific items of `specification/notes/feature-importance-requirements.md` (v2) in this plan. The comparison surface and the permutation engine belong to [compare-feature-importance](compare-feature-importance.md), which lands first. The next revision of this plan must integrate:
+
+- **`PFI_DOTS` (v2 Chart 1)** in Section 6 for all eight models. It reads compare-feature-importance's stored `featureImportance` block and I5 summaries. It includes:
+  - fold dots, the mean marker and the variation whisker;
+  - the "hurt in n of K folds" tags and the `TOP_N` / "Show all" controls;
+  - the I7 skill-gate banner, with the chart greyed but kept;
+  - the single-holdout and fewer-shuffles notes;
+  - the rule 1 "What this does and does not tell you" note and the "Computed on held-out data" label.
+
+  This replaces this plan's deferral of MLP permutation importance.
+- **`SIGNED_WEIGHTS` (v2 Chart 3)** for Logistic Regression, linear SVC, Bernoulli NB and Multinomial NB:
+  - the "low to high" display scale and category-level centring;
+  - softmax centring and pairwise NB views;
+  - the odds-multiplier toggle;
+  - the non-linear SVC explanatory note.
+
+  It reconciles with this plan's coefficient forest and log-odds bars.
+- **`MDI_VS_PFI` (v2 Chart 4, I9)** for the Decision Tree: per-fold `featureImportances_` summed per raw column and averaged across folds, against held-out shuffle importance shares. This replaces this plan's deferral of MDI.
+- **`GAUSSIAN_DIST` (v2 Chart 5):**
+  - separation bands (terciles) and the smoothing epsilon;
+  - proportion bars for binary columns and the poor-fit note;
+  - the "Final model structure" badge.
+
+  It reconciles with this plan's fitted-curve panels.
+- **`LOCAL_EXPLAIN` 7a, 7c and 7d:**
+  - additive waterfalls summed to raw columns, with a test that additivity holds within 1e-9;
+  - rule paths that translate encoded splits;
+  - KNN neighbour tables with per-raw-column distance shares;
+  - every row explained by its own fold model.
+
+  It reconciles with this plan's evidence waterfall, tree outline and spoke diagram.
+- **The shared `selectedClass` control (I10)** for signed and probability charts, with v2 §2 rules 1–10 and the §7 constants (`WATERFALL_TOP`, `MDI_PFI_GAP_FLAG`) where they apply.
+
+Deferred with compare-feature-importance: I8 correlation warnings, the I4 log-loss alternative, lazy computation, `EFFECT_PLOT`, `LOCAL_EXPLAIN` 7b (approximate Shapley) and v2 Phase 3.
+
 **Out of scope**
 
 - Permutation importance (the MLP "global permutation importance" item). Deferred by the user on 2026-11-23 until `web-ml` scores importance with balanced accuracy ([request 01](../../../web-ml/specification/requests/2026-11-23-01-balanced-accuracy-scoring-everywhere.md)); recorded in `specification/FUTURE.md`.
@@ -50,12 +87,12 @@
 - `samata-ml` reads only public `web-ml` attributes and functions. It applies only the display transforms in D3 and never re-implements a model's likelihood, prediction, traversal or importance algorithm.
 - Fitted models are not stored by Phase 6. Phase 3 already stores the final `modelJson`, which Phase 6 does not read.
 - Phase 4 conventions apply (`components/model-results.md`):
-    - Observable Plot only through `PlotController`;
-    - the figure, caption and "Show data table" pattern;
-    - presentational elements with `labels` objects whose defaults are empty strings, and `app-model-results` owning every string;
-    - tokens only and no colour-only meaning;
-    - `shownClassIndices` (more than 20 classes) for class-filtered tables;
-    - WCAG 2.2 AA and i18n.
+  - Observable Plot only through `PlotController`;
+  - the figure, caption and "Show data table" pattern;
+  - presentational elements with `labels` objects whose defaults are empty strings, and `app-model-results` owning every string;
+  - tokens only and no colour-only meaning;
+  - `shownClassIndices` (more than 20 classes) for class-filtered tables;
+  - WCAG 2.2 AA and i18n.
 - Every output tensor is read through its runtime `shape`. An unexpected shape makes that insight part unavailable; it never throws (D10).
 
 ## Required reading
@@ -66,46 +103,46 @@
 - `specification/workflow-steps.md` §3.3 (Configure Model fields) and §3.6.
 - `specification/machine-learning-orchestrator.md` §2 (stored evaluation) and its configuration-key paragraph (L29).
 - `web-ml` 0.2.0 public contract (installed package):
-    - `node_modules/web-ml/dist/src/training/fitted-model-hook.d.ts` L6-38 and `node_modules/web-ml/specification/public-api/metrics.md` L97-137 — hook and context;
-    - `holdout-validate.d.ts` L9-75 and `cross-validate.d.ts` L28-146 under `node_modules/web-ml/dist/src/training/`;
-    - `node_modules/web-ml/dist/src/inspection/feature-contributions.d.ts` L9-69 and `node_modules/web-ml/specification/public-api/model-inspection.md`;
-    - `trees/decision-tree-classifier.d.ts` L7-166, `neural-networks/_base.d.ts` L33-79, `bayesian/{bernoulli-nb,multinomial-nb,gaussian-nb}.d.ts`, `linear/logistic-regression.d.ts` L78-228, `distance-based/k-neighbors-classifier.d.ts` L37-76 and `support-vector-machines/support-vector-classifier.d.ts` L43-150, all under `node_modules/web-ml/dist/src/models/`;
-    - `node_modules/web-ml/dist/src/types.d.ts` L12-61 (tensor and `MatrixLike`) and `node_modules/web-ml/specification/public-api/current-limitations.md` L9-17 and L347-354.
+  - `node_modules/web-ml/dist/src/training/fitted-model-hook.d.ts` L6-38 and `node_modules/web-ml/specification/public-api/metrics.md` L97-137 — hook and context;
+  - `holdout-validate.d.ts` L9-75 and `cross-validate.d.ts` L28-146 under `node_modules/web-ml/dist/src/training/`;
+  - `node_modules/web-ml/dist/src/inspection/feature-contributions.d.ts` L9-69 and `node_modules/web-ml/specification/public-api/model-inspection.md`;
+  - `trees/decision-tree-classifier.d.ts` L7-166, `neural-networks/_base.d.ts` L33-79, `bayesian/{bernoulli-nb,multinomial-nb,gaussian-nb}.d.ts`, `linear/logistic-regression.d.ts` L78-228, `distance-based/k-neighbors-classifier.d.ts` L37-76 and `support-vector-machines/support-vector-classifier.d.ts` L43-150, all under `node_modules/web-ml/dist/src/models/`;
+  - `node_modules/web-ml/dist/src/types.d.ts` L12-61 (tensor and `MatrixLike`) and `node_modules/web-ml/specification/public-api/current-limitations.md` L9-17 and L347-354.
 
 ## Codebase context
 
 - **Relevant specifications:** `specification/workflow-steps.md` §3.6 (L189-205: "Model-specific sections (Phase 6) will use a per-model registry in `src/config/models/{model-name}-results.ts`"); `specification/state-and-storage.md` §3 `ModelResultsUi` (L154-162); `specification/machine-learning-orchestrator.md` §2 (L19-21), configuration key (L29); `specification/VISION.md` §5, §9; `specification/TODO.md` TODO-41, TODO-44.
 - **Persisted contract:**
-    - `src/types/model-evaluation.ts`: `StoredEvaluation` L113-134; `StoredOutputs` L58-75 (`sourceRowIndex: Uint32Array` ascending; `partitionIndex`, `trueIndex`, `predictedIndex: Uint16Array`); L111 "Phases 5-7 add optional fields and bump `schemaVersion`".
-    - `src/types/model-result.ts`: `PayloadBase` L54-62 (`featureNamesOut`, `sourceRowIndices`, `classLabels`, `modelJson`) and `ResultEnvelopeV2` L119 (`evaluation` at the payload's top level).
+  - `src/types/model-evaluation.ts`: `StoredEvaluation` L113-134; `StoredOutputs` L58-75 (`sourceRowIndex: Uint32Array` ascending; `partitionIndex`, `trueIndex`, `predictedIndex: Uint16Array`); L111 "Phases 5-7 add optional fields and bump `schemaVersion`".
+  - `src/types/model-result.ts`: `PayloadBase` L54-62 (`featureNamesOut`, `sourceRowIndices`, `classLabels`, `modelJson`) and `ResultEnvelopeV2` L119 (`evaluation` at the payload's top level).
 - **Decoding:**
-    - `src/features/results/evaluation-decoder.ts`: L454 `decodeStoredEvaluation` is whole-or-nothing through `fail()` (L38).
-    - `src/features/models/training/result-validation.ts`: L394-408 `isTrainingResultPayload` calls the decoder (L397), but L430 returns the raw stored value rather than the decoded one.
-    - `src/stores/model-results.store.ts`: L71-75 is `ready` only for envelope version 2; a null decode maps to `lost`.
+  - `src/features/results/evaluation-decoder.ts`: L454 `decodeStoredEvaluation` is whole-or-nothing through `fail()` (L38).
+  - `src/features/models/training/result-validation.ts`: L394-408 `isTrainingResultPayload` calls the decoder (L397), but L430 returns the raw stored value rather than the decoded one.
+  - `src/stores/model-results.store.ts`: L71-75 is `ready` only for envelope version 2; a null decode maps to `lost`.
 - **Worker:**
-    - `training-worker.ts`: `execute()` L41-109.
-    - `classifier-adapters.ts`: `buildClassificationRequest` L97-139 (`preprocessing: { columns, standardize: false }` L105, `evaluation` L110-115, One-Shot `returnFit: true` L118-127, CV `refit: true` L129-138); `snapshotHoldoutResult` L195-235; `snapshotCrossValidationResult` L241-280.
-    - `evaluation-mapper.ts`: `mapEvaluation` L223-296 hard-codes `schemaVersion: 1` at L280; `mapOutputs` L84; `evaluationTransferables` L299.
-    - `prepare-classification.ts`: reads `raw_records` by page (L40+), builds raw cells (L91-102) and keeps only encoded `features` in `PreparedClassification` (`types.ts` L11-18).
-    - `progress.ts` L6 `TrainingUpdate`.
-    - `onModel` is unused today.
+  - `training-worker.ts`: `execute()` L41-109.
+  - `classifier-adapters.ts`: `buildClassificationRequest` L97-139 (`preprocessing: { columns, standardize: false }` L105, `evaluation` L110-115, One-Shot `returnFit: true` L118-127, CV `refit: true` L129-138); `snapshotHoldoutResult` L195-235; `snapshotCrossValidationResult` L241-280.
+  - `evaluation-mapper.ts`: `mapEvaluation` L223-296 hard-codes `schemaVersion: 1` at L280; `mapOutputs` L84; `evaluationTransferables` L299.
+  - `prepare-classification.ts`: reads `raw_records` by page (L40+), builds raw cells (L91-102) and keeps only encoded `features` in `PreparedClassification` (`types.ts` L11-18).
+  - `progress.ts` L6 `TrainingUpdate`.
+  - `onModel` is unused today.
 - **Results UI:**
-    - `app-model-results.ts`: sections L746-807, `buildViews` L585-694, `preferences()` L572-574, handlers L696-710, messages L57.
-    - `results-view-model.ts`: `ChartCaption` L49-52; `MANY_CLASSES = 20` L321; `shownClassIndices` L357-369.
-    - `charts/plot-controller.ts`: L45 `PlotController(host, getContainer, render)`.
-    - Data-table pattern: `app-fold-strip.ts` L171-184.
-    - Labels: `DEFAULT_FOLD_STRIP_LABELS` (`app-fold-strip.ts` L22) and the other `DEFAULT_*_LABELS` constants.
+  - `app-model-results.ts`: sections L746-807, `buildViews` L585-694, `preferences()` L572-574, handlers L696-710, messages L57.
+  - `results-view-model.ts`: `ChartCaption` L49-52; `MANY_CLASSES = 20` L321; `shownClassIndices` L357-369.
+  - `charts/plot-controller.ts`: L45 `PlotController(host, getContainer, render)`.
+  - Data-table pattern: `app-fold-strip.ts` L171-184.
+  - Labels: `DEFAULT_FOLD_STRIP_LABELS` (`app-fold-strip.ts` L22) and the other `DEFAULT_*_LABELS` constants.
 - **UI state:** `src/types/state.ts` L195-215 (`ModelResultsUi`, `DEFAULT_MODEL_RESULTS_UI`, `sanitiseModelResultsUi`); `src/stores/app.store.ts` L767 `setModelResultsUi`; `src/stores/persister.ts` L692-706 `mergeResultsUi`.
 - **Configure Model:**
-    - `src/features/models/model-presentation-policy.ts`: `NumberDomain` L11-21 (`min`, `minExclusive`, `max`, `integer`, `messageKey`); MLP policy L230-253 (`validationFraction: { kind: 'hidden' }` L253); `nullable-mode` examples `maxDepth` L263-268 and `binarize` L334-339.
-    - `src/features/models/model-option-copy.ts`: option labels and help.
-    - `src/features/models/training/training-service.ts` L174-181: the configuration key excludes MLP `validationFraction` and KNN `leafSize`.
+  - `src/features/models/model-presentation-policy.ts`: `NumberDomain` L11-21 (`min`, `minExclusive`, `max`, `integer`, `messageKey`); MLP policy L230-253 (`validationFraction: { kind: 'hidden' }` L253); `nullable-mode` examples `maxDepth` L263-268 and `binarize` L334-339.
+  - `src/features/models/model-option-copy.ts`: option labels and help.
+  - `src/features/models/training/training-service.ts` L174-181: the configuration key excludes MLP `validationFraction` and KNN `leafSize`.
 - **Catalogue:** `src/features/models/model-catalogue.ts` L15-25 `ClassifierId`; L67 `SUPERVISED_MODELS`. `src/config/` holds only `locales.ts`.
 - **Tests:**
-    - Fixtures: `tests/fixtures/results/{evaluations,variants,labels}.ts`, `tests/fixtures/training/{results-v2,runtime.worker}.ts`; helpers `tests/helpers/{seed-results,mount-results-fixture}.ts`.
-    - Unit: `tests/evaluation-decoder.test.ts`, `tests/evaluation-mapper.test.ts`, `tests/classifier-adapters.test.ts`, `tests/training-service.test.ts`, `tests/state-and-storage.test.ts`.
-    - Browser: `tests/model-results.e2e.ts`, `tests/classification-training.e2e.ts`, `tests/a11y.e2e.ts`, `tests/journeys/{iris,penguins}-classification.e2e.ts`.
-    - Record the `bun run check` baseline before T1.
+  - Fixtures: `tests/fixtures/results/{evaluations,variants,labels}.ts`, `tests/fixtures/training/{results-v2,runtime.worker}.ts`; helpers `tests/helpers/{seed-results,mount-results-fixture}.ts`.
+  - Unit: `tests/evaluation-decoder.test.ts`, `tests/evaluation-mapper.test.ts`, `tests/classifier-adapters.test.ts`, `tests/training-service.test.ts`, `tests/state-and-storage.test.ts`.
+  - Browser: `tests/model-results.e2e.ts`, `tests/classification-training.e2e.ts`, `tests/a11y.e2e.ts`, `tests/journeys/{iris,penguins}-classification.e2e.ts`.
+  - Record the `bun run check` baseline before T1.
 - **Web guidance:** `accessibility`, `html` (`<details>`/`<summary>` for the tree outline; `<select>` with `<optgroup>` for the example picker), `forms`.
 - **Visual reference:** draft only. `specification/mockups/03-7_train-models-5-results.html` (status `draft`) gains a "Model internals" section per model family (T11). `specification/mockups/03-4_train-models-3-configure-model.html` (status `draft`) gains the MLP Validation share field (T2). No parity entries.
 - **Domain skills:** `lit-component-implementer` for T2 and T4–T11.
@@ -338,9 +375,9 @@ export interface ModelResultsConfig {
 - **Must not touch:** `src/features/results/app-*.ts`, `src/features/models/training/training-worker.ts`, `src/features/models/training/classifier-adapters.ts`
 - **Implementation:** Implement Interfaces §A–B and D9. `selectExamples(candidates, outputs, classLabels, classSupport)` implements the D4 rule as a pure function. `isTrainingResultPayload` returns the decoded evaluation. One hand-built fixture per model id (iris for multiclass, breast-cancer for binary-only panels).
 - **Acceptance criteria:**
-    - [ ] `WML-P6-EVAL-1` — Version 1 and version 2 fixtures decode. An invalid `insights` or `examples` block is dropped while the rest decodes, and the decoded envelope omits it. Every length and range rule has a negative test. `-Infinity` in `featureLogProb` is accepted, and `NaN` elsewhere is rejected.
-    - [ ] `WML-P6-EVAL-2` — `selectExamples` returns the documented rows for the iris and breast-cancer fixtures: at most 24, ascending `sourceRowIndex`, stable across calls. A class with no incorrect rows contributes only correct rows. Candidates whose prediction differs from `outputs.predictedIndex` are dropped. With K > 6, only the six best-supported classes appear.
-    - [ ] `WML-P6-EVAL-3` — Every `ClassifierId` has a registry entry with valid, unique `ModelPanelId`s; unknown ids return `null`.
+  - [ ] `WML-P6-EVAL-1` — Version 1 and version 2 fixtures decode. An invalid `insights` or `examples` block is dropped while the rest decodes, and the decoded envelope omits it. Every length and range rule has a negative test. `-Infinity` in `featureLogProb` is accepted, and `NaN` elsewhere is rejected.
+  - [ ] `WML-P6-EVAL-2` — `selectExamples` returns the documented rows for the iris and breast-cancer fixtures: at most 24, ascending `sourceRowIndex`, stable across calls. A class with no incorrect rows contributes only correct rows. Candidates whose prediction differs from `outputs.predictedIndex` are dropped. With K > 6, only the six best-supported classes appear.
+  - [ ] `WML-P6-EVAL-3` — Every `ClassifierId` has a registry entry with valid, unique `ModelPanelId`s; unknown ids return `null`.
 - **Verification:** `bun test tests/evaluation-decoder.test.ts tests/insights-decoder.test.ts tests/example-selection.test.ts tests/results-registry.test.ts tests/model-results.test.ts`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -352,8 +389,8 @@ export interface ModelResultsConfig {
 - **Must not touch:** `src/features/results/`, `css/root.css`
 - **Implementation:** Interfaces §D and D11. Add the field to the 03-4 draft's MLP section as unstyled semantic HTML.
 - **Acceptance criteria:**
-    - [ ] `WML-P6-CFG-1` — The MLP form shows Validation share as Off by default. Turning it on starts at 0.1. Values ≤ 0 or > 0.5 show the range message and block saving; 0.05–0.5 save.
-    - [ ] `WML-P6-CFG-2` — The configuration key is unchanged for `validationFraction: null` (an existing-key fixture) and differs for 0.1 vs 0.2. The saved value reaches the training request.
+  - [ ] `WML-P6-CFG-1` — The MLP form shows Validation share as Off by default. Turning it on starts at 0.1. Values ≤ 0 or > 0.5 show the range message and block saving; 0.05–0.5 save.
+  - [ ] `WML-P6-CFG-2` — The configuration key is unchanged for `validationFraction: null` (an existing-key fixture) and differs for 0.1 vs 0.2. The saved value reaches the training request.
 - **Verification:** `bun test tests/model-presentation-policy.test.ts tests/training-service.test.ts`; `bun run test:e2e tests/model-configuration.e2e.ts`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -364,15 +401,15 @@ export interface ModelResultsConfig {
 - **Likely files:** `src/features/models/training/insights/collector.ts`, `src/features/models/training/insights/bernoulli-nb.ts`, `src/features/models/training/insights/gaussian-nb.ts`, `src/features/models/training/insights/multinomial-nb.ts`, `src/features/models/training/insights/k-neighbors-classifier.ts`, `src/features/models/training/insights/logistic-regression.ts`, `src/features/models/training/insights/mlp-classifier.ts`, `src/features/models/training/insights/support-vector-classifier.ts`, `src/features/models/training/insights/decision-tree-classifier.ts`, `src/features/models/training/insights/display-transforms.ts`, `src/features/models/training/insights/raw-rows.ts`, `src/features/models/training/classifier-adapters.ts`, `src/features/models/training/training-worker.ts`, `src/features/models/training/evaluation-mapper.ts`, `tests/insight-extractors.test.ts`, `tests/display-transforms.test.ts`, `tests/evaluation-mapper.test.ts`, `tests/classifier-adapters.test.ts`, `tests/classification-training.e2e.ts`
 - **Must not touch:** `src/features/results/`, `node_modules/`
 - **Implementation:**
-    - D1, D3, D4, D6–D8 and D10. `buildClassificationRequest` sets `onModel: collector.hook` on both protocols. Each extractor wraps its work in `try`/`catch`, records `null` parts on failure, and adds one training-log note per failed extractor.
-    - Provider row positions map to `outputs.sourceRowIndex` through the same index space `mapOutputs` uses.
-    - KNN neighbour indices are positions in the fold's `trainingIndices`. Neighbour labels come from `prepared.targetCodes`.
-    - `raw-rows.ts` reads only the needed `raw_records` rows after the run, before the success reply.
-    - `mapEvaluation` writes `schemaVersion: 2` plus `collector.finish()`. One training-log note records the extraction time.
+  - D1, D3, D4, D6–D8 and D10. `buildClassificationRequest` sets `onModel: collector.hook` on both protocols. Each extractor wraps its work in `try`/`catch`, records `null` parts on failure, and adds one training-log note per failed extractor.
+  - Provider row positions map to `outputs.sourceRowIndex` through the same index space `mapOutputs` uses.
+  - KNN neighbour indices are positions in the fold's `trainingIndices`. Neighbour labels come from `prepared.targetCodes`.
+  - `raw-rows.ts` reads only the needed `raw_records` rows after the run, before the success reply.
+  - `mapEvaluation` writes `schemaVersion: 2` plus `collector.finish()`. One training-log note records the extraction time.
 - **Acceptance criteria:**
-    - [ ] `WML-P6-EXTRACT-1` — With fake models exposing the 0.2.0 public members, each extractor's output decodes and copies values unchanged. Display transforms match hand-computed values (odds ratio, WoE, Fisher ratio, SV fraction, parameter count, consensus, histogram counts). An extractor that throws, or sees an unexpected tensor shape, yields `null` parts and the run still succeeds.
-    - [ ] `WML-P6-EXTRACT-2` — Real training of all eight classifiers on iris, and of SVC, tree, LR and the NB models on breast-cancer, stores insights and examples that decode. One-Shot runs have no `folds`; five-fold Logistic Regression and MLP have five. Example rows carry raw feature values equal to the dataset's.
-    - [ ] `WML-P6-EXTRACT-3` — The SVC grid exists only with two encoded features. KNN consensus values lie in [0, 1]. Tree child indices are in range, and each example path ends at a leaf. MLP trained with Validation share 0.1 stores a validation curve as long as the training curve.
+  - [ ] `WML-P6-EXTRACT-1` — With fake models exposing the 0.2.0 public members, each extractor's output decodes and copies values unchanged. Display transforms match hand-computed values (odds ratio, WoE, Fisher ratio, SV fraction, parameter count, consensus, histogram counts). An extractor that throws, or sees an unexpected tensor shape, yields `null` parts and the run still succeeds.
+  - [ ] `WML-P6-EXTRACT-2` — Real training of all eight classifiers on iris, and of SVC, tree, LR and the NB models on breast-cancer, stores insights and examples that decode. One-Shot runs have no `folds`; five-fold Logistic Regression and MLP have five. Example rows carry raw feature values equal to the dataset's.
+  - [ ] `WML-P6-EXTRACT-3` — The SVC grid exists only with two encoded features. KNN consensus values lie in [0, 1]. Tree child indices are in range, and each example path ends at a leaf. MLP trained with Validation share 0.1 stores a validation curve as long as the training curve.
 - **Verification:** `bun test tests/insight-extractors.test.ts tests/display-transforms.test.ts tests/evaluation-mapper.test.ts tests/classifier-adapters.test.ts`; `bun run test:e2e tests/classification-training.e2e.ts`; `bun run check`; `bun run build`.
 - **Progress:** [ ] Not started
 
@@ -384,8 +421,8 @@ export interface ModelResultsConfig {
 - **Must not touch:** `css/root.css`, `src/stores/`
 - **Implementation:** Interfaces §C and D5. Stories: Binary, Multiclass, ManyFeatures, IterationLimit, Unavailable, LongLabel and RTL, each with Do / Don't guidance.
 - **Acceptance criteria:**
-    - [ ] `WML-P6-UI-1` — The waterfall's bars sum (within 1e-6) to the margin stated in its caption. At most 13 bars render (12 plus "Other features"), and the data table lists every feature.
-    - [ ] `WML-P6-UI-2` — The example picker groups options by class with correct/incorrect text and emits one event per change.
+  - [ ] `WML-P6-UI-1` — The waterfall's bars sum (within 1e-6) to the margin stated in its caption. At most 13 bars render (12 plus "Other features"), and the data table lists every feature.
+  - [ ] `WML-P6-UI-2` — The example picker groups options by class with correct/incorrect text and emits one event per change.
 - **Verification:** `bun test tests/model-insights-view-model.test.ts`; `bun run test:e2e tests/internals-shared.e2e.ts`; `bun run test:stories`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -397,8 +434,8 @@ export interface ModelResultsConfig {
 - **Must not touch:** `css/root.css`, `src/stores/`
 - **Implementation:** Interfaces §C.
 - **Acceptance criteria:**
-    - [ ] `WML-P6-UI-3` — Bernoulli butterfly rows are sorted by absolute WoE and mirror the stored rates. Gaussian small multiples show at most eight features and name the omitted ones. Multinomial bars show the top 20 by absolute weight.
-    - [ ] `WML-P6-UI-4` — Rates tables reproduce stored values (after `exp`) to four decimals. `-Infinity` cells read "Zero (no smoothing)". More than 20 classes use `shownClassIndices`.
+  - [ ] `WML-P6-UI-3` — Bernoulli butterfly rows are sorted by absolute WoE and mirror the stored rates. Gaussian small multiples show at most eight features and name the omitted ones. Multinomial bars show the top 20 by absolute weight.
+  - [ ] `WML-P6-UI-4` — Rates tables reproduce stored values (after `exp`) to four decimals. `-Infinity` cells read "Zero (no smoothing)". More than 20 classes use `shownClassIndices`.
 - **Verification:** `bun test tests/model-insights-view-model.test.ts`; `bun run test:e2e tests/internals-naive-bayes.e2e.ts`; `bun run test:stories`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -410,7 +447,7 @@ export interface ModelResultsConfig {
 - **Must not touch:** `css/root.css`, `src/stores/`
 - **Implementation:** Interfaces §C.
 - **Acceptance criteria:**
-    - [ ] `WML-P6-UI-5` — The spoke chart shows k labelled neighbours. The comparison table lists each neighbour's distance, class and raw feature values in ascending distance. `k = 1` renders one spoke and a sentence about memorisation. Missing neighbours show the unavailable sentence.
+  - [ ] `WML-P6-UI-5` — The spoke chart shows k labelled neighbours. The comparison table lists each neighbour's distance, class and raw feature values in ascending distance. `k = 1` renders one spoke and a sentence about memorisation. Missing neighbours show the unavailable sentence.
 - **Verification:** `bun run test:e2e tests/internals-knn.e2e.ts`; `bun run test:stories`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -422,8 +459,8 @@ export interface ModelResultsConfig {
 - **Must not touch:** `css/root.css`, `src/stores/`
 - **Implementation:** Interfaces §C and D8.
 - **Acceptance criteria:**
-    - [ ] `WML-P6-UI-6` — Cross-validated runs show whiskers spanning the fold min–max. One-Shot runs show dots only, with the sentence about folds. L1 and Elastic Net models state the active feature count. The class select switches classes for multiclass and emits one event per change.
-    - [ ] `WML-P6-UI-7` — The sigmoid chart plots every held-out row at its stored decision score, with markers that differ by shape per class.
+  - [ ] `WML-P6-UI-6` — Cross-validated runs show whiskers spanning the fold min–max. One-Shot runs show dots only, with the sentence about folds. L1 and Elastic Net models state the active feature count. The class select switches classes for multiclass and emits one event per change.
+  - [ ] `WML-P6-UI-7` — The sigmoid chart plots every held-out row at its stored decision score, with markers that differ by shape per class.
 - **Verification:** `bun run test:e2e tests/internals-logistic.e2e.ts`; `bun run test:stories`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -435,7 +472,7 @@ export interface ModelResultsConfig {
 - **Must not touch:** `css/root.css`, `src/stores/`
 - **Implementation:** Interfaces §C and D11. The parameter summary states parameters, training rows and their ratio, with a sentence when the ratio exceeds 1. It also states the Validation share and that the last weights are kept.
 - **Acceptance criteria:**
-    - [ ] `WML-P6-UI-8` — Without validation loss, the chart shows training loss only, with the sentence naming the Validation share option. With validation loss, it shows the best-epoch rule and states the gap in the caption. `nIter === maxIter` shows the iteration-limit sentence. Fold curves appear only for cross-validation.
+  - [ ] `WML-P6-UI-8` — Without validation loss, the chart shows training loss only, with the sentence naming the Validation share option. With validation loss, it shows the best-epoch rule and states the gap in the caption. `nIter === maxIter` shows the iteration-limit sentence. Fold curves appear only for cross-validation.
 - **Verification:** `bun run test:e2e tests/internals-mlp.e2e.ts`; `bun run test:stories`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -447,8 +484,8 @@ export interface ModelResultsConfig {
 - **Must not touch:** `css/root.css`, `src/stores/`
 - **Implementation:** D7 and Interfaces §C.
 - **Acceptance criteria:**
-    - [ ] `WML-P6-UI-9` — With two features, the map shows regions, the −1/0/+1 contours (binary only) and ringed support vectors. With three features, it shows the explanation sentence and no chart.
-    - [ ] `WML-P6-UI-10` — The binary histogram labels the margin and boundary rules; multiclass shows the pairwise sentence.
+  - [ ] `WML-P6-UI-9` — With two features, the map shows regions, the −1/0/+1 contours (binary only) and ringed support vectors. With three features, it shows the explanation sentence and no chart.
+  - [ ] `WML-P6-UI-10` — The binary histogram labels the margin and boundary rules; multiclass shows the pairwise sentence.
 - **Verification:** `bun run test:e2e tests/internals-svc.e2e.ts`; `bun run test:stories`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -460,8 +497,8 @@ export interface ModelResultsConfig {
 - **Must not touch:** `css/root.css`, `src/stores/`
 - **Implementation:** D6.
 - **Acceptance criteria:**
-    - [ ] `WML-P6-UI-11` — Summaries state the split, rows, share and class mix; levels 0–2 are open. Selecting an example opens every node on its path and marks each in text. Cross-validated examples state that the final model was trained on them. A 20-level tree renders "more nodes" summaries below level 12.
-    - [ ] `WML-P6-UI-12` — Tab and Enter/Space operate every disclosure, and the outline reflows at 320 px without horizontal page scrolling.
+  - [ ] `WML-P6-UI-11` — Summaries state the split, rows, share and class mix; levels 0–2 are open. Selecting an example opens every node on its path and marks each in text. Cross-validated examples state that the final model was trained on them. A 20-level tree renders "more nodes" summaries below level 12.
+  - [ ] `WML-P6-UI-12` — Tab and Enter/Space operate every disclosure, and the outline reflows at 320 px without horizontal page scrolling.
 - **Verification:** `bun run test:e2e tests/internals-tree.e2e.ts`; `bun run test:stories`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -473,9 +510,9 @@ export interface ModelResultsConfig {
 - **Must not touch:** `css/root.css`, `src/app.ts`, `src/features/models/training/`
 - **Implementation:** Connected changes and state rules in Interfaces §C. Add one "Model internals" draft section per model family to the 03-7 draft. Extend the journeys to assert Logistic Regression internals (forest and waterfall).
 - **Acceptance criteria:**
-    - [ ] `WML-P6-UI-13` — For each of the eight fixtures, Section 6 renders the registry panels in order after the shared sections. A version 1 evaluation, or one with dropped insights, shows "Train again to see model internals" with the shared sections intact.
-    - [ ] `WML-P6-UI-14` — Example and coefficient-class choices survive a reload. Out-of-range stored values reset to their defaults. `tests/a11y.e2e.ts` scans one NB, one tree and one SVC Section 6 with no new findings.
-    - [ ] `WML-P6-UI-15` — `JOURNEY-IRIS-INTERNALS` and `JOURNEY-PENGUINS-INTERNALS` pass in three browsers.
+  - [ ] `WML-P6-UI-13` — For each of the eight fixtures, Section 6 renders the registry panels in order after the shared sections. A version 1 evaluation, or one with dropped insights, shows "Train again to see model internals" with the shared sections intact.
+  - [ ] `WML-P6-UI-14` — Example and coefficient-class choices survive a reload. Out-of-range stored values reset to their defaults. `tests/a11y.e2e.ts` scans one NB, one tree and one SVC Section 6 with no new findings.
+  - [ ] `WML-P6-UI-15` — `JOURNEY-IRIS-INTERNALS` and `JOURNEY-PENGUINS-INTERNALS` pass in three browsers.
 - **Verification:** `bun run test:e2e tests/model-internals.e2e.ts tests/model-results.e2e.ts tests/a11y.e2e.ts tests/journeys/iris-classification.e2e.ts tests/journeys/penguins-classification.e2e.ts`; `bun test tests/state-and-storage.test.ts tests/style-tokens.test.ts`; `bun run test:stories`; `bun run check`; `bun run build`.
 - **Progress:** [ ] Not started
 
@@ -487,8 +524,8 @@ export interface ModelResultsConfig {
 - **Must not touch:** `src/`, `tests/`, `specification/mockups/`, `specification/notes/`
 - **Implementation:** Apply every item under _Specification changes_.
 - **Acceptance criteria:**
-    - [ ] Every item under _Specification changes_ is applied and ticked.
-    - [ ] `bun run plans:check` and `bun run plans:task specification/plans/web-ml-phase-6-model-specific-results.md --check-complete` pass.
+  - [ ] Every item under _Specification changes_ is applied and ticked.
+  - [ ] `bun run plans:check` and `bun run plans:task specification/plans/web-ml-phase-6-model-specific-results.md --check-complete` pass.
 - **Verification:** `bun run plans:check specification/plans/web-ml-phase-6-model-specific-results.md`; `bun run plans:task specification/plans/web-ml-phase-6-model-specific-results.md --check-complete`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -502,7 +539,7 @@ export interface ModelResultsConfig {
 
 ## Risks and open questions
 
-- **Blocking:** None
+- **Blocking:** (1) compare-feature-importance lands first (user decision 2026-11-26). Move `StoredEvaluation` to schema version 3, decode versions 1–3 with drop-not-reject, and run this plan's `onModel` collector after the importance collector in one hook. (2) Integrate the v2 requirements listed under Scope ("v2 feature-importance requirements to integrate") into the decisions, interfaces and tasks: re-scout, then decide with the user where v2 conflicts with D1–D11. (3) Re-check the upstream gate inherited from compare-feature-importance. Then submit for review. Owner: `samata-ml` planner.
 - **Non-blocking:** Phase 5 (`ready`) shares `src/types/state.ts`, `src/stores/app.store.ts`, `src/stores/persister.ts`, `tests/a11y.e2e.ts`, `tests/helpers/seed-results.ts` and the journeys with T11. Implement Phase 6 after Phase 5 lands, or rebase T11 onto it; the changes touch different fields (`ModelRecord.ui.results` here, `results.ui` there). Owner: implementer.
 - **Non-blocking:** `web-ml` leaves several inspection shapes undocumented (`kneighbors`, `coef_`/`intercept_`, `coefs_`, Gaussian `classPrior_`). Prose and declarations also disagree on Multinomial `featureLogProb_` and holdout `validationFeatures`. D10 guards every read; filed as [request 15](../../../web-ml/specification/requests/2026-11-23-15-inspection-output-shapes-documentation.md). Owner: `web-ml` planner.
 - **Non-blocking:** Permutation importance is deferred until `web-ml` scores importance with balanced accuracy ([request 01](../../../web-ml/specification/requests/2026-11-23-01-balanced-accuracy-scoring-everywhere.md)). MLP early stopping awaits [request 03](../../../web-ml/specification/requests/2026-11-23-03-mlp-early-stopping-and-weight-decay.md). Owner: human (HUMAN.md).
@@ -532,9 +569,11 @@ None.
 
 ## Change log
 
-| When (UTC)           | Change                                                     | Reason                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| -------------------- | ---------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 2026-11-19T08:47:35Z | Initial draft                                              | User split the former Phase 4 stub; model-specific metrics and visuals become Phase 6 on Phase 4's contract.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| 2026-11-21T08:09:01Z | Linked upstream WR-8 request                               | User asked for an upstream request covering the nested-CV and multiclass trial-report limitations; Blocking remains open.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| 2026-11-21T08:23:10Z | Linked upstream WR-12 request                              | User asked for the WR-12 upstream request; Blocking remains open.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| 2026-11-23T09:48:14Z | Revised against `web-ml` 0.2.0 and the implemented Phase 4 | WR-7, WR-8 and WR-12 ship in 0.2.0 and Phase 4 is archived, so the Blocking item is resolved. Pinned `onModel` (holdout, fold, refit) and the inspection signatures. Added decoder version 2 with drop-not-reject (D9), shape guards (D10), in-hook example selection (D4), final-tree tracing (D6) and the Phase 4 `labels`/`shownClassIndices` conventions. User decisions on 2026-11-23: an MLP Validation share option in Configure Model (D11, new T2), and permutation importance deferred until a balanced-accuracy scorer exists. Fixed the mockup paths. Filed request 15. |
+| When (UTC)           | Change                                                                         | Reason                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| -------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-19T08:47:35Z | Initial draft                                                                  | User split the former Phase 4 stub; model-specific metrics and visuals become Phase 6 on Phase 4's contract.                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 2026-11-21T08:09:01Z | Linked upstream WR-8 request                                                   | User asked for an upstream request covering the nested-CV and multiclass trial-report limitations; Blocking remains open.                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| 2026-11-21T08:23:10Z | Linked upstream WR-12 request                                                  | User asked for the WR-12 upstream request; Blocking remains open.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 2026-11-23T09:48:14Z | Revised against `web-ml` 0.2.0 and the implemented Phase 4                     | WR-7, WR-8 and WR-12 ship in 0.2.0 and Phase 4 is archived, so the Blocking item is resolved. Pinned `onModel` (holdout, fold, refit) and the inspection signatures. Added decoder version 2 with drop-not-reject (D9), shape guards (D10), in-hook example selection (D4), final-tree tracing (D6) and the Phase 4 `labels`/`shownClassIndices` conventions. User decisions on 2026-11-23: an MLP Validation share option in Configure Model (D11, new T2), and permutation importance deferred until a balanced-accuracy scorer exists. Fixed the mockup paths. Filed request 15. |
+| 2026-11-26T13:49:27Z | Invalidated approval                                                           | compare-feature-importance now lands first (schema v2, onModel collector) and the v2 feature-importance requirements add model-specific items                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| 2026-11-26T13:49:27Z | Added v2 feature-importance requirements to Scope and a Blocking revision item | User request: model-specific requirements from `specification/notes/feature-importance-requirements.md` belong in Phase 6; compare-feature-importance comes first.                                                                                                                                                                                                                                                                                                                                                                                                                  |

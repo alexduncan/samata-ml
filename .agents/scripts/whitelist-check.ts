@@ -80,18 +80,17 @@ function isWhitelisted(cmd: string): boolean {
 	// Whitelist patterns for samata-ml repository
 	const WHITELIST_PATTERNS: RegExp[] = [
 		// Bun commands
-		/^bun\s+run\s+(check|typecheck|build|server|mockups|audit:mockups|format|format:check|test:e2e|storybook|storybook:build|storybook:manifest|test:stories|now|plans:(check|task|review|close|baseline)|git:(sync|land|status|release|tidy))(\s+.*)?$/,
+		/^bun\s+run\s+(check|typecheck|build|server|mockups|audit:mockups|test:e2e|storybook|storybook:build|storybook:manifest|test:stories|now|plans:(check|task|review|close|baseline)|git:(sync|land|status|release|tidy))(\s+.*)?$/,
 		/^bun\s+run\s+--silent\s+now$/,
 		/^bun\s+test(\s+.*)?$/,
 		/^bun\s+(install|add|remove)(\s+.*)?$/,
 
 		// Bunx commands
 		/^bunx\s+playwright\s+test(\s+.*)?$/,
-		/^bunx\s+prettier(\s+.*)?$/,
 		/^bunx\s+tsc(\s+.*)?$/,
 
 		// Shared agent-workflow gate scripts (prefer the bun run plans:* and git:* wrappers)
-		/^python3\s+"?(\$HOME|~)\/\.agents\/skills\/(create-plan|verify-plan|implement|verify-implementation)\/scripts\/[a-z_]+\.py"?(\s+.*)?$/,
+		/^python3\s+"?(\$HOME|~)\/\.agents\/skills\/(create-plan|verify-plan|implement|verify-implementation)\/scripts\/(?!format_repo\.py)[a-z_]+\.py"?(\s+.*)?$/,
 
 		// Read-only repository inspection commands
 		/^git\s+(status|diff|log|branch|rev-parse|show|cherry|merge-base|worktree\s+list)(\s+.*)?$/,
@@ -116,7 +115,7 @@ function isWhitelisted(cmd: string): boolean {
 
 /**
  * Allow the commit workflow in AGENTS.md: `git add` with explicit paths and plain `git commit`.
- * Whole-tree staging (`-A`, `--all`, `-u`, `--update`, `.`), `commit -a` and `--amend` still ask.
+ * Whole-tree staging, amend, automatic staging and hook bypass options still ask.
  */
 function isSafeGitWrite(cmd: string): boolean {
 	const add = /^git\s+add\s+(.+)$/.exec(cmd);
@@ -130,7 +129,9 @@ function isSafeGitWrite(cmd: string): boolean {
 	}
 	const commit = /^git\s+commit(\s+.*)?$/.exec(cmd);
 	if (commit) {
-		return !/(^|\s)(--amend|--all|-[a-zA-Z]*a[a-zA-Z]*)(\s|=|$)/.test(commit[1] ?? '');
+		return !/(^|\s)(--amend|--all|--no-verify|-[a-zA-Z]*[an][a-zA-Z]*)(\s|=|$)/.test(
+			commit[1] ?? ''
+		);
 	}
 	return false;
 }

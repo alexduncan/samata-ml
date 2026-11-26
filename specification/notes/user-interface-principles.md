@@ -18,12 +18,13 @@ Separate **validity and browser-safety boundaries** from **pedagogical modelling
 ## Agent Implementation Rules
 
 ### General Principles
+
 - Prefer plain text labels for buttons and links instead of icons.
 - Only use icons when:
-	1. The meaning of the icon is implicit and indisputable e.g. cross to close a modal.
-	2. The result of clicking the link is ephemeral e.g. closing a modal, opening settings.
-	3. The icon is supported by a `aria-label` or `aria-labelledBy` explaining in plain text the purpose of the element.
-- 
+  1. The meaning of the icon is implicit and indisputable e.g. cross to close a modal.
+  2. The result of clicking the link is ephemeral e.g. closing a modal, opening settings.
+  3. The icon is supported by a `aria-label` or `aria-labelledBy` explaining in plain text the purpose of the element.
+-
 
 ### UI-HP-01: Sensible Defaults and Explicit Reset
 
@@ -111,4 +112,3 @@ Before marking any UI or pipeline change complete, verify:
 2. **No silent mutation:** Entering an extreme but mathematically and computationally valid number is preserved without silent clamping; reverting a parent enum restores cached child values.
 3. **Fold-safe preprocessing:** Any encoding or scaling triggered by UI rules fits strictly on training partitions inside nested CV folds.
 4. **Terminology consistency:** UI labels, tooltips, and TSDoc comments consistently distinguish **feature scaling** (column preprocessing) from **regularisation** (model weight penalty).
-

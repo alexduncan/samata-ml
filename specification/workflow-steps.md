@@ -62,20 +62,20 @@ The dataset preview view displays:
 - A page header with the dataset name, row and column counts, and a "Change Dataset" button. The button opens the plain-text `dialog.confirm-dialog`, with Cancel first. Confirmation cancels local training before the deletion and waits for its acknowledgement. If another tab is training, the confirmation stays open with an explanation. After a committed deletion that could not be published, Retry saving finishes the same change. The selection view loads the catalogue when entered from a reloaded preview and offers Retry if the request fails. New data enters preview after acknowledgement of the staged dataset pointer.
 - A virtual table (`ui-virtual-table`) rendering a 10,000-row active segment with segment navigation controls and "Go to row" input. Up to 10,000,000 rows can be browsed without unbounded DOM expansion.
 - An inspector overlay panel (`app-column-details`) on the right when clicking a column header. The existing Help & Guide explains CSV, column types and the statistics shown here.
-    - Column name, data type, and description.
-    - Missing and invalid record counts and tokens.
-    - If numeric: min, median, mean, max, and precomputed histogram bins.
-    - If categorical: distinct value count, frequencies sorted descending, and percentages over non-missing values (with Show all / Show fewer toggle).
-    - If boolean: true/false frequencies.
-    - If date, time or datetime: earliest and latest values at the column's precision. UTC is stated only for datetime.
-    - Identifier candidate hint when distinct count equals row count.
-    - Pressing Escape or the Close button dismisses the overlay and returns focus to the column header.
+  - Column name, data type, and description.
+  - Missing and invalid record counts and tokens.
+  - If numeric: min, median, mean, max, and precomputed histogram bins.
+  - If categorical: distinct value count, frequencies sorted descending, and percentages over non-missing values (with Show all / Show fewer toggle).
+  - If boolean: true/false frequencies.
+  - If date, time or datetime: earliest and latest values at the column's precision. UTC is stated only for datetime.
+  - Identifier candidate hint when distinct count equals row count.
+  - Pressing Escape or the Close button dismisses the overlay and returns focus to the column header.
 
 #### Future Development
 
 - Add the ability to modify the values in a column including:
-    - Convert numeric columns to `boolean` or `categorical` using rules.
-    - Delete records based on specific column values.
+  - Convert numeric columns to `boolean` or `categorical` using rules.
+  - Delete records based on specific column values.
 - Ability to delete a column.
 
 ## 2. Set Target
@@ -90,23 +90,23 @@ The user chooses the target variable to predict from their loaded dataset. Help 
 - **Loading view:** When column resources are being fetched, a loading status message displays: _"Loading column information…"_.
 - **Failure view:** If column information fails to load, an alert message displays: _"Column information could not be loaded."_ along with a "Retry" button.
 - **Ready view:** Displays a scrollable table (`table.table`) with a caption (`{Dataset Name} target candidates`) and four columns:
-    - **Column Name:** The column name as a row header (`<th scope="row">`).
-    - **Type:** The data type formatted as code (`<code>Numeric</code>`, `<code>Categorical</code>`, `<code>Boolean</code>`, `<code>Text</code>`, `<code>Date</code>`, `<code>Time</code>`, `<code>Datetime</code>`).
-    - **Notes:** Explanatory reasons or advisory notices:
-        - `INELIGIBLE_TEXT`: "Text columns cannot be targets."
-        - `INELIGIBLE_DATETIME`: "Date and time columns cannot be targets." It applies to `date`, `time` and `datetime` columns.
-        - `INELIGIBLE_ALL_MISSING`: "No usable values."
-        - `INELIGIBLE_CONSTANT`: "Only one value is present."
-        - `ADVISORY_IDENTIFIER`: "This column may identify individual records."
-        - `ADVISORY_MISSING_VALUES`: "{count} missing or invalid values."
-        - `ADVISORY_HIGH_CARDINALITY`: "{count} categories; check that this is a meaningful target."
-        - `ADVISORY_TARGET_CANDIDATE`: "Suggested target"
-        - `METADATA_UNAVAILABLE`: "Column information is unavailable."
-          Disqualifying reasons disable the column; advisory notices provide informational guidance while keeping the column eligible.
-    - **Action:**
-        - For the currently selected target: A disabled button reading "Current Target".
-        - For eligible columns: A button with `.btn-primary` reading "Set as Target" (accessible name: `Set as Target: {column}`).
-        - For ineligible columns: A disabled button reading "Set as Target".
+  - **Column Name:** The column name as a row header (`<th scope="row">`).
+  - **Type:** The data type formatted as code (`<code>Numeric</code>`, `<code>Categorical</code>`, `<code>Boolean</code>`, `<code>Text</code>`, `<code>Date</code>`, `<code>Time</code>`, `<code>Datetime</code>`).
+  - **Notes:** Explanatory reasons or advisory notices:
+    - `INELIGIBLE_TEXT`: "Text columns cannot be targets."
+    - `INELIGIBLE_DATETIME`: "Date and time columns cannot be targets." It applies to `date`, `time` and `datetime` columns.
+    - `INELIGIBLE_ALL_MISSING`: "No usable values."
+    - `INELIGIBLE_CONSTANT`: "Only one value is present."
+    - `ADVISORY_IDENTIFIER`: "This column may identify individual records."
+    - `ADVISORY_MISSING_VALUES`: "{count} missing or invalid values."
+    - `ADVISORY_HIGH_CARDINALITY`: "{count} categories; check that this is a meaningful target."
+    - `ADVISORY_TARGET_CANDIDATE`: "Suggested target"
+    - `METADATA_UNAVAILABLE`: "Column information is unavailable."
+      Disqualifying reasons disable the column; advisory notices provide informational guidance while keeping the column eligible.
+  - **Action:**
+    - For the currently selected target: A disabled button reading "Current Target".
+    - For eligible columns: A button with `.btn-primary` reading "Set as Target" (accessible name: `Set as Target: {column}`).
+    - For ineligible columns: A disabled button reading "Set as Target".
 
 ### Model Discard Warning and Confirmation
 
@@ -134,12 +134,12 @@ Once a dataset and target are configured:
 - If no models exist, `/models` displays the empty notice _"No models yet. Train a new model to get started."_ (`data-testid="models-empty"`).
 - The overview's **Train New Model** and the sidebar's **Train New Model** (no trained models) or **Train Another Model** link to `/models/new`. An explicit visit opens or resumes the single provisional model for the current dataset and target. The route shows a labelled loading state until a protected save binds that visit to a model. A failed or pending save offers recovery. Model numbers increase and are not reused when a draft is abandoned.
 - If models exist, `/models` renders a table (`data-testid="models-list"`) with columns:
-    - **Model Name:** Displays `Model {num} — {Library Name}` (e.g. "Model 1 — Logistic Regression") or `Model {num}` if no model is selected yet. Models cannot be renamed, deleted, or duplicated.
-    - **Features:** A comma-separated list of selected features in dataset column order, or "Not selected".
-    - **Configuration:** Hyperparameter settings or "Not configured".
-    - **Training Setup:** The formatted strategy and split or fold count, or "Not configured".
-    - **Duration:** Training duration formatted via i18n (e.g. "1.2s") or "Not trained".
-    - **Action:** **View Results** opens the numbered result. **Continue** opens the current provisional draft at `/models/new` or a historical draft at its numbered URL.
+  - **Model Name:** Displays `Model {num} — {Library Name}` (e.g. "Model 1 — Logistic Regression") or `Model {num}` if no model is selected yet. Models cannot be renamed, deleted, or duplicated.
+  - **Features:** A comma-separated list of selected features in dataset column order, or "Not selected".
+  - **Configuration:** Hyperparameter settings or "Not configured".
+  - **Training Setup:** The formatted strategy and split or fold count, or "Not configured".
+  - **Duration:** Training duration formatted via i18n (e.g. "1.2s") or "Not trained".
+  - **Action:** **View Results** opens the numbered result. **Continue** opens the current provisional draft at `/models/new` or a historical draft at its numbered URL.
 - The header includes a "Compare Results" button (`<a href="/results">`). It is disabled with a visible hint until at least two models have completed training (`$canCompare`).
 
 The sidebar shows **Train Models** until the target is set. It then groups the training action and acknowledged trained models under **All Trained Models**. Each result link has a numbered swatch, the saved label or catalogue name, a feature count and a trained check. The current wizard has a static **Training New Model…** row through Step 5 completion. A well-formed but missing model number stays on its URL and links back to Models.

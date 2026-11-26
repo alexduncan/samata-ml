@@ -4,66 +4,73 @@ For a client-side educational machine-learning environment running nested cross-
 
 ## Defaults and Explanations
 
-**1. Provide defaults: Yes, paired with a one-click reset.**  
+**1. Provide defaults: Yes, paired with a one-click reset.**\
 Empirical benchmarking across 38 OpenML classification datasets shows that sensible defaults are non-inferior to tuning for many low-tunability hyperparameters and give learners an immediate working baseline before they experiment ([Probst et al., 2019](https://www.jmlr.org/papers/v20/18-444.html); [Weerts et al., 2020](https://pure.tue.nl/ws/files/192273336/2007.07588v1.pdf)). Where appropriate, use **dataset-aware defaults** rather than static constants—such as \( k = 5 \) capped below inner-fold sample size for KNN, or `gamma = "scale"` defined as \( 1 / (p \cdot \text{Var}(X)) \) for RBF Support Vector Classifiers—and mark modified fields with a badge and a **Reset to default** control. [jmlr](https://www.jmlr.org/papers/v20/18-444.html)
 
 **2. Explain defaults: Yes, using two-tier progressive disclosure.** Displaying dense technical prose beside every input inflates extraneous cognitive load for non-programmers, whereas unexplained numbers look arbitrary. Use two layers: [onlinelibrary.wiley](https://onlinelibrary.wiley.com/doi/full/10.1111/dsji.70023)
+
 - **Inline micro-copy (always visible):** State the default role and directional effect in plain language (for example, `Default: 1.0 — balanced margin penalty; smaller values smooth the boundary`).
 - **Expandable popover (on demand):** Explain how increasing or decreasing the value shifts the model between **underfitting** and **overfitting**, and badge whether the parameter has **high or low empirical tunability** so learners focus effort where tuning matters. [jmlr](https://www.jmlr.org/papers/v20/18-444.html)
 
 ## Numeric Limits and Extremes
 
-**3. Apply three distinct boundary tiers and never silently clamp user input.**  
+**3. Apply three distinct boundary tiers and never silently clamp user input.**\
 Hyperparameter guidance distinguishes mathematically valid domains from reasonable empirical ranges: [cambridge](https://www.cambridge.org/core/journals/political-science-research-and-methods/article/role-of-hyperparameters-in-machine-learning-models-and-how-to-tune-them/27296C04CF5935C55327F11BF4017371)
+
 - **Mathematical and fold-size domain bounds (Hard block):** Reject invalid inputs inline using `aria-invalid="true"` and `aria-errormessage`, such as \( C \le 0 \), smoothing \( \alpha < 0 \), non-integer \( k \), or \( k > n_{\text{inner\_train}} \) computed dynamically from your smallest inner cross-validation training split. [w3](https://www.w3.org/WAI/ARIA/apg/patterns/spinbutton/)
 - **Browser Web-Worker safety caps (Hard ceiling):** Impose explicit upper limits on parameters that risk tab memory exhaustion or multi-minute freezes under nested cross-validation (such as MLP hidden layer sizes, `max_iter`, or tree depth), explaining the browser compute ceiling directly.
 - **Pedagogically extreme but valid values (Allow):** Do not block values outside typical 5th–95th optimal quantiles—such as \( k = 1 \), \( k = n_{\text{inner\_train}} \), or \( C = 10^5 \)—because testing extremes is how learners discover memorization versus majority-class collapse. Pair a slider bounded to the **recommended range** with an adjacent numeric spinbutton that accepts wider valid values up to the browser cap, and never overwrite an extreme valid number on blur without asking. [jmlr](https://www.jmlr.org/papers/v20/18-444.html)
 
 ## Timing Warnings and Feedback
 
-**4. Warn before training only for silent pipeline bugs or heavy compute; teach suboptimal choices after training.**  
+**4. Warn before training only for silent pipeline bugs or heavy compute; teach suboptimal choices after training.**\
 Across 53 studies and 166 experimental comparisons, allowing learners to test suboptimal solutions before receiving diagnostic instruction yields stronger conceptual understanding and transfer (\( g = 0.36 \) to \( 0.58 \)) than upfront instruction, whereas pre-training workflow checklists alone often fail to improve deeper methodological reasoning. [arxiv](https://arxiv.org/html/2611.13386)
+
 - **Pre-training (Non-blocking advisory banner):** Reserve for **silent numerical distortions**—such as training KNN, SVC, MLP, or regularized Logistic Regression on unscaled features with wildly different units—and **compute-budget alerts** when nested-CV candidate combinations will take several seconds or more. [ccs.neu](https://www.ccs.neu.edu/home/vip/teach/MLcourse/1_intro_DT_RULES_REG/data_normalization/normalization_when_to_use_what.pdf)
 - **Post-training (Diagnostic card on results view):** When \( k = 1 \) or an unconstrained Decision Tree yields 100% training accuracy alongside low outer-fold balanced accuracy, highlight the train–validation gap on the evaluation view, connect it to the chosen hyperparameter, and offer a one-click **Compare with default / tuned range** action.[234]
 
 ## Tuning Categorical Options
 
-**5. Use checkboxes (or multi-select chips) for permitted enum options when tuning is toggled on.**  
+**5. Use checkboxes (or multi-select chips) for permitted enum options when tuning is toggled on.**\
 Give each tunable hyperparameter a clean mode switch between **Fixed** (single value via radio group or `<select>`) and **Tune** (multiple candidates). Because classical classifier enums typically have two to four valid choices (`gini` vs. `entropy`, `uniform` vs. `distance`, `linear` vs. `rbf` vs. `poly`), checkboxes make every permitted candidate visible at once without hidden dropdown state, enforce at least two checked options in Tune mode, and let you disable incompatible options inline with a short tooltip explanation.
 
 ## Tuning Numeric Hyperparameters
 
-**6. Pair `[Lower, Upper]` numeric inputs with a step count \( X \), a linear/log scale rule, and visible candidate chips.**  
+**6. Pair `[Lower, Upper]` numeric inputs with a step count \( X \), a linear/log scale rule, and visible candidate chips.**\
 Double-thumb range sliders alone have poor fine-motor precision across orders of magnitude and require careful multi-thumb keyboard semantics. Instead: [w3c.github](https://w3c.github.io/wai-website/ARIA/apg/practices/names-and-descriptions/)
+
 - **For 1 to 3 tuned parameters (Grid Search):** Let users set **Min** and **Max** (via synced dual-thumb slider plus editable spinbuttons) and **Steps (\( X \))** (default \( X = 4 \) or \( 5 \), capped around \( 10 \)). Default multiplicative parameters (\( C, \gamma, \alpha \), learning rate) to **logarithmic spacing** and structural integers (\( k \), `max_depth`) to **linear integer spacing**, and **render the exact generated candidate chips** beneath the input (for example, `0.01, 0.1, 1, 10, 100`) alongside a live fit counter (\( K_{\text{out}} \times K_{\text{in}} \times N_{\text{grid}} \)). [doi](https://doi.org/10.1002/widm.1484)
 - **Beyond 3 tuned parameters (Random Search):** Prompt or switch to **Random Search** with a total trial budget \( B \) sampled uniformly or log-uniformly across each `[Lower, Upper]` interval, since random sampling explores low-effective-dimensionality spaces far more efficiently than exponential grids. [jmlr](https://www.jmlr.org/papers/v13/bergstra12a.html)
 
 ## Handling Categorical Encoding
 
-**7. Never apply one-hot encoding silently; separate column semantics from model-specific encoding.**  
+**7. Never apply one-hot encoding silently; separate column semantics from model-specific encoding.**\
 Silent expansion hides why one feature turns into ten coefficients in Logistic Regression, breaks distribution assumptions in Naive Bayes, and obscures why high-cardinality dummy columns fragment shallow Decision Trees. Handle both cases explicitly across two stages: [scikit-learn](https://scikit-learn.org/1.5/auto_examples/ensemble/plot_gradient_boosting_categorical.html)
+
 - **Numeric-coded nominal features (Dataset / Feature inspection stage):** Detect integer columns with small distinct counts (such as `1, 2, 3` for region or passenger class), pre-tag curated datasets from Dataset Card metadata, and prompt users on uploaded CSVs to confirm **Nominal (unordered)**, **Ordinal (ordered)**, or **Continuous/Count**. Explain directly that linear and distance models otherwise treat `3` as numerically greater than `2` and closer to `2` than to `1`. [inria.github](https://inria.github.io/scikit-learn-mooc/python_scripts/03_categorical_pipeline.html)
 - **Required vs. optional one-hot encoding (Model pipeline stage):** When a model **requires** unordered numeric indicators (KNN, Logistic Regression, SVC, MLP on nominal columns), pre-select One-Hot Encoding visibly in the pipeline summary (`1 column → K binary columns, fitted inside each training fold`) and warn on high cardinality where rare-level grouping or cross-fitted regularized target encoding performs better. When a model **does not require** binary columns—such as native CART/C4.5 trees partitioning \( K \) categories via \( 2^{K-1} - 1 \) subset splits—expose encoding as an explicit choice (`Native Categorical Splits [Recommended]` vs. `One-Hot` vs. `Ordinal`) so learners can compare tree depth and split behavior. [link.springer](http://www.link.springer.com/article/10.1007/s00180-022-01207-6)
 
 ## Dependent Hyperparameter Controls
 
-**8. Hide inactive child parameters, auto-adjust conflicting values with an inline notice, and cache prior inputs.**  
+**8. Hide inactive child parameters, auto-adjust conflicting values with an inline notice, and cache prior inputs.**\
 Hierarchical search spaces create two distinct dependency types ([Conditional PED-ANOVA, 2026](https://arxiv.org/html/2601.20800); [Bischl et al., 2023](https://doi.org/10.1002/widm.1484)): [arxiv](https://arxiv.org/html/2601.20800)
+
 - **Activation dependencies (`kernel` controlling `degree` and `gamma`, or `penalty = "elasticnet"` controlling `l1_ratio`):** Visually nest child fields inside the parent `<fieldset>` and collapse inactive children so learners never waste grid trials tuning `degree` on a linear SVM. [w3](https://www.w3.org/TR/2019/WD-wai-aria-practices-1.2-20191218/)
 - **Constraint couplings (`penalty` vs. `solver`, or `min_samples_split` vs. `min_samples_leaf`):** Update incompatible partner fields automatically **only** if accompanied by a polite `aria-live` status note (`Solver switched from lbfgs to saga to support L1 penalty`) and **state preservation** in memory so reverting the parent restores the user's previous child value.
 
 ## Guidance for Stopping Tolerance
 
-**9. Place `tol` inside an "Advanced / Optimizer" disclosure and frame it as a precision-versus-speed stopping rule.**  
+**9. Place `tol` inside an "Advanced / Optimizer" disclosure and frame it as a precision-versus-speed stopping rule.**\
 Unlike \( C \) or `max_depth`, stopping tolerance (`tol`, typically \( 10^{-4} \) or \( 10^{-3} \)) governs numerical solver termination rather than the statistical hypothesis class ([Scikit-learn LogisticRegression Documentation](https://scikit-learn.org/dev//modules/generated/sklearn.linear_model.LogisticRegression.html); [Scikit-learn SGDClassifier Documentation](https://scikit-learn.org/1.0/modules/generated/sklearn.linear_model.SGDClassifier.html)). Offer three plain-language presets on a log scale—**Coarse / Faster (`1e-2`)**, **Standard (`1e-4`, Default)**, and **Strict / Slower (`1e-5`)**—with guidance stating: `"Stops training once extra passes improve the loss by less than this threshold, or when Max Iterations is reached first."` Note alongside it that unstandardized features distort gradient scales and are the primary cause of premature stopping or non-convergence warnings. [scikit-learn](https://scikit-learn.org/dev//modules/generated/sklearn.linear_model.LogisticRegression.html)
 
 ## Regularisation Rules and Feature Selection
 
-**10. Keep regularisation at the model level, enforce column scaling as its prerequisite, and connect feature selection via live diagnostics.**  
+**10. Keep regularisation at the model level, enforce column scaling as its prerequisite, and connect feature selection via live diagnostics.**\
 Two structural clarifications make this workflow intuitive and mathematically sound:
+
 - **Model regularisation vs. column scaling (and grouped penalties):** Standard regularisation (\( L_1 \) Lasso, \( L_2 \) Ridge, Elastic Net, SVC \( C \), MLP weight decay `alpha`) penalizes the **entire weight vector** in the model loss function, whereas **standardisation (Z-score scaling)** transforms individual dataset columns. Learners often confuse "regularising a column" with "standardising a column"; keep scaling at the column/preprocessing level, while enforcing or strongly recommending **Z-score standardisation on all numeric columns** whenever a regularised model is active so penalties do not unfairly shrink small-unit features. (Per-feature penalty weights or Group Lasso penalties that shrink all one-hot dummy columns of a categorical feature together are best handled automatically or tucked into advanced settings rather than per-column beginner prompts.) [jstatsoft](https://www.jstatsoft.org/article/view/v033i01)
 - **Rules and workflow timing:** Because your app compares multiple classifiers across shared outer folds, users should select features in the **Dataset/Features stage** first, while regularisation lives in **Model Configuration**—bridged by live diagnostics computed from the selected columns:[219]
   1. **Sample-to-parameter pressure:** Flag high-variance risk using joint sample size \( n \), minority-class share, and expanded parameter count \( p_{\text{eff}} \) after one-hot encoding rather than a rigid \(\text{EPV} \ge 10\) cutoff, and require regularisation whenever \( p_{\text{eff}} \ge n_{\text{inner\_train}} \). [glmnet.stanford](https://glmnet.stanford.edu/book/lasso.html)
   2. **Multicollinearity:** Flag selected column pairs with \( |r| > 0.8 \) or Variance Inflation Factor \( \text{VIF} > 5 \), recommending \( L_2 \) or Elastic Net to stabilize correlated weights [jstatsoft](https://www.jstatsoft.org/article/view/v033i01).
   3. **High-cardinality sparsity:** When selected nominal columns expand into many sparse binary indicators, recommend \( L_1 \) or Elastic Net for automatic shrinkage and feature selection. [jstatsoft](https://www.jstatsoft.org/article/view/v033i01)
-  If the user returns to add or remove columns after choosing a model, reactively update a non-blocking banner on the model panel explaining which newly selected columns triggered or relaxed the regularisation recommendation.
+     If the user returns to add or remove columns after choosing a model, reactively update a non-blocking banner on the model panel explaining which newly selected columns triggered or relaxed the regularisation recommendation.

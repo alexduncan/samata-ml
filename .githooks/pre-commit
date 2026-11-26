@@ -1,0 +1,124 @@
+#!/usr/bin/env python3
+"""Format staged content without stashing or staging unstaged changes."""
+
+import json
+from pathlib import Path
+import re
+import shutil
+import subprocess
+import sys
+
+
+PRETTIER = {".js", ".jsx", ".ts", ".tsx", ".mjs", ".cjs", ".json", ".jsonc", ".css", ".html"}
+
+
+def run(args, data=None):
+    result = subprocess.run(args, input=data, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode:
+        raise RuntimeError(f"{' '.join(args[:2])} failed: {(result.stderr or result.stdout).decode(errors='replace')}")
+    return result.stdout
+
+
+def git(*args, data=None):
+    return run(["git", *args], data)
+
+
+def names(data):
+    return [item.decode(sys.getfilesystemencoding(), "surrogateescape") for item in data.split(b"\0") if item]
+
+
+def main():
+    root = Path(git("rev-parse", "--show-toplevel").decode().strip()).resolve()
+    import os
+    os.chdir(root)
+    staged = names(git("diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z"))
+    if not staged:
+        return
+    unstaged = set(names(git("diff", "--name-only", "-z")))
+    entries = {}
+    for record in git("--literal-pathspecs", "ls-files", "--stage", "-z", "--", *staged).split(b"\0"):
+        if not record:
+            continue
+        meta, raw = record.split(b"\t", 1)
+        mode, oid, stage = meta.split()
+        path = raw.decode(sys.getfilesystemencoding(), "surrogateescape")
+        if mode in (b"100644", b"100755") and stage == b"0":
+            entries[path] = (mode.decode(), oid.decode())
+
+    prettier_config = any(Path(p).is_file() for p in (".prettierrc", ".prettierrc.json", ".prettierrc.js", ".prettierrc.cjs", ".prettierrc.mjs"))
+    if not prettier_config and Path("package.json").is_file():
+        prettier_config = "prettier" in json.loads(Path("package.json").read_text())
+    dprint_config = next((p for p in ("dprint.json", ".dprint.json") if Path(p).is_file()), None)
+    ruff_config = any(Path(p).is_file() for p in ("ruff.toml", ".ruff.toml"))
+    if not ruff_config and Path("pyproject.toml").is_file():
+        ruff_config = bool(re.search(r"^\s*\[tool\.ruff\]", Path("pyproject.toml").read_text(), re.MULTILINE))
+    groups = {"prettier": [], "dprint": [], "ruff": [], "zig": []}
+    for path in staged:
+        if (path not in entries or not Path(path).is_file() or Path(path).is_symlink()
+                or not Path(path).resolve().is_relative_to(root)):
+            continue
+        ext = Path(path).suffix
+        tool = ("prettier" if prettier_config and ext in PRETTIER else
+                "dprint" if dprint_config and ext == ".md" else
+                "ruff" if ruff_config and ext == ".py" else
+                "zig" if ext == ".zig" else None)
+        if tool:
+            groups[tool].append(path)
+
+    for tool, paths in groups.items():
+        if not paths:
+            continue
+        if tool == "prettier":
+            common = Path(git("rev-parse", "--path-format=absolute", "--git-common-dir").decode().strip())
+            local = common.parent / "node_modules/.bin/prettier"
+            binary = str(local) if local.is_file() else shutil.which(tool)
+        else:
+            binary = shutil.which(tool)
+        if not binary:
+            raise RuntimeError(f"{tool} not found for: {', '.join(paths)}")
+        full = [p for p in paths if p not in unstaged]
+        partial = [p for p in paths if p in unstaged]
+        if full:
+            safe = [f"./{p}" if p.startswith("-") else p for p in full]
+            if tool == "prettier":
+                args = [binary, "--write", "--", *safe]
+            elif tool == "dprint":
+                args = [binary, "fmt", "--config", dprint_config, "--incremental=false", "--allow-no-files", "--", *safe]
+            elif tool == "ruff":
+                args = [binary, "format", "--force-exclude", "--", *safe]
+            else:
+                args = [binary, "fmt", *safe]
+            run(args)
+            git("--literal-pathspecs", "add", "--", *full)
+        included = None
+        if partial and tool == "dprint":
+            included = {str(Path(p).resolve()) for p in names(run([binary, "output-file-paths", "--config", dprint_config]).replace(b"\n", b"\0"))}
+        for path in partial:
+            safe = f"./{path}" if path.startswith("-") else path
+            if tool == "prettier":
+                info = json.loads(run([binary, "--file-info", safe]))
+                if info.get("ignored") or info.get("inferredParser") is None:
+                    continue
+                args = [binary, "--stdin-filepath", safe]
+            elif tool == "dprint":
+                if str((root / path).resolve()) not in included:
+                    continue
+                args = [binary, "fmt", "--config", dprint_config, "--incremental=false", "--stdin", str((root / path).resolve())]
+            elif tool == "ruff":
+                args = [binary, "format", "--force-exclude", "--stdin-filename", safe, "-"]
+            else:
+                args = [binary, "fmt", "--stdin"]
+            mode, oid = entries[path]
+            original = git("cat-file", "blob", oid)
+            formatted = run(args, original)
+            if formatted != original:
+                new_oid = git("hash-object", "-w", "--stdin", data=formatted).decode().strip()
+                git("update-index", "--cacheinfo", mode, new_oid, path)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except (OSError, ValueError, RuntimeError) as error:
+        print(f"pre-commit formatting failed: {error}", file=sys.stderr)
+        sys.exit(1)

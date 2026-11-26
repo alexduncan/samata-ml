@@ -1,15 +1,15 @@
 # Future development
 
-**Updated:** 2026-11-24
+**Updated:** 2026-11-26
 
 Items the specifications mark as _future_, _later_ or _deferred_. They are **not** to be planned or built until a human moves them into a spec. Open questions about current scope are in [TODO.md](TODO.md). Deliberate exclusions are listed under **Non-goals** in each component spec (§11) and are not future work.
 
 ## Product
 
 - **Column transformations on Load Data** ([workflow-steps §1, Future Development](workflow-steps.md)):
-    - Convert numeric columns to `boolean` or `categorical` using rules.
-    - Delete records based on specific column values.
-    - Delete a column.
+  - Convert numeric columns to `boolean` or `categorical` using rules.
+  - Delete records based on specific column values.
+  - Delete a column.
 - **Richer column statistics & charts:** Interactive graphical distribution charts and standard deviation calculation/display for numeric columns (deferred in Step 1 T4; currently summary stats and discrete histogram bins are stored and displayed).
 - **Editable dataset metadata and fairness audits:** In-browser editing of dataset descriptions/column notes; pedagogical algorithmic fairness exploration on sensitive attributes (e.g. sex/race in COMPAS or Adult Census).
 - **Dataset card repeated-action a11y review:** Human evaluation of `aria-describedby` pointing to card descriptions for repeated action buttons vs clean native button accessible names.
@@ -21,12 +21,19 @@ Items the specifications mark as _future_, _later_ or _deferred_. They are **not
 - **User control over epoch detection.** Let the learner mark an integer column as a timestamp, or not, overriding the ungated epoch detection.
 - **Richer type-specific dataset preview formatting:** Deferred in `virtual-table-component.md`; current display formats numbers with grouping separators while preserving decimals, and escapes cell values as text. Richer boolean indicators, fixed-precision floats, currency, and percentages are deferred.
 - **Richer classification results** (deferred from [Phase 4](plans/archive/web-ml-phase-4-single-model-results.md)):
-    - **Normalised expected cost (NEC)** with a cost-ratio slider.
-    - **Subgroup fairness gap** for a chosen protected attribute (TODO-43).
-    - **Selectable positive class** for the threshold explorer and binary metrics; Phase 4 fixes the second class as positive.
-    - **Prediction latency** alongside fit time.
-    - **Hand-built SVG charts** that replace Observable Plot where a bespoke chart is clearer, such as a Sankey-style confusion flow.
+  - **Normalised expected cost (NEC)** with a cost-ratio slider.
+  - **Subgroup fairness gap** for a chosen protected attribute (TODO-43).
+  - **Selectable positive class** for the threshold explorer and binary metrics; Phase 4 fixes the second class as positive.
+  - **Prediction latency** alongside fit time.
+  - **Hand-built SVG charts** that replace Observable Plot where a bespoke chart is clearer, such as a Sankey-style confusion flow.
 - **Richer model comparison:** Superimposed ROC and precision–recall curves, multi-model reliability plots, a Pareto scatter, a decision-boundary gallery and normalised expected cost with a cost-ratio slider remain future work.
+- **Richer feature importance** (deferred from [compare-feature-importance](plans/compare-feature-importance.md) and Phase 6; source [requirements](notes/feature-importance-requirements.md)):
+  - Correlation warnings (I8): Spearman, bias-corrected Cramér's V and η between raw columns; requested from `web-ml` as `2026-11-26-pairwise-feature-association`.
+  - A log-loss alternative to balanced accuracy (I4), which needs a `web-ml` log-loss scorer for shuffle importance.
+  - Lazy computation and a "More precise" (20 shuffles) option (I11), which need stored fold models and fold preprocessors.
+  - The `COMPARISON_HEATMAP` rank view and the grouped-permutation toggle for correlated clusters (v2 Phase 2).
+  - Effect plots (`EFFECT_PLOT`: ALE, or PDP with ICE) and approximate Shapley explanations for MLP and non-linear SVC (`LOCAL_EXPLAIN` 7b).
+  - Counterfactual explanations, a 2D decision-boundary explorer and feature-sliced error analysis (v2 Phase 3).
 
 ## Engineering
 

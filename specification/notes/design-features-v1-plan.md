@@ -1,13 +1,13 @@
 # Design Features — First Release Implementation Plan
 
-**Status:** draft  
-**Created:** 2026-11-21T18:12:54+01:00  
-**Updated:** 2026-11-21T18:12:54+01:00  
-**Author:** ChatGPT (GPT-6)  
-**Reviewed by:** Pending  
-**Review date:** Pending  
-**Implementation status:** Not started  
-**Proposed repository path:** `specification/plans/design-features-v1.md`  
+**Status:** draft\
+**Created:** 2026-11-21T18:12:54+01:00\
+**Updated:** 2026-11-21T18:12:54+01:00\
+**Author:** ChatGPT (GPT-6)\
+**Reviewed by:** Pending\
+**Review date:** Pending\
+**Implementation status:** Not started\
+**Proposed repository path:** `specification/plans/design-features-v1.md`\
 **Related projects:** `web-ml` (in-browser ML library) and its consuming educational web app
 
 > **Agent handoff:** Review this plan against the actual repositories and existing specifications before implementing. Record disagreements, missing interfaces, scope conflicts, and test gaps in the review. Update this living plan with agreed decisions. Do not mark **ready** or begin implementation until an independent verification pass finds no blocking issues. Preserve existing behaviour unless an explicit migration is approved.
@@ -24,7 +24,7 @@ The five-step user journey becomes:
 4. **Train Models** — select a subset of the available features for each model, configure hyperparameters, and choose one-shot or cross-validation.
 5. **Compare Results** — evaluate each immutable training run with its exact feature recipe, evaluation population, and metrics.
 
-**Guiding principle:** Design Features saves a *recipe*, not a globally pre-fitted numeric matrix. All statistics-dependent preprocessing must be fitted inside the training portion of each split/fold, and then applied without refitting to validation/test records.
+**Guiding principle:** Design Features saves a _recipe_, not a globally pre-fitted numeric matrix. All statistics-dependent preprocessing must be fitted inside the training portion of each split/fold, and then applied without refitting to validation/test records.
 
 ### Success criteria
 
@@ -39,20 +39,20 @@ The five-step user journey becomes:
 
 Implement the following as a deliberately constrained vertical slice. Prefer familiar controls and visible explanations over a general-purpose expression language.
 
-| Area | Included in V1 | Guardrails / defaults |
-| --- | --- | --- |
-| Inspect features | Raw column name, inferred physical type, editable semantic role, missing count, unique-category estimate, example values | Distinguish numeric, categorical text, datetime-like, identifier, target, sensitive attribute |
-| Feature exclusion | Exclude a column from default predictors without deleting raw data | Target unavailable as predictor; sensitive columns remain available for fairness analysis |
-| Arithmetic | Create named numeric features with `+`, `-`, `*`, `/` between two numeric columns or a column and a constant | Typed, structured inputs; no arbitrary code; invalid results become missing with explicit warning/count |
-| Fixed-rule categorisation | Create categories from numeric thresholds, e.g. age `< 25`, `25–59`, `>= 60` | User-specified non-overlapping exhaustive bins; separate missing-value handling |
-| Row filtering | Optional simple **AND** of numeric comparisons, categorical equality/inequality, and missing/not-missing tests | Default: no row filtering. Explain retained cohort and prohibit target-dependent rules; preserve stable row IDs |
-| Categorical encoding | One-hot encoding for categorical columns; explicitly ordered ordinal encoding | One-hot default; cap expansion (proposed: 32 output categories per source column); no inferred ordering for nominal categories |
-| Missing values | Numeric: fixed constant, mean or median; categorical: fixed category or most frequent | Learned statistics fitted on training portion only; never silently delete rows |
-| Scaling | None, standardisation (`z` score), min-max `[0,1]`, fixed `log1p(x)` | Standard/min-max fitted per fold; `log1p` requires `x >= 0`; warn before using it with negative data |
-| Datetime basics | Strictly parse supported date/datetime formats; derive year, month, weekday, or elapsed days between two timestamps | Only deterministic parsing/extraction. Do not use raw timestamps as arbitrary ordinal numbers; reject ambiguous date formats and surface timezone assumptions |
-| Preview | Original versus generated feature examples, estimated feature count, invalid-value warnings, retained-row count | Show deterministic previews only; no full-data-fitted encoder/scaler parameters presented as training parameters |
-| Model integration | Selected feature recipe integrated into one-shot and cross-validation training | Fit separately per training split/fold; immutable snapshots per run |
-| Results integration | Show source → generated features, transformations, row-selection rule, resulting feature count, warnings | Flag non-comparable evaluation populations/splits |
+| Area                      | Included in V1                                                                                                           | Guardrails / defaults                                                                                                                                         |
+| ------------------------- | ------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Inspect features          | Raw column name, inferred physical type, editable semantic role, missing count, unique-category estimate, example values | Distinguish numeric, categorical text, datetime-like, identifier, target, sensitive attribute                                                                 |
+| Feature exclusion         | Exclude a column from default predictors without deleting raw data                                                       | Target unavailable as predictor; sensitive columns remain available for fairness analysis                                                                     |
+| Arithmetic                | Create named numeric features with `+`, `-`, `*`, `/` between two numeric columns or a column and a constant             | Typed, structured inputs; no arbitrary code; invalid results become missing with explicit warning/count                                                       |
+| Fixed-rule categorisation | Create categories from numeric thresholds, e.g. age `< 25`, `25–59`, `>= 60`                                             | User-specified non-overlapping exhaustive bins; separate missing-value handling                                                                               |
+| Row filtering             | Optional simple **AND** of numeric comparisons, categorical equality/inequality, and missing/not-missing tests           | Default: no row filtering. Explain retained cohort and prohibit target-dependent rules; preserve stable row IDs                                               |
+| Categorical encoding      | One-hot encoding for categorical columns; explicitly ordered ordinal encoding                                            | One-hot default; cap expansion (proposed: 32 output categories per source column); no inferred ordering for nominal categories                                |
+| Missing values            | Numeric: fixed constant, mean or median; categorical: fixed category or most frequent                                    | Learned statistics fitted on training portion only; never silently delete rows                                                                                |
+| Scaling                   | None, standardisation (`z` score), min-max `[0,1]`, fixed `log1p(x)`                                                     | Standard/min-max fitted per fold; `log1p` requires `x >= 0`; warn before using it with negative data                                                          |
+| Datetime basics           | Strictly parse supported date/datetime formats; derive year, month, weekday, or elapsed days between two timestamps      | Only deterministic parsing/extraction. Do not use raw timestamps as arbitrary ordinal numbers; reject ambiguous date formats and surface timezone assumptions |
+| Preview                   | Original versus generated feature examples, estimated feature count, invalid-value warnings, retained-row count          | Show deterministic previews only; no full-data-fitted encoder/scaler parameters presented as training parameters                                              |
+| Model integration         | Selected feature recipe integrated into one-shot and cross-validation training                                           | Fit separately per training split/fold; immutable snapshots per run                                                                                           |
+| Results integration       | Show source → generated features, transformations, row-selection rule, resulting feature count, warnings                 | Flag non-comparable evaluation populations/splits                                                                                                             |
 
 **Scope-control decisions:**
 
@@ -72,7 +72,7 @@ Free-form text vectorisation, high-cardinality feature hashing, learned quantile
 ### 3.1 Roles, provenance, and dependency validation
 
 - Maintain the **original dataset immutably** with stable row identities and raw column IDs.
-- Distinguish *physical storage type* (e.g. string), *semantic data kind* (e.g. category, datetime, identifier), and *usage metadata* (target, predictor-eligible, sensitive/audit attribute, or group identifier). Usage flags other than target are not necessarily mutually exclusive. Never assume every string is categorical.
+- Distinguish _physical storage type_ (e.g. string), _semantic data kind_ (e.g. category, datetime, identifier), and _usage metadata_ (target, predictor-eligible, sensitive/audit attribute, or group identifier). Usage flags other than target are not necessarily mutually exclusive. Never assume every string is categorical.
 - Treat generated features as named objects with stable IDs, source-column IDs, operation/version/parameters, output type, and lineage.
 - Support chaining of **deterministic** derived features through an acyclic dependency graph. Reject cycles, duplicate IDs/names, incompatible operands, and missing sources.
 - In V1, fitted outputs (such as standardised values) **cannot feed subsequent deterministic feature expressions**. Resolve operation order as deterministic derivation → missing-value handling → categorical encoding / scaling → model matrix.
@@ -89,24 +89,24 @@ Free-form text vectorisation, high-cardinality feature hashing, learned quantile
 6. Fit the estimator only on the transformed training partition, then evaluate on validation/test rows.
 7. Save the immutable recipe, fitted-pipeline metadata needed for prediction/replay, split IDs/seed, selected features, and training warnings with the resulting model/run.
 
-**Important distinction:** fixed row-filter rules may be applied to define the eligible population *before* the split, but this changes the population being evaluated. Document that population shift; never silently compare it against results from a different cohort. Even deterministic transformations must use only information available at the intended prediction time.
+**Important distinction:** fixed row-filter rules may be applied to define the eligible population _before_ the split, but this changes the population being evaluated. Document that population shift; never silently compare it against results from a different cohort. Even deterministic transformations must use only information available at the intended prediction time.
 
 **Exploratory selection warning:** Students may manually redesign features after reading results. Fold-correct preprocessing prevents mechanical leakage but does not make repeatedly selected validation performance an unbiased final test estimate. Preserve existing holdout semantics if they exist; do not claim an untouched final-test estimate unless the test population was genuinely sealed from tuning and repeated inspection.
 
 ### 3.3 Deterministic transformation contracts
 
-| Operation | Required behaviour |
-| --- | --- |
-| Division | Handle denominator zero/near-zero using a documented finite-value policy; never return `Infinity` or `NaN` to the estimator silently |
-| Fixed thresholds | Explicit boundary inclusivity; ordered, complete and non-overlapping ranges; labels are user-defined; missing is distinct |
-| Row filters | Apply predictable AND semantics; show retained/excluded counts and any target or group shifts; preserve row IDs |
-| `log1p(x)` | Defined for `x >= 0` in V1 (conservative policy); invalid inputs reported and handled via missing-value policy |
-| StandardScaler | Training-only mean and population std (`ddof=0`) if claiming scikit-learn compatibility; constant column gets safe factor 1 |
-| MinMaxScaler | Fit training min/max; define constant-column and out-of-range validation behaviour (default: no clipping, matching scikit-learn default) |
-| One-hot | Vocabulary learned from training rows; stable deterministic category ordering; fixed output width at inference; new categories follow explicit policy; cap expansion |
-| Ordinal | User defines meaningful order; never invent a meaningful rank from a nominal string; define unknown handling explicitly |
-| Imputation | Fit mean/median/mode only from training; handle all-missing columns explicitly (error or documented fallback); respect input/output types |
-| Datetime | Accept only explicitly documented formats (proposed ISO date, ISO datetime, and `YYYY-MM-DD HH:mm:ss`); treat timezone-naive timestamps consistently; do not depend on the browser's local timezone; expose parse failures |
+| Operation        | Required behaviour                                                                                                                                                                                                         |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Division         | Handle denominator zero/near-zero using a documented finite-value policy; never return `Infinity` or `NaN` to the estimator silently                                                                                       |
+| Fixed thresholds | Explicit boundary inclusivity; ordered, complete and non-overlapping ranges; labels are user-defined; missing is distinct                                                                                                  |
+| Row filters      | Apply predictable AND semantics; show retained/excluded counts and any target or group shifts; preserve row IDs                                                                                                            |
+| `log1p(x)`       | Defined for `x >= 0` in V1 (conservative policy); invalid inputs reported and handled via missing-value policy                                                                                                             |
+| StandardScaler   | Training-only mean and population std (`ddof=0`) if claiming scikit-learn compatibility; constant column gets safe factor 1                                                                                                |
+| MinMaxScaler     | Fit training min/max; define constant-column and out-of-range validation behaviour (default: no clipping, matching scikit-learn default)                                                                                   |
+| One-hot          | Vocabulary learned from training rows; stable deterministic category ordering; fixed output width at inference; new categories follow explicit policy; cap expansion                                                       |
+| Ordinal          | User defines meaningful order; never invent a meaningful rank from a nominal string; define unknown handling explicitly                                                                                                    |
+| Imputation       | Fit mean/median/mode only from training; handle all-missing columns explicitly (error or documented fallback); respect input/output types                                                                                  |
+| Datetime         | Accept only explicitly documented formats (proposed ISO date, ISO datetime, and `YYYY-MM-DD HH:mm:ss`); treat timezone-naive timestamps consistently; do not depend on the browser's local timezone; expose parse failures |
 
 Do not silently coerce arbitrary strings into numbers, change dataset units, reorder rows, truncate features, or delete missing records. Any lossy operation should remain visible and reviewable.
 
@@ -119,7 +119,7 @@ Do not silently coerce arbitrary strings into numbers, change dataset units, reo
 
 ## 4. Proposed library interface (conceptual, adapt to existing code)
 
-Do not create parallel abstractions if `web-ml` already has preprocessing, dataset and training interfaces. The following defines required *behaviour*, not prescribed filenames or API names.
+Do not create parallel abstractions if `web-ml` already has preprocessing, dataset and training interfaces. The following defines required _behaviour_, not prescribed filenames or API names.
 
 ```typescript
 interface FeatureRecipe {
@@ -159,7 +159,7 @@ interface FeatureRecipe {
 
 - Offer clear actions: **Create calculated feature**, **Create categories**, **Encode categories**, **Handle missing values**, **Scale numbers**, **Extract date component**, **Calculate date difference**, and **Filter rows**.
 - Use guided forms (source column, operation, parameters, result name) with domain-specific hints rather than exposing raw expressions.
-- Show a deterministic before/after preview for a small sample of rows and a clear estimate of created features. For fitted operations, show the *recipe* and an explanation that values are calculated separately during training; do not display full-data-derived statistics as if they were fitted training values.
+- Show a deterministic before/after preview for a small sample of rows and a clear estimate of created features. For fitted operations, show the _recipe_ and an explanation that values are calculated separately during training; do not display full-data-derived statistics as if they were fitted training values.
 - Allow edit, remove and undo/restore of generated transformations. Preserve original columns.
 - Add inline warnings for invalid arithmetic, category proliferation, reduction in row count, target proxies, potentially sensitive predictors, and transformation order.
 - Use semantic controls and accessible errors/status updates. Keyboard access, focus restoration, labels, screen-reader announcements and reduced-motion considerations are acceptance criteria.
@@ -306,17 +306,17 @@ The feature is releasable only when **all** of the following are true:
 
 ## 9. Risks and mitigation
 
-| Risk | Mitigation |
-| --- | --- |
-| Leakage from fitted transforms | Split before fit, per-fold state, explicit tests with adversarial outliers |
-| Leakage from future/target-proxy fields | Role metadata, dependency rejection, curated warnings, prediction-time explanations |
-| Changed cohorts distort comparisons | Stable row IDs, row retention summary, comparison compatibility flags |
-| Overly broad feature editor delays delivery | Limited operations, structured controls, explicit deferred list |
-| Feature explosion and browser memory | Category cap, output-width budgeting, cancellation, sparse follow-up |
-| Inconsistent preprocessing at prediction time | Versioned recipes plus fitted state serialized with each run |
-| Date ambiguity and local timezone | Strict formats, documented timezone-naive interpretation, no silent parsing |
-| Student confuses validation tuning with final evidence | Exploratory-result wording and sealed-holdout guidance |
-| Algorithm-specific preprocessing limitations | Existing estimator contracts checked in milestone 0; clear compatibility warnings |
+| Risk                                                   | Mitigation                                                                          |
+| ------------------------------------------------------ | ----------------------------------------------------------------------------------- |
+| Leakage from fitted transforms                         | Split before fit, per-fold state, explicit tests with adversarial outliers          |
+| Leakage from future/target-proxy fields                | Role metadata, dependency rejection, curated warnings, prediction-time explanations |
+| Changed cohorts distort comparisons                    | Stable row IDs, row retention summary, comparison compatibility flags               |
+| Overly broad feature editor delays delivery            | Limited operations, structured controls, explicit deferred list                     |
+| Feature explosion and browser memory                   | Category cap, output-width budgeting, cancellation, sparse follow-up                |
+| Inconsistent preprocessing at prediction time          | Versioned recipes plus fitted state serialized with each run                        |
+| Date ambiguity and local timezone                      | Strict formats, documented timezone-naive interpretation, no silent parsing         |
+| Student confuses validation tuning with final evidence | Exploratory-result wording and sealed-holdout guidance                              |
+| Algorithm-specific preprocessing limitations           | Existing estimator contracts checked in milestone 0; clear compatibility warnings   |
 
 ## 10. Decisions the reviewer must validate
 
@@ -348,43 +348,43 @@ These ideas are explicitly **not acceptance criteria for V1**. Prioritise by edu
 
 ## Near-term priorities (P1)
 
-| Feature | Educational / practical benefit | Key consideration |
-| --- | --- | --- |
-| Richer datetime features | Month/weekday/hour cyclic encoding; time since an event; more supported date formats | Timezone and prediction-time leakage |
-| Smarter categorical handling | Rare-category grouping, `max_categories`, frequency encoding | Train-only category statistics |
-| Missingness indicator | Let learners see whether missing data is predictive | Avoid hidden correlations with protected attributes |
-| Visual feature lineage | Graph original columns → derived columns → encoded model inputs | Clear explanation of many-to-one and one-to-many transforms |
-| Per-model transformation variants | Compare scaled vs unscaled versions or multiple encoders under the same algorithm | Avoid confusing global recipe state |
-| Cohort/fairness impact panel | Show before/after class and sensitive-group distributions following filters | Minimum support per group and privacy safeguards |
-| Better comparison controls | Pair runs on identical records/folds and label uncontrolled comparisons | Store split signatures and sample IDs |
-| Pipeline import/export | Share reproducible transformation designs | Schema/version migration, avoid including private row data |
+| Feature                           | Educational / practical benefit                                                      | Key consideration                                           |
+| --------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------- |
+| Richer datetime features          | Month/weekday/hour cyclic encoding; time since an event; more supported date formats | Timezone and prediction-time leakage                        |
+| Smarter categorical handling      | Rare-category grouping, `max_categories`, frequency encoding                         | Train-only category statistics                              |
+| Missingness indicator             | Let learners see whether missing data is predictive                                  | Avoid hidden correlations with protected attributes         |
+| Visual feature lineage            | Graph original columns → derived columns → encoded model inputs                      | Clear explanation of many-to-one and one-to-many transforms |
+| Per-model transformation variants | Compare scaled vs unscaled versions or multiple encoders under the same algorithm    | Avoid confusing global recipe state                         |
+| Cohort/fairness impact panel      | Show before/after class and sensitive-group distributions following filters          | Minimum support per group and privacy safeguards            |
+| Better comparison controls        | Pair runs on identical records/folds and label uncontrolled comparisons              | Store split signatures and sample IDs                       |
+| Pipeline import/export            | Share reproducible transformation designs                                            | Schema/version migration, avoid including private row data  |
 
 ## Medium-term priorities (P2)
 
-| Feature | Educational / practical benefit | Key consideration |
-| --- | --- | --- |
-| Free-text BoW / TF-IDF | Make narrative/text columns model-ready | Sparse matrices, vocabulary learned per training fold |
-| Sparse matrix support | Efficient one-hot and text features | Estimator/WASM backend compatibility |
-| Feature hashing | Predictable dimensionality for high-cardinality categories | Collisions and explainability |
-| Quantile/equal-frequency bins | Contrast learned versus fixed threshold categories | Fold-specific fit and reproducibility |
-| Polynomial and interaction features | Show nonlinear representation and interaction effects | Feature explosion |
-| Robust/power scaling | Compare sensitivity to outliers and skew | Fitted statistics; valid domains |
-| Automated data-quality diagnostics | Flag duplicates, near-constants, outliers, invalid units | Avoid automatic destructive cleaning |
-| Split and holdout design | Explicit locked test sets, grouped/temporal split options | Avoid repeated-test overfitting and time leakage |
-| Feature ablation experiments | Automatically compare selected feature subsets on fixed splits | Multiple comparisons and experiment tracking |
+| Feature                             | Educational / practical benefit                                | Key consideration                                     |
+| ----------------------------------- | -------------------------------------------------------------- | ----------------------------------------------------- |
+| Free-text BoW / TF-IDF              | Make narrative/text columns model-ready                        | Sparse matrices, vocabulary learned per training fold |
+| Sparse matrix support               | Efficient one-hot and text features                            | Estimator/WASM backend compatibility                  |
+| Feature hashing                     | Predictable dimensionality for high-cardinality categories     | Collisions and explainability                         |
+| Quantile/equal-frequency bins       | Contrast learned versus fixed threshold categories             | Fold-specific fit and reproducibility                 |
+| Polynomial and interaction features | Show nonlinear representation and interaction effects          | Feature explosion                                     |
+| Robust/power scaling                | Compare sensitivity to outliers and skew                       | Fitted statistics; valid domains                      |
+| Automated data-quality diagnostics  | Flag duplicates, near-constants, outliers, invalid units       | Avoid automatic destructive cleaning                  |
+| Split and holdout design            | Explicit locked test sets, grouped/temporal split options      | Avoid repeated-test overfitting and time leakage      |
+| Feature ablation experiments        | Automatically compare selected feature subsets on fixed splits | Multiple comparisons and experiment tracking          |
 
 ## Research / longer-term possibilities (P3)
 
-| Feature | Educational / practical benefit | Key consideration |
-| --- | --- | --- |
-| Target encoding with cross-fitting | Teach powerful encodings and leakage traps | Requires strict inner-fold fitting; higher misuse risk |
-| Text embeddings | Compare classical versus learned text representations | Model size, browser downloads, reproducibility |
-| Automated feature suggestions | Explain candidate derived features | Suggestions should be transparent, controllable, non-leaky |
-| Counterfactual feature changes | Explore model sensitivity and individual explanations | Causal limitations and fairness interpretation |
-| Feature drift monitoring | Compare train and new-data distributions | Privacy and longitudinal dataset support |
-| Richer rule-based editor | AND/OR groups, string/date conditions, user-defined formulas | Validation complexity and misleading filters |
-| Visual preprocessing experiments | Side-by-side encoding/scaling/feature importance demonstrations | Need evaluation controls and clear caveats |
-| Nested CV for entire preprocessing search | Stronger generalisation claims for feature+model selection | Significant computational expense in the browser |
+| Feature                                   | Educational / practical benefit                                 | Key consideration                                          |
+| ----------------------------------------- | --------------------------------------------------------------- | ---------------------------------------------------------- |
+| Target encoding with cross-fitting        | Teach powerful encodings and leakage traps                      | Requires strict inner-fold fitting; higher misuse risk     |
+| Text embeddings                           | Compare classical versus learned text representations           | Model size, browser downloads, reproducibility             |
+| Automated feature suggestions             | Explain candidate derived features                              | Suggestions should be transparent, controllable, non-leaky |
+| Counterfactual feature changes            | Explore model sensitivity and individual explanations           | Causal limitations and fairness interpretation             |
+| Feature drift monitoring                  | Compare train and new-data distributions                        | Privacy and longitudinal dataset support                   |
+| Richer rule-based editor                  | AND/OR groups, string/date conditions, user-defined formulas    | Validation complexity and misleading filters               |
+| Visual preprocessing experiments          | Side-by-side encoding/scaling/feature importance demonstrations | Need evaluation controls and clear caveats                 |
+| Nested CV for entire preprocessing search | Stronger generalisation claims for feature+model selection      | Significant computational expense in the browser           |
 
 ## Suggested backlog scoring
 

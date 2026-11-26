@@ -191,9 +191,9 @@ export interface StoredTuning {
 - **Must not touch:** `src/features/models/app-model-configuration.ts`, `src/features/models/training/`
 - **Implementation:** Implement Interfaces §A and D6–D8. `setHyperparameters` invalidates downstream steps only on effective change (Phase 1 rule).
 - **Acceptance criteria:**
-    - [ ] `WML-P7-STATE-1` — Tuning configs round-trip; legacy array search spaces migrate per §A; overlapping fixed/tuned keys are rejected on hydrate.
-    - [ ] `WML-P7-STATE-2` — Every D6 issue code has a positive and negative test; `fitCount` returns 21 for One-Shot with 20 trials and (5 + 1) × (5 × 20 + 1) = 606 for five-fold nested CV.
-    - [ ] `WML-P7-STATE-3` — `toSearchRequest` yields disjoint `baseOptions` and `searchSpace` in `web-ml` domain shapes for Logistic Regression, SVC (`gamma` range) and Decision Tree (`maxDepth` with `null` candidate).
+  - [ ] `WML-P7-STATE-1` — Tuning configs round-trip; legacy array search spaces migrate per §A; overlapping fixed/tuned keys are rejected on hydrate.
+  - [ ] `WML-P7-STATE-2` — Every D6 issue code has a positive and negative test; `fitCount` returns 21 for One-Shot with 20 trials and (5 + 1) × (5 × 20 + 1) = 606 for five-fold nested CV.
+  - [ ] `WML-P7-STATE-3` — `toSearchRequest` yields disjoint `baseOptions` and `searchSpace` in `web-ml` domain shapes for Logistic Regression, SVC (`gamma` range) and Decision Tree (`maxDepth` with `null` candidate).
 - **Verification:** `bun test tests/tuning-config.test.ts tests/state-and-storage.test.ts`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -205,7 +205,7 @@ export interface StoredTuning {
 - **Must not touch:** `src/features/models/app-model-configuration.ts`, `node_modules/`
 - **Implementation:** Add `tuning` metadata (D5, D8) for every tunable option of the eight classifiers, citing `web-ml` ranges from `hyperparameters.md`; structured options (custom class weights, hidden layer arrays, priors) are not tunable.
 - **Acceptance criteria:**
-    - [ ] `WML-P7-POLICY-1` — Every option in every classifier document is either tunable with valid metadata or explicitly not tunable; hard limits never exceed `web-ml`'s documented ranges; every `parent` names an option of the same model.
+  - [ ] `WML-P7-POLICY-1` — Every option in every classifier document is either tunable with valid metadata or explicitly not tunable; hard limits never exceed `web-ml`'s documented ranges; every `parent` names an option of the same model.
 - **Verification:** `bun test tests/model-options.test.ts`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -217,9 +217,9 @@ export interface StoredTuning {
 - **Must not touch:** `css/root.css`, `src/features/results/`
 - **Implementation:** Per Interfaces §C (configuration). The builder computes `fitCount` and `tuningIssues` with T1 helpers and passes them in; Continue is blocked while issues exist and focuses the first invalid control. Section 3's header reads "Hyperparameter Tuning" when complete in tuning mode (`workflow-steps.md` §3.3). Rewrite the draft's "Advanced Random Search" section to this structure. Stories: `TuningLogistic`, `TuningSvcGammaRange`, `CategoricalTooFew`, `ParentTuned`, `ComputeAlert`, `LongLabel`, `RTL`.
 - **Acceptance criteria:**
-    - [ ] `WML-P7-UI-1` — Switching to tuning shows Fixed/Tune per tunable option; Tune categorical requires two checked candidates; numeric ranges validate per D6 with messages associated via `aria-describedby`; switching back to Manual restores the previous fixed values.
-    - [ ] `WML-P7-UI-2` — The fit count updates as trials or folds change; the compute alert appears at 500 and not at 499; tuning a parent disables Tune on its children with the explanation text.
-    - [ ] `WML-P7-UI-3` — Keyboard, RTL, long-label, 320 px and 200% zoom checks pass; stories pass axe in three browsers.
+  - [ ] `WML-P7-UI-1` — Switching to tuning shows Fixed/Tune per tunable option; Tune categorical requires two checked candidates; numeric ranges validate per D6 with messages associated via `aria-describedby`; switching back to Manual restores the previous fixed values.
+  - [ ] `WML-P7-UI-2` — The fit count updates as trials or folds change; the compute alert appears at 500 and not at 499; tuning a parent disables Tune on its children with the explanation text.
+  - [ ] `WML-P7-UI-3` — Keyboard, RTL, long-label, 320 px and 200% zoom checks pass; stories pass axe in three browsers.
 - **Verification:** `bun run test:e2e tests/model-tuning-configuration.e2e.ts tests/model-configuration.e2e.ts`; `bun run test:stories`; `bun test tests/style-tokens.test.ts`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -231,9 +231,9 @@ export interface StoredTuning {
 - **Must not touch:** `src/features/results/app-*.ts`, `node_modules/`
 - **Implementation:** Implement D1–D3 and Interfaces §B in `tuning-runner.ts`; map One-Shot and nested results into Phase 4 evaluation plus `tuning`; extend the progress normaliser.
 - **Acceptance criteria:**
-    - [ ] `WML-P7-RUN-1` — A spy-backed unit test proves test rows (One-Shot) and outer held-out rows (nested) are never in any search's training or validation data.
-    - [ ] `WML-P7-RUN-2` — A tuned One-Shot model and a manual One-Shot model on the same dataset share `partitionFingerprint`; likewise tuned and manual five-fold models.
-    - [ ] `WML-P7-RUN-3` — Real tuned training (iris KNN tuning `nNeighbors` 1–30, five folds, 10 trials; breast-cancer SVC tuning C and γ One-Shot) completes in three browsers, decodes as version 3, and cancellation mid-search writes no envelope.
+  - [ ] `WML-P7-RUN-1` — A spy-backed unit test proves test rows (One-Shot) and outer held-out rows (nested) are never in any search's training or validation data.
+  - [ ] `WML-P7-RUN-2` — A tuned One-Shot model and a manual One-Shot model on the same dataset share `partitionFingerprint`; likewise tuned and manual five-fold models.
+  - [ ] `WML-P7-RUN-3` — Real tuned training (iris KNN tuning `nNeighbors` 1–30, five folds, 10 trials; breast-cancer SVC tuning C and γ One-Shot) completes in three browsers, decodes as version 3, and cancellation mid-search writes no envelope.
 - **Verification:** `bun test tests/tuning-runner.test.ts tests/evaluation-decoder.test.ts tests/training-progress.test.ts`; `bun run test:e2e tests/classification-tuning.e2e.ts`; `bun run check`; `bun run build`.
 - **Progress:** [ ] Not started
 
@@ -245,9 +245,9 @@ export interface StoredTuning {
 - **Must not touch:** `src/stores/`, `src/features/models/`
 - **Implementation:** Per Interfaces §C (results), D10–D11.
 - **Acceptance criteria:**
-    - [ ] `WML-P7-UI-4` — The selection matrix shows one row per outer fold plus "Final search" (nested) and the stability sentence per option; One-Shot shows one row.
-    - [ ] `WML-P7-UI-5` — The trial table pages 50 rows with correct "Page n of m" text and disabled boundary buttons; failed trials show "Unavailable" scores and their status.
-    - [ ] `WML-P7-UI-6` — The curve uses a log axis for log-uniform options, rings each fold's best trial and shows training scores only when present; the scatter renders only with exactly two numeric tuned options and its table lists every trial.
+  - [ ] `WML-P7-UI-4` — The selection matrix shows one row per outer fold plus "Final search" (nested) and the stability sentence per option; One-Shot shows one row.
+  - [ ] `WML-P7-UI-5` — The trial table pages 50 rows with correct "Page n of m" text and disabled boundary buttons; failed trials show "Unavailable" scores and their status.
+  - [ ] `WML-P7-UI-6` — The curve uses a log axis for log-uniform options, rings each fold's best trial and shows training scores only when present; the scatter renders only with exactly two numeric tuned options and its table lists every trial.
 - **Verification:** `bun test tests/tuning-view-model.test.ts tests/chart-tokens.test.ts tests/style-tokens.test.ts`; `bun run test:e2e tests/tuning-results.e2e.ts`; `bun run test:stories`; `bun run check`.
 - **Progress:** [ ] Not started
 
@@ -259,9 +259,9 @@ export interface StoredTuning {
 - **Must not touch:** `css/root.css`, `src/app.ts`
 - **Implementation:** Per Interfaces §C last bullets. Add a Tuning section to the 03-7 draft (replacing the removed Random Search sample).
 - **Acceptance criteria:**
-    - [ ] `WML-P7-UI-7` — A tuned model's Section 6 shows Tuning between the shared sections and model internals; trial fold, page and curve option survive reload.
-    - [ ] `WML-P7-UI-8` — `/models` shows "Random search · 20 trials · 2 tuned"; `/results` labels the tuned model "(tuned)" and compares it with a manual model on the same rows.
-    - [ ] `WML-P7-UI-9` — `tests/a11y.e2e.ts` scans a tuned Section 6 and the tuning configuration form with no new findings.
+  - [ ] `WML-P7-UI-7` — A tuned model's Section 6 shows Tuning between the shared sections and model internals; trial fold, page and curve option survive reload.
+  - [ ] `WML-P7-UI-8` — `/models` shows "Random search · 20 trials · 2 tuned"; `/results` labels the tuned model "(tuned)" and compares it with a manual model on the same rows.
+  - [ ] `WML-P7-UI-9` — `tests/a11y.e2e.ts` scans a tuned Section 6 and the tuning configuration form with no new findings.
 - **Verification:** `bun run test:e2e tests/classification-tuning.e2e.ts tests/models-overview.e2e.ts tests/a11y.e2e.ts`; `bun test tests/comparison-model.test.ts`; `bun run test:stories`; `bun run check`; `bun run build`.
 - **Progress:** [ ] Not started
 
@@ -273,8 +273,8 @@ export interface StoredTuning {
 - **Must not touch:** `src/`, `tests/`, `specification/mockups/`, `specification/notes/user-experience-decisions.md` — sections §1, §2, §7, §9, §10 are unclaimed.
 - **Implementation:** Apply every item under _Specification changes_, including deleting the metrics note once Phases 4–6 specs contain its rules.
 - **Acceptance criteria:**
-    - [ ] Every item under _Specification changes_ is applied and ticked.
-    - [ ] `bun run plans:check` and `bun run plans:task specification/plans/web-ml-phase-7-hyperparameter-tuning.md --check-complete` pass.
+  - [ ] Every item under _Specification changes_ is applied and ticked.
+  - [ ] `bun run plans:check` and `bun run plans:task specification/plans/web-ml-phase-7-hyperparameter-tuning.md --check-complete` pass.
 - **Verification:** `bun run plans:check specification/plans/web-ml-phase-7-hyperparameter-tuning.md`; `bun run plans:task specification/plans/web-ml-phase-7-hyperparameter-tuning.md --check-complete`; `bun run check`.
 - **Progress:** [ ] Not started
 

@@ -237,9 +237,9 @@ Notes:
 - The Dot follows [the next-step guidance rules](workflow-steps.md#next-step-guidance). It tracks acknowledged project milestones in memory and leaves navigation, history and focus with the learner and router.
 - The cue compares exact effective workflows. Opening, switching or closing Help over the same underlay preserves it. History that reaches a different underlay follows the ordinary arrival and departure rules. Entering `/models/new` consumes its active training cue. A numbered result is a different destination. Comparison is consumed on arrival at `/results`, including when the second result acknowledges while that page is current.
 - **Deliberate exception: the Compare Results button.** The **Compare Results** button in the `/models` header is disabled until `canCompare`, as specified in workflow-steps §3, and this is a **deliberate design choice, not an oversight**. The principle in §4 is about _navigation_: where the user may go. The button is a _call to action_ that invites the user to go and compare, and inviting them when there is nothing to compare would be misleading. The two are kept separate on purpose:
-    - `/results` is always reachable from the sidebar and by URL, and explains itself with the §4.3 notification.
-    - The button is the only control in the application that is disabled because of workflow state. New controls MUST NOT copy this pattern for navigation; a disabled call to action needs the same justification and an entry here.
-    - Accessibility: a native `<a>` cannot be disabled, so the control is a `<button type="button" disabled>` while `!canCompare` and an `<a href="/results">` styled as a button when `canCompare`. Disabled buttons are skipped by keyboard focus and give no explanation, so a visible, always-rendered hint (not a tooltip) sits beside it and is the button's `aria-describedby`: "Train more than one model to compare results." The hint is replaced by nothing (hidden with the same layout space reserved) once enabled.
+  - `/results` is always reachable from the sidebar and by URL, and explains itself with the §4.3 notification.
+  - The button is the only control in the application that is disabled because of workflow state. New controls MUST NOT copy this pattern for navigation; a disabled call to action needs the same justification and an entry here.
+  - Accessibility: a native `<a>` cannot be disabled, so the control is a `<button type="button" disabled>` while `!canCompare` and an `<a href="/results">` styled as a button when `canCompare`. Disabled buttons are skipped by keyboard focus and give no explanation, so a visible, always-rendered hint (not a tooltip) sits beside it and is the button's `aria-describedby`: "Train more than one model to compare results." The hint is replaced by nothing (hidden with the same layout space reserved) once enabled.
 
 ---
 
@@ -316,8 +316,8 @@ Because step URLs are real paths, deep links and reloads request e.g. `/models/3
 Corresponds to workflow-steps §1.
 
 - **Sub-view** is `data.mode` (`'select' | 'preview'`), a persisted value (not derived), so the exact view survives reloads:
-    - `'select'`: sample dataset cards from the generated sample-dataset catalogue ([sample-datasets.md](sample-datasets.md)) and the **Upload Dataset** header button.
-    - `'preview'`: dataset header, virtual table, and the column-details `<aside>`.
+  - `'select'`: sample dataset cards from the generated sample-dataset catalogue ([sample-datasets.md](sample-datasets.md)) and the **Upload Dataset** header button.
+  - `'preview'`: dataset header, virtual table, and the column-details `<aside>`.
 - On successful ingestion (`loadDatasetSucceeded`) the store sets `dataset`, `data.mode = 'preview'`, `data.selectedColumn = null`.
 - `data.selectedColumn` (the column whose `<aside>` is open) is persisted. Column statistics themselves are read from the IndexedDB `metadata` store, never from `localStorage`.
 - The virtual table's own scroll offset is persisted as a scroll _region_ (§8.3).
@@ -336,9 +336,9 @@ Corresponds to workflow-steps §2.
 - Table rows: Column Name (`<th scope="row">`), Type (`<code>Numeric</code>`, `<code>Categorical</code>`, `<code>Boolean</code>`, `<code>Text</code>`, `<code>Date</code>`, `<code>Time</code>`, `<code>Datetime</code>`), Notes, and Action.
 - Eligibility: Text, date, time, datetime, all-missing, and constant columns are disqualified and show disabling explanatory notes. Identifier hints, missing-value counts, high cardinality, and descriptor suggestions provide advisory guidance while remaining selectable.
 - Action buttons:
-    - Active target shows a disabled button reading "Current Target".
-    - Eligible candidate columns show a primary button reading "Set as Target".
-    - Disqualified columns show a disabled button reading "Set as Target".
+  - Active target shows a disabled button reading "Current Target".
+  - Eligible candidate columns show a primary button reading "Set as Target".
+  - Disqualified columns show a disabled button reading "Set as Target".
 - The connected view requests a protected target change. If models exist and the target differs, the user confirms discarding the current models and results first (§6.4). The selected target updates after acknowledgement.
 - Selecting the already-active target is a no-op that never opens a modal or alters models.
 - Setting the target updates state and keeps the user on `/target`; a "Train Models" button (`<a href="/models" class="btn btn-primary">`) in the page header enables progressing to Step 3.
@@ -596,10 +596,10 @@ Unit and browser training checks exercise exact run identities, guarded state, r
 For a human to answer; implementers must not resolve these silently.
 
 1. **Workflow additions:**
-    - ~~Return from preview to the dataset cards~~ (§6.1) — answered: **Change Dataset** with modal confirmation and `clearDataset()`.
-    - ~~Re-opening and editing completed model sections before training~~ (§6.3) — answered: keep `reopenSection`.
-    - ~~A **Cancel training** control~~ (§7) — answered: keep `cancelTraining`.
-    - Replacing the "warning bar" on `/target` (workflow-steps §2) with the same `.notification` used on every other blocked page (§4.3).
+   - ~~Return from preview to the dataset cards~~ (§6.1) — answered: **Change Dataset** with modal confirmation and `clearDataset()`.
+   - ~~Re-opening and editing completed model sections before training~~ (§6.3) — answered: keep `reopenSection`.
+   - ~~A **Cancel training** control~~ (§7) — answered: keep `cancelTraining`.
+   - Replacing the "warning bar" on `/target` (workflow-steps §2) with the same `.notification` used on every other blocked page (§4.3).
 2. ~~**Changing the target or dataset with existing models**~~ (§6.4) — answered: confirm-and-discard (`setTarget` rejects with models present; explicit `confirmDiscardModels` action clears them).
 3. **Transient dialogs on reload:** should an open Datasheet / Model Description dialog be restored? (Currently not; "exact same UI" could be read to include them.)
 4. ~~**Scroll semantics**~~ (§8.4) — answered: latest-per-step scroll memory is accepted.

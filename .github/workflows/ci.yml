@@ -41,11 +41,20 @@ jobs:
               run: bun install --frozen-lockfile --ignore-scripts
 
             - name: Check formatting of changed files
+              shell: bash
               env:
+                  GH_TOKEN: ${{ github.token }}
                   BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
               run: |
                   if [ -n "$BASE" ] && ! printf '%s' "$BASE" | grep -Eq '^0+$'; then
-                    git diff --name-only --diff-filter=ACMR -z "$BASE" HEAD -- '*.ts' '*.mjs' '*.js' '*.json' '*.jsonc' '*.md' '*.css' '*.html' '*.yml' '*.yaml' | xargs -0 -r bun run format:check
+                    git diff --name-only --diff-filter=ACMR -z "$BASE" HEAD -- '*.ts' '*.tsx' '*.mjs' '*.cjs' '*.js' '*.jsx' '*.json' '*.jsonc' '*.css' '*.html' '*.yml' '*.yaml' |
+                      xargs -0 -r bunx --no-install prettier --check --
+                    dprint_zip="$RUNNER_TEMP/dprint-x86_64-unknown-linux-gnu.zip"
+                    gh release download 0.65.0 --repo dprint/dprint --pattern 'dprint-x86_64-unknown-linux-gnu.zip' --output "$dprint_zip"
+                    gh attestation verify "$dprint_zip" --repo dprint/dprint
+                    unzip -q "$dprint_zip" -d "$RUNNER_TEMP/dprint"
+                    git diff --name-only --diff-filter=ACMR -z "$BASE" HEAD -- '*.md' |
+                      xargs -0 -r "$RUNNER_TEMP/dprint/dprint" check --config dprint.json --incremental=false --allow-no-files --
                   fi
 
             - name: Run TSDoc lint

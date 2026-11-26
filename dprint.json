@@ -1,0 +1,29 @@
+{
+	"incremental": false,
+	"lineWidth": 100,
+	"newLineKind": "lf",
+	"markdown": {
+		"textWrap": "maintain",
+		"emphasisKind": "underscores",
+		"strongKind": "asterisks",
+		"unorderedListKind": "dashes"
+	},
+	"includes": ["**/*.md"],
+	"excludes": [
+		"node_modules/**",
+		".worktrees/**",
+		".claude/worktrees/**",
+		".agent-workflow/**",
+		"specification/plans/archive/**",
+		"specification/requests/archive/**",
+		"specification/requests/receipts/**",
+		"specification/mockups/**",
+		"specification/history/**",
+		"tests/fixtures/content/**",
+		"specification/plans/model-training-workflow.md",
+		"specification/plans/workflow-next-step-dot.md"
+	],
+	"plugins": [
+		"https://plugins.dprint.dev/markdown-0.29.0.wasm@714aea7555dd9831861be466da8b26b2d92316d3cde550ef3e1f63b31f4ea302"
+	]
+}
