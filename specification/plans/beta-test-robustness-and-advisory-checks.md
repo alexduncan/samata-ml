@@ -1,8 +1,8 @@
 # Beta test robustness, E2E hardening and advisory quality checks
 
-**Status:** ready-for-review | **Updated:** 2026-11-26T08:56:50Z
+**Status:** draft | **Updated:** 2026-11-26T09:19:54Z
 **Authors:** Google Antigravity (Gemini 4 Neon High) | **Created:** 2026-11-26T08:51:44Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified by:** — | **Verified:** — | **Verification:** changes-requested
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -337,8 +337,9 @@ None.
 
 ## Plan review history
 
-| Reviewed (UTC) | Agent (model) | Decision | Findings |
-| -------------- | ------------- | -------- | -------- |
+| Reviewed (UTC)       | Agent (model)                           | Decision          | Findings                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| -------------------- | --------------------------------------- | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-26T09:19:54Z | Google Antigravity (Gemini 4 Neon High) | changes-requested | MAJOR: advisory-a11y dual-runner expect/Error mismatch; PH-AC-2 duplicate tests at L1201-L1273; unremoved interim Firefox guards in training-panels/models-setup and T2.2 filter inaccuracy; missing dataset/welcome persistence settlement in DATA-PRE-2/WML-P2-ROUTE-2; T4 missing --with-deps, WorkflowJob/ci-workflow L254 updates, SAMATA_E2E_TIER env isolation in known-failures.test, and AGENTS.md command ordering |
 
 ## Change log
 
