@@ -166,15 +166,21 @@ export function integerTicks(min: number, max: number, targetCount = 5): number[
 	const power = 10 ** Math.floor(Math.log10(raw));
 	const candidates = [0.1, 0.2, 0.5, 1, 2, 5, 10].map((n) => Math.max(1, n * power));
 	const count = (step: number): number => Math.floor(max / step) - Math.ceil(min / step) + 1;
+	const eligible = candidates.filter((n) => count(n) >= 4);
 	const step =
-		candidates
-			.filter((n) => count(n) >= 4 && count(n) <= 7)
+		eligible
+			.filter((n) => count(n) <= 7)
 			.sort(
 				(a, b) => Math.abs(count(a) - targetCount) - Math.abs(count(b) - targetCount)
-			)[0] ?? Math.max(1, power);
-	const ticks: number[] = [];
-	for (let n = Math.ceil(min / step); n * step <= max; n += 1) ticks.push(n * step || 0);
-	return ticks;
+			)[0] ??
+		eligible.at(-1) ??
+		1;
+	const available = count(step);
+	const length = Math.min(available, 7);
+	// If the grid is too dense, trim its ends while keeping zero and regular spacing.
+	const centred = Math.ceil(min / step) + Math.floor((available - length) / 2);
+	const start = Math.max(1 - length, Math.min(0, centred));
+	return Array.from({ length }, (_, index) => (start + index) * step || 0);
 }
 
 /** Calculate a bounded axis margin and the space remaining for labels. */

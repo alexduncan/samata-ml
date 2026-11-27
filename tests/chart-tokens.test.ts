@@ -79,6 +79,26 @@ describe('chart tokens', () => {
 		expect(new Set(ticks).size).toBe(ticks.length);
 	});
 
+	test('CHT-FOUND-2: integer ticks trim dense grids without losing zero or uniform round spacing', () => {
+		for (const [min, max] of [
+			[0, 14],
+			[-8, 6]
+		] as const) {
+			const ticks = integerTicks(min, max);
+			expect(ticks.length).toBeGreaterThanOrEqual(4);
+			expect(ticks.length).toBeLessThanOrEqual(7);
+			expect(ticks).toContain(0);
+			for (const tick of ticks) {
+				expect(Number.isInteger(tick)).toBe(true);
+				expect(tick).toBeGreaterThanOrEqual(min);
+				expect(tick).toBeLessThanOrEqual(max);
+			}
+			const spacing = ticks.slice(1).map((tick, index) => tick - ticks[index]!);
+			expect(spacing).toEqual(Array(ticks.length - 1).fill(2));
+		}
+		expect(integerTicks(0, 6)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+	});
+
 	test('CHT-FOUND-2: measured margins and grapheme-safe fitting respect the cap', () => {
 		const measure = (s: string) =>
 			[...s].reduce((sum, char) => sum + (char === 'W' ? 20 : 5), 0);
