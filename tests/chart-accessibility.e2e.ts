@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
+import { expectHistogramTicksToFit } from './helpers/calibration-histogram-geometry';
 import {
 	seedComparableFour,
 	seedComparablePair,
@@ -190,6 +191,13 @@ for (const route of ['binary', 'multiclass', 'comparison'] as const) {
 				await page.locator(container).evaluate(async (element) => {
 					await (element as HTMLElement & { whenSettled(): Promise<void> }).whenSettled();
 				});
+				if (route !== 'comparison') {
+					await expectHistogramTicksToFit(
+						page.locator(
+							`${container} app-reliability-diagram .counts > svg[role="img"]`
+						)
+					);
+				}
 				for (const svg of await charts.all()) {
 					await expect
 						.poll(() =>

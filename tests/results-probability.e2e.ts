@@ -6,6 +6,7 @@ import type {
 	ProbabilityMountSpec
 } from './fixtures/results/probability.browser';
 import { breastCancerOneShot } from './fixtures/results/evaluations';
+import { expectHistogramTicksToFit } from './helpers/calibration-histogram-geometry';
 import {
 	bundleResultsFixture,
 	mountResultsFixture,
@@ -400,6 +401,28 @@ test.describe('Section 6 probability views', () => {
 					})
 				)
 				.toBe(true);
+		}
+	});
+
+	test('CHT-A11Y-1: the five calibration count ticks fit at 200% after resize', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 320, height: 800 });
+		await mount(
+			page,
+			{ element: 'reliability', evaluation: 'breast-cancer' },
+			{ width: '100%' }
+		);
+		await page.addStyleTag({
+			content: 'html { font-size: 32px } body { padding-inline: 16px }'
+		});
+		const histogram = page.locator('app-reliability-diagram .counts > svg[role="img"]');
+		for (const dir of ['ltr', 'rtl'] as const) {
+			await page.evaluate((direction) => (document.documentElement.dir = direction), dir);
+			for (const width of [320, 360, 320]) {
+				await page.setViewportSize({ width, height: 800 });
+				await expectHistogramTicksToFit(histogram, ['0', '10', '20', '30', '40']);
+			}
 		}
 	});
 

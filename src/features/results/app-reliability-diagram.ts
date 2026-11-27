@@ -196,13 +196,18 @@ export class AppReliabilityDiagram extends LitElement {
 		const view = this.calibration;
 		if (!view || !this.caption) return null;
 		const maxCount = Math.max(0, ...view.bins.map((bin) => bin.count));
+		const countTicks = integerTicks(0, maxCount);
+		const marginTop = Math.max(32, Math.ceil(fontSize));
+		const marginBottom = width < 400 ? Math.ceil(fontSize * 2.8) : 32;
+		// Leave each count tick a line at the current text size, including room for scale rounding.
+		const plotHeight = Math.ceil(countTicks.length * fontSize * 1.25);
 		return chart.plot({
 			width: Math.min(width, 420),
-			height: 154,
+			height: Math.max(154, marginTop + plotHeight + marginBottom),
 			marginLeft: Math.ceil(fontSize * 3.5),
 			marginRight: Math.ceil(fontSize * 1.5),
-			marginTop: 32,
-			marginBottom: width < 400 ? Math.ceil(fontSize * 2.8) : 32,
+			marginTop,
+			marginBottom,
 			x: {
 				domain: [0, 1],
 				label: null,
@@ -215,7 +220,7 @@ export class AppReliabilityDiagram extends LitElement {
 				label: null,
 				zero: true,
 				nice: true,
-				ticks: integerTicks(0, maxCount),
+				ticks: countTicks,
 				grid: true,
 				tickFormat: this.formatCount
 			},
