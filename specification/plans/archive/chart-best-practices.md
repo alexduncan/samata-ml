@@ -1,10 +1,10 @@
 # Remediate charts and establish chart design specification
 
-**Status:** implemented | **Updated:** 2026-11-27T10:00:52Z
+**Status:** archived | **Updated:** 2026-11-27T10:06:34Z
 **Authors:** Google Antigravity (Gemini 4 Neon High), Codex (GPT-6), Codex (GPT-6.2-sol) | **Created:** 2026-11-25T16:05:29Z
 **Verified by:** Codex (GPT-6.2-sol) | **Verified:** 2026-11-27T09:58:05Z | **Verification:** approved
 **Verified hash:** sha256:675c58d8559f8b962768f352d2c9e63b7f23c70921fc42d82ef6a138c470b067
-**Implementation verified by:** — | **Implementation verified:** —
+**Implementation verified by:** Codex (GPT-6.2-sol) | **Implementation verified:** 2026-11-27T10:06:34Z
 
 ## Goal
 
@@ -62,7 +62,7 @@
 
 **Implementation order across plans**
 
-- Start after [model-training-workflow.md](model-training-workflow.md) is integrated on `main`. This plan consumes its `ModelColor` union (`'amber' | 'blue' | 'teal' | 'purple' | 'red' | 'green' | 'pink' | 'sky' | 'olive' | 'neutral'`), `ModelRecord.modelColor`, `ModelRecord.modelLabel`, root tokens (`--pink-700`, `--sky-600`, `--olive-700`, `--model-swatch-ink`), and shared `modelSwatchStyles` (`src/styles/model-swatch.styles.ts`).
+- Start after [model-training-workflow.md](../model-training-workflow.md) is integrated on `main`. This plan consumes its `ModelColor` union (`'amber' | 'blue' | 'teal' | 'purple' | 'red' | 'green' | 'pink' | 'sky' | 'olive' | 'neutral'`), `ModelRecord.modelColor`, `ModelRecord.modelLabel`, root tokens (`--pink-700`, `--sky-600`, `--olive-700`, `--model-swatch-ink`), and shared `modelSwatchStyles` (`src/styles/model-swatch.styles.ts`).
 
 ## Required reading
 
@@ -451,6 +451,7 @@ The maintainer requested that this verified chart release be archived and landed
 | 2026-11-27T09:27:29Z | R10 | Codex (GPT-6.2-sol) | Changed src/features/results/charts/chart-encoding.ts and tests/chart-tokens.test.ts. bun test tests/chart-tokens.test.ts tests/style-tokens.test.ts passed 18/18 including both required dense grids, zero, bounds, uniform step two and exact small spans. bun run check passed 692/692 with typecheck; bun run lint passed. bun run test:e2e tests/results-probability.e2e.ts tests/results-errors.e2e.ts --grep "probability axis\|histogram aligns\|Classee chart\|twenty-five classes" --workers 1 passed 12/12 across Chromium, Firefox and WebKit. Additional run with five calibration count also selected passed 13/15; the two failures were Chromium/Firefox dereferences of a detached SVG parent, the separately open R11 test race. Scope passed with the directly relevant unit test path warning reviewed. |
 | 2026-11-27T09:32:31Z | R11 | Codex (GPT-6.2-sol) | Changed tests/helpers/calibration-histogram-geometry.ts, tests/results-probability.e2e.ts and tests/chart-accessibility.e2e.ts. Measure the current SVG within its stable wrapper, returning pending for a missing chart and retaining hard width, font, count, clipping and overlap assertions. bun run test:e2e tests/results-probability.e2e.ts tests/chart-accessibility.e2e.ts --grep "five calibration count\|charts reflow at 320px" --workers 1 passed 12/12 across Chromium, Firefox and WebKit; bun run test:e2e tests/results-probability.e2e.ts --project webkit --grep "five calibration count" --repeat-each 5 --workers 1 passed 5/5. bun run check 692/692 with typecheck; bun run lint, bun run build, bun run test:stories 822/822 and bun test tests/chart-tokens.test.ts tests/style-tokens.test.ts 18/18 passed. Scope passed with two required caller-path warnings reviewed. |
 | 2026-11-27T10:00:52Z | Implement | Codex (GPT-6.2-sol) | Marked implemented |
+| 2026-11-27T10:06:34Z | Review | Codex (GPT-6.2-sol) | Closed: Independent closure verified the approved release exception and identical chart inputs from 0210ea3. Chart browser checks passed 24/24 and repeated WebKit passed 5/5. Recorded exact-revision check 692/692 and Storybook 822/822, build, lint, 18 token and helper checks, and 77 formatted files. Earlier full unfiltered E2E failed with 1197 passed, 32 failed, 181 skipped and nine not run. Latest Firefox baseline replay had two inherited failures and three passes. Remaining inherited and repeatability work is deferred to the post-integration plan. No CI exceptions changed. |
 
 ## Plan review history
 
