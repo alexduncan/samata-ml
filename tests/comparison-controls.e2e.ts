@@ -2,12 +2,47 @@ import { expect, test } from '@playwright/test';
 import { bundleResultsFixture, mountResultsFixture } from './helpers/mount-results-fixture';
 import type { AppModelPairPicker } from '../src/features/results/app-model-pair-picker';
 import type { AppComparisonTable } from '../src/features/results/app-comparison-table';
+import type { AppComparisonControls } from '../src/features/results/app-comparison-controls';
 
 const bundle = bundleResultsFixture('tests/fixtures/results/comparison-controls.browser.ts');
 test.afterAll(() => bundle.dispose());
 
 test.beforeEach(async ({ page }) => {
 	await mountResultsFixture(page, bundle, 'summaryFixture', { width: '320px' });
+});
+
+test('CHT-COMP-1/2: duplicate model labels remain distinguishable', async ({ page }) => {
+	await page.evaluate(() => {
+		const models = [
+			{ num: 1, label: 'Logistic Regression', color: 'amber' as const },
+			{ num: 2, label: 'Logistic Regression', color: 'sky' as const }
+		];
+		(document.querySelector('app-comparison-controls') as AppComparisonControls).models =
+			models;
+		(document.querySelector('app-model-pair-picker') as AppModelPairPicker).models = models;
+		const table = document.querySelector('app-comparison-table') as AppComparisonTable;
+		table.rows = models.map((model) => ({
+			id: String(model.num),
+			label: model.label,
+			kind: 'model',
+			num: model.num,
+			modelColor: model.color,
+			metrics: {}
+		}));
+	});
+	const controls = page.locator('app-comparison-controls');
+	const table = page.locator('app-comparison-table');
+	const picker = page.locator('app-model-pair-picker');
+	for (const num of [1, 2]) {
+		const name = `${num} Logistic Regression`;
+		await expect(controls.getByRole('checkbox', { name, exact: true })).toHaveCount(1);
+		await expect(table.getByRole('rowheader', { name, exact: true })).toHaveCount(1);
+		for (const select of [picker.getByLabel('Model A'), picker.getByLabel('Model B')]) {
+			const option = select.getByRole('option', { name, exact: true });
+			await expect(option).toHaveCount(1);
+			await expect(option).toHaveText(name);
+		}
+	}
 });
 
 test('WML-P5-UI-1: sorting cycles and keeps baselines fixed', async ({ page }) => {

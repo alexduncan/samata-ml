@@ -114,7 +114,7 @@ export class AppModelPairPicker extends LitElement {
 							value=${model.num}
 							?disabled=${model.num === this.pairB}
 							?selected=${model.num === this.pairA}>
-							${model.label}
+							${model.num} ${model.label}
 						</option>`
 				)}
 			</select>
@@ -136,7 +136,7 @@ export class AppModelPairPicker extends LitElement {
 							value=${model.num}
 							?disabled=${model.num === this.pairA}
 							?selected=${model.num === this.pairB}>
-							${model.label}
+							${model.num} ${model.label}
 						</option>`
 				)}
 			</select>

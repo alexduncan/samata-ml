@@ -132,9 +132,7 @@ export class AppComparisonControls extends LitElement {
 								aria-describedby="limit"
 								@change=${this.changeSelection} />
 							<label for=${`model-${model.num}`}
-								><span class=${`swatch swatch-${model.color}`} aria-hidden="true"
-									>${model.num}</span
-								>
+								><span class=${`swatch swatch-${model.color}`}>${model.num}</span>
 								${model.label}</label
 							>
 						</div>`

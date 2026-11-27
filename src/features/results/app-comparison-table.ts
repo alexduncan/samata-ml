@@ -98,9 +98,7 @@ export class AppComparisonTable extends LitElement {
 		return html`<tr>
 			<th scope="row">
 				${row.kind === 'model' && row.modelColor && row.num !== undefined
-					? html`<span class=${`swatch swatch-${row.modelColor}`} aria-hidden="true"
-							>${row.num}</span
-						>`
+					? html`<span class=${`swatch swatch-${row.modelColor}`}>${row.num}</span>`
 					: nothing}
 				${row.label} ${row.kind === 'baseline' ? this.labels.baseline : nothing}
 			</th>
