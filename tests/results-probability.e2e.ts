@@ -326,7 +326,47 @@ test.describe('Section 6 probability views', () => {
 		}
 	});
 
-	test('CHT-PROB-2: slider announces the final value after idle and labels its cutoff', async ({
+	test('CHT-PROB-2: slider announces commits immediately and idle input once', async ({
+		page
+	}) => {
+		await mount(page, { element: 'threshold', evaluation: 'breast-cancer' });
+		const explorer = page.locator('app-threshold-explorer');
+		const live = explorer.locator('[aria-live="polite"]');
+		const slider = explorer.getByRole('slider');
+		await page.clock.install();
+		await page.clock.pauseAt(new Date(Date.now() + 100));
+		const dispatch = (type: 'input' | 'change', value: string) =>
+			slider.evaluate(
+				(control, data) => {
+					(control as HTMLInputElement).value = data.value;
+					control.dispatchEvent(new Event(data.type, { bubbles: true }));
+				},
+				{ type, value }
+			);
+
+		await dispatch('input', '60');
+		await expect(explorer.locator('.readout dd').first()).toHaveText('60%');
+		await expect(live).toBeEmpty();
+		// A different committed value proves the pending input cannot overwrite it later.
+		await dispatch('change', '70');
+		await expect(live).toContainText('At 0.7,');
+		await page.clock.runFor(250);
+		await expect(live).toContainText('At 0.7,');
+		const emittedIndexes = async () =>
+			(await events(page)).map(({ detail }) => (detail as { index: number }).index);
+		expect(await emittedIndexes()).toEqual([60]);
+
+		await dispatch('input', '80');
+		await dispatch('input', '90');
+		await expect(explorer.locator('.readout dd').first()).toHaveText('90%');
+		await page.clock.runFor(249);
+		await expect(live).toContainText('At 0.7,');
+		await page.clock.runFor(1);
+		await expect(live).toContainText('At 0.9,');
+		expect(await emittedIndexes()).toEqual([60, 90]);
+	});
+
+	test('CHT-PROB-2: slider announces the committed value and labels its cutoff', async ({
 		page
 	}) => {
 		await mount(page, { element: 'threshold', evaluation: 'breast-cancer' });

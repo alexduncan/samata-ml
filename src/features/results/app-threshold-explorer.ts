@@ -185,9 +185,8 @@ export class AppThresholdExplorer extends LitElement {
 		this.pendingIndex = value;
 		clearTimeout(this.announcementTimer);
 		this.announcementTimer = setTimeout(() => {
-			const view = this.explorer;
-			const readout = view?.readouts[value];
-			if (view && readout) this.announcement = this.labels.liveUpdate(view, readout);
+			this.announcementTimer = undefined;
+			this.announceThreshold(value);
 		}, 250);
 		if (this.pendingFrame) return;
 		this.pendingFrame = requestAnimationFrame(() => {
@@ -200,6 +199,18 @@ export class AppThresholdExplorer extends LitElement {
 				})
 			);
 		});
+	}
+
+	private handleChange(event: Event): void {
+		clearTimeout(this.announcementTimer);
+		this.announcementTimer = undefined;
+		this.announceThreshold(Number((event.currentTarget as HTMLInputElement).value));
+	}
+
+	private announceThreshold(value: number): void {
+		const view = this.explorer;
+		const readout = view?.readouts[value];
+		if (view && readout) this.announcement = this.labels.liveUpdate(view, readout);
 	}
 
 	private draw(
@@ -350,7 +361,8 @@ export class AppThresholdExplorer extends LitElement {
 						step="1"
 						.value=${String(index)}
 						aria-valuetext=${labels.valueText(thresholdText, view)}
-						@input=${this.handleInput} />
+						@input=${this.handleInput}
+						@change=${this.handleChange} />
 				</div>
 				<p class="muted">${labels.notice}</p>
 				<dl class="readout">
