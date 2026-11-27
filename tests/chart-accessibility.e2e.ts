@@ -1,6 +1,11 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
-import { seedComparablePair, seedTrainedModel, type SeedName } from './helpers/seed-results';
+import {
+	seedComparableFour,
+	seedComparablePair,
+	seedTrainedModel,
+	type SeedName
+} from './helpers/seed-results';
 
 test.setTimeout(90_000);
 
@@ -67,9 +72,42 @@ for (const [seed, kind] of [
 test('CHT-A11Y-1: comparison exposes described charts and open tables without axe violations', async ({
 	page
 }) => {
-	await seedComparablePair(page);
+	await seedComparableFour(page);
 	await page.goto('/results');
 	await expect(page.locator('app-results-view app-comparison-table')).toBeVisible();
+	await page.evaluate(() => {
+		const store = window.__appState!;
+		const state = store.get();
+		const colours = ['amber', 'sky', 'olive', 'neutral'] as const;
+		store.set({
+			...state,
+			models: state.models.map((model) => ({
+				...model,
+				modelColor: colours[model.num - 1] ?? model.modelColor
+			}))
+		});
+	});
+	const view = page.locator('app-results-view');
+	for (const colour of ['amber', 'sky', 'olive', 'neutral']) {
+		await expect(view.locator(`app-comparison-controls .swatch-${colour}`)).toHaveCount(1);
+		await expect(
+			view.locator(`app-class-error-bars .chart-legend .swatch-${colour}`)
+		).toHaveCount(1);
+	}
+	const symbols = view.locator('app-fold-strip .chart-legend li svg path');
+	await expect(symbols).toHaveCount(4);
+	const encodings = await symbols.evaluateAll((paths) =>
+		paths.map((path) => ({
+			shape: path.getAttribute('d'),
+			fill: path.getAttribute('fill'),
+			stroke: path.getAttribute('stroke'),
+			width: path.getAttribute('stroke-width')
+		}))
+	);
+	expect(new Set(encodings.map(({ shape }) => shape)).size).toBe(4);
+	expect(encodings[0]).toMatchObject({ stroke: 'var(--stone-900)', width: '1.5' });
+	expect(encodings[2]).toMatchObject({ fill: 'none', stroke: 'var(--olive-700)', width: '2' });
+	expect(encodings[3]).toMatchObject({ fill: 'none', stroke: 'var(--neutral-600)', width: '2' });
 	await openTables(page);
 	await checkCharts(page, 'app-results-view');
 	const audit = await new AxeBuilder({ page })

@@ -1,6 +1,6 @@
 # Remediate charts and establish chart design specification
 
-**Status:** ready | **Updated:** 2026-11-27T07:25:33Z
+**Status:** ready | **Updated:** 2026-11-27T07:31:41Z
 **Authors:** Google Antigravity (Gemini 4 Neon High), Codex (GPT-6) | **Created:** 2026-11-25T16:05:29Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-27T06:01:37Z | **Verification:** approved
 **Verified hash:** sha256:01a7c33eab3dbd0a789addb04aaf542f584ad10ced304ceab0e279fd2c04c18f
@@ -383,7 +383,7 @@ All presentational elements are Tier 2 (`src/features/results/`), own **no** i18
 
 - [x] **R1** `tests/csp-and-console.e2e.ts` `BETA-ERR-5` — the CSP journey still requires nonzero comparison-table `.bar` elements, contradicting CHT-COMP-2 and preventing subsequent security assertions from running. Test: assert the rendered comparison rows expose model identities and formatted metric values without `.bar` elements, while retaining the flowchart geometry, CSP, violation, page-error and console assertions; run the CSP journey across Chromium, Firefox and WebKit.
 - [x] **R2** `src/features/results/app-comparison-controls.ts` `model identity` — the numbered model identity is hidden from assistive technology and native select options in `src/features/results/app-model-pair-picker.ts` expose only the label; `src/features/results/app-comparison-table.ts` also hides the number. Two models with the same label become indistinguishable, conflicting with CHT-COMP-1/2 and WCAG 2.2 AA. Test: with two same-label models, verify distinct accessible checkbox and table-row names and distinct visible and accessible pair-picker option names containing the corresponding model numbers, in Chromium, Firefox and WebKit.
-- [ ] **R3** `tests/chart-accessibility.e2e.ts` `comparison colour coverage` — T6 requires comparison accessibility coverage including `amber`, `sky`, `olive` and `neutral` model colours, but every comparison test seeds only a two-model pair. Test: exercise all four named model colours in the comparison accessibility fixture and verify the required chart semantics and visual-encoding checks in Chromium, Firefox and WebKit.
+- [x] **R3** `tests/chart-accessibility.e2e.ts` `comparison colour coverage` — T6 requires comparison accessibility coverage including `amber`, `sky`, `olive` and `neutral` model colours, but every comparison test seeds only a two-model pair. Test: exercise all four named model colours in the comparison accessibility fixture and verify the required chart semantics and visual-encoding checks in Chromium, Firefox and WebKit.
 
 ## Implementation and verification log
 
@@ -420,6 +420,7 @@ All presentational elements are Tier 2 (`src/features/results/`), own **no** i18
 | 2026-11-26T20:43:33Z | R1 | Codex (GPT-6) | Escalated E16. Two substantive CSP journey verification attempts failed in new test assertions: a scoped locator error, corrected, then the percentage regular expression rejected template whitespace around a valid formatted metric. **Decision needed:** May a fresh implementation session adjust the assertion to accept surrounding whitespace and rerun all three browsers? **Evidence:** bun run test:e2e tests/csp-and-console.e2e.ts --workers 1 failed 0/3 twice; second run observed whitespace around 91.6% in each browser. The CSP and console assertions have not yet been reached. |
 | 2026-11-27T04:14:07Z | R1 | Codex (GPT-6) | bun run test:e2e tests/csp-and-console.e2e.ts --workers 1: 3 passed across Chromium, Firefox and WebKit including retained CSP/console checks; bun run build passed; bun run check: 691 passed, 0 failed; bun run lint passed; bun run format tests/csp-and-console.e2e.ts unchanged. Changed tests/csp-and-console.e2e.ts. |
 | 2026-11-27T07:25:33Z | R2 | Codex (GPT-6) | Duplicate labels expose numbered accessible checkbox and rowheader names and distinct numbered native options. bun run test:e2e tests/comparison-controls.e2e.ts: 12 passed across three browsers; bun run check: 691 passed; bun run lint and bun run build passed; bun test tests/style-tokens.test.ts: 12 passed; bun run test:stories: first 821 passed/1 unrelated Firefox focus failure under concurrent load, standalone rerun 822 passed. Scope warnings reviewed: pair picker, table and browser test explicitly required by R2. |
+| 2026-11-27T07:31:41Z | R3 | Codex (GPT-6) | Seeded four comparable CV models and projected amber, sky, olive, neutral identities; verified swatches, four distinct legend shapes, amber outline, stroked olive and neutral symbols, SVG labels/descriptions and axe. bun run test:e2e tests/chart-accessibility.e2e.ts --grep comparison\ exposes\ described\ charts --workers 1: 3 passed across browsers; bun run test:e2e tests/chart-accessibility.e2e.ts --workers 1: 30 passed; bun run check: 691 passed; bun run lint passed. Helper warning reviewed: needed to seed four matching models. |
 
 ## Plan review history
 
