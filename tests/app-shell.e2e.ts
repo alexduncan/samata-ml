@@ -956,7 +956,12 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await expect(heading).toHaveAttribute('tabindex', '-1');
 		const originalHeading = await heading.elementHandle();
 		// Safari's default keyboard mode uses Option+Tab to include native buttons.
-		await page.keyboard.press(browserName === 'webkit' ? 'Alt+Tab' : 'Tab');
+		const tabKey = browserName === 'webkit' ? 'Alt+Tab' : 'Tab';
+		await page.keyboard.press(tabKey);
+		await expect(
+			page.locator('app-dataset-preview button:has-text("Datasheet")')
+		).toBeFocused();
+		await page.keyboard.press(tabKey);
 		const change = page.locator('app-dataset-preview button:has-text("Change Dataset")');
 		await expect(change).toBeFocused();
 		await page.evaluate(() => (window as FocusTestWindow).__releaseMetadata!());
@@ -972,7 +977,9 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 				error: 'Controlled metadata failure'
 			});
 		});
-		await expect(page.locator('app-dataset-preview .status-box[role="alert"]')).toBeVisible();
+		await expect(
+			page.locator('app-dataset-preview .notification-alert[role="alert"]')
+		).toBeVisible();
 		await expect(change).toBeFocused();
 		await page.evaluate(() => (window as FocusTestWindow).__releaseMetadata!());
 		await expect(change).toBeFocused();
@@ -1067,12 +1074,12 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await expect(
 			page.locator('app-dataset-preview ui-virtual-table .table-cell').first()
 		).not.toHaveText('');
-		await expect(page.locator('app-dataset-preview .status-box')).toHaveCount(0);
+		await expect(page.locator('app-dataset-preview .notification-alert')).toHaveCount(0);
 		await page.addStyleTag({ content: '#content { min-block-size: 300vh; }' });
 		await page.evaluate(() => window.scrollTo(25, 450));
 		// Scrolling requests rows, which briefly shows a loading notice above the table and can
 		// shift the offset by anchoring; wait until the offset is stable again.
-		await expect(page.locator('app-dataset-preview .status-box')).toHaveCount(0);
+		await expect(page.locator('app-dataset-preview .notification-alert')).toHaveCount(0);
 		await expect
 			.poll(async () => {
 				const before = await page.evaluate(() => scrollY);

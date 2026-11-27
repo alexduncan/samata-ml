@@ -1,4 +1,15 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator } from '@playwright/test';
+
+/** Scrolls the document so the given zero-based table row is at the top of the table body. */
+async function scrollToRow(table: Locator, row: number): Promise<void> {
+	await table.evaluate((element, index) => {
+		const root = element.shadowRoot!;
+		const body = root.querySelector('.table-body')!;
+		const sample = root.querySelector('.table-row')!;
+		const rowHeight = sample.getBoundingClientRect().height;
+		window.scrollTo(0, body.getBoundingClientRect().top + window.scrollY + index * rowHeight);
+	}, row);
+}
 
 test.describe('Data Flow, Route & Scroll Integration (DATA-FLOW-1 .. DATA-FLOW-3)', () => {
 	test.describe.configure({ mode: 'serial' });
@@ -18,7 +29,7 @@ test.describe('Data Flow, Route & Scroll Integration (DATA-FLOW-1 .. DATA-FLOW-3
 		}
 	});
 
-	test('DATA-FLOW-1: preview mode, selected column, document and logical table scroll survive reload and back/forward', async ({
+	test('DATA-FLOW-1: preview mode, selected column, document scroll survives reload and back/forward', async ({
 		page
 	}) => {
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
@@ -38,10 +49,8 @@ test.describe('Data Flow, Route & Scroll Integration (DATA-FLOW-1 .. DATA-FLOW-3
 		await expect(aside).toBeVisible();
 		await expect(aside.locator('.overlay-title h4')).toContainText('sepal length');
 
-		// 2. Navigate to row 50 via Go to row
-		const goToInput = preview.locator('input#row-number');
-		await goToInput.fill('50');
-		await preview.locator('.go-to-row button[type="submit"]').click();
+		// 2. Scroll the document to row 50
+		await scrollToRow(table, 50);
 		await page.waitForTimeout(300);
 
 		// 3. Reload page and verify state survives
@@ -52,7 +61,7 @@ test.describe('Data Flow, Route & Scroll Integration (DATA-FLOW-1 .. DATA-FLOW-3
 		await expect(reloadedAside).toBeVisible();
 		await expect(reloadedAside.locator('.overlay-title h4')).toContainText('sepal length');
 
-		// Verify table rows are present and logical scroll restored
+		// Verify table rows are present and the document scroll was restored
 		const rows = table.locator('.table-row');
 		await expect(rows.first()).toBeVisible();
 
@@ -136,11 +145,8 @@ test.describe('Data Flow, Route & Scroll Integration (DATA-FLOW-1 .. DATA-FLOW-3
 		const preview = page.locator('app-dataset-preview');
 		await expect(preview).toBeVisible({ timeout: 10000 });
 
-		// 1. Keyboard navigation: Go to row
-		const goToInput = preview.locator('input#row-number');
-		await goToInput.focus();
-		await goToInput.fill('25');
-		await page.keyboard.press('Enter');
+		// 1. Scroll the document to row 25
+		await scrollToRow(preview.locator('ui-virtual-table'), 25);
 		await page.waitForTimeout(200);
 
 		// 2. Keyboard navigation: Open column inspector via Enter key on focused header

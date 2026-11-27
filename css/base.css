@@ -19,6 +19,12 @@ main {
 	min-block-size: calc(100dvh - 4rem);
 }
 
+/* The preview table is wider than the viewport: the document, not `main`, scrolls it. */
+main:has(> app-data-view[preview]) {
+	inline-size: max-content;
+	min-inline-size: calc(100% - var(--sidebar-width));
+}
+
 #content > .page-body {
 	margin: 0 2rem 2rem;
 }
@@ -42,5 +48,9 @@ a {
 @media (width < 50rem) {
 	main {
 		margin-inline-start: 0;
+	}
+
+	main:has(> app-data-view[preview]) {
+		min-inline-size: 100%;
 	}
 }

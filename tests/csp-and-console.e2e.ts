@@ -55,7 +55,7 @@ test('BETA-ERR-5: production data, training, results and dialogs stay clean unde
 	await loadSampleDataset(page, 'iris');
 	await page.reload();
 	const preview = page.locator('app-dataset-preview');
-	await expect(preview.locator('h1')).toContainText('Preview Dataset: Iris');
+	await expect(preview.locator('h1')).toHaveText(/^Iris.* Preview$/);
 
 	await page.locator('app-sidebar footer a[href="/about"]').click();
 	const content = page.locator('app-content-modal dialog.modal');
@@ -71,7 +71,7 @@ test('BETA-ERR-5: production data, training, results and dialogs stay clean unde
 	await expect(confirm).toBeVisible();
 	await confirm.getByRole('button', { name: 'Cancel', exact: true }).click();
 	await expect(confirm).toBeHidden();
-	await expect(preview.locator('h1')).toContainText('Preview Dataset: Iris');
+	await expect(preview.locator('h1')).toHaveText(/^Iris.* Preview$/);
 	await change.click();
 	await confirm.getByRole('button', { name: 'Change Dataset', exact: true }).click();
 	await loadSampleDataset(page, 'breast-cancer-wisconsin');
@@ -81,13 +81,16 @@ test('BETA-ERR-5: production data, training, results and dialogs stay clean unde
 	// The document now scrolls the table: let the load and any scroll restoration settle first.
 	await expect(table.locator('.table-cell').first()).not.toHaveText('');
 	await expect(preview.locator('.status-box')).toHaveCount(0);
-	const row = preview.locator('input#row-number');
 	// Firefox can ignore a window.scrollTo issued straight after Playwright's own scroll into
-	// view, so repeat the whole Go to row step until the row is shown.
+	// view, so repeat the whole scroll step until the row is shown.
 	await expect(async () => {
-		await row.fill('300');
-		await row.press('Enter');
-		await expect(table.locator('[aria-rowindex="301"]')).toBeInViewport({ timeout: 1500 });
+		await table.evaluate((element) => {
+			const root = element.shadowRoot!;
+			const body = root.querySelector('.table-body')!;
+			const rowHeight = root.querySelector('.table-row')!.getBoundingClientRect().height;
+			window.scrollTo(0, body.getBoundingClientRect().top + window.scrollY + 300 * rowHeight);
+		});
+		await expect(table.locator('[aria-rowindex="302"]')).toBeInViewport({ timeout: 1500 });
 	}).toPass({ timeout: 15_000 });
 	// Geometry is set through the CSSOM: the rail has the rows' height and rows are translated.
 	const geometry = await table.evaluate((element) => {

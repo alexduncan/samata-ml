@@ -1,4 +1,5 @@
 import { LitElement, css, html, nothing, type PropertyValues, type TemplateResult } from 'lit';
+import { params } from '@nanostores/i18n';
 import { customElement, state } from 'lit/decorators.js';
 import { StoreController } from '@nanostores/lit';
 import { $appState, setSelectedColumn } from '../../stores/app.store';
@@ -13,8 +14,7 @@ import {
 	loadPreviewRows,
 	startDatasetLoad
 } from '../../stores/dataset.store';
-import { isTemporalColumnType } from '../../types/state';
-import { formatTemporalValue, type TemporalColumnStats } from './temporal-format';
+import { buildPreviewColumns, formatPreviewValue } from './preview-columns';
 import { loadSampleCatalogue, loadSampleDatasheet } from './sample-datasets';
 import { getTrainingService } from '../models/training/training-service';
 import type { SampleDatasetIndex } from '../../types/sample-dataset';
@@ -26,17 +26,17 @@ import './app-datasheet-dialog';
 import './app-upload-dataset-dialog';
 import './app-dataset-preview';
 import './app-column-details';
-import type { AppDatasetPreview } from './app-dataset-preview';
+import type { AppDatasetPreview, PreviewLabels } from './app-dataset-preview';
 import type {
-	VirtualTablePosition,
+	VirtualTableColumn,
 	VirtualTableRange,
 	VirtualTableWindow
 } from '../../components/ui-virtual-table';
 import type { ColumnStats, RawRecord } from '../../types/dataset';
+import type { SampleDatasetGuidance } from '../../types/sample-dataset';
+import type { DatasetMetadata } from '../../types/dataset';
 import { $format, i18n } from '../../i18n';
 import { INGESTION_ERROR_MESSAGES } from './ingestion/errors';
-import { $scrollState } from '../../stores/scroll.store';
-import { recordCurrentScroll, getIsRestoringScroll } from '../../router/scroll-restorer';
 import { StickyHeaderController } from '../shell/sticky-header-controller';
 
 const noticeMessages = i18n('app-data-sample-notice', {
@@ -54,29 +54,38 @@ const changeMessages = i18n('app-data-change-dataset', {
 	change: 'Change Dataset'
 });
 
+const previewMessages = i18n('app-data-preview', {
+	heading: params<{ name: string }>('{name} Preview'),
+	datasheet: 'Datasheet',
+	changeDataset: 'Change Dataset',
+	loadingDescription: 'Loading dataset…',
+	rowsColumns: params<{ rows: string; columns: string }>('{rows} rows | {columns} columns'),
+	rowLimitNotice: params<{ limit: string; total: string }>(
+		'Previewing the first {limit} of {total} rows. All rows are used for training.'
+	),
+	empty: 'No rows to preview.',
+	retry: 'Retry',
+	errorMessage: 'The preview could not be loaded.',
+	unsupported: ', not used for training',
+	progressLabel: 'Loading progress',
+	preparing: 'Loading preview…'
+});
+
+/** Formats a stored row window for the table with the active locale. */
 function formatPreviewRows(
 	records: readonly RawRecord[],
 	columns: readonly ColumnStats[]
 ): readonly (readonly string[])[] {
-	const format = $format.get();
+	const formatNumber = numberFormatter();
 	return records.map((record) =>
-		record.values.map((val, idx) => {
-			if (val === null || val === undefined) {
-				return '—';
-			}
-			const col = columns[idx];
-			if (col && isTemporalColumnType(col.type) && typeof val === 'number') {
-				return formatTemporalValue(val, col as TemporalColumnStats);
-			}
-			if (typeof val === 'number') {
-				return format.number(val, { useGrouping: true, maximumFractionDigits: 20 });
-			}
-			if (typeof val === 'boolean') {
-				return val ? 'true' : 'false';
-			}
-			return String(val);
-		})
+		record.values.map((value, index) => formatPreviewValue(value, columns[index], formatNumber))
 	);
+}
+
+/** The cell number formatter for the active locale. */
+function numberFormatter(): (value: number) => string {
+	const format = $format.get();
+	return (value) => format.number(value, { useGrouping: true, maximumFractionDigits: 20 });
 }
 
 /**
@@ -218,18 +227,18 @@ export class AppDataView extends LitElement {
 	private changeDatasetInvoker: HTMLElement | null = null;
 	private datasheetSeq = 0;
 	private abortController = new AbortController();
-	private tableScrollRestored = false;
-
-	private async restoreTableScroll(): Promise<void> {
-		if (typeof window === 'undefined') return;
-		const snapshot = $scrollState.get().snapshots['data:preview'];
-		if (snapshot && snapshot.viewportWidth === window.innerWidth) {
-			const tableRegion = snapshot.regions?.['data-table'];
-			if (tableRegion && this.previewEl) {
-				await this.previewEl.restorePosition(tableRegion);
-			}
-		}
-	}
+	private resourcesDeferred: { promise: Promise<void>; resolve: () => void } | null = null;
+	private previewLabelCache: {
+		messages: unknown;
+		format: unknown;
+		labels: PreviewLabels;
+	} | null = null;
+	private columnCache: {
+		metadata: DatasetMetadata | null;
+		descriptor: SampleDatasetGuidance | null;
+		format: unknown;
+		columns: readonly VirtualTableColumn[];
+	} | null = null;
 
 	private get previewEl(): AppDatasetPreview | null {
 		return this.renderRoot?.querySelector('app-dataset-preview') ?? null;
@@ -251,28 +260,29 @@ export class AppDataView extends LitElement {
 					void loadDatasetResources(datasetId);
 				});
 			}
-			if (!this.tableScrollRestored) {
-				this.tableScrollRestored = true;
-				queueMicrotask(async () => {
-					await this.whenSettled();
-					await this.restoreTableScroll();
-				});
-			}
 		} else {
-			this.tableScrollRestored = false;
 			this.startCatalogueSelection();
 		}
 	}
 
 	override disconnectedCallback(): void {
 		super.disconnectedCallback();
+		this.settleResources();
 		this.stopCatalogueSelection();
 		this.datasheetSeq++;
 		this.abortController.abort();
 	}
 
+	override willUpdate(changedProperties: PropertyValues): void {
+		super.willUpdate(changedProperties);
+		const { dataset, data } = this.appStateController.value;
+		// Styling hook for `main:has(> app-data-view[preview])`, the document-wide table layout.
+		this.toggleAttribute('preview', dataset !== null && data.mode === 'preview');
+	}
+
 	override updated(changedProperties: PropertyValues): void {
 		super.updated(changedProperties);
+		if (this.resourcesReady()) this.settleResources();
 
 		const changeDialog = this.changeDatasetDialogElement;
 		if (changeDialog) {
@@ -297,15 +307,7 @@ export class AppDataView extends LitElement {
 					void loadDatasetResources(datasetId);
 				});
 			}
-			if (!this.tableScrollRestored) {
-				this.tableScrollRestored = true;
-				queueMicrotask(async () => {
-					await this.whenSettled();
-					await this.restoreTableScroll();
-				});
-			}
 		} else {
-			this.tableScrollRestored = false;
 			this.startCatalogueSelection();
 		}
 	}
@@ -329,8 +331,27 @@ export class AppDataView extends LitElement {
 		}
 	}
 
+	/** Whether metadata for the active dataset has finished loading, successfully or not. */
+	private resourcesReady(): boolean {
+		const { dataset } = this.appStateController.value;
+		const resources = this.resourcesController.value;
+		return (
+			dataset !== null &&
+			resources.datasetId === dataset.id &&
+			(resources.status === 'ready' || resources.status === 'error')
+		);
+	}
+
+	private settleResources(): void {
+		this.resourcesDeferred?.resolve();
+		this.resourcesDeferred = null;
+	}
+
 	/**
-	 * Waits for active catalogue, rendering and resource operations to settle.
+	 * Waits for active catalogue, resource and rendering operations to settle.
+	 *
+	 * In preview mode this also waits for the dataset's metadata and the table's geometry, so the
+	 * router's single scroll restoration lands on a full-height document (D17).
 	 */
 	async whenSettled(): Promise<void> {
 		await this.updateComplete;
@@ -341,8 +362,18 @@ export class AppDataView extends LitElement {
 				// Errors captured in component state
 			}
 		}
-		if (this.previewEl) {
-			await this.previewEl.updateComplete;
+		const { dataset, data } = this.appStateController.value;
+		if (dataset !== null && data.mode === 'preview') {
+			if (!this.resourcesReady()) {
+				this.resourcesDeferred ??= (() => {
+					let resolve!: () => void;
+					const promise = new Promise<void>((done) => (resolve = done));
+					return { promise, resolve };
+				})();
+				await this.resourcesDeferred.promise;
+			}
+			await this.updateComplete;
+			await this.previewEl?.whenSettled();
 		}
 		await this.updateComplete;
 	}
@@ -438,11 +469,21 @@ export class AppDataView extends LitElement {
 	private handleCardDatasheet(
 		e: CustomEvent<{ datasetId: string; name: string; invoker?: HTMLElement }>
 	): void {
-		this.activeDatasheetId = e.detail.datasetId;
-		this.datasheetHeading = e.detail.name;
+		this.openDatasheet(e.detail.datasetId, e.detail.name, e.detail.invoker ?? null);
+	}
+
+	private handlePreviewDatasheet(e: CustomEvent<{ invoker: HTMLButtonElement }>): void {
+		const dataset = this.appStateController.value.dataset;
+		if (!dataset?.sampleId) return;
+		this.openDatasheet(dataset.sampleId, dataset.name, e.detail.invoker);
+	}
+
+	private openDatasheet(datasetId: string, name: string, invoker: HTMLElement | null): void {
+		this.activeDatasheetId = datasetId;
+		this.datasheetHeading = name;
 		this.datasheetOpen = true;
-		this.datasheetInvoker = e.detail.invoker ?? null;
-		this.loadDatasheet(e.detail.datasetId);
+		this.datasheetInvoker = invoker;
+		this.loadDatasheet(datasetId);
 	}
 
 	private loadDatasheet(id: string): void {
@@ -478,16 +519,6 @@ export class AppDataView extends LitElement {
 		if (datasetId) {
 			void loadPreviewRows(datasetId, e.detail.startIndex, e.detail.limit);
 		}
-	}
-
-	private handlePreviewPositionChange(e: CustomEvent<VirtualTablePosition>): void {
-		if (getIsRestoringScroll()) return;
-		recordCurrentScroll('data:preview', {
-			'data-table': {
-				top: e.detail.top,
-				left: e.detail.inlineOffset
-			}
-		});
 	}
 
 	private handlePreviewColumnSelect(e: CustomEvent<{ column: string }>): void {
@@ -565,6 +596,73 @@ export class AppDataView extends LitElement {
 		}
 	}
 
+	private renderDatasheetDialog(): TemplateResult {
+		return html`<app-datasheet-dialog
+			?open=${this.datasheetOpen}
+			.invoker=${this.datasheetInvoker}
+			.heading=${this.datasheetHeading}
+			.content=${this.datasheetContent}
+			.status=${this.datasheetStatus}
+			close-label="Close modal"
+			@app-datasheet-dialog-close=${this.handleDatasheetClose}
+			@app-datasheet-dialog-retry=${this.handleDatasheetRetry}></app-datasheet-dialog>`;
+	}
+
+	/** Preview labels for the active locale; the same object while nothing changes. */
+	private previewLabels(): PreviewLabels {
+		const messages = previewMessages.get();
+		const format = $format.get();
+		if (
+			this.previewLabelCache?.messages === messages &&
+			this.previewLabelCache.format === format
+		) {
+			return this.previewLabelCache.labels;
+		}
+		const count = (value: number) => format.number(value, { useGrouping: true });
+		const labels: PreviewLabels = {
+			heading: (name) => messages.heading({ name }),
+			datasheet: messages.datasheet,
+			changeDataset: messages.changeDataset,
+			loadingDescription: messages.loadingDescription,
+			rowsColumns: (rows, columns) =>
+				messages.rowsColumns({ rows: count(rows), columns: count(columns) }),
+			rowLimitNotice: (limit, total) =>
+				messages.rowLimitNotice({ limit: count(limit), total: count(total) }),
+			empty: messages.empty,
+			retry: messages.retry,
+			errorMessage: messages.errorMessage,
+			unsupported: messages.unsupported,
+			progressLabel: messages.progressLabel
+		};
+		this.previewLabelCache = { messages, format, labels };
+		return labels;
+	}
+
+	/** Table columns for the loaded metadata; rebuilt only when their inputs change. */
+	private previewColumns(
+		metadata: DatasetMetadata | null,
+		descriptor: SampleDatasetGuidance | null
+	): readonly VirtualTableColumn[] {
+		const format = $format.get();
+		const cache = this.columnCache;
+		if (
+			cache &&
+			cache.metadata === metadata &&
+			cache.descriptor === descriptor &&
+			cache.format === format
+		) {
+			return cache.columns;
+		}
+		const formatNumber = numberFormatter();
+		const columns = metadata
+			? buildPreviewColumns(metadata.columns, descriptor?.columns ?? [], (value, column) =>
+					formatPreviewValue(value, column, formatNumber)
+				)
+			: [];
+		this.columnCache = { metadata, descriptor, format, columns };
+		return columns;
+	}
+
 	private renderSelectionMode(): TemplateResult {
 		const loadState = this.loadController.value;
 		let uploadError: string | null = null;
@@ -633,15 +731,7 @@ export class AppDataView extends LitElement {
 					: nothing}
 			</div>
 
-			<app-datasheet-dialog
-				?open=${this.datasheetOpen}
-				.invoker=${this.datasheetInvoker}
-				.heading=${this.datasheetHeading}
-				.content=${this.datasheetContent}
-				.status=${this.datasheetStatus}
-				close-label="Close modal"
-				@app-datasheet-dialog-close=${this.handleDatasheetClose}
-				@app-datasheet-dialog-retry=${this.handleDatasheetRetry}></app-datasheet-dialog>
+			${this.renderDatasheetDialog()}
 
 			<app-upload-dataset-dialog
 				?open=${this.uploadOpen}
@@ -671,30 +761,49 @@ export class AppDataView extends LitElement {
 		const selectedColumnStats = selectedColumnName
 			? (columns.find((c) => c.name === selectedColumnName) ?? null)
 			: null;
+		const selectedColumnDisplayName =
+			(selectedColumnName &&
+				resources.descriptor?.columns.find((c) => c.name === selectedColumnName)
+					?.displayName) ||
+			'';
 		const selectedColumnDescription =
 			(selectedColumnName &&
 				resources.descriptor?.columns.find((c) => c.name === selectedColumnName)
 					?.description) ||
 			'';
 
+		const dataset = appState.dataset!;
+		const failure = resources.error || previewState.error;
+
 		return html`
 			<app-dataset-preview
 				.metadata=${resources.metadata}
+				.datasetName=${dataset.name}
+				.rowCount=${dataset.rowCount}
+				.columnCount=${dataset.columns.length}
+				.columns=${this.previewColumns(resources.metadata, resources.descriptor)}
 				.window=${previewWindow}
-				.selectedColumn=${selectedColumnName}
+				.labels=${this.previewLabels()}
+				.statusMessage=${resources.metadata === null && !failure
+					? previewMessages.get().preparing
+					: ''}
+				.datasheetAvailable=${Boolean(dataset.sampleId)}
 				?loading=${resources.status === 'loading' || previewState.status === 'loading'}
-				.error=${resources.error || previewState.error}
+				.error=${failure}
 				@app-preview-range-change=${this.handlePreviewRangeChange}
-				@app-preview-position-change=${this.handlePreviewPositionChange}
 				@app-preview-column-select=${this.handlePreviewColumnSelect}
 				@app-preview-change-dataset=${this.handleChangeDatasetRequest}
+				@app-dataset-preview-datasheet=${this.handlePreviewDatasheet}
 				@app-preview-retry=${this.handlePreviewRetry}></app-dataset-preview>
 
 			<app-column-details
 				.column=${selectedColumnStats}
+				.displayName=${selectedColumnDisplayName}
 				.description=${selectedColumnDescription}
 				.rowCount=${resources.metadata?.rowCount ?? 0}
 				@app-column-details-close=${this.handleColumnDetailsClose}></app-column-details>
+
+			${this.renderDatasheetDialog()}
 
 			<dialog
 				class="confirm-dialog change-dataset-modal"

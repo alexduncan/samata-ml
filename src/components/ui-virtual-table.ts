@@ -50,22 +50,6 @@ export interface VirtualTableLabels {
 	readonly unsupported: string;
 }
 
-/**
- * Document scroll position emitted by the table.
- *
- * @deprecated Transitional: removed with `scrollToRow` and `restoreScroll` once consumers read the document snapshot.
- */
-export interface VirtualTablePosition {
-	/** Zero-based data row index at viewport top. */
-	rowIndex: number;
-	/** Pixel offset within the top row. */
-	offset: number;
-	/** Document inline scroll offset (`scrollX`). */
-	inlineOffset: number;
-	/** Document block scroll offset (`scrollY`). */
-	top: number;
-}
-
 /** Rail height cap in px, below Firefox's element height limit (about 17.9 million). */
 const MAX_RAIL_PX = 16_000_000;
 /** Row height in px at the default 16px root font size, used until a row is measured. */
@@ -106,7 +90,6 @@ function columnTrack(column: VirtualTableColumn): string {
  * @fires ui-virtual-table-range-change - Emits the row range that needs data.
  * @fires ui-virtual-table-column-select - Emits the selected column key.
  * @fires ui-virtual-table-row-limit-change - Emits the maximum renderable row count.
- * @fires ui-virtual-table-position-change - Transitional: emits the document scroll position.
  * The public CSS custom property `--ui-virtual-table-sticky-offset` (default `0px`) sets the
  * block-start offset of the sticky header.
  */
@@ -617,18 +600,6 @@ export class UiVirtualTable extends LitElement {
 				})
 			);
 		}
-		this.dispatchEvent(
-			new CustomEvent<VirtualTablePosition>('ui-virtual-table-position-change', {
-				detail: {
-					rowIndex: first,
-					offset: Math.max(0, relativeTop - first * rowHeight),
-					inlineOffset: Math.abs(window.scrollX),
-					top: this.currentScrollTop
-				},
-				bubbles: false,
-				composed: false
-			})
-		);
 	}
 
 	private handleHeaderClick(columnKey: string): void {
@@ -639,50 +610,6 @@ export class UiVirtualTable extends LitElement {
 				composed: false
 			})
 		);
-	}
-
-	/** Runs the pending frame's work now, so callers see rows for the new scroll position. */
-	private flushUpdate(): void {
-		if (this.frameId !== null) {
-			cancelAnimationFrame(this.frameId);
-			this.frameId = null;
-		}
-		this.updateVirtualTable();
-	}
-
-	/**
-	 * Scrolls the document so the given zero-based row is at the top of the rail.
-	 *
-	 * @deprecated Transitional: removed once consumers use the document scroll snapshot.
-	 * @param index - Row index, clamped to the renderable rows.
-	 * @param offset - Extra block offset in px.
-	 * @param inlineOffset - Document inline offset in px.
-	 */
-	async scrollToRow(index: number, offset = 0, inlineOffset = 0): Promise<void> {
-		const body = this.bodyEl;
-		if (!body) return;
-		const clamped = Math.max(0, Math.min(index, Math.max(0, this.renderedRows - 1)));
-		const bodyTop = body.getBoundingClientRect().top + window.scrollY;
-		window.scrollTo({
-			top: bodyTop + clamped * this.rowHeight + offset,
-			left: inlineOffset,
-			behavior: 'instant'
-		});
-		this.flushUpdate();
-		await this.updateComplete;
-	}
-
-	/**
-	 * Restores a saved document scroll position.
-	 *
-	 * @deprecated Transitional: the router restores the document snapshot directly.
-	 * @param top - Document block offset in px.
-	 * @param left - Document inline offset in px.
-	 */
-	async restoreScroll(top: number, left: number): Promise<void> {
-		window.scrollTo({ top, left, behavior: 'instant' });
-		this.flushUpdate();
-		await this.updateComplete;
 	}
 
 	/**

@@ -1,3 +1,4 @@
+import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import type { AppColumnDetails } from '../src/features/data/app-column-details';
 import type { PersistedAppState } from '../src/types/state';
@@ -10,7 +11,7 @@ async function loadIrisPreview(page: Page): Promise<void> {
 		.locator('app-dataset-card[dataset-id="iris"]')
 		.getByRole('button', { name: 'Load Dataset' })
 		.click();
-	await expect(page.locator('app-dataset-preview h1')).toContainText('Preview Dataset: Iris');
+	await expect(page.locator('app-dataset-preview h1')).toHaveText(/^Iris.* Preview$/);
 }
 
 test('BETA-DATA-1 / BETA-DATA-2: change dataset after preview reload fetches the catalogue and Cancel preserves the project', async ({
@@ -29,7 +30,7 @@ test('BETA-DATA-1 / BETA-DATA-2: change dataset after preview reload fetches the
 	await page.goto('/data');
 	await page.reload();
 	const preview = page.locator('app-dataset-preview');
-	await expect(preview.locator('h1')).toContainText('Preview Dataset: Iris');
+	await expect(preview.locator('h1')).toHaveText(/^Iris.* Preview$/);
 	const change = preview.getByRole('button', { name: 'Change Dataset', exact: true });
 	const dialog = page.getByRole('dialog', { name: 'Change Dataset' });
 	const project = () =>
@@ -63,7 +64,7 @@ test('BETA-DATA-1 / BETA-DATA-2: change dataset after preview reload fetches the
 		.locator('app-dataset-card[dataset-id="breast-cancer-wisconsin"]')
 		.getByRole('button', { name: 'Load Dataset' })
 		.click();
-	await expect(preview.locator('h1')).toContainText('Preview Dataset: Breast Cancer');
+	await expect(preview.locator('h1')).toHaveText(/^Breast Cancer.* Preview$/);
 });
 
 test('BETA-DATA-3: a failed replacement catalogue request shows an alert and Retry reloads it', async ({
@@ -193,7 +194,7 @@ test.describe('Dataset Preview & Column Inspector (DATA-PRE-1 .. DATA-PRE-3)', (
 		}
 	});
 
-	test('DATA-PRE-1: bounded requests, cap and segment navigation, grouping decimals', async ({
+	test('DATA-PRE-1: bounded requests, no segment controls or Go to row, grouping decimals', async ({
 		page
 	}) => {
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
@@ -205,7 +206,7 @@ test.describe('Dataset Preview & Column Inspector (DATA-PRE-1 .. DATA-PRE-3)', (
 
 		// Check header title and stats
 		const h1 = preview.locator('.page-header h1');
-		await expect(h1).toContainText('Preview Dataset: Iris');
+		await expect(h1).toHaveText(/^Iris.* Preview$/);
 
 		const headerP = preview.locator('.page-header p');
 		await expect(headerP).toContainText('150 rows');
@@ -228,22 +229,14 @@ test.describe('Dataset Preview & Column Inspector (DATA-PRE-1 .. DATA-PRE-3)', (
 		await expect(firstRowCells.first()).toContainText('5.1');
 		await expect(firstRowCells.nth(4)).toContainText('Iris-setosa');
 
-		// Check segment controls and segment info
-		const prevBtn = preview.locator('.segment-controls button:has-text("Previous segment")');
-		await expect(prevBtn).toBeDisabled();
+		// The document scrolls the whole table: no segment controls, Go to row or status box
+		await expect(preview.locator('.controls-bar')).toHaveCount(0);
+		await expect(preview.locator('.segment-controls')).toHaveCount(0);
+		await expect(preview.locator('input#row-number')).toHaveCount(0);
+		await expect(preview.locator('.status-box')).toHaveCount(0);
 
-		const segmentInfo = preview.locator('.segment-info');
-		await expect(segmentInfo).toContainText('Rows 1–150 of 150');
-
-		// Check Go to row navigation
-		const goToInput = preview.locator('input#row-number');
-		await expect(goToInput).toBeVisible();
-		await goToInput.fill('75');
-		await preview.locator('.go-to-row button[type="submit"]').click();
-
-		// Check cap notice is not visible for 150-row dataset
-		const capNotice = preview.locator('.cap-notice');
-		await expect(capNotice).toHaveCount(0);
+		// No row-limit notice for a 150-row dataset
+		await expect(preview.locator('.page-body')).toHaveCount(0);
 	});
 
 	test('DATA-PRE-2: column inspector stats, distributions, close button and persistence', async ({
@@ -328,5 +321,384 @@ test.describe('Dataset Preview & Column Inspector (DATA-PRE-1 .. DATA-PRE-3)', (
 		const reloadedAside = page.locator('app-column-details aside.overlay');
 		await expect(reloadedAside).toBeVisible();
 		await expect(reloadedAside.locator('.overlay-title h4')).toContainText('petal length');
+	});
+});
+
+/** Uploads a generated CSV through the Upload dialog and waits for the table. */
+async function uploadCsv(page: Page, name: string, rows: number, columns: number): Promise<void> {
+	const header = Array.from({ length: columns }, (_, index) => `col_${index}`).join(',');
+	const lines = [header];
+	for (let row = 0; row < rows; row++) {
+		lines.push(
+			Array.from({ length: columns }, (_, index) =>
+				index === 0 ? row : (row + index) % 97
+			).join(',')
+		);
+	}
+	await page.getByRole('button', { name: 'Upload Dataset', exact: true }).click();
+	await page.locator('app-upload-dataset-dialog input[type=file]').setInputFiles({
+		name,
+		mimeType: 'text/csv',
+		buffer: Buffer.from(`${lines.join('\n')}\n`)
+	});
+	await expect(
+		page.locator('app-dataset-preview ui-virtual-table .table-row').first()
+	).toBeAttached({
+		timeout: 60_000
+	});
+}
+
+async function loadIris(page: Page): Promise<void> {
+	await page
+		.locator('app-dataset-card[dataset-id="iris"]')
+		.getByRole('button', { name: 'Load Dataset' })
+		.click();
+	await expect(
+		page.locator('app-dataset-preview ui-virtual-table .table-row').first()
+	).toBeAttached({ timeout: 15_000 });
+}
+
+/** Document-level geometry of the preview, `main` and the sticky headers. */
+function previewGeometry(page: Page) {
+	return page.evaluate(() => {
+		const preview = document
+			.querySelector('app-data-view')!
+			.shadowRoot!.querySelector('app-dataset-preview')!;
+		const header = preview.shadowRoot!.querySelector('.page-header')!;
+		const table = preview.shadowRoot!.querySelector('ui-virtual-table')!;
+		const tableHeader = table.shadowRoot!.querySelector('.table-header')!;
+		const main = document.querySelector('main')!;
+		const sidebarWidth = parseFloat(
+			getComputedStyle(document.documentElement).getPropertyValue('--sidebar-width')
+		);
+		return {
+			scrollX: window.scrollX,
+			scrollY: window.scrollY,
+			scrollWidth: document.scrollingElement!.scrollWidth,
+			clientWidth: document.scrollingElement!.clientWidth,
+			mainOverflowY: getComputedStyle(main).overflowY,
+			mainOverflowX: getComputedStyle(main).overflowX,
+			headerLeft: header.getBoundingClientRect().left,
+			headerTop: header.getBoundingClientRect().top,
+			headerBottom: header.getBoundingClientRect().bottom,
+			headerPosition: getComputedStyle(header).position,
+			tableHeaderTop: tableHeader.getBoundingClientRect().top,
+			sidebarPx:
+				sidebarWidth * parseFloat(getComputedStyle(document.documentElement).fontSize)
+		};
+	});
+}
+
+test.describe('Preview layout (PREV-AC-1 .. PREV-AC-8)', () => {
+	test.beforeEach(async ({ page }) => {
+		await page.goto('/data');
+		const getStarted = page.locator('app-welcome-modal button.btn-primary');
+		try {
+			await getStarted.waitFor({ state: 'visible', timeout: 3000 });
+			await getStarted.click();
+			await page
+				.locator('app-welcome-modal dialog')
+				.waitFor({ state: 'hidden', timeout: 3000 });
+		} catch {
+			// Already dismissed
+		}
+	});
+
+	test('PREV-AC-1: the header names the dataset and offers Datasheet only for samples', async ({
+		page
+	}) => {
+		await loadIris(page);
+		const preview = page.locator('app-dataset-preview');
+		await expect(preview.locator('h1')).toHaveText('Iris Flower Species Preview');
+		const actions = preview.locator('.page-actions button');
+		await expect(actions).toHaveText(['Datasheet', 'Change Dataset']);
+		await expect(actions.nth(1)).toHaveClass(/btn-red/);
+		await actions.first().click();
+		const dialog = page.locator('app-datasheet-dialog dialog');
+		await expect(dialog).toBeVisible();
+		await page.keyboard.press('Escape');
+		await expect(dialog).toBeHidden();
+		await expect(actions.first()).toBeFocused();
+
+		await actions.nth(1).click();
+		await page
+			.getByRole('dialog', { name: 'Change Dataset' })
+			.getByRole('button', { name: 'Change Dataset', exact: true })
+			.click();
+		await expect(page.locator('app-data-view .cards')).toBeVisible();
+		await uploadCsv(page, 'prev-ac-1.csv', 20, 4);
+		await expect(preview.locator('h1')).toHaveText('prev-ac-1 Preview');
+		await expect(preview.locator('.page-actions button')).toHaveText(['Change Dataset']);
+	});
+
+	test('PREV-AC-2: the document scrolls both ways and both headers stick', async ({ page }) => {
+		await page.setViewportSize({ width: 1280, height: 800 });
+		await uploadCsv(page, 'prev-ac-2.csv', 300, 53);
+		const origin = await previewGeometry(page);
+		expect(origin.scrollWidth).toBeGreaterThan(origin.clientWidth);
+		expect(origin.mainOverflowX).toBe('visible');
+		expect(origin.mainOverflowY).toBe('visible');
+		await page.evaluate(() => window.scrollTo(400, 500));
+		await expect.poll(() => page.evaluate(() => [scrollX, scrollY])).toEqual([400, 500]);
+		const scrolled = await previewGeometry(page);
+		expect(scrolled.headerLeft).toBeCloseTo(scrolled.sidebarPx, 0);
+		expect(scrolled.headerTop).toBe(0);
+		expect(scrolled.tableHeaderTop).toBeCloseTo(scrolled.headerBottom, 0);
+
+		await page.setViewportSize({ width: 1280, height: 400 });
+		await page.evaluate(() => window.scrollTo(400, 500));
+		await expect
+			.poll(async () => {
+				const short = await previewGeometry(page);
+				return [short.headerPosition, short.headerBottom < 0, short.tableHeaderTop];
+			})
+			.toEqual(['static', true, 0]);
+
+		await page.setViewportSize({ width: 640, height: 800 });
+		await page.evaluate(() => window.scrollTo(300, 900));
+		await expect.poll(() => page.evaluate(() => scrollX)).toBe(300);
+		const narrow = await previewGeometry(page);
+		expect(narrow.headerLeft).toBeCloseTo(0, 0);
+	});
+
+	test('PREV-AC-3: reload prepares without an empty flash, and failures offer Retry', async ({
+		page
+	}) => {
+		await loadIris(page);
+		await page.addInitScript(() => {
+			(window as unknown as { __emptySeen: boolean }).__emptySeen = false;
+			const scan = (root: ParentNode): boolean => {
+				for (const element of root.querySelectorAll('*')) {
+					if (element.shadowRoot && scan(element.shadowRoot)) return true;
+					if (
+						element.children.length === 0 &&
+						element.textContent?.includes('No rows to preview.')
+					) {
+						return true;
+					}
+				}
+				return false;
+			};
+			setInterval(() => {
+				if (scan(document))
+					(window as unknown as { __emptySeen: boolean }).__emptySeen = true;
+			}, 5);
+		});
+		await page.reload();
+		const preview = page.locator('app-dataset-preview');
+		await expect(preview.locator('ui-virtual-table .table-row').first()).toBeAttached();
+		expect(
+			await page.evaluate(() => (window as unknown as { __emptySeen: boolean }).__emptySeen)
+		).toBe(false);
+		await expect(preview.locator('.status-box, .controls-bar')).toHaveCount(0);
+
+		// Metadata failure shows an alert with Retry that reloads and recovers.
+		await page.evaluate(() => {
+			const store = (
+				window as never as { __datasetResources: { get(): object; set(v: object): void } }
+			).__datasetResources;
+			store.set({
+				...store.get(),
+				status: 'error',
+				metadata: null,
+				error: 'Controlled failure'
+			});
+		});
+		const alert = preview.locator('.notification-alert[role="alert"]');
+		await expect(alert).toContainText('The preview could not be loaded.');
+		await expect(preview.locator('ui-virtual-table')).toHaveCount(0);
+		await alert.getByRole('button', { name: 'Retry' }).click();
+		await expect(alert).toHaveCount(0);
+		await expect(preview.locator('ui-virtual-table .table-row').first()).toBeAttached();
+
+		// An empty dataset shows the empty message and no table.
+		await page.evaluate(() => {
+			const store = (
+				window as never as {
+					__datasetResources: { get(): { metadata: object }; set(v: object): void };
+				}
+			).__datasetResources;
+			const current = store.get();
+			store.set({ ...current, metadata: { ...current.metadata, rowCount: 0 } });
+		});
+		await expect(preview.getByText('No rows to preview.')).toBeVisible();
+		await expect(preview.locator('ui-virtual-table')).toHaveCount(0);
+	});
+
+	test('PREV-AC-4: a 20,000-row preview restores its document offset', async ({ page }) => {
+		test.setTimeout(120_000);
+		await page.setViewportSize({ width: 1280, height: 800 });
+		await uploadCsv(page, 'prev-ac-4.csv', 20_000, 30);
+		const rowHeight = await page
+			.locator('ui-virtual-table')
+			.evaluate(
+				(table) =>
+					table.shadowRoot!.querySelector('.table-row')!.getBoundingClientRect().height
+			);
+		await page.locator('ui-virtual-table').evaluate((table, height) => {
+			const body = table.shadowRoot!.querySelector('.table-body')!;
+			window.scrollTo(
+				25,
+				body.getBoundingClientRect().top + window.scrollY + 15_000 * height
+			);
+		}, rowHeight);
+		await expect.poll(() => page.evaluate(() => scrollX)).toBe(25);
+		const saved = await page.evaluate(() => scrollY);
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						JSON.parse(localStorage.getItem('samata-ml:scroll') ?? '{}').snapshots?.[
+							'data:preview'
+						]?.top
+				)
+			)
+			.toBeGreaterThan(0);
+		const restored = async () => {
+			await expect
+				.poll(() => page.evaluate((y) => Math.abs(scrollY - y), saved))
+				.toBeLessThanOrEqual(rowHeight);
+			expect(await page.evaluate(() => scrollX)).toBe(25);
+			const row = page.locator('ui-virtual-table [aria-rowindex="15002"]');
+			await expect(row).toBeInViewport();
+		};
+		await page.reload();
+		await restored();
+
+		await page.locator('app-sidebar a[href="/target"]').click();
+		await expect(page.locator('#content h1')).toHaveText('Set Target');
+		await page.goBack();
+		await restored();
+
+		await page.setViewportSize({ width: 1100, height: 800 });
+		await page.reload();
+		await expect(page.locator('ui-virtual-table .table-row').first()).toBeAttached();
+		await expect.poll(() => page.evaluate(() => [scrollX, scrollY])).toEqual([0, 0]);
+
+		await page
+			.locator('app-dataset-preview')
+			.getByRole('button', { name: 'Change Dataset', exact: true })
+			.click();
+		await page
+			.getByRole('dialog', { name: 'Change Dataset' })
+			.getByRole('button', { name: 'Change Dataset', exact: true })
+			.click();
+		await expect(page.locator('app-data-view .cards')).toBeVisible();
+		await expect
+			.poll(() =>
+				page.evaluate(
+					() =>
+						'data:preview' in
+						(JSON.parse(localStorage.getItem('samata-ml:scroll') ?? '{}').snapshots ??
+							{})
+				)
+			)
+			.toBe(false);
+	});
+
+	test('PREV-AC-5: the column panel shows display and column names for samples only', async ({
+		page
+	}) => {
+		await loadIris(page);
+		const preview = page.locator('app-dataset-preview');
+		const button = preview.locator('.header-btn[data-col-key="sepal length"]');
+		await button.click();
+		const title = page.locator('app-column-details .overlay-title h4');
+		await expect(title).toContainText('Sepal Length');
+		await expect(title.locator('.col-name')).toHaveText('sepal length');
+		await page.locator('app-column-details .btn-icon[aria-label="Close"]').click();
+		await expect(button).toBeFocused();
+
+		await preview.getByRole('button', { name: 'Change Dataset', exact: true }).click();
+		await page
+			.getByRole('dialog', { name: 'Change Dataset' })
+			.getByRole('button', { name: 'Change Dataset', exact: true })
+			.click();
+		await expect(page.locator('app-data-view .cards')).toBeVisible();
+		await uploadCsv(page, 'prev-ac-5.csv', 10, 3);
+		await preview.locator('.header-btn[data-col-key="col_1"]').click();
+		await expect(title).toHaveText('col_1');
+		await expect(title.locator('.col-name')).toHaveCount(0);
+	});
+
+	test('PREV-AC-6: header actions stay operable at 320px and 400% text, and axe passes', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 320, height: 640 });
+		await loadIris(page);
+		await page.addStyleTag({ content: 'html { font-size: 400%; }' });
+		const preview = page.locator('app-dataset-preview');
+		for (const name of ['Datasheet', 'Change Dataset']) {
+			const control = preview.getByRole('button', { name, exact: true });
+			await control.scrollIntoViewIfNeeded();
+			await expect(control).toBeVisible();
+			const box = (await control.boundingBox())!;
+			expect(box.width).toBeGreaterThan(0);
+			expect(box.x + box.width).toBeLessThanOrEqual(640 + 1);
+		}
+		await page.addStyleTag({ content: 'html { font-size: 100%; }' });
+		const results = await new AxeBuilder({ page })
+			.include('app-data-view')
+			.withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+			.analyze();
+		expect(results.violations).toEqual([]);
+	});
+
+	test('PREV-AC-7: whenSettled waits for the dataset resources and the table geometry', async ({
+		page
+	}) => {
+		await loadIris(page);
+		const result = await page.locator('app-data-view').evaluate(async (view) => {
+			const store = (
+				window as never as {
+					__datasetResources: { get(): object; set(v: object): void };
+				}
+			).__datasetResources;
+			const ready = store.get();
+			store.set({ ...ready, status: 'loading', metadata: null });
+			let resolved = false;
+			const settled = (view as HTMLElementTagNameMap['app-data-view'])
+				.whenSettled()
+				.then(() => (resolved = true));
+			await new Promise((done) => setTimeout(done, 300));
+			const early = resolved;
+			store.set(ready);
+			await settled;
+			const preview = view.shadowRoot!.querySelector('app-dataset-preview')!;
+			const body = preview
+				.shadowRoot!.querySelector('ui-virtual-table')!
+				.shadowRoot!.querySelector('.table-body')!;
+			return {
+				early,
+				scrollHeight: document.scrollingElement!.scrollHeight,
+				bodyBottom: body.getBoundingClientRect().bottom + window.scrollY
+			};
+		});
+		expect(result.early).toBe(false);
+		expect(result.scrollHeight).toBeGreaterThanOrEqual(Math.floor(result.bodyBottom));
+	});
+
+	test('PREV-AC-8: the table is full bleed while notices keep the 32px page inset', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await loadIris(page);
+		await page.evaluate(() => {
+			const store = (
+				window as never as { __datasetResources: { get(): object; set(v: object): void } }
+			).__datasetResources;
+			store.set({ ...store.get(), error: 'Controlled failure' });
+		});
+		const preview = page.locator('app-dataset-preview');
+		await expect(preview.locator('.notification-alert')).toBeVisible();
+		const geometry = await preview.evaluate((element) => ({
+			main: document.querySelector('main')!.getBoundingClientRect().left,
+			alert: element.shadowRoot!.querySelector('.notification-alert')!.getBoundingClientRect()
+				.left,
+			table: element.shadowRoot!.querySelector('ui-virtual-table')!.getBoundingClientRect()
+				.left
+		}));
+		expect(geometry.table).toBeCloseTo(geometry.main, 1);
+		expect(geometry.alert - geometry.main).toBeCloseTo(32, 1);
 	});
 });

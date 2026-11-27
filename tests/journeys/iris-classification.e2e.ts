@@ -74,9 +74,7 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		await expect(preview).toBeVisible();
 
 		// 2. Verify preview header and summary
-		await expect(preview.locator('.page-header h1')).toHaveText(
-			'Preview Dataset: Iris Flower Species'
-		);
+		await expect(preview.locator('.page-header h1')).toHaveText('Iris Flower Species Preview');
 		await expect(preview.locator('.page-header p')).toContainText('150 rows | 5 columns');
 
 		// 3. Verify sidebar reflects loaded dataset
@@ -103,7 +101,7 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		await sepalLengthBtn.click();
 		const aside = page.locator('app-column-details aside.overlay');
 		await expect(aside).toBeVisible();
-		await expect(aside.locator('.overlay-title h4')).toHaveText('sepal length');
+		await expect(aside.locator('.overlay-title h4')).toContainText('sepal length');
 		await expect(aside.locator('code.type-tag')).toHaveText('numeric');
 		await expect(aside.locator('table.table').first()).toBeVisible();
 
@@ -115,7 +113,7 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		const classBtn = table.locator('.header-btn[data-col-key="class"]');
 		await classBtn.click();
 		await expect(aside).toBeVisible();
-		await expect(aside.locator('.overlay-title h4')).toHaveText('class');
+		await expect(aside.locator('.overlay-title h4')).toContainText('class');
 		await expect(aside.locator('code.type-tag')).toHaveText('categorical');
 		await expect(aside.locator('table.table').first()).toBeVisible();
 
@@ -130,9 +128,7 @@ test.describe('Reference Journey: Iris Classification (JOURNEY-IRIS-DATA)', () =
 		// 8. Reload page and verify state resumes cleanly
 		await page.reload();
 		await expect(preview).toBeVisible();
-		await expect(preview.locator('.page-header h1')).toHaveText(
-			'Preview Dataset: Iris Flower Species'
-		);
+		await expect(preview.locator('.page-header h1')).toHaveText('Iris Flower Species Preview');
 		await expect(preview.locator('.page-header p')).toContainText('150 rows | 5 columns');
 		await expect(sidebarItem.locator('.step-value')).toHaveText('Iris Flower Species');
 		await expect(sidebarItem.locator('.chiclet')).toHaveText(['150 rows', '5 columns']);

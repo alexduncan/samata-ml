@@ -89,7 +89,7 @@ async function geometry(page: Page, id: string) {
 	}, id);
 }
 
-test.describe('Virtual Table Component (VTB-AC-1 .. VTB-AC-12)', () => {
+test.describe('Virtual Table Component (VTB-AC-1 .. VTB-AC-11)', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/data');
 		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
@@ -693,43 +693,5 @@ test.describe('Virtual Table Component (VTB-AC-1 .. VTB-AC-12)', () => {
 			}
 		});
 		expect(result.blockSize).toBe(result.expected);
-	});
-
-	test('VTB-AC-12: transitional scrollToRow, restoreScroll and position events use the document scroll', async ({
-		page
-	}) => {
-		await mountTable(page, {
-			id: 'vtb12',
-			totalRows: 2000,
-			respond: true,
-			columns: Array.from({ length: 30 }, (_, index) => ({
-				key: `c${index}`,
-				label: `Column ${index}`
-			}))
-		});
-		await page.evaluate(() => {
-			(window as any).__positions = [];
-			document
-				.getElementById('vtb12')!
-				.addEventListener('ui-virtual-table-position-change', (event: any) =>
-					(window as any).__positions.push(event.detail)
-				);
-		});
-		await page.evaluate(() => (document.getElementById('vtb12') as any).scrollToRow(50, 5, 25));
-		const base = await geometry(page, 'vtb12');
-		const scroll = await page.evaluate(() => ({ x: window.scrollX, y: window.scrollY }));
-		expect(scroll.x).toBe(25);
-		expect(Math.abs(scroll.y - (base.bodyTop + 50 * base.rowHeight + 5))).toBeLessThanOrEqual(
-			1
-		);
-		const last = await page.evaluate(() => (window as any).__positions.at(-1));
-		expect(last.rowIndex).toBe(50);
-		expect(Math.abs(last.offset - 5)).toBeLessThanOrEqual(1);
-		expect(last.inlineOffset).toBe(25);
-
-		await page.evaluate(() =>
-			(document.getElementById('vtb12') as any).restoreScroll(1234, 40)
-		);
-		expect(await page.evaluate(() => [window.scrollX, window.scrollY])).toEqual([40, 1234]);
 	});
 });
