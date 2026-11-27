@@ -834,6 +834,14 @@ export const parityMap: ParityEntry[] = [
 		]
 	},
 	{
+		id: 'vtable-cell-unsupported',
+		mockupPage: '01-6_virtual-table.html',
+		mockupSelector: '.table-cell.unsupported',
+		appRoute: '/data',
+		appSelector: 'app-dataset-preview ui-virtual-table .table-cell.unsupported',
+		properties: ['background-color']
+	},
+	{
 		id: 'vtable-cell-num',
 		mockupPage: '01-6_virtual-table.html',
 		mockupSelector: '.table-cell-num',
