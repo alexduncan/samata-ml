@@ -1,9 +1,9 @@
 # Complete the web-ml 0.3.0 upgrade
 
-**Status:** ready-for-review | **Updated:** 2026-11-27T16:14:24Z
+**Status:** ready | **Updated:** 2026-11-27T16:14:49Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-27T16:02:18Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
-**Verified hash:** —
+**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-27T16:14:49Z | **Verification:** approved
+**Verified hash:** sha256:c8906660f46663442d2d5c33f1cddd2fe831c83f9899caebc5daa521dc316420
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -111,6 +111,7 @@ None.
 | -------------------- | ------------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 2026-11-27T16:05:40Z | Codex (GPT-6) | approved          | Verified the shipped 0.3.0 catalogue, tree declarations and public prose, the unchanged 0.2.0 tree defaults, the hidden-option and saved-key flow, release integrity coverage and checkout-specific HTTPS and browser verification. No blocking findings.                                                                                                                                                                                                                                                                                             |
 | 2026-11-27T16:13:45Z | Codex (GPT-6) | changes-requested | MAJOR: Interfaces and T1 promise valid V2 snapshots and reject malformed ones, but leave datetime support undefined and omit public fitted-state invariants for app-emitted numeric/categorical columns. Scope V2 to app-emitted column kinds or specify the additional branch. Cite released tabular-preprocessing.md and include unique names, no-op scaling offset 0 and scale 1, and categorical ordering, distinctness, disjointness and imputation membership as applicable. Use representative rejection tests for these contract constraints. |
+| 2026-11-27T16:14:49Z | Codex (GPT-6) | approved          | Reviewed the revised V2 validation against scout-verified installed and vendored 0.3.0 public declarations and prose. The plan defines Samata-supported numeric and categorical columns, rejects unsupported kinds, preserves V1 and label order, states scaling and label membership constraints, and leaves upstream canonical ordering to web-ml. Shared result validation, an IndexedDB round trip and real-worker browser tests cover the amended behaviour. No blocking findings.                                                               |
 
 ## Change log
 
