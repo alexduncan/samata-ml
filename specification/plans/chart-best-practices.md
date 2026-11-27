@@ -1,6 +1,6 @@
 # Remediate charts and establish chart design specification
 
-**Status:** ready | **Updated:** 2026-11-26T20:43:33Z
+**Status:** ready | **Updated:** 2026-11-27T04:14:07Z
 **Authors:** Google Antigravity (Gemini 4 Neon High), Codex (GPT-6) | **Created:** 2026-11-25T16:05:29Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-26T18:59:22Z | **Verification:** approved
 **Verified hash:** sha256:edea179eefe1e5cd9c3c88dda73a30d2173afd98bd76bd0cc1b842be84fa33a4
@@ -381,7 +381,7 @@ All presentational elements are Tier 2 (`src/features/results/`), own **no** i18
 
 ## Review fixes
 
-- [ ] **R1** `tests/csp-and-console.e2e.ts` `BETA-ERR-5` — the CSP journey still requires nonzero comparison-table `.bar` elements, contradicting CHT-COMP-2 and preventing subsequent security assertions from running. Test: assert the rendered comparison rows expose model identities and formatted metric values without `.bar` elements, while retaining the flowchart geometry, CSP, violation, page-error and console assertions; run the CSP journey across Chromium, Firefox and WebKit.
+- [x] **R1** `tests/csp-and-console.e2e.ts` `BETA-ERR-5` — the CSP journey still requires nonzero comparison-table `.bar` elements, contradicting CHT-COMP-2 and preventing subsequent security assertions from running. Test: assert the rendered comparison rows expose model identities and formatted metric values without `.bar` elements, while retaining the flowchart geometry, CSP, violation, page-error and console assertions; run the CSP journey across Chromium, Firefox and WebKit.
 
 ## Implementation and verification log
 
@@ -415,6 +415,7 @@ All presentational elements are Tier 2 (`src/features/results/`), own **no** i18
 | 2026-11-26T20:09:00Z | T6 | Codex (GPT-6) | Chart accessibility: 30 passed (three browsers); summary, probability, errors, comparison charts and ROPE: 194 passed, 1 skipped (three browsers); general accessibility and Iris/Penguins journeys: 90 passed (three browsers); test:stories 822 passed; check 691 passed; lint, build and 12 style-token tests passed. Earlier combined run had stale measurement-SVG selectors and load timeouts; journeys helper now selects the actual image and serial reruns pass. RTL/enlarged label fixes cover reliability, classee, class-error, ROPE, threshold and agreement charts; tests/journeys/helpers.ts is an intentional scope warning. |
 | 2026-11-26T20:14:53Z | T7 | Codex (GPT-6) | Created charts.md; synchronised README, COMPONENTS, visual design, testing, workflow, model-results and results-comparison contracts and human follow-ups. plans:check passed; scoped format:check passed for ten T7 paths. Bare format:check without paths failed because the repository script is prettier --check and receives no file path. Scope gate passed with zero warnings. |
 | 2026-11-26T20:43:33Z | R1 | Codex (GPT-6) | Escalated E16. Two substantive CSP journey verification attempts failed in new test assertions: a scoped locator error, corrected, then the percentage regular expression rejected template whitespace around a valid formatted metric. **Decision needed:** May a fresh implementation session adjust the assertion to accept surrounding whitespace and rerun all three browsers? **Evidence:** bun run test:e2e tests/csp-and-console.e2e.ts --workers 1 failed 0/3 twice; second run observed whitespace around 91.6% in each browser. The CSP and console assertions have not yet been reached. |
+| 2026-11-27T04:14:07Z | R1 | Codex (GPT-6) | bun run test:e2e tests/csp-and-console.e2e.ts --workers 1: 3 passed across Chromium, Firefox and WebKit including retained CSP/console checks; bun run build passed; bun run check: 691 passed, 0 failed; bun run lint passed; bun run format tests/csp-and-console.e2e.ts unchanged. Changed tests/csp-and-console.e2e.ts. |
 
 ## Plan review history
 
