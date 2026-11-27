@@ -26,7 +26,7 @@ The eight classifier adapters pass the active validated option overrides. Step 4
 
 `TrainingStartRequest` captures the dataset, target, model number, creation timestamp, configuration key and run ID together with the classifier, features and setup. Each worker processes a single start. Cancellation addresses that worker's run ID and aborts the library through its signal. Main-thread decoding checks the captured identity and payload before applying any message. Late progress, mismatched attempts and duplicate terminal replies cannot settle the run.
 
-The configuration key excludes the library-owned KNN `leafSize` and MLP `validationFraction` defaults added to the 0.2.0 catalogue. This preserves the keys used to restore earlier saved results.
+The configuration key excludes the library-owned KNN `leafSize` and MLP `validationFraction` defaults added to the 0.2.0 catalogue, and the decision-tree `categoricalFeatures`, `ccpAlpha`, `maxLeafNodes` and `classWeight` defaults added in 0.3.0. This preserves the keys used to restore earlier saved results.
 
 The worker returns progress with optional structured log entries, a result payload, a safe error code or cancellation. The session stores a compact progress snapshot and at most 250 ordered entries. An indeterminate native bar omits its value. The app retains the last measured fraction during saving and reserves 100% for acknowledged success. After a matching local stop, the same run's last measured percentage and log stay visible until retry, edit or departure. The entry keys let the builder localise milestone announcements without exposing raw errors. See [Training Progress](components/training-progress.md).
 

@@ -113,6 +113,22 @@ describe('requestOptions (WML-P1-OPT-2)', () => {
 		expect(run('k-neighbors-classifier', { leafSize: 5 }).requestOptions).toEqual({});
 		expect(run('mlp-classifier', { validationFraction: 0.2 }).requestOptions).toEqual({});
 		expect(run('mlp-classifier', { validationFraction: 0.3 }).requestOptions).toEqual({});
+		const treeOptions = {
+			categoricalFeatures: [0],
+			ccpAlpha: 0.1,
+			maxLeafNodes: 5,
+			classWeight: 'balanced'
+		};
+		expect(MODEL_OPTION_POLICY['decision-tree-classifier']).toMatchObject({
+			categoricalFeatures: { kind: 'hidden' },
+			ccpAlpha: { kind: 'hidden' },
+			maxLeafNodes: { kind: 'hidden' },
+			classWeight: { kind: 'hidden' }
+		});
+		const tree = run('decision-tree-classifier', treeOptions);
+		expect(tree.overrides).toEqual({});
+		expect(tree.requestOptions).toEqual({});
+		expect(tree.issues).toEqual([]);
 	});
 
 	it('WML-P1-OPT-2: keeps SVC classWeight balanced and prunes null as the default', () => {
@@ -192,6 +208,8 @@ describe('validation and defaults (WML-P1-OPT-3)', () => {
 		expect(issueCount('multinomial-nb', { alpha: -1 })).toBe(1);
 		expect(issueCount('k-neighbors-classifier', { nNeighbors: CONTEXT.rowCount + 1 })).toBe(1);
 		expect(issueCount('decision-tree-classifier', { minSamplesSplit: 1 })).toBe(1);
+		expect(issueCount('decision-tree-classifier', { minSamplesSplit: 0.5 })).toBe(1);
+		expect(issueCount('decision-tree-classifier', { minSamplesLeaf: 0.5 })).toBe(1);
 		expect(issueCount('mlp-classifier', { hiddenLayerSizes: [] })).toBe(1);
 		expect(issueCount('mlp-classifier', { randomState: -1 })).toBe(1);
 		expect(issueCount('mlp-classifier', { randomState: 4294967296 })).toBe(1);

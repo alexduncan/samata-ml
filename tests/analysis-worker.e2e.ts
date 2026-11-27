@@ -7,7 +7,7 @@ test('WML-P5-ROPE-1: real worker matches the pinned runtime and rejects invalid 
 	await page.goto('/models');
 	const result = await page.evaluate(async () => {
 		const source = await (await fetch('/analysis.worker.js')).text();
-		const runtimeUrl = source.match(/\/web-ml\/0\.2\.0-[0-9a-f]{64}\/index\.js/)?.[0];
+		const runtimeUrl = source.match(/\/web-ml\/0\.3\.0-[0-9a-f]{64}\/index\.js/)?.[0];
 		if (!runtimeUrl) throw new Error('Missing versioned runtime URL');
 		const runtime = await import(/* @vite-ignore */ runtimeUrl);
 		const worker = new Worker('/analysis.worker.js', { type: 'module' });

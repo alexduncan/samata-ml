@@ -35,7 +35,7 @@ describe('prebuilt model assets', () => {
 		);
 		const url = await buildModelAssets(output, app);
 		expect(url).toBe(
-			'/web-ml/0.2.0-7a53ca09d2dbca329724be2b2509694d522efa55e4d9a1f72ca58d415d1b91f6/index.js'
+			'/web-ml/0.3.0-8209179225633951fdf276c953d4252536c36af15464763fd7b512217ac40cc7/index.js'
 		);
 		const directory = path.join(output, path.dirname(url));
 		const files = await readdir(directory, { recursive: true, withFileTypes: true });
@@ -88,7 +88,7 @@ describe('prebuilt model assets', () => {
 		);
 		await writeFile(
 			path.join(packageDirectory, 'package.json'),
-			'{"name":"web-ml","version":"0.2.0"}'
+			'{"name":"web-ml","version":"0.3.0"}'
 		);
 		await expect(buildModelAssets(output, app)).rejects.toThrow(
 			`web-ml setup error at ${manifest}: package manifest does not match`
@@ -105,12 +105,12 @@ describe('prebuilt model assets', () => {
 
 		const output = path.join(root, 'output');
 		const url = await buildModelAssets(output, app);
-		expect(url).toContain('7a53ca09d2dbca329724be2b2509694d522efa55e4d9a1f72ca58d415d1b91f6');
+		expect(url).toContain('8209179225633951fdf276c953d4252536c36af15464763fd7b512217ac40cc7');
 		const revision = await Bun.file(
 			new URL('../scripts/build-model-assets.ts', import.meta.url)
 		).text();
 		expect(revision).toContain(
-			'sha256:82fc9163764805dde88ea1ca13eb3bd1a8a8a3f62d0eeb4930689c47028e76b0'
+			'sha256:de6f0f3c9b8487a5667da58be957fbd8408d67a7320e869e0e8fc8a953bfdbb5'
 		);
 		expect(revision).not.toContain('e568a7c9f37eb04f39463325c3314f8ca816dcc0');
 		expect(revision).not.toContain('623dd30d7899d8e281773bc593e44be815592693');
@@ -123,19 +123,20 @@ describe('prebuilt model assets', () => {
 		);
 		await writeFile(executable, original);
 
-		const declaration = path.join(
-			packageDirectory,
-			'dist',
-			'src',
-			'training',
-			'holdout-validate.d.ts'
-		);
-		const declarationBytes = await readFile(declaration);
-		await writeFile(declaration, Buffer.concat([declarationBytes, Buffer.from('\n// drift')]));
-		await expect(buildModelAssets(path.join(root, 'drifted'), app)).rejects.toThrow(
-			'public declarations or catalogue do not match the verified build'
-		);
-		await writeFile(declaration, declarationBytes);
+		for (const relativeFile of [
+			'dist/src/training/holdout-validate.d.ts',
+			'dist/src/models/trees/index.d.ts',
+			'dist/src/models/trees/types.d.ts',
+			'specification/public-api/hyperparameters.md'
+		]) {
+			const file = path.join(packageDirectory, relativeFile);
+			const original = await readFile(file);
+			await writeFile(file, Buffer.concat([original, Buffer.from('\n')]));
+			await expect(buildModelAssets(path.join(root, 'drifted'), app)).rejects.toThrow(
+				'public declarations or catalogue do not match the verified build'
+			);
+			await writeFile(file, original);
+		}
 
 		const timing = path.join(packageDirectory, 'specification', 'public-api', 'timing.md');
 		await rm(timing);

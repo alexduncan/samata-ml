@@ -3,22 +3,22 @@ import { mkdir, readFile, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ROOT_DIR } from './config';
 
-const webMlVersion = '0.2.0';
+const webMlVersion = '0.3.0';
 const webMlTarball = `vendor/web-ml/web-ml-${webMlVersion}.tgz`;
 /** SHA-256 release identifier recorded with newly trained models. */
 export const WEB_ML_REVISION =
-	'sha256:82fc9163764805dde88ea1ca13eb3bd1a8a8a3f62d0eeb4930689c47028e76b0';
+	'sha256:de6f0f3c9b8487a5667da58be957fbd8408d67a7320e869e0e8fc8a953bfdbb5';
 
 // Pins the prebuilt module, its relative workers and WASM, and their notices to the
 // verified release tarball.
 const runtimeHashes = {
 	'LICENSE.md': '0ba4fb5f08e788173f083c3c53ff7ba7ad8e6888a6931e8cfb63f85d04ca2d11',
 	'THIRD-PARTY-NOTICES.md': '9edbb60a3d1c5f5c3bd24948b6be6eb1537ca7765cd29aa8b4a94a788facb0f7',
-	'dist/index.js': '8b1356550549140a42f9f5e680779c9bc3bfb633e3ca0c34a01bb7fe27dde68c',
+	'dist/index.js': '9afdef1e16c5894e291c0ad356da6730d37d8736d65b62a0f45a4c803737a774',
 	'dist/training-orchestrator-dedicated.js':
-		'8cd9b88d562d9451240b416ffeb4a105db795898f1cfd79a453643babd321357',
+		'de21f56ce6d5723200ad56aee2b5e1bdd97b1cda4f320c503e8b6ee7eb0e2e21',
 	'dist/training-orchestrator.js':
-		'3e5e18fb13185a0b9c0e9fab43a02ee41ea11bd5e1d8706fc8f49510e63a6638',
+		'0de8243173dd6be0a0fc5ccfed1631b042e0cfb3e60f04acbea30b94e89cd53c',
 	'dist/training-worker-clustering.js':
 		'f52718b96cc63641c30941bc248123f71e8a5078f940fe08694e1e6aa44c504f',
 	'dist/training-worker-linear.js':
@@ -38,7 +38,7 @@ const runtimeHashes = {
 	'dist/training-worker-svm.js':
 		'72ca5bde02f3dda943a4d0f200dd7a04299e4a73df430340e25df0a5bcdcc73d',
 	'dist/training-worker-tree.js':
-		'1e5aec15251ed53ef19bf688a5d2a9f48db8de8c446537aa89917d6bbdde598d',
+		'56cac0dfcbff64673f7ec0ac3136a8b92f844b065353a9e83e6ab59be3e7e7a2',
 	'dist/wasm/LIBSVM-COPYRIGHT':
 		'958fd47be5e5b94dabeb68b077fbe2adbbd49c015fe2e453fe11afeb4a73c7e5',
 	'dist/wasm/libsvm.js': '0212897cd67836047391f6f0633479bd4cd97b6e660d470f58b1032af7959461',
@@ -69,7 +69,10 @@ const publicFiles = [
 	'dist/src/models/support-vector-machines/index.d.ts',
 	'dist/src/models/support-vector-machines/support-vector-classifier.d.ts',
 	'dist/src/models/support-vector-machines/types.d.ts',
+	'dist/src/models/trees/index.d.ts',
+	'dist/src/models/trees/types.d.ts',
 	'specification/public-api/current-limitations.md',
+	'specification/public-api/hyperparameters.md',
 	'specification/public-api/metrics.md',
 	'specification/public-api/tabular-preprocessing.md',
 	'specification/public-api/timing.md',
@@ -84,7 +87,7 @@ const publicFiles = [
 	`${catalogue}/models/multinomial-nb.json`,
 	`${catalogue}/models/support-vector-classifier.json`
 ];
-const publicDigest = '8ed43084a155c19cde393d3568c94192d8c6f03776b56733b1879d71c93f8738';
+const publicDigest = 'f4b4aba0e430c23ecf15cd7124b275cd994ee6a54fa0b57032def02371a0f393';
 
 function setupError(location: string, reason: string, cause?: unknown): Error {
 	return new Error(
@@ -124,7 +127,7 @@ export async function buildModelAssets(outDir: string, appDir = ROOT_DIR): Promi
 	}
 
 	const manifest = await readInput(packageDirectory, 'package.json');
-	if (manifest.hash !== '230b2c18d60dfbeb749d132eee974620f2d09994dcee18e394b1125a43dd97e1') {
+	if (manifest.hash !== '24a328239d01e9bed11d73a299f1da8fb8c4dfd8b73fc479d86e1ca77c0fcdc0') {
 		throw setupError(
 			path.join(packageDirectory, manifest.name),
 			'package manifest does not match the verified build'

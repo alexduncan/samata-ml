@@ -62,7 +62,7 @@ describe('getModelDocument (WML-P1-DOC-1)', () => {
 			enumValues: ['balanced']
 		});
 		expect(option(getModelDocument('decision-tree-classifier'), 'maxDepth')).toMatchObject({
-			types: ['number', 'null'],
+			types: ['integer', 'null'],
 			enumValues: null
 		});
 	});

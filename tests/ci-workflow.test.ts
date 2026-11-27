@@ -47,7 +47,7 @@ interface WorkflowFile {
 
 const CHECKOUT_PIN = 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1';
 const BUN_PIN = 'oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6';
-const CHECKSUM_CMD = 'cd vendor/web-ml && sha256sum -c web-ml-0.2.0.tgz.sha256';
+const CHECKSUM_CMD = 'cd vendor/web-ml && sha256sum -c web-ml-0.3.0.tgz.sha256';
 const FROZEN_INSTALL_CMD = 'bun install --frozen-lockfile --ignore-scripts';
 
 function collectWorkflowViolations(rawYaml: string): string[] {
