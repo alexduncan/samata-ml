@@ -10,6 +10,7 @@ import { configureDraft } from './fixtures/training/browser';
 import type { StoredEvaluation } from '../src/types/model-evaluation';
 import { dismissWelcomeModal, loadSampleDataset } from './journeys/helpers';
 import { DIST_URL } from '../scripts/ports';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 const holdout = { type: 'one_shot', testRatio: 0.2, randomState: 42 } as const;
 const crossValidation = {
@@ -60,7 +61,7 @@ async function upload(
 			['first,second,habitat,label', ...data.map((row) => row.join(','))].join('\n')
 		)
 	});
-	await expect(page.locator('app-dataset-preview')).toBeVisible();
+	await waitForPublishedPreview(page);
 	return page.evaluate(() => window.__appState!.get().dataset!.id);
 }
 

@@ -3,6 +3,7 @@ import { DIST_URL } from '../scripts/ports';
 import type { AppConfusionFlowchart } from '../src/features/results/app-confusion-flowchart';
 import { configureOpenDraft, openSidebarDraft } from './fixtures/training/browser';
 import { loadSampleDataset, viewNumberedTrainingResult } from './journeys/helpers';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 interface CspProbeWindow extends Window {
 	reportCspViolation(directive: string, blocked: string): Promise<void>;
@@ -54,6 +55,7 @@ test('BETA-ERR-5: production data, training, results and dialogs stay clean unde
 	await page.goto('/data');
 	await loadSampleDataset(page, 'iris');
 	await page.reload();
+	await waitForPublishedPreview(page);
 	const preview = page.locator('app-dataset-preview');
 	await expect(preview.locator('h1')).toHaveText(/^Iris.* Preview$/);
 

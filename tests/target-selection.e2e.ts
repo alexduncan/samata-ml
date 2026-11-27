@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { dismissWelcomeModal } from './journeys/helpers';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 test.describe('Target Selection & Confirmation (TARG-E2E-1 .. TARG-E2E-3)', () => {
 	test.beforeEach(async ({ page }) => {
@@ -32,8 +33,8 @@ test.describe('Target Selection & Confirmation (TARG-E2E-1 .. TARG-E2E-3)', () =
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
 
+		await waitForPublishedPreview(page);
 		const preview = page.locator('app-dataset-preview');
-		await expect(preview).toBeVisible({ timeout: 10000 });
 
 		// 3. Navigate to /target -> ready state
 		await page.locator('app-sidebar a[href="/target"]').click();
@@ -90,7 +91,7 @@ test.describe('Target Selection & Confirmation (TARG-E2E-1 .. TARG-E2E-3)', () =
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
 
-		await expect(page.locator('app-dataset-preview')).toBeVisible({ timeout: 10000 });
+		await waitForPublishedPreview(page);
 
 		// Navigate to /target
 		await page.locator('app-sidebar a[href="/target"]').click();
@@ -150,7 +151,7 @@ test.describe('Target Selection & Confirmation (TARG-E2E-1 .. TARG-E2E-3)', () =
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
 
-		await expect(page.locator('app-dataset-preview')).toBeVisible({ timeout: 10000 });
+		await waitForPublishedPreview(page);
 
 		// Go to /target and select class
 		await page.locator('app-sidebar a[href="/target"]').click();

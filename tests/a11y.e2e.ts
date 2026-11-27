@@ -5,6 +5,7 @@ import { loadSampleDataset } from './journeys/helpers';
 import { controlTraining, openSetup } from './fixtures/training/browser';
 import { seedComparablePair, seedTrainedModel, type SeedName } from './helpers/seed-results';
 import { prepareSidebarFixture } from './visual-parity/fixtures';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
@@ -191,8 +192,8 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
 
+		await waitForPublishedPreview(page);
 		const preview = page.locator('app-dataset-preview');
-		await expect(preview).toBeVisible({ timeout: 10000 });
 
 		await assertNoUnexpectedViolations(page);
 	});
@@ -212,8 +213,8 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
 
+		await waitForPublishedPreview(page);
 		const preview = page.locator('app-dataset-preview');
-		await expect(preview).toBeVisible({ timeout: 10000 });
 
 		const sepalLengthBtn = preview.locator('.header-btn[data-col-key="sepal length"]');
 		await sepalLengthBtn.click();
@@ -237,6 +238,7 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 		await irisCard.getByRole('button', { name: 'Load Dataset' }).click();
+		await waitForPublishedPreview(page);
 		await page
 			.locator('app-dataset-preview')
 			.getByRole('button', { name: 'Change Dataset', exact: true })
@@ -304,7 +306,7 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
-		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+		await waitForPublishedPreview(page);
 
 		await page.locator('app-sidebar a[href="/target"]').click();
 		await expect(page.locator('app-target-view [data-testid="target-ready"]')).toBeVisible({
@@ -329,7 +331,7 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
-		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+		await waitForPublishedPreview(page);
 
 		await page.goto('/target');
 		const targetView = page.locator('app-target-view');
@@ -388,7 +390,7 @@ test.describe('Accessibility Audits (WCAG 2.2 AA)', () => {
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
-		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+		await waitForPublishedPreview(page);
 
 		await page.goto('/target');
 		const targetView = page.locator('app-target-view');

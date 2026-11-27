@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import type { AppColumnDetails } from '../src/features/data/app-column-details';
 import type { PersistedAppState } from '../src/types/state';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 import { dismissWelcomeModal } from './journeys/helpers';
 
 async function loadIrisPreview(page: Page): Promise<void> {
@@ -11,6 +12,7 @@ async function loadIrisPreview(page: Page): Promise<void> {
 		.locator('app-dataset-card[dataset-id="iris"]')
 		.getByRole('button', { name: 'Load Dataset' })
 		.click();
+	await waitForPublishedPreview(page);
 	await expect(page.locator('app-dataset-preview h1')).toHaveText(/^Iris.* Preview$/);
 }
 
@@ -78,8 +80,8 @@ test('BETA-DATA-3: a failed replacement catalogue request shows an alert and Ret
 		mimeType: 'text/csv',
 		buffer: Buffer.from('Length,Class\n1,Plant\n2,Animal\n3,Plant\n4,Animal\n')
 	});
+	await waitForPublishedPreview(page);
 	const preview = page.locator('app-dataset-preview');
-	await expect(preview).toBeVisible();
 	// Uploaded data has no sample descriptor to prime the catalogue before selection.
 	await page.reload();
 	await expect(preview).toBeVisible();
@@ -201,8 +203,8 @@ test.describe('Dataset Preview & Column Inspector (DATA-PRE-1 .. DATA-PRE-3)', (
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
 
+		await waitForPublishedPreview(page);
 		const preview = page.locator('app-dataset-preview');
-		await expect(preview).toBeVisible({ timeout: 10000 });
 
 		// Check header title and stats
 		const h1 = preview.locator('.page-header h1');
@@ -246,8 +248,8 @@ test.describe('Dataset Preview & Column Inspector (DATA-PRE-1 .. DATA-PRE-3)', (
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
 
+		await waitForPublishedPreview(page);
 		const preview = page.locator('app-dataset-preview');
-		await expect(preview).toBeVisible({ timeout: 10000 });
 
 		const table = preview.locator('ui-virtual-table');
 		await expect(table).toBeVisible();
@@ -341,11 +343,7 @@ async function uploadCsv(page: Page, name: string, rows: number, columns: number
 		mimeType: 'text/csv',
 		buffer: Buffer.from(`${lines.join('\n')}\n`)
 	});
-	await expect(
-		page.locator('app-dataset-preview ui-virtual-table .table-row').first()
-	).toBeAttached({
-		timeout: 60_000
-	});
+	await waitForPublishedPreview(page);
 }
 
 async function loadIris(page: Page): Promise<void> {
@@ -353,9 +351,7 @@ async function loadIris(page: Page): Promise<void> {
 		.locator('app-dataset-card[dataset-id="iris"]')
 		.getByRole('button', { name: 'Load Dataset' })
 		.click();
-	await expect(
-		page.locator('app-dataset-preview ui-virtual-table .table-row').first()
-	).toBeAttached({ timeout: 15_000 });
+	await waitForPublishedPreview(page);
 }
 
 /** Document-level geometry of the preview, `main` and the sticky headers. */

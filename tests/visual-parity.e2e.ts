@@ -6,6 +6,7 @@ import {
 	prepareSidebarReference
 } from './visual-parity/fixtures';
 import { MOCKUPS_URL } from '../scripts/ports';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 	test.use({ viewport: { width: 1440, height: 900 } });
@@ -49,9 +50,7 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 				const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 				await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 				await irisCard.locator('button.btn-primary').click();
-				await page
-					.locator('app-dataset-preview')
-					.waitFor({ state: 'attached', timeout: 5000 });
+				await waitForPublishedPreview(page);
 				if (entry.id.includes('aside')) {
 					await page.locator('app-dataset-preview .header-btn').first().click();
 					await page
@@ -71,9 +70,7 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 				const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 				await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 				await irisCard.locator('button.btn-primary').click();
-				await page
-					.locator('app-dataset-preview')
-					.waitFor({ state: 'attached', timeout: 5000 });
+				await waitForPublishedPreview(page);
 				await page.goto('/target');
 				await page
 					.locator('app-target-view [data-testid="target-ready"]')
@@ -128,9 +125,7 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 					const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 					await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 					await irisCard.locator('button.btn-primary').click();
-					await page
-						.locator('app-dataset-preview')
-						.waitFor({ state: 'attached', timeout: 5000 });
+					await waitForPublishedPreview(page);
 					await page.goto('/target');
 					await page
 						.locator('app-target-view [data-testid="target-ready"]')
@@ -157,9 +152,7 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 					const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 					await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 					await irisCard.locator('button.btn-primary').click();
-					await page
-						.locator('app-dataset-preview')
-						.waitFor({ state: 'attached', timeout: 5000 });
+					await waitForPublishedPreview(page);
 					await page.goto('/target');
 					await page
 						.locator('app-target-view [data-testid="target-ready"]')

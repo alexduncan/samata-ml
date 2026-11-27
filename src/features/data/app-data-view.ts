@@ -15,18 +15,21 @@ import {
 	startDatasetLoad
 } from '../../stores/dataset.store';
 import { buildPreviewColumns, formatPreviewValue } from './preview-columns';
+import { selectDataViewMode } from './data-view-mode';
+import { toLoadProgressView, type LoadStageKind } from './load-progress';
 import { loadSampleCatalogue, loadSampleDatasheet } from './sample-datasets';
 import { getTrainingService } from '../models/training/training-service';
 import type { SampleDatasetIndex } from '../../types/sample-dataset';
 import { buttonStyles } from '../../styles/button.styles';
 import { dialogStyles } from '../../styles/dialog.styles';
+import { notificationStyles } from '../../styles/notification.styles';
 import { headingFocusStyles } from '../../styles/heading-focus.styles';
 import './app-dataset-card';
 import './app-datasheet-dialog';
 import './app-upload-dataset-dialog';
 import './app-dataset-preview';
 import './app-column-details';
-import type { AppDatasetPreview, PreviewLabels } from './app-dataset-preview';
+import type { AppDatasetPreview, PreviewLabels, PreviewLoadView } from './app-dataset-preview';
 import type {
 	VirtualTableColumn,
 	VirtualTableRange,
@@ -36,7 +39,8 @@ import type { ColumnStats, RawRecord } from '../../types/dataset';
 import type { SampleDatasetGuidance } from '../../types/sample-dataset';
 import type { DatasetMetadata } from '../../types/dataset';
 import { $format, i18n } from '../../i18n';
-import { INGESTION_ERROR_MESSAGES } from './ingestion/errors';
+import { INGESTION_ERROR_MESSAGES, INGESTION_PHASE_LABELS } from './ingestion/errors';
+import type { IngestionProgress } from './ingestion/pipeline';
 import { StickyHeaderController } from '../shell/sticky-header-controller';
 
 const noticeMessages = i18n('app-data-sample-notice', {
@@ -68,7 +72,11 @@ const previewMessages = i18n('app-data-preview', {
 	errorMessage: 'The preview could not be loaded.',
 	unsupported: ', not used for training',
 	progressLabel: 'Loading progress',
-	preparing: 'Loading preview…'
+	preparing: 'Loading preview…',
+	step: params<{ step: string; total: string }>('Step {step} of {total}'),
+	loaded: params<{ name: string; rows: string; columns: string }>(
+		'{name} loaded: {rows} rows, {columns} columns'
+	)
 });
 
 /** Formats a stored row window for the table with the active locale. */
@@ -98,6 +106,7 @@ export class AppDataView extends LitElement {
 		headingFocusStyles,
 		dialogStyles,
 		buttonStyles,
+		notificationStyles,
 		css`
 			:host {
 				display: block;
@@ -227,6 +236,11 @@ export class AppDataView extends LitElement {
 	private changeDatasetInvoker: HTMLElement | null = null;
 	private datasheetSeq = 0;
 	private abortController = new AbortController();
+	/** Kind of the active load: set where a load starts, confirmed by uploads' validating stage. */
+	private loadKind: LoadStageKind = 'sample';
+	private previousStage: 'idle' | 'validating' | 'ingesting' = 'idle';
+	private renderedMode: 'selection' | 'preview' | null = null;
+	@state() private accessor loadedMessage = '';
 	private resourcesDeferred: { promise: Promise<void>; resolve: () => void } | null = null;
 	private previewLabelCache: {
 		messages: unknown;
@@ -275,14 +289,40 @@ export class AppDataView extends LitElement {
 
 	override willUpdate(changedProperties: PropertyValues): void {
 		super.willUpdate(changedProperties);
-		const { dataset, data } = this.appStateController.value;
+		const appState = this.appStateController.value;
+		const load = this.loadController.value;
+		const { mode } = selectDataViewMode(appState, load);
+
+		// D26: once pass 1 of an owned upload succeeds, the in-page progress takes over and the
+		// dialog goes with the selection template. Clearing the owner first means no close or
+		// cancel event can abort pass 2.
+		if (this.ownedUpload && load.stage === 'ingesting') {
+			this.ownedUpload = null;
+			this.uploadOpen = false;
+		}
+		if (load.stage === 'validating') this.loadKind = 'upload';
+		if (this.previousStage === 'ingesting' && load.stage === 'idle' && !load.errorCode) {
+			if (appState.dataset) {
+				const format = $format.get();
+				this.loadedMessage = previewMessages.get().loaded({
+					name: appState.dataset.name,
+					rows: format.number(appState.dataset.rowCount, { useGrouping: true }),
+					columns: format.number(appState.dataset.columns.length, { useGrouping: true })
+				});
+			}
+		} else if (load.stage !== 'idle' || mode === 'selection') {
+			this.loadedMessage = '';
+		}
+		this.previousStage = load.stage;
+
 		// Styling hook for `main:has(> app-data-view[preview])`, the document-wide table layout.
-		this.toggleAttribute('preview', dataset !== null && data.mode === 'preview');
+		this.toggleAttribute('preview', mode === 'preview');
 	}
 
 	override updated(changedProperties: PropertyValues): void {
 		super.updated(changedProperties);
 		if (this.resourcesReady()) this.settleResources();
+		this.manageLoadFocus();
 
 		const changeDialog = this.changeDatasetDialogElement;
 		if (changeDialog) {
@@ -325,6 +365,29 @@ export class AppDataView extends LitElement {
 		if (preview) {
 			await preview.focusHeading(signal);
 		} else {
+			this.renderRoot.querySelector<HTMLElement>('.page-header > h1')?.focus({
+				preventScroll: true
+			});
+		}
+	}
+
+	/**
+	 * Moves focus across the load flow (D20): the preview heading once when a load enters the
+	 * preview branch (the invoking control just unmounted), and the selection heading when a
+	 * failed load returns to selection with its alert.
+	 */
+	private manageLoadFocus(): void {
+		const { mode, showLoadAlert } = selectDataViewMode(
+			this.appStateController.value,
+			this.loadController.value
+		);
+		const previous = this.renderedMode;
+		this.renderedMode = mode;
+		if (previous === 'selection' && mode === 'preview') {
+			if (this.loadController.value.stage === 'ingesting') {
+				void this.previewEl?.focusHeading(this.abortController.signal);
+			}
+		} else if (previous === 'preview' && mode === 'selection' && showLoadAlert) {
 			this.renderRoot.querySelector<HTMLElement>('.page-header > h1')?.focus({
 				preventScroll: true
 			});
@@ -443,6 +506,7 @@ export class AppDataView extends LitElement {
 
 	private async handleUploadFileSelect(e: CustomEvent<{ file: File }>): Promise<void> {
 		if ($datasetLoad.get().busy) return;
+		this.loadKind = 'upload';
 		const upload = startDatasetLoad({ kind: 'file', file: e.detail.file });
 		this.ownedUpload = upload;
 		const ok = await upload;
@@ -463,7 +527,11 @@ export class AppDataView extends LitElement {
 	}
 
 	private handleCardSelect(e: CustomEvent<{ datasetId: string; name: string }>): void {
-		void startDatasetLoad({ kind: 'sample', sampleId: e.detail.datasetId });
+		this.loadKind = 'sample';
+		void startDatasetLoad(
+			{ kind: 'sample', sampleId: e.detail.datasetId },
+			{ name: e.detail.name }
+		);
 	}
 
 	private handleCardDatasheet(
@@ -665,8 +733,13 @@ export class AppDataView extends LitElement {
 
 	private renderSelectionMode(): TemplateResult {
 		const loadState = this.loadController.value;
+		const { showLoadAlert } = selectDataViewMode(this.appStateController.value, loadState);
 		let uploadError: string | null = null;
-		if (loadState.errorCode && loadState.errorCode !== 'CANCELLED') {
+		if (
+			loadState.errorCode &&
+			loadState.errorCode !== 'CANCELLED' &&
+			loadState.errorStage === 'validating'
+		) {
 			uploadError =
 				INGESTION_ERROR_MESSAGES[loadState.errorCode] ?? INGESTION_ERROR_MESSAGES.UNKNOWN;
 		}
@@ -684,6 +757,14 @@ export class AppDataView extends LitElement {
 			</header>
 
 			<div class="page-body">
+				${showLoadAlert && loadState.errorCode
+					? html`<div class="notification notification-alert" role="alert">
+							<span class="notification-text"
+								>${INGESTION_ERROR_MESSAGES[loadState.errorCode] ??
+								INGESTION_ERROR_MESSAGES.UNKNOWN}</span
+							>
+						</div>`
+					: nothing}
 				${this.catalogueStatus === 'loading'
 					? html`<div class="status-notice">
 							<p role="status">Loading sample datasets...</p>
@@ -745,12 +826,43 @@ export class AppDataView extends LitElement {
 		`;
 	}
 
+	/** Progress presentation for the active load, held at its latest values (D19, D20). */
+	private loadView(): PreviewLoadView {
+		const load = this.loadController.value;
+		const kind = this.loadKind;
+		const initial: IngestionProgress = {
+			phase: kind === 'sample' ? 'download' : 'parse',
+			bytesProcessed: 0,
+			totalBytes: null,
+			rowsProcessed: 0,
+			totalRows: null
+		};
+		const view = toLoadProgressView(load.progress ?? initial, kind);
+		const format = $format.get();
+		return {
+			phaseLabel: INGESTION_PHASE_LABELS[view.phase],
+			step: previewMessages.get().step({
+				step: format.number(view.stepIndex),
+				total: format.number(view.stepCount)
+			}),
+			value: view.value,
+			max: view.max
+		};
+	}
+
 	private renderPreviewMode(): TemplateResult {
 		const appState = this.appStateController.value;
 		const resources = this.resourcesController.value;
 		const previewState = this.previewController.value;
+		const load = this.loadController.value;
+		const dataset = appState.dataset;
+		const loading = load.stage === 'ingesting';
+		// Resources of another (or no) dataset are never shown for the active one.
+		const current = dataset !== null && resources.datasetId === dataset.id;
+		const metadata = current ? resources.metadata : null;
+		const descriptor = current ? resources.descriptor : null;
 
-		const columns = resources.metadata?.columns ?? [];
+		const columns = metadata?.columns ?? [];
 		const formattedRows = formatPreviewRows(previewState.rows, columns);
 		const previewWindow: VirtualTableWindow = {
 			startIndex: previewState.startIndex,
@@ -763,31 +875,32 @@ export class AppDataView extends LitElement {
 			: null;
 		const selectedColumnDisplayName =
 			(selectedColumnName &&
-				resources.descriptor?.columns.find((c) => c.name === selectedColumnName)
-					?.displayName) ||
+				descriptor?.columns.find((c) => c.name === selectedColumnName)?.displayName) ||
 			'';
 		const selectedColumnDescription =
 			(selectedColumnName &&
-				resources.descriptor?.columns.find((c) => c.name === selectedColumnName)
-					?.description) ||
+				descriptor?.columns.find((c) => c.name === selectedColumnName)?.description) ||
 			'';
 
-		const dataset = appState.dataset!;
-		const failure = resources.error || previewState.error;
+		const failure = current ? resources.error || previewState.error : null;
+		const messages = previewMessages.get();
+		const loadView = loading ? this.loadView() : null;
+		const statusMessage = loadView
+			? `${loadView.phaseLabel}. ${loadView.step}`
+			: this.loadedMessage || (metadata === null && !failure ? messages.preparing : '');
 
 		return html`
 			<app-dataset-preview
-				.metadata=${resources.metadata}
-				.datasetName=${dataset.name}
-				.rowCount=${dataset.rowCount}
-				.columnCount=${dataset.columns.length}
-				.columns=${this.previewColumns(resources.metadata, resources.descriptor)}
+				.metadata=${metadata}
+				.datasetName=${loading ? load.name || dataset?.name || '' : (dataset?.name ?? '')}
+				.rowCount=${dataset?.rowCount ?? 0}
+				.columnCount=${dataset?.columns.length ?? 0}
+				.columns=${this.previewColumns(metadata, descriptor)}
 				.window=${previewWindow}
 				.labels=${this.previewLabels()}
-				.statusMessage=${resources.metadata === null && !failure
-					? previewMessages.get().preparing
-					: ''}
-				.datasheetAvailable=${Boolean(dataset.sampleId)}
+				.loadView=${loadView}
+				.statusMessage=${statusMessage}
+				.datasheetAvailable=${!loading && Boolean(dataset?.sampleId)}
 				?loading=${resources.status === 'loading' || previewState.status === 'loading'}
 				.error=${failure}
 				@app-preview-range-change=${this.handlePreviewRangeChange}
@@ -800,7 +913,7 @@ export class AppDataView extends LitElement {
 				.column=${selectedColumnStats}
 				.displayName=${selectedColumnDisplayName}
 				.description=${selectedColumnDescription}
-				.rowCount=${resources.metadata?.rowCount ?? 0}
+				.rowCount=${metadata?.rowCount ?? 0}
 				@app-column-details-close=${this.handleColumnDetailsClose}></app-column-details>
 
 			${this.renderDatasheetDialog()}
@@ -850,14 +963,11 @@ export class AppDataView extends LitElement {
 	}
 
 	override render(): TemplateResult {
-		const appState = this.appStateController.value;
-		const isPreview = appState.dataset !== null && appState.data.mode === 'preview';
-
-		if (!isPreview) {
-			return this.renderSelectionMode();
-		}
-
-		return this.renderPreviewMode();
+		const { mode } = selectDataViewMode(
+			this.appStateController.value,
+			this.loadController.value
+		);
+		return mode === 'preview' ? this.renderPreviewMode() : this.renderSelectionMode();
 	}
 }
 

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { INITIAL_APP_STATE, STATE_STORAGE_KEY } from '../src/types/state';
 import { startBetaOriginServer, type BetaOriginServer } from './fixtures/beta-origin-server';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 const ROOT_DIR = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 
@@ -294,7 +295,7 @@ test('REL-TELEM-5: blocked Umami script keeps the beta workflow completely usabl
 	const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 	await expect(irisCard).toBeVisible();
 	await irisCard.locator('button.btn-primary').click();
-	await expect(page.locator('app-dataset-preview')).toBeVisible({ timeout: 10_000 });
+	await waitForPublishedPreview(page);
 	expect(sends).toHaveLength(0);
 	expect(pageErrors).toEqual([]);
 });

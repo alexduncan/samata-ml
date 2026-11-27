@@ -3,10 +3,10 @@
 <html lang="en">
 	<head>
 		<meta charset="UTF-8" />
-		<meta name="name" content="Virtual Table States" />
+		<meta name="name" content="Virtual Table Loading States" />
 		<meta
 			name="description"
-			content="Loading, empty, and error states for the virtualised dataset preview table." />
+			content="In-page loading, preparing, empty and error states for the dataset preview." />
 		<meta name="status" content="draft" />
 		<link rel="stylesheet" href="./style.css" />
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -112,41 +112,51 @@
 
 		<main>
 			<header class="page-header">
-				<h1>Preview Dataset: Palmer Penguins</h1>
-				<p>344 rows | 8 columns</p>
-				<button class="btn">Change Dataset</button>
+				<h1>{Dataset Name} Preview</h1>
+				<p>Loading dataset…</p>
 			</header>
-			<!-- Loading State -->
-			<!-- This will display while dataset rows are being fetched for the virtual table preview. -->
-			<section>
-				<h2>Loading</h2>
-				<p role="status">Loading rows…</p>
-			</section>
-			<!-- / Loading State -->
+			<p role="status" class="visually-hidden">{phase}. {step}</p>
 
-			<!-- Empty State -->
+			<!-- Loading -->
+			<!-- This will display from clicking Load Dataset (or after an upload's file check) until the dataset is published and its first rows are ready. The header and status stay in place; only this block is replaced by the table. -->
+			<section class="page-body" aria-label="Loading progress">
+				<p id="load-phase">{Phase label, for example Reading CSV}</p>
+				<p>{Step n of total, for example Step 1 of 4}</p>
+				<progress aria-labelledby="load-phase" max="{max}" value="{value}"></progress>
+				<!-- Omit the value attribute while a phase has no known total (indeterminate). -->
+			</section>
+			<!-- / Loading -->
+
+			<!-- Preparing -->
+			<!-- This will display when the preview is reloaded and its metadata has not arrived yet. -->
+			<p role="status" class="visually-hidden">Loading preview…</p>
+			<!-- / Preparing -->
+
+			<!-- Empty -->
 			<!-- This will display when the dataset contains no previewable rows. -->
-			<section>
-				<h2>Empty</h2>
+			<section class="page-body">
 				<p>No rows to preview.</p>
 			</section>
-			<!-- / Empty State -->
+			<!-- / Empty -->
 
-			<!-- Error State -->
-			<!-- This will display when loading rows for the virtual table preview fails. -->
-			<section>
-				<h2>Error</h2>
-				<section class="notification notification-error" role="alert">
-					<svg class="icon" aria-hidden="true" focusable="false">
-						<use href="#error"></use>
-					</svg>
-					<p class="notification-text">
-						<strong>Error:</strong> The dataset preview could not be loaded.
-					</p>
-				</section>
-				<button class="btn">Retry</button>
+			<!-- Error -->
+			<!-- This will display when loading metadata or rows for the preview fails; the table follows when metadata exists. -->
+			<section class="page-body">
+				<div class="notification notification-alert" role="alert">
+					<span class="notification-text">The preview could not be loaded.</span>
+					<button class="btn">Retry</button>
+				</div>
 			</section>
-			<!-- / Error State -->
+			<!-- / Error -->
+
+			<!-- Load failed -->
+			<!-- This will display on the Select Data page, above the sample cards, when a sample or an upload's second pass fails and nothing was published. -->
+			<section class="page-body">
+				<div class="notification notification-alert" role="alert">
+					<span class="notification-text">{Plain-English reason}</span>
+				</div>
+			</section>
+			<!-- / Load failed -->
 		</main>
 	</body>
 </html>

@@ -4,7 +4,7 @@ import { expect } from 'storybook/test';
 import type { DatasetMetadata } from '../../types/dataset';
 import type { VirtualTableColumn } from '../../components/ui-virtual-table';
 import './app-dataset-preview';
-import type { PreviewLabels } from './app-dataset-preview';
+import type { PreviewLabels, PreviewLoadView } from './app-dataset-preview';
 
 const labels: PreviewLabels = {
 	heading: (name) => `${name} Preview`,
@@ -82,6 +82,7 @@ const rows = Array.from({ length: 60 }, (_, index) => [
 
 function preview(
 	options: {
+		loadView?: PreviewLoadView | null;
 		name?: string;
 		rowCount?: number;
 		datasheet?: boolean;
@@ -99,6 +100,10 @@ function preview(
 		.window=${{ startIndex: 0, rows }}
 		.labels=${labels}
 		.datasheetAvailable=${options.datasheet ?? true}
+		.loadView=${options.loadView ?? null}
+		.statusMessage=${options.loadView
+			? `${options.loadView.phaseLabel}. ${options.loadView.step}`
+			: ''}
 		.error=${options.error ?? null}></app-dataset-preview>`;
 }
 
@@ -158,3 +163,31 @@ export const LongLabel: Story = {
 
 /** Right-to-left layout. */
 export const Rtl: Story = { render: () => preview({ dir: 'rtl' }) };
+
+/** A determinate phase: labelled bar, phase and step text; actions are hidden. */
+export const Loading: Story = {
+	render: () =>
+		preview({
+			loadView: { phaseLabel: 'Reading CSV', step: 'Step 2 of 4', value: 40, max: 100 }
+		}),
+	play: async ({ canvasElement }) => {
+		const host = canvasElement.querySelector('app-dataset-preview')!;
+		await host.updateComplete;
+		const bar = host.shadowRoot!.querySelector('progress')!;
+		await expect(bar).toHaveAttribute('value', '40');
+		await expect(host.shadowRoot!.querySelector('.btn-red')).toBeNull();
+	}
+};
+
+/** A phase with no known total omits the value attribute. */
+export const LoadingIndeterminate: Story = {
+	render: () =>
+		preview({
+			loadView: {
+				phaseLabel: 'Downloading dataset',
+				step: 'Step 1 of 4',
+				value: null,
+				max: 1
+			}
+		})
+};

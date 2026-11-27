@@ -1,5 +1,6 @@
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { ifDefined } from 'lit/directives/if-defined.js';
 import { buttonStyles } from '../../styles/button.styles';
 import { headingFocusStyles } from '../../styles/heading-focus.styles';
 import { notificationStyles } from '../../styles/notification.styles';
@@ -34,6 +35,18 @@ export interface PreviewLabels {
 	unsupported: string;
 	/** Accessible name of the loading progress bar. */
 	progressLabel: string;
+}
+
+/** Presentation values for the loading progress bar shown in place of the table. */
+export interface PreviewLoadView {
+	/** Visible name of the current phase. */
+	phaseLabel: string;
+	/** Visible position in the sequence of phases, for example "Step 2 of 4". */
+	step: string;
+	/** Current value, or `null` for an indeterminate phase (the `value` attribute is omitted). */
+	value: number | null;
+	/** Maximum for a determinate phase. */
+	max: number;
 }
 
 const DEFAULT_LABELS: PreviewLabels = {
@@ -157,6 +170,77 @@ export class AppDatasetPreview extends LitElement {
 				margin: 0;
 			}
 
+			.load-phase {
+				color: var(--stone-900);
+				font-weight: 500;
+			}
+
+			.load-step {
+				color: var(--stone-700);
+				font-size: 0.875rem;
+			}
+
+			.load-progress {
+				appearance: none;
+				box-shadow: 0 0 0 3px var(--blue-200);
+				border: 1.5px solid var(--blue-700);
+				border-radius: 0.5rem;
+				background: var(--stone-100);
+				inline-size: 100%;
+				max-inline-size: 40rem;
+				block-size: 1.25rem;
+				overflow: clip;
+			}
+
+			.load-progress::-webkit-progress-bar {
+				background: transparent;
+			}
+
+			.load-progress::-webkit-progress-value {
+				background: var(--blue-600);
+			}
+
+			.load-progress::-moz-progress-bar {
+				background: var(--blue-600);
+			}
+
+			.load-progress:indeterminate {
+				animation: load-stripes 0.8s linear infinite;
+				background: repeating-linear-gradient(
+					-45deg,
+					var(--blue-600) 0,
+					var(--blue-600) 0.75rem,
+					var(--blue-400) 0.75rem,
+					var(--blue-400) 1.5rem
+				);
+				background-size: 2.12rem 100%;
+			}
+
+			@keyframes load-stripes {
+				from {
+					background-position: 0 0;
+				}
+
+				to {
+					background-position: 2.12rem 0;
+				}
+			}
+
+			/* Slowed, not removed: the bar must still show that work is going on. */
+			@media (prefers-reduced-motion: reduce) {
+				.load-progress:indeterminate {
+					animation-duration: 3.2s;
+				}
+			}
+
+			@media (forced-colors: active) {
+				.load-progress {
+					appearance: auto;
+					box-shadow: none;
+					border-color: CanvasText;
+				}
+			}
+
 			.visually-hidden {
 				position: absolute;
 				clip-path: inset(50%);
@@ -207,6 +291,10 @@ export class AppDatasetPreview extends LitElement {
 	/** Text for the persistent status region (announcements only, never focus). */
 	@property({ attribute: false })
 	accessor statusMessage = '';
+
+	/** When set, the loading presentation replaces notices and the table. */
+	@property({ attribute: false })
+	accessor loadView: PreviewLoadView | null = null;
 
 	/** Localised text labels. */
 	@property({ attribute: false })
@@ -320,8 +408,23 @@ export class AppDatasetPreview extends LitElement {
 		`;
 	}
 
+	private renderLoading(view: PreviewLoadView): TemplateResult {
+		return html`
+			<div class="page-body" role="group" aria-label=${this.labels.progressLabel}>
+				<p class="load-phase" id="load-phase">${view.phaseLabel}</p>
+				<p class="load-step">${view.step}</p>
+				<progress
+					class="load-progress"
+					aria-labelledby="load-phase"
+					max=${view.max}
+					value=${ifDefined(view.value ?? undefined)}></progress>
+			</div>
+		`;
+	}
+
 	override render(): TemplateResult {
 		const metadata = this.metadata;
+		const loading = this.loadView;
 		const totalRows = metadata?.rowCount ?? 0;
 		const name = metadata?.name ?? this.datasetName;
 		const rows = metadata?.rowCount ?? this.rowCount;
@@ -331,24 +434,31 @@ export class AppDatasetPreview extends LitElement {
 		return html`
 			<header class="page-header">
 				<h1 tabindex="-1">${heading}</h1>
-				<p>${this.labels.rowsColumns(rows, columns)}</p>
+				<p>
+					${loading
+						? this.labels.loadingDescription
+						: this.labels.rowsColumns(rows, columns)}
+				</p>
 				<div class="page-actions">
 					${this.datasheetAvailable
 						? html`<button type="button" class="btn" @click=${this.handleDatasheet}>
 								${this.labels.datasheet}
 							</button>`
 						: nothing}
-					<button
-						type="button"
-						class="btn btn-red"
-						@click=${() => this.emit('app-preview-change-dataset')}>
-						${this.labels.changeDataset}
-					</button>
+					${loading
+						? nothing
+						: html`<button
+								type="button"
+								class="btn btn-red"
+								@click=${() => this.emit('app-preview-change-dataset')}>
+								${this.labels.changeDataset}
+							</button>`}
 				</div>
 			</header>
 			<p class="visually-hidden" role="status">${this.statusMessage}</p>
-			${this.renderNotices(totalRows)}
-			${metadata !== null && totalRows > 0
+			${loading ? this.renderLoading(loading) : nothing}
+			${loading ? nothing : this.renderNotices(totalRows)}
+			${!loading && metadata !== null && totalRows > 0
 				? html`<ui-virtual-table
 						.columns=${this.columns}
 						.window=${this.window}

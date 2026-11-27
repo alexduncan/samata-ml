@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { featureA11yFindings } from './a11y-feature-findings';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
@@ -55,7 +56,7 @@ async function openConfigure(page: Page, target = 'class', dataset = 'iris'): Pr
 	const iris = page.locator(`app-dataset-card[dataset-id="${dataset}"]`);
 	await iris.waitFor({ state: 'visible', timeout: 5000 });
 	await iris.locator('button.btn-primary').click();
-	await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+	await waitForPublishedPreview(page);
 	await page.goto('/target');
 	await expect(page.locator('app-target-view [data-testid="target-ready"]')).toBeVisible({
 		timeout: 10000

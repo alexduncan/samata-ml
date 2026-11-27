@@ -9,6 +9,7 @@ import { chicletStyles } from '../src/styles/chiclet.styles';
 import { dialogStyles } from '../src/styles/dialog.styles';
 import { dismissWelcomeModal, loadSampleDataset } from './journeys/helpers';
 import { MOCKUPS_URL } from '../scripts/ports';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 type FocusableView = HTMLElement & { focusHeading(signal: AbortSignal): Promise<void> };
 interface FocusTestWindow extends Window {
@@ -336,7 +337,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 	}) => {
 		// Persist a real model so startup reconciliation retains the deep-linked record.
 		await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
-		await expect(page.locator('app-dataset-preview')).toBeVisible();
+		await waitForPublishedPreview(page);
 		await page.locator('app-sidebar a[href="/target"]').click();
 		await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
 		await page.locator('app-sidebar a[href="/models"]').click();
@@ -808,7 +809,8 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await expect(page.locator('#content h1')).not.toBeFocused();
 		await keyboardNavigate(page, '/data');
 		await loadSampleDataset(page, 'iris');
-		await expect(page.locator('app-dataset-preview h1')).not.toBeFocused();
+		// Starting a load moves focus to the preview heading once (the invoker unmounted, D20).
+		await expect(page.locator('app-dataset-preview h1')).toBeFocused();
 		const change = page.locator('app-dataset-preview button:has-text("Change Dataset")');
 		await change.focus();
 		await page.evaluate(() => {
@@ -885,7 +887,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await keyboardNavigate(page, '/models');
 		await delayHeadingFocus(page, 'app-data-view');
 		await keyboardNavigate(page, '/data');
-		await expect(page.locator('app-dataset-preview')).toBeVisible();
+		await waitForPublishedPreview(page);
 		await page.evaluate(() => {
 			const state = window.__appState!.get();
 			window.__appState!.set({ ...state, data: { ...state.data, mode: 'select' } });

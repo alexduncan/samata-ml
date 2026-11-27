@@ -1,5 +1,6 @@
 import { expect, type Page } from '@playwright/test';
 import type { ResultEnvelope } from '../../src/types/model-result';
+import { waitForPublishedPreview } from '../helpers/dataset-ready';
 
 /**
  * Dismisses the welcome modal if displayed.
@@ -38,11 +39,7 @@ export async function loadSampleDataset(page: Page, datasetId: string): Promise<
 	await card.waitFor({ state: 'visible', timeout: 5000 });
 	await card.locator('button.btn-primary').click();
 
-	const preview = page.locator('app-dataset-preview');
-	await expect(preview).toBeVisible({ timeout: 10000 });
-
-	const table = preview.locator('ui-virtual-table');
-	await expect(table).toBeVisible({ timeout: 10000 });
+	await waitForPublishedPreview(page);
 }
 
 /** Views the acknowledged result on its numbered route and checks the history replacement. */
