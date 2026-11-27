@@ -2,12 +2,15 @@ import { expect, type Locator } from '@playwright/test';
 
 /** Check rendered histogram ticks after enlargement and resize. */
 export async function expectHistogramTicksToFit(
-	histogram: Locator,
+	histogramContainer: Locator,
 	expectedCounts?: readonly string[]
 ): Promise<void> {
 	await expect
 		.poll(() =>
-			histogram.evaluate((svg) => {
+			histogramContainer.evaluate((container) => {
+				// Read the current chart from its persistent container when Plot replaces the SVG.
+				const svg = container.querySelector(':scope > svg[role="img"]');
+				if (!container.isConnected || !svg) return null;
 				const frame = svg.getBoundingClientRect();
 				const labels = Array.from(svg.querySelectorAll('text'), (text) => ({
 					label: text.textContent?.trim() ?? '',
@@ -27,7 +30,7 @@ export async function expectHistogramTicksToFit(
 					ready:
 						counts.length > 1 &&
 						Number(svg.getAttribute('width')) ===
-							Math.min(svg.parentElement!.clientWidth, 420) &&
+							Math.min(container.clientWidth, 420) &&
 						Number.parseFloat(getComputedStyle(svg).fontSize) >= 24,
 					counts: counts.map(({ label }) => label),
 					clipped: labels

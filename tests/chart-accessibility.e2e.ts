@@ -193,9 +193,7 @@ for (const route of ['binary', 'multiclass', 'comparison'] as const) {
 				});
 				if (route !== 'comparison') {
 					await expectHistogramTicksToFit(
-						page.locator(
-							`${container} app-reliability-diagram .counts > svg[role="img"]`
-						)
+						page.locator(`${container} app-reliability-diagram .counts`)
 					);
 				}
 				for (const svg of await charts.all()) {

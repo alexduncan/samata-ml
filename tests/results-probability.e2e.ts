@@ -416,12 +416,12 @@ test.describe('Section 6 probability views', () => {
 		await page.addStyleTag({
 			content: 'html { font-size: 32px } body { padding-inline: 16px }'
 		});
-		const histogram = page.locator('app-reliability-diagram .counts > svg[role="img"]');
+		const histogramContainer = page.locator('app-reliability-diagram .counts');
 		for (const dir of ['ltr', 'rtl'] as const) {
 			await page.evaluate((direction) => (document.documentElement.dir = direction), dir);
 			for (const width of [320, 360, 320]) {
 				await page.setViewportSize({ width, height: 800 });
-				await expectHistogramTicksToFit(histogram, ['0', '10', '20', '30', '40']);
+				await expectHistogramTicksToFit(histogramContainer, ['0', '10', '20', '30', '40']);
 			}
 		}
 	});
