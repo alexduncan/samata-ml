@@ -37,6 +37,7 @@ import { $format, i18n } from '../../i18n';
 import { INGESTION_ERROR_MESSAGES } from './ingestion/errors';
 import { $scrollState } from '../../stores/scroll.store';
 import { recordCurrentScroll, getIsRestoringScroll } from '../../router/scroll-restorer';
+import { StickyHeaderController } from '../shell/sticky-header-controller';
 
 const noticeMessages = i18n('app-data-sample-notice', {
 	remote: 'Downloaded from the source when loaded. Internet connection required.',
@@ -93,6 +94,10 @@ export class AppDataView extends LitElement {
 				display: block;
 			}
 
+			.page-body {
+				margin: 0 2rem 2rem;
+			}
+
 			.page-header {
 				display: grid;
 				position: sticky;
@@ -103,8 +108,16 @@ export class AppDataView extends LitElement {
 				column-gap: 2rem;
 				row-gap: 0.5rem;
 				align-items: center;
-				margin-block-end: 1.5rem;
+				z-index: 10;
+				box-sizing: border-box;
 				inset-block-start: 0;
+				background-color: var(--stone-50);
+				padding: 1.5rem 2rem;
+				inline-size: 100%;
+
+				@media (max-height: 30rem) {
+					position: static;
+				}
 
 				> h1 {
 					grid-area: title;
@@ -171,6 +184,7 @@ export class AppDataView extends LitElement {
 		`
 	];
 
+	private readonly stickyHeader = new StickyHeaderController(this);
 	private readonly appStateController = new StoreController(this, $appState);
 	private readonly resourcesController = new StoreController(this, $datasetResources);
 	private readonly previewController = new StoreController(this, $previewRows);
@@ -571,50 +585,53 @@ export class AppDataView extends LitElement {
 				</button>
 			</header>
 
-			${this.catalogueStatus === 'loading'
-				? html`<div class="status-notice">
-						<p role="status">Loading sample datasets...</p>
-					</div>`
-				: nothing}
-			${this.catalogueStatus === 'error'
-				? html`
-						<div class="status-notice" role="alert">
-							<p>Could not load sample dataset catalogue.</p>
-							<button type="button" class="btn" @click=${this.fetchCatalogue}>
-								Retry
-							</button>
-						</div>
-					`
-				: nothing}
-			${this.catalogueStatus === 'ready' && this.catalogue
-				? html`
-						<h2 class="visually-hidden">
-							${this.noticeMessagesController.value.samples}
-						</h2>
-						<ul class="cards">
-							${this.catalogue.entries.map(
-								(entry) => html`
-									<li class="card-item">
-										<app-dataset-card
-											dataset-id=${entry.id}
-											name=${entry.name}
-											description=${entry.tagline}
-											columns=${entry.stats.columnCount}
-											rows=${entry.stats.rowCount}
-											@app-dataset-select=${this.handleCardSelect}
-											@app-dataset-datasheet-open=${this
-												.handleCardDatasheet}></app-dataset-card>
-										${entry.csvOrigin === 'remote'
-											? html`<p class="remote-notice">
-													${this.noticeMessagesController.value.remote}
-												</p>`
-											: nothing}
-									</li>
-								`
-							)}
-						</ul>
-					`
-				: nothing}
+			<div class="page-body">
+				${this.catalogueStatus === 'loading'
+					? html`<div class="status-notice">
+							<p role="status">Loading sample datasets...</p>
+						</div>`
+					: nothing}
+				${this.catalogueStatus === 'error'
+					? html`
+							<div class="status-notice" role="alert">
+								<p>Could not load sample dataset catalogue.</p>
+								<button type="button" class="btn" @click=${this.fetchCatalogue}>
+									Retry
+								</button>
+							</div>
+						`
+					: nothing}
+				${this.catalogueStatus === 'ready' && this.catalogue
+					? html`
+							<h2 class="visually-hidden">
+								${this.noticeMessagesController.value.samples}
+							</h2>
+							<ul class="cards">
+								${this.catalogue.entries.map(
+									(entry) => html`
+										<li class="card-item">
+											<app-dataset-card
+												dataset-id=${entry.id}
+												name=${entry.name}
+												description=${entry.tagline}
+												columns=${entry.stats.columnCount}
+												rows=${entry.stats.rowCount}
+												@app-dataset-select=${this.handleCardSelect}
+												@app-dataset-datasheet-open=${this
+													.handleCardDatasheet}></app-dataset-card>
+											${entry.csvOrigin === 'remote'
+												? html`<p class="remote-notice">
+														${this.noticeMessagesController.value
+															.remote}
+													</p>`
+												: nothing}
+										</li>
+									`
+								)}
+							</ul>
+						`
+					: nothing}
+			</div>
 
 			<app-datasheet-dialog
 				?open=${this.datasheetOpen}

@@ -690,7 +690,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		// Close /about
 		await modal.locator('button.btn-icon').click();
 		await expect(modal).not.toBeVisible();
-		await expect(page.locator('html')).toHaveCSS('overflow-y', 'visible');
+		await expect(page.locator('html')).toHaveCSS('overflow-y', 'scroll');
 
 		const scrollYAfterModal = await page.evaluate(() => window.scrollY);
 		expect(scrollYAfterModal).toBe(scrollYOnReturn);

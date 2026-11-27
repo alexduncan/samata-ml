@@ -13,8 +13,16 @@ export const pageHeaderStyles: CSSResult = css`
 		column-gap: 2rem;
 		row-gap: 0.5rem;
 		align-items: center;
-		margin-block-end: 1.5rem;
+		z-index: 10;
+		box-sizing: border-box;
 		inset-block-start: 0;
+		background-color: var(--stone-50);
+		padding: 1.5rem 2rem;
+		inline-size: 100%;
+
+		@media (max-height: 30rem) {
+			position: static;
+		}
 
 		> h1 {
 			grid-area: title;

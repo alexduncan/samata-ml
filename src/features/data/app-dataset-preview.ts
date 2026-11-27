@@ -12,6 +12,7 @@ import type {
 } from '../../components/ui-virtual-table';
 import type { DatasetMetadata } from '../../types/dataset';
 import { $format } from '../../i18n';
+import { StickyHeaderController } from '../shell/sticky-header-controller';
 
 /** Labels for dataset preview text. */
 export interface PreviewLabels {
@@ -58,9 +59,15 @@ export class AppDatasetPreview extends LitElement {
 				row-gap: 0.5rem;
 				align-items: center;
 				z-index: 10;
-				margin-block-end: 1.5rem;
+				box-sizing: border-box;
 				inset-block-start: 0;
-				background-color: var(--surface);
+				background-color: var(--stone-50);
+				padding: 1.5rem 2rem;
+				inline-size: 100%;
+
+				@media (max-height: 30rem) {
+					position: static;
+				}
 			}
 
 			.page-header h1 {
@@ -194,6 +201,7 @@ export class AppDatasetPreview extends LitElement {
 	@state() private accessor currentSegment = 0;
 	@state() private accessor targetRowInput = 1;
 
+	private readonly stickyHeader = new StickyHeaderController(this);
 	private get tableEl(): UiVirtualTable | null {
 		return this.renderRoot?.querySelector('ui-virtual-table') ?? null;
 	}

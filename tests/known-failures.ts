@@ -32,13 +32,6 @@ export interface KnownFailure {
  */
 export const KNOWN_FAILURES: readonly KnownFailure[] = [
 	{
-		id: 'PH-AC-2',
-		file: 'app-shell.e2e.ts',
-		title: 'PH-AC-2: main uses reference geometry and the results header retains semantic markup',
-		projects: ['chromium', 'firefox', 'webkit'],
-		human: 'Remove shared main padding for full-width content'
-	},
-	{
 		id: 'WML-P2-ROUTE-2',
 		file: 'content.e2e.ts',
 		title: 'WML-P2-ROUTE-2: Training Setup Help preserves the Model 1 underlay',
@@ -84,13 +77,6 @@ export const KNOWN_FAILURES: readonly KnownFailure[] = [
 		id: 'PARITY-step-links',
 		file: 'visual-parity.e2e.ts',
 		title: 'PARITY-step-links',
-		projects: ['chromium'],
-		human: 'Repair inherited visual parity'
-	},
-	{
-		id: 'PARITY-main',
-		file: 'visual-parity.e2e.ts',
-		title: 'PARITY-main',
 		projects: ['chromium'],
 		human: 'Repair inherited visual parity'
 	},

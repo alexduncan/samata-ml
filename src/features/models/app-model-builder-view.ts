@@ -115,6 +115,7 @@ import {
 	type TrainingCommandFailure
 } from './training/training-service';
 import { sameTrainingRun } from './training/result-validation';
+import { StickyHeaderController } from '../shell/sticky-header-controller';
 
 const MODEL_ART: Readonly<Record<ClassifierId, string>> = {
 	'bernoulli-nb': '/assets/bernoulli-naive-bayes.svg',
@@ -411,8 +412,22 @@ export class AppModelBuilderView extends LitElement {
 				display: none;
 			}
 
+			.page-body {
+				margin: 0 2rem 2rem;
+			}
+
 			.page-header {
-				margin-block-end: 1.5rem;
+				position: sticky;
+				z-index: 10;
+				box-sizing: border-box;
+				inset-block-start: 0;
+				background-color: var(--stone-50);
+				padding: 1.5rem 2rem;
+				inline-size: 100%;
+
+				@media (max-height: 30rem) {
+					position: static;
+				}
 
 				> h1 {
 					margin: 0;
@@ -536,6 +551,7 @@ export class AppModelBuilderView extends LitElement {
 		`
 	];
 
+	private readonly stickyHeader = new StickyHeaderController(this);
 	private readonly appStateController = new StoreController(this, $appState);
 	private readonly resourcesController = new StoreController(this, $datasetResources);
 	private readonly trainingSetupResource = new StoreController(this, $trainingSetupResource);

@@ -13,6 +13,7 @@ import { headingFocusStyles } from '../../styles/heading-focus.styles';
 import { provisionalModelIn, type ModelRecord } from '../../types/state';
 import { savedModelName } from './model-catalogue';
 import { formatTrainingSetupSummary } from './training-setup';
+import { StickyHeaderController } from '../shell/sticky-header-controller';
 
 const messages = i18n('app-models-view', {
 	oneShotSummary: 'One-Shot (80% / 20%)',
@@ -42,6 +43,10 @@ export class AppModelsView extends LitElement {
 				display: none;
 			}
 
+			.page-body {
+				margin: 0 2rem 2rem;
+			}
+
 			.page-header {
 				display: grid;
 				position: sticky;
@@ -52,8 +57,16 @@ export class AppModelsView extends LitElement {
 				column-gap: 2rem;
 				row-gap: 0.5rem;
 				align-items: center;
-				margin-block-end: 1.5rem;
+				z-index: 10;
+				box-sizing: border-box;
 				inset-block-start: 0;
+				background-color: var(--stone-50);
+				padding: 1.5rem 2rem;
+				inline-size: 100%;
+
+				@media (max-height: 30rem) {
+					position: static;
+				}
 
 				> h1 {
 					grid-area: title;
@@ -118,6 +131,7 @@ export class AppModelsView extends LitElement {
 		`
 	];
 
+	private readonly stickyHeader = new StickyHeaderController(this);
 	private readonly appStateController = new StoreController(this, $appState);
 	private readonly resourcesController = new StoreController(this, $datasetResources);
 	private readonly translations = new StoreController(this, messages);
