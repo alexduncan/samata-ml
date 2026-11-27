@@ -58,6 +58,89 @@ test('CHT-FOUND-2: amber fold interval and mean have dark outlines', async ({ pa
 	}
 });
 
+for (const mode of ['comparison', 'single model'] as const) {
+	test(`CHT-A11Y-1: all fold percentage ticks fit at 200% after resize (${mode})`, async ({
+		page
+	}) => {
+		await page.addStyleTag({
+			content: 'html { font-size: 32px } body { padding-inline: 16px }'
+		});
+		await page.locator('#column').evaluate((element) => {
+			element.style.inlineSize = '100%';
+		});
+		const fold = page.locator('app-fold-strip');
+		if (mode === 'single model') {
+			await fold.evaluate((element) => {
+				const chart = element as AppFoldStrip;
+				const { color: _color, num: _num, ...row } = chart.series[0]!;
+				chart.series = [row];
+			});
+		}
+		for (const direction of ['ltr', 'rtl'] as const) {
+			await page.evaluate((value) => {
+				document.documentElement.dir = value;
+			}, direction);
+			for (const width of [320, 360, 320]) {
+				await page.setViewportSize({ width, height: 800 });
+				await expect
+					.poll(() =>
+						fold.evaluate((element) => {
+							const svg = element.shadowRoot?.querySelector(
+								'.chart > svg[role="img"]'
+							);
+							if (!svg) return null;
+							const bounds = svg.getBoundingClientRect();
+							const ticks = [...svg.querySelectorAll('text')]
+								.filter((text) => /^\d+%$/.test(text.textContent?.trim() ?? ''))
+								.map((text) => ({
+									label: text.textContent!.trim(),
+									box: text.getBoundingClientRect()
+								}))
+								.sort(
+									(a, b) => a.box.left + a.box.right - (b.box.left + b.box.right)
+								);
+							return {
+								width: bounds.width,
+								enlarged: parseFloat(getComputedStyle(svg).fontSize) >= 24,
+								labels: ticks.map(({ label }) => label),
+								clipped: ticks
+									.filter(
+										({ box }) =>
+											box.width <= 0 ||
+											box.height <= 0 ||
+											box.left < bounds.left - 1 ||
+											box.right > bounds.right + 1 ||
+											box.top < bounds.top - 1 ||
+											box.bottom > bounds.bottom + 1
+									)
+									.map(({ label }) => label),
+								overlaps: ticks.flatMap((a, index) =>
+									ticks
+										.slice(index + 1)
+										.filter(
+											(b) =>
+												Math.min(a.box.right, b.box.right) >
+													Math.max(a.box.left, b.box.left) &&
+												Math.min(a.box.bottom, b.box.bottom) >
+													Math.max(a.box.top, b.box.top)
+										)
+										.map((b) => [a.label, b.label])
+								)
+							};
+						})
+					)
+					.toEqual({
+						width: width - 32,
+						enlarged: true,
+						labels: ['0%', '20%', '40%', '60%', '80%', '100%'],
+						clipped: [],
+						overlaps: []
+					});
+			}
+		}
+	});
+}
+
 test('WML-P5-UI-5: class error bars retain labels and data in forced colours', async ({ page }) => {
 	await page.emulateMedia({ forcedColors: 'active' });
 	const bars = page.locator('app-class-error-bars');

@@ -131,17 +131,43 @@ export class AppFoldStrip extends LitElement {
 			measureText
 		);
 		const ticks = [0, 0.2, 0.4, 0.6, 0.8, 1];
+		const tickLabelWidth = (tick: number) => measureText(this.formatPercent(tick));
+		const marginRight = Math.ceil(Math.max(fontSize * 1.5, tickLabelWidth(1) / 2 + 2));
+		const tickSpacing = (width - margin - marginRight) / (ticks.length - 1);
+		const widestTick = Math.max(...ticks.map(tickLabelWidth));
+		// Stagger labels over as many rows as needed while leaving the ticks and grid at the same x positions.
+		const labelRows = Math.min(
+			ticks.length,
+			Math.ceil((widestTick + 4) / Math.max(1, tickSpacing))
+		);
+		const rowHeight = Math.ceil(Math.max(fontSize, 12)) + 2;
+		const tickLabels =
+			labelRows > 1
+				? Array.from({ length: labelRows }, (_, row) =>
+						chart.text(
+							ticks.filter((_, index) => index % labelRows === row),
+							{
+								x: (tick: number) => tick,
+								text: this.formatPercent,
+								frameAnchor: 'bottom',
+								lineAnchor: 'top',
+								dy: 9 + row * rowHeight
+							}
+						)
+					)
+				: [];
+		const marginBottom = labelRows > 1 ? 9 + labelRows * rowHeight : 34;
 		return chart.plot({
 			width,
-			height: 64 + count * 52,
+			height: 30 + count * 52 + marginBottom,
 			marginTop: sorted.length > 0 ? 34 : 14,
-			marginBottom: 34,
+			marginBottom,
 			marginLeft: margin,
-			marginRight: Math.ceil(fontSize * 1.5),
+			marginRight,
 			x: {
 				domain: [0, 1],
 				label: null,
-				tickFormat: this.formatPercent,
+				tickFormat: labelRows > 1 ? () => '' : this.formatPercent,
 				ticks,
 				grid: true
 			},
@@ -160,6 +186,7 @@ export class AppFoldStrip extends LitElement {
 				fontSize: '0.8125rem'
 			},
 			marks: [
+				...tickLabels,
 				chart.ruleX(sorted, {
 					x: 'value',
 					stroke: tokens['--chart-neutral'],
