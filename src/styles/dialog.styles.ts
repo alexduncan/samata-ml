@@ -85,6 +85,21 @@ export const dialogStyles: CSSResult = css`
 
 	.modal-content {
 		min-inline-size: 0;
+
+		p {
+			line-height: 1.5;
+		}
+
+		ul,
+		ol {
+			margin-block: 1rem;
+			padding-inline-start: 1.5rem;
+
+			li {
+				margin-block: 0.5rem;
+				line-height: 1.5;
+			}
+		}
 	}
 
 	dialog.confirm-dialog {

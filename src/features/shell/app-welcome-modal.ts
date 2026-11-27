@@ -18,8 +18,8 @@ import { dialogStyles } from '../../styles/dialog.styles';
 const messages = i18n('app-welcome-modal', {
 	brand: 'samatā.ml',
 	beta: 'beta',
-	lead: 'train machine learning models inside your browser.',
-	body: 'The samatā.ml platform allows anyone to learn key Artificial Intelligence concepts through hands-on experimentation.',
+	lead: 'Train machine learning models inside your browser.',
+	body: 'The mission of samatā.ml is to enable anyone to learn key AI concepts through hands-on experimentation.',
 	betaNotice:
 		'By clicking Get Started, you accept cookieless analytics and error reporting for this beta.',
 	privacyLink: 'Read the privacy policy',
