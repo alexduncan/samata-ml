@@ -214,6 +214,8 @@ The mapped welcome dialog retains its reference box, padding and unscrolled layo
 
 Visual fidelity uses static guards, computed styles/geometry, reviewed screenshot regression and accessibility checks, complemented by manual inspection:
 
+During beta, the dedicated visual-parity and accessibility suites run in the non-blocking Chromium advisory job through `bun run test:e2e:advisory`. Static token and CSP checks remain blocking. Set `SAMATA_ADVISORY_CHECKS=error` locally or as the same-named GitHub repository variable to restore strict Storybook and E2E enforcement. The applicable dedicated suites then run in blocking E2E and gate deployment through that job.
+
 1. **Token use static guard (`bun test tests/style-tokens.test.ts`):**
    Parses `css/root.css` to determine the canonical token set. Scans `src/**/*.ts` and `css/**/*.css` to assert:
    - Every `var(--name)` references a known global or local token.
@@ -227,10 +229,10 @@ Visual fidelity uses static guards, computed styles/geometry, reviewed screensho
    - Mapped elements are defined in `tests/visual-parity/map.ts`.
    - Checks background, borders, typography, spacing, explicit grid areas/tracks and fixture-relative numeric geometry within at most 1 CSS px. Content-dependent tracks are compared numerically rather than as identical strings.
    - Deviations are validated against the approved deviation registers.
-   - No mapped surface has knownDrift; PARITY-contract prevents exemptions returning. Existing feature mappings remain blocking.
+   - No mapped surface has `knownDrift`. PARITY-contract guards the mapping against exemptions, so differences remain visible in beta advisory runs and fail strict E2E.
    - Full-page screenshots of both the mockup and the app are captured and attached to the test run.
    - Empty/Models sidebar fixtures have platform-specific `toHaveScreenshot` baselines after paired reference review, with animations disabled, caret hidden and zero allowed changed pixels at the default colour threshold. Never update baselines to hide unexpected differences. A temporary 4px workflow-gap mutation must fail geometry/screenshot checks before restoration passes.
-   - Reference fixtures may normalise text/counts/current state only; CSS, wrappers and dimensions remain unchanged. Draft-only content has paired structure captures, no appearance mapping or baseline approval claim.
+   - Reference fixtures may normalise text, counts and current state while preserving CSS, wrappers and dimensions. Welcome parity measures the dialog, lead and body with the same test text on both sides, so structural and style differences remain visible. Draft-only content has paired structure captures.
 
 3. **Accessibility scan (`bun run test:e2e tests/a11y.e2e.ts`):**
    Uses `@axe-core/playwright` with `wcag2a`, `wcag2aa`, `wcag21aa`, `wcag22aa`. Shell-scoped scans have zero violations and no exclusions. Broad audits match only separately owned exact feature elements and measured evidence in `tests/a11y-feature-findings.ts`. Unlisted rules and elements fail. Phase 2 resolved the Section 4 notice contrast finding. The remaining 23 data and model contrast targets are tracked in [the human queue](HUMAN.md#1-workflow-and-plan-review).
