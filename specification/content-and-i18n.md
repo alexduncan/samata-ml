@@ -15,6 +15,11 @@
 
 ## Static Content
 
+Run `bun run content:check` to validate authored Markdown with the build compiler. The
+development server runs the same validation when content is saved. The pre-commit hook
+checks staged content and its dependencies after formatting, and CI requires the check
+to pass before E2E and deployment.
+
 - **Reserved Help pages.** The base locale requires `select-features.md`, `configure-model.md` and `training-setup.md` in `content/en/pages/`. The wizard headings link to `/help/select-features`, `/help/configure-model` and `/help/training-setup`. The Step 4 form also links to its article. The [route table](app-state-and-navigation.md#3-route-table) lists the complete fixed mappings.
 - **Technical definitions.** Help & Guide owns general data and modelling definitions. Select Features explains useful signals, the target and leakage through an Iris example. Configure Model explains settings. Training Setup defines strategies and partitions and gives their benefits and drawbacks in a table. Results owners register their shared inventory in the results i18n dictionaries. Use `<abbr title>` for actual abbreviations with the expansion alone in the title. Provide accessible visible wording nearby or in Help. Use defining markup for full terms in the results lists. The Markdown pipeline validates authored articles.
 - **Source layout:** Authored prose lives in `content/{locale}/{domain}/{id}.md` for the domains `pages`, `models` and `glossary`, using lowercase kebab-case `id` filenames. `en` is the default, complete base locale. Translations in other supported locales are optional. Locale-neutral sample dataset directories (`descriptor.ts`, `datasheet.md`, and either bundled `data.csv` or a remote source) live in `content/datasets/{id}/`; see [sample-datasets.md](sample-datasets.md).

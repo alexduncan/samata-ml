@@ -2,7 +2,7 @@ import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import Papa from 'papaparse';
-import { compileMarkdownFragment } from './markdown';
+import { prepareDatasetDatasheets } from './dataset-datasheets';
 import { acquireSource, prepareSource, validateSource } from './dataset-source';
 import { DatasetProfiler } from '../src/common/storage/profiler';
 import type { ElectedColumn } from '../src/common/storage/profiler';
@@ -197,7 +197,6 @@ function validateDescriptor(
 		].filter(Boolean).length !== 1
 	)
 		addError(errors, id, 'exactly one of data.csv, buildSource or remoteSource is required');
-	if (!files.includes('datasheet.md')) addError(errors, id, 'datasheet.md is required');
 	if (profile.errors.length)
 		for (const error of profile.errors) addError(errors, id, `CSV parse: ${error}`);
 	if (!isRemote && profile.rawHeader.join('\u0000') !== profile.header.join('\u0000'))
@@ -396,17 +395,12 @@ export async function generateSampleDatasets(
 	const cacheDir = options.cacheDir ?? DEFAULT_CACHE_DIR;
 	const remoteCacheDir = options.remoteCacheDir ?? DEFAULT_REMOTE_CACHE_DIR;
 	const fetchImpl = options.fetchImpl ?? fetch;
-	const directories = (await readdir(contentDir, { withFileTypes: true }))
-		.filter((entry) => entry.isDirectory())
-		.map((entry) => entry.name)
-		.sort();
-	const selected = options.ids
-		? directories.filter((id) => options.ids!.includes(id))
-		: directories;
+	const datasheets = await prepareDatasetDatasheets(contentDir, outDir, options.ids);
 	const errors: string[] = [];
 	const report: SampleDatasetBuildReport = { built: [], profiled: [], cached: [] };
 	const summaries: SampleDatasetSummary[] = [];
-	for (const id of selected) {
+	for (const [id, { html: datasheetHtml, errors: datasheetErrors }] of datasheets) {
+		for (const error of datasheetErrors) addError(errors, id, error);
 		const directory = path.join(contentDir, id);
 		const names = await readdir(directory);
 		let descriptor: AuthoredDatasetDescriptor | undefined;
@@ -464,6 +458,7 @@ export async function generateSampleDatasets(
 			addError(errors, id, 'licence is outside the allow-list');
 			continue;
 		}
+		if (datasheetErrors.length) continue;
 		let bytes: Uint8Array;
 		try {
 			if (source) {
@@ -488,21 +483,7 @@ export async function generateSampleDatasets(
 		const profile = result.profile;
 		const dsErrors = validateDescriptor(id, directory, descriptor, profile, names, isRemote);
 		errors.push(...dsErrors);
-		if (!names.includes('datasheet.md')) continue;
-		let datasheetSource = '';
-		try {
-			datasheetSource = await readFile(path.join(directory, 'datasheet.md'), 'utf8');
-		} catch {
-			/* reported below */
-		}
-		if (!datasheetSource.trim()) addError(errors, id, 'datasheet.md is missing or empty');
-		const compiled = await compileMarkdownFragment(datasheetSource, {
-			sourcePath: `${id}/datasheet.md`,
-			outDir,
-			locale: 'en'
-		});
-		for (const error of compiled.errors) addError(errors, id, error);
-		if (dsErrors.length || compiled.errors.length) continue;
+		if (dsErrors.length) continue;
 		const stats = buildStats(profile, descriptor, bytes.byteLength, csvHash);
 		const { buildSource: _buildSource, ...runtimeDescriptor } = descriptor;
 		const outputDescriptor: SampleDatasetDescriptor = {
@@ -518,7 +499,7 @@ export async function generateSampleDatasets(
 				csv: descriptor.remoteSource
 					? descriptor.remoteSource.url
 					: `/datasets/${id}/data.csv?v=${csvHash.slice(0, 12)}`,
-				datasheet: `/datasets/${id}/datasheet.html?v=${sha256(new TextEncoder().encode(compiled.html)).slice(0, 12)}`,
+				datasheet: `/datasets/${id}/datasheet.html?v=${sha256(new TextEncoder().encode(datasheetHtml)).slice(0, 12)}`,
 				csvOrigin: isRemote ? 'remote' : 'bundled'
 			}
 		};
@@ -526,7 +507,7 @@ export async function generateSampleDatasets(
 		await mkdir(dir, { recursive: true });
 		const descriptorJson = json(outputDescriptor);
 		await writeFile(path.join(dir, 'descriptor.json'), descriptorJson);
-		await writeFile(path.join(dir, 'datasheet.html'), compiled.html);
+		await writeFile(path.join(dir, 'datasheet.html'), datasheetHtml);
 		if (!isRemote) await writeFile(path.join(dir, 'data.csv'), bytes);
 		const summary = buildSummary(
 			outputDescriptor,

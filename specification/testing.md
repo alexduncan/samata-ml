@@ -6,6 +6,12 @@ All functionality must be created alongside a comprehensive test setup. Code sub
 
 ## Unit and Component Testing
 
+- **Authored Markdown:** Run `bun run content:check` to validate pages, model descriptions,
+  glossary entries and dataset datasheets using the build compiler. A development rebuild
+  reports the same compiler diagnostics. The pre-commit hook checks the staged tree
+  after formatting when content or its inputs change. CI requires the check to pass
+  before E2E tests and deployment.
+
 - **Non-component units:** `bun:test` runs `*.test.ts` store, routing, storage and utility tests. `tests/setup.ts` supplies happy-dom for non-component DOM utilities; it does not establish Lit lifecycle, focus, dialog or layout behaviour.
 - **Component acceptance:** Playwright runs `tests/**/*.e2e.ts` in Chromium, Firefox and WebKit. Acceptance IDs map to browser tests independently of stories. Test visible output, native events, computed styles and accessibility rather than private state.
 - **Story smoke:** `bun run test:stories` generates the CEM and runs only co-located CSF stories through the Storybook Vitest addon and Playwright provider in all three engines. Every story runs interactions/hooks and axe with violations failing the command. Vitest does not collect unit/E2E files; Bun does not collect stories or Playwright files.

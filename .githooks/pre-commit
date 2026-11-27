@@ -122,3 +122,8 @@ if __name__ == "__main__":
     except (OSError, ValueError, RuntimeError) as error:
         print(f"pre-commit formatting failed: {error}", file=sys.stderr)
         sys.exit(1)
+    try:
+        sys.exit(subprocess.call(["bun", "run", "content:check", "--staged"]))
+    except OSError as error:
+        print(f"pre-commit content check failed: {error}", file=sys.stderr)
+        sys.exit(1)

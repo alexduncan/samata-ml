@@ -17,7 +17,7 @@ const LANGUAGE_CLASS_TOKEN_PATTERN = /^[a-z0-9-]+$/;
 export interface CompileOptions {
 	/** Source file path used as the prefix on every reported error. */
 	sourcePath: string;
-	/** Output directory root against which root-absolute image paths are verified. */
+	/** Asset directory root against which root-absolute image paths are verified. */
 	outDir: string;
 	/** BCP 47 locale tag driving `Intl.Segmenter` word boundaries for description summaries. */
 	locale: string;
@@ -380,7 +380,7 @@ export async function compileMarkdownFragment(
 		if (!isAllowedImageSrc(src)) {
 			errors.push(`${sourcePath}: image source "${src}" must be a root-absolute path`);
 		} else if (!(await fileExistsUnderOutDir(outDir, src))) {
-			errors.push(`${sourcePath}: image "${src}" does not exist under build output`);
+			errors.push(`${sourcePath}: image "${src}" does not exist under the asset root`);
 		}
 	}
 

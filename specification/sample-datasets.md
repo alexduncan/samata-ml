@@ -44,6 +44,11 @@ Build profiles are cached under `node_modules/.cache/samata-ml/dataset-profiles/
 
 Each `datasheet.md` is first-party Markdown. The build compiles it with the shared Markdown fragment compiler and writes `datasheet.html`; compiler errors or an empty datasheet fail the build. The browser loads the compiled fragment as content. Datasheets are source documentation and do not override the typed descriptor or computed statistics.
 
+`bun run content:check` validates that every dataset has a non-empty datasheet and checks
+its Markdown and image references without downloading or profiling the CSV. Saving a
+datasheet triggers the development build. The pre-commit hook validates the staged tree
+when content or its inputs change, and CI runs validation before browser tests.
+
 ## 5. Build output and catalogue
 
 The build writes:

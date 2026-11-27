@@ -35,6 +35,10 @@ export interface BuildContentOptions {
 	 * @internal Override the supported locale list (base locale first) for tests.
 	 */
 	locales?: readonly string[];
+	/** Prepare and validate content without writing fragments or indexes. */
+	validateOnly?: boolean;
+	/** Root for authored image paths. Defaults to the build output directory. */
+	assetRoot?: string;
 }
 
 /** Per-domain entry counts returned inside {@link ContentBuildReport}. */
@@ -49,6 +53,13 @@ export interface DomainBuildCount {
 export interface ContentBuildReport {
 	/** Entry and fallback counts grouped by locale and domain. */
 	locales: Record<string, Record<ContentDomain, DomainBuildCount>>;
+}
+
+/** The source diagnostics collected by a failed content build. */
+export class ContentValidationError extends Error {
+	constructor(readonly diagnostics: readonly string[]) {
+		super(`Content build failed: ${diagnostics.length} error(s)`);
+	}
 }
 
 interface PendingFragment {
@@ -148,6 +159,7 @@ function sortEntries<D extends ContentDomain>(
 
 async function scanDomainFiles(
 	domainDir: string,
+	contentDir: string,
 	errors: string[]
 ): Promise<{ id: string; filePath: string }[]> {
 	const entries = await readDirSafe(domainDir);
@@ -161,13 +173,14 @@ async function scanDomainFiles(
 			continue;
 		}
 		const fullPath = path.join(domainDir, entry.name);
+		const sourcePath = path.relative(contentDir, fullPath);
 		if (entry.isDirectory()) {
-			errors.push(`${fullPath}: subdirectories are not allowed inside content domains`);
+			errors.push(`${sourcePath}: subdirectories are not allowed inside content domains`);
 			continue;
 		}
 		if (!entry.isFile() || !VALID_ID_FILENAME.test(entry.name)) {
 			errors.push(
-				`${fullPath}: invalid content filename "${entry.name}" (expected kebab-case .md)`
+				`${sourcePath}: invalid content filename "${entry.name}" (expected kebab-case .md)`
 			);
 			continue;
 		}
@@ -182,6 +195,7 @@ async function compileDomainEntry<D extends ContentDomain>(params: {
 	filePath: string;
 	contentDir: string;
 	outDir: string;
+	assetRoot: string;
 	locale: string;
 	baseLocale: string;
 	baseEntry?: ContentEntryMap[D];
@@ -194,6 +208,7 @@ async function compileDomainEntry<D extends ContentDomain>(params: {
 		filePath,
 		contentDir,
 		outDir,
+		assetRoot,
 		locale,
 		baseLocale,
 		baseEntry,
@@ -203,7 +218,7 @@ async function compileDomainEntry<D extends ContentDomain>(params: {
 	const isBase = baseEntry === undefined;
 	const sourcePath = path.relative(contentDir, filePath);
 	const raw = await readFile(filePath, 'utf8');
-	const compiled = await compileMarkdownFragment(raw, { sourcePath, outDir, locale });
+	const compiled = await compileMarkdownFragment(raw, { sourcePath, outDir: assetRoot, locale });
 	errors.push(...compiled.errors);
 
 	const allowedKeys = ALLOWED_FRONT_MATTER[domain];
@@ -331,9 +346,8 @@ function validateDirectoryLayout(
 				if (entry.name === '.DS_Store') {
 					continue;
 				}
-				const fullPath = path.join(contentDir, entry.name);
 				if (!entry.isDirectory() || !allowedRootDirs.has(entry.name)) {
-					errors.push(`${fullPath}: unexpected entry under content root`);
+					errors.push(`${entry.name}: unexpected entry under content root`);
 				}
 			}
 		})
@@ -353,9 +367,10 @@ function validateDirectoryLayout(
 					if (entry.name === '.DS_Store') {
 						continue;
 					}
-					const fullPath = path.join(localeDir, entry.name);
 					if (!entry.isDirectory() || !allowedDomains.has(entry.name)) {
-						errors.push(`${fullPath}: unexpected entry under content/${locale}`);
+						errors.push(
+							`${path.join(locale, entry.name)}: unexpected entry under content/${locale}`
+						);
 					}
 				}
 			})
@@ -370,6 +385,7 @@ async function compileDomainIntoMap<D extends ContentDomain>(params: {
 	domainDir: string;
 	contentDir: string;
 	outDir: string;
+	assetRoot: string;
 	locale: string;
 	baseLocale: string;
 	baseMap?: Map<string, ContentEntryMap[D]>;
@@ -382,6 +398,7 @@ async function compileDomainIntoMap<D extends ContentDomain>(params: {
 		domainDir,
 		contentDir,
 		outDir,
+		assetRoot,
 		locale,
 		baseLocale,
 		baseMap,
@@ -389,7 +406,7 @@ async function compileDomainIntoMap<D extends ContentDomain>(params: {
 		pendingFragments,
 		errors
 	} = params;
-	const files = await scanDomainFiles(domainDir, errors);
+	const files = await scanDomainFiles(domainDir, contentDir, errors);
 	for (const { id, filePath } of files) {
 		let baseEntry: ContentEntryMap[D] | undefined;
 		if (baseMap) {
@@ -408,6 +425,7 @@ async function compileDomainIntoMap<D extends ContentDomain>(params: {
 			filePath,
 			contentDir,
 			outDir,
+			assetRoot,
 			locale,
 			baseLocale,
 			baseEntry,
@@ -423,7 +441,7 @@ async function compileDomainIntoMap<D extends ContentDomain>(params: {
  * under `outDir/content/{locale}/{domain}/`.
  *
  * @param outDir - Build output directory (`dev/` or `dist/`).
- * @param options - Optional overrides for testing (`contentDir`, `locales`).
+ * @param options - Content discovery, asset validation and emission options.
  * @returns Per-locale, per-domain entry and fallback counts.
  * @throws Error listing a summary count when any validation or compilation error occurs.
  */
@@ -432,6 +450,7 @@ export async function buildContent(
 	options?: BuildContentOptions
 ): Promise<ContentBuildReport> {
 	const contentDir = path.resolve(options?.contentDir ?? path.join(ROOT_DIR, 'content'));
+	const assetRoot = options?.assetRoot ?? outDir;
 	const locales = resolveSupportedLocales(options);
 	const baseLocale = locales[0];
 	if (!baseLocale) {
@@ -454,6 +473,7 @@ export async function buildContent(
 			domainDir: path.join(contentDir, baseLocale, domain),
 			contentDir,
 			outDir,
+			assetRoot,
 			locale: baseLocale,
 			baseLocale,
 			targetMap: baseMaps[domain],
@@ -480,7 +500,7 @@ export async function buildContent(
 	for (const [routePath, pageId] of Object.entries(RESERVED_CONTENT)) {
 		if (!baseMaps.pages.has(pageId)) {
 			errors.push(
-				`RESERVED_CONTENT['${routePath}']: missing base-locale (${baseLocale}) page '${pageId}'`
+				`${baseLocale}/pages/${pageId}.md: missing base-locale (${baseLocale}) page '${pageId}' required by RESERVED_CONTENT['${routePath}']`
 			);
 		}
 	}
@@ -503,6 +523,7 @@ export async function buildContent(
 				domainDir: path.join(contentDir, locale, domain),
 				contentDir,
 				outDir,
+				assetRoot,
 				locale,
 				baseLocale,
 				baseMap: baseMaps[domain],
@@ -516,15 +537,18 @@ export async function buildContent(
 	}
 
 	if (errors.length > 0) {
-		for (const message of errors) {
-			console.error(message);
+		errors.sort();
+		if (!options?.validateOnly) {
+			for (const message of errors) console.error(message);
 		}
-		throw new Error(`Content build failed: ${errors.length} error(s)`);
+		throw new ContentValidationError(errors);
 	}
 
-	for (const fragment of pendingFragments) {
-		await mkdir(path.dirname(fragment.outPath), { recursive: true });
-		await writeFile(fragment.outPath, fragment.html, 'utf8');
+	if (!options?.validateOnly) {
+		for (const fragment of pendingFragments) {
+			await mkdir(path.dirname(fragment.outPath), { recursive: true });
+			await writeFile(fragment.outPath, fragment.html, 'utf8');
+		}
 	}
 
 	const report: ContentBuildReport = { locales: {} };
@@ -542,8 +566,10 @@ export async function buildContent(
 			};
 
 			const indexPath = path.join(outDir, 'content', locale, domain, 'index.json');
-			await mkdir(path.dirname(indexPath), { recursive: true });
-			await writeFile(indexPath, `${JSON.stringify(index, null, '\t')}\n`, 'utf8');
+			if (!options?.validateOnly) {
+				await mkdir(path.dirname(indexPath), { recursive: true });
+				await writeFile(indexPath, `${JSON.stringify(index, null, '\t')}\n`, 'utf8');
+			}
 
 			domainCounts[domain] = {
 				total: sortedEntries.length,

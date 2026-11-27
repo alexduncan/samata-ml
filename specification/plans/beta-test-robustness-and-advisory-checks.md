@@ -1,6 +1,6 @@
 # Beta test robustness, E2E hardening and advisory quality checks
 
-**Status:** ready | **Updated:** 2026-11-27T12:57:59Z
+**Status:** ready | **Updated:** 2026-11-27T13:06:26Z
 **Authors:** Google Antigravity (Gemini 4 Neon High), Codex (GPT-6) | **Created:** 2026-11-26T08:51:44Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-27T12:28:39Z | **Verification:** approved
 **Verified hash:** sha256:c8e5d5f98b3520e4ec2bb9841ec476e426095556c9d64adf3247395d1116615f
@@ -227,7 +227,7 @@ export async function fetchSampleDatasetCount(page: Page): Promise<number>;
 - [ ] `specification/HUMAN.md` § 1 — Remove resolved blocking known-failure items (`Repair Chromium content-modal and data-preview E2E failures`, `Fix intermittent full-suite Firefox crash in remote training recovery`), note that visual parity / `SIDE-AC-10` / `PH-AC-2` main-padding items are tracked in the advisory suite pending V1 promotion rather than suppressed in `KNOWN_FAILURES`, and retain the pointer to the `agent-workflow` testing-guidance request (`../../agent-workflow/specification/requests/2026-11-26-tiered-test-severity-and-e2e-hardening-guidance.md`).
 - [ ] `AGENTS.md` § Verification Commands, § Rules — Document `bun run test:e2e:blocking`, `bun run test:e2e:advisory`, `SAMATA_ADVISORY_CHECKS`, the beta functional-first severity rule (blocking functional tests vs advisory visual/WCAG warnings), and the local environment / CI repository-variable strict-mode contract for future agents.
 
-- [ ] `specification/content-and-i18n.md` § Static Content and `specification/sample-datasets.md` — document the checker, validation on save and the staged and CI inputs.
+- [x] `specification/content-and-i18n.md` § Static Content and `specification/sample-datasets.md` — document the checker, validation on save and the staged and CI inputs.
 
 ## Implementation tasks
 
@@ -373,12 +373,12 @@ export async function fetchSampleDatasetCount(page: Page): Promise<number>;
 - **Must not touch:** `src/`, `content/`, `public/`, `specification/mockups/`, `vendor/`, `bun.lock`
 - **Implementation:** Implement _Content fixtures and Markdown validation_. Dev rebuilds continue to surface compiler diagnostics on save. Register the command and staged mode in `AGENTS.md` before verification. Add a blocking `bun run content:check` step to `verify` immediately after dependency installation. Assert the command, placement and blocking semantics in `tests/ci-workflow.test.ts`. Document the authoring and CI workflow in the three specifications. T6 can land independently of the beta test-tier split. If T4 or T5 follows, preserve the validation step and its documentation.
 - **Acceptance criteria:**
-  - [ ] Valid working-tree content and a copy-only edit pass. Non-zero results identify malformed front matter, missing required pages, orphan translations, broken anchors and missing images. Invalid datasheet Markdown fails without fetching the dataset.
-  - [ ] A dev save with invalid content reports the same diagnostic and a subsequent valid save rebuilds. The production build preserves the existing HTML, index and version contracts.
-  - [ ] A disposable Git fixture exercises the actual hook. Invalid staged Markdown with a valid unstaged fix fails. Valid staged Markdown with a broken unstaged edit passes. A staged deletion or rename that removes a required page or breaks an asset reference fails. Unrelated staged changes skip compilation. The checker preserves staged and unstaged source apart from existing hook formatting and removes its snapshot.
-  - [ ] GitHub `verify` gates E2E and deployment on the checker in beta and strict modes. A workflow test fails if the step is removed or made advisory.
+  - [x] Valid working-tree content and a copy-only edit pass. Non-zero results identify malformed front matter, missing required pages, orphan translations, broken anchors and missing images. Invalid datasheet Markdown fails without fetching the dataset.
+  - [x] A dev save with invalid content reports the same diagnostic and a subsequent valid save rebuilds. The production build preserves the existing HTML, index and version contracts.
+  - [x] A disposable Git fixture exercises the actual hook. Invalid staged Markdown with a valid unstaged fix fails. Valid staged Markdown with a broken unstaged edit passes. A staged deletion or rename that removes a required page or breaks an asset reference fails. Unrelated staged changes skip compilation. The checker preserves staged and unstaged source apart from existing hook formatting and removes its snapshot.
+  - [x] GitHub `verify` gates E2E and deployment on the checker in beta and strict modes. A workflow test fails if the step is removed or made advisory.
 - **Verification:** `bun run content:check`, `bun test tests/content-check.test.ts`, `bun test tests/build-content.test.ts`, `bun test tests/ci-workflow.test.ts`, `bun run check`, `bun run build`, `bun run deploy:dry-run`, `bun run server` (edit and repair disposable content and inspect diagnostics).
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-27T13:06:26Z)
 
 ## Verification and definition of done
 
@@ -387,7 +387,7 @@ export async function fetchSampleDatasetCount(page: Page): Promise<number>;
 - [ ] In beta mode, `bun run test:e2e:blocking --project=chromium`, `bun run test:e2e:blocking --project=firefox`, and `bun run test:e2e:blocking --project=webkit` pass with 0 failures and `KNOWN_FAILURES` empty.
 - [ ] Strict-mode selection and CI contract tests prove `SAMATA_ADVISORY_CHECKS=error` includes dedicated suites in blocking E2E and propagates to Storybook; workflow-level repository-variable configuration restores deployment enforcement without code edits. Existing V1 visual/WCAG findings may fail strict runs by design.
 - [ ] `bun run test:e2e:advisory` executes `tests/visual-parity.e2e.ts` and `tests/a11y.e2e.ts` in Chromium without affecting blocking gates.
-- [ ] `bun run content:check` passes and the staged-commit checks verify the shared validation contract.
+- [x] `bun run content:check` passes and the staged-commit checks verify the shared validation contract.
 - [ ] `bun run format:check` passes on all modified files.
 - [ ] Every item under _Specification changes_ is ticked, and specifications match the implemented code.
 - [ ] No unintended changes outside the tasks' likely files (and zero edits to `src/`, `css/`, `content/`, or `specification/mockups/`).
@@ -416,6 +416,7 @@ None.
 | -------------------- | ---- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | —                    | —    | —             | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | 2026-11-27T12:57:59Z | T1   | Codex (GPT-6) | bun test tests/advisory-a11y.test.ts: 13 passed; bun test tests/test-server-urls.test.ts: 2 passed; bun test tests/audit-mockups.test.ts: 8 passed, no AggregateError diagnostic; bun run check: typecheck passed and 705 unit tests passed; bun run lint: passed; bun run test:stories: 822 passed across 123 files, including the three browser projects; bun run format:check --paths tests/helpers/advisory-a11y.ts tests/helpers/e2e-settlement.ts tests/advisory-a11y.test.ts tests/test-server-urls.test.ts tests/setup.ts .storybook/main.ts .storybook/preview.ts .storybook/vite-env.d.ts: passed. T1 scope gate: 8 changed paths, 0 warnings. Fresh worktree dependencies installed with maintainer authorisation using bun install --frozen-lockfile --ignore-scripts. |
+| 2026-11-27T13:06:26Z | T6   | Codex (GPT-6) | bun run content:check passed. bun test tests/content-check.test.ts: 7 passed; bun test tests/build-content.test.ts: 7 passed; bun test tests/ci-workflow.test.ts: 3 passed; bun test tests/generate-datasets.test.ts: 18 passed; bun run check: typecheck and 713 unit tests passed. bun run lint, bun run build, bun run deploy:dry-run and modified-path bun run format:check passed. bun run server --port 0 in a disposable checkout reported the broken same-fragment anchor on save and regenerated the repaired article fragment. Hook fixtures proved both partial-staging cases, staged asset removal and required page rename, unrelated paths, and snapshot cleanup. Scope gate: 15 changed paths including plan, 0 warnings.                                           |
 
 ## Plan review history
 

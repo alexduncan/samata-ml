@@ -9,6 +9,7 @@ interface WorkflowStep {
 	env?: Record<string, string>;
 	run?: string;
 	if?: string;
+	'continue-on-error'?: boolean | string;
 }
 
 interface WorkflowConcurrency {
@@ -20,6 +21,7 @@ interface WorkflowJob {
 	name?: string;
 	needs?: string[];
 	if?: string;
+	'continue-on-error'?: boolean | string;
 	'runs-on'?: string;
 	'timeout-minutes'?: number;
 	environment?: string;
@@ -123,7 +125,16 @@ function collectWorkflowViolations(rawYaml: string): string[] {
 		if (verify.steps[0]?.with?.['fetch-depth'] !== 0) {
 			violations.push('verify checkout must set fetch-depth: 0');
 		}
-		const formatStep = verify.steps[4];
+		const contentStep = verify.steps[4];
+		if (
+			contentStep?.run?.trim() !== 'bun run content:check' ||
+			contentStep.if !== undefined ||
+			contentStep['continue-on-error'] !== undefined ||
+			verify['continue-on-error'] !== undefined
+		) {
+			violations.push('verify step 4 must run bun run content:check as a blocking check');
+		}
+		const formatStep = verify.steps[5];
 		if (
 			formatStep?.env?.BASE !==
 				'${{ github.event.pull_request.base.sha || github.event.before }}' ||
@@ -139,9 +150,9 @@ function collectWorkflowViolations(rawYaml: string): string[] {
 			) ||
 			!formatStep?.run?.includes('^0+$')
 		) {
-			violations.push('verify step 4 must check formatting of changed files via env BASE');
+			violations.push('verify step 5 must check formatting of changed files via env BASE');
 		}
-		const verifyRestRuns = verify.steps.slice(5).map((step) => step.run?.trim());
+		const verifyRestRuns = verify.steps.slice(6).map((step) => step.run?.trim());
 		const expectedRestRuns = [
 			'bun run lint',
 			'bunx playwright install --with-deps chromium firefox webkit',
@@ -151,7 +162,7 @@ function collectWorkflowViolations(rawYaml: string): string[] {
 		];
 		if (JSON.stringify(verifyRestRuns) !== JSON.stringify(expectedRestRuns)) {
 			violations.push(
-				`verify steps 5..9 must be ${expectedRestRuns.join(' -> ')}, got ${verifyRestRuns.join(' -> ')}`
+				`verify steps 6..10 must be ${expectedRestRuns.join(' -> ')}, got ${verifyRestRuns.join(' -> ')}`
 			);
 		}
 		const verifyJson = JSON.stringify(verify);
@@ -249,6 +260,19 @@ describe('.github/workflows/ci.yml', () => {
 
 	it('REL-CI-1: satisfies every T7 CI/CD workflow invariant and E1 approved step order', () => {
 		expect(collectWorkflowViolations(rawYaml)).toEqual([]);
+	});
+
+	it('requires authored Markdown validation to block CI', () => {
+		const command = 'run: bun run content:check';
+		const failure = 'verify step 4 must run bun run content:check as a blocking check';
+		expect(collectWorkflowViolations(rawYaml.replace(command, 'run: echo skip'))).toContain(
+			failure
+		);
+		expect(
+			collectWorkflowViolations(
+				rawYaml.replace(command, `${command}\n              continue-on-error: true`)
+			)
+		).toContain(failure);
 	});
 
 	it('rejects regressions across pins, checksums, step order, script interpolation, and deploy gates', () => {

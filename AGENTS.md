@@ -41,6 +41,7 @@ Bun only: never npm, yarn, pnpm, or `npx` (use `bunx`).
 - `bun run typecheck` — TypeScript check (`tsc --noEmit`; or `bunx tsgo --noEmit` where configured).
 - `bun run lint` — TSDoc check across `src/` and `scripts/` (`scripts/lint-tsdoc.ts`).
 - `bun run build` — Production build (bundles app + validates sample datasets + compiles `datasheet.md` to HTML for `<dialog>` presentation).
+- `bun run content:check` — Validate authored pages, model descriptions, glossary and datasheets. The pre-commit hook uses `bun run content:check --staged` to validate the candidate commit after formatting.
 - `bun run version:release prerelease --dry-run` — Preview the next SemVer version and changelog section without modifying files.
 - `bun run deploy:dry-run` — Run the production build and validate the Cloudflare Workers bundle without deploying.
 - `bun run format` and `bun run format:check` — Whole-repository formatting for maintainer, CI and baseline work.
