@@ -18,6 +18,7 @@ const format = createResultsFormatters({
 interface ExplorerArgs {
 	evaluation: StoredEvaluation;
 	thresholdIndex?: number;
+	smallCounts?: boolean;
 	dir?: 'ltr' | 'rtl';
 	onChange?: (event: Event) => void;
 }
@@ -36,12 +37,33 @@ const meta = {
 		}
 	},
 	argTypes: { evaluation: { control: false }, onChange: { control: false } },
-	render: ({ evaluation, thresholdIndex = 50, dir = 'ltr', onChange }: ExplorerArgs) => {
+	render: ({
+		evaluation,
+		thresholdIndex = 50,
+		smallCounts = false,
+		dir = 'ltr',
+		onChange
+	}: ExplorerArgs) => {
 		const wrapper = document.createElement('div');
 		wrapper.dir = dir;
 		const element = document.createElement('app-threshold-explorer');
-		element.labels = englishThresholdLabels;
-		element.explorer = buildThresholdView(evaluation, 'diagnosis');
+		const view = buildThresholdView(evaluation, 'diagnosis');
+		element.explorer =
+			smallCounts && view
+				? {
+						...view,
+						maxBinCount: 2,
+						bins: view.bins.map((bin) => ({
+							...bin,
+							positive: Math.min(2, bin.positive),
+							negative: Math.min(2, bin.negative)
+						}))
+					}
+				: view;
+		element.labels = {
+			...englishThresholdLabels,
+			xAxis: `Predicted probability of ${view?.positive ?? ''} (%)`
+		};
 		element.thresholdIndex = thresholdIndex;
 		element.caption = {
 			title: 'Predicted probabilities by true class',
@@ -80,11 +102,24 @@ export const Binary: Story = {
 export const ExtremeThresholds: Story = {
 	args: { evaluation: breastCancerOneShot(), thresholdIndex: 100 }
 };
+/** The other extreme flags every row. */
+export const ZeroThreshold: Story = {
+	args: { evaluation: breastCancerOneShot(), thresholdIndex: 0 }
+};
+/** Small bins use unique whole-number ticks. */
+export const SmallCounts: Story = {
+	args: { evaluation: breastCancerOneShot(), smallCounts: true }
+};
 /** A model without probability estimates has no explorer. */
 export const NoProbabilities: Story = {
 	args: { evaluation: svcBinaryNoProbabilities() }
 };
-/** Long class and facet names are shortened in the chart and complete in the readout. */
+/** Long class and facet names wrap and remain complete. */
 export const LongLabel: Story = { args: { evaluation: withLongLabels(breastCancerOneShot()) } };
 /** Logical layout under right-to-left direction. */
 export const RTL: Story = { args: { evaluation: breastCancerOneShot(), dir: 'rtl' } };
+
+/** Long labels in right-to-left layout. */
+export const LongLabelRTL: Story = {
+	args: { evaluation: withLongLabels(breastCancerOneShot()), dir: 'rtl' }
+};

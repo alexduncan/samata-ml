@@ -3,7 +3,15 @@ import { customElement, property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { resultsStyles } from '../../styles/results.styles';
 import { tableStyles } from '../../styles/table.styles';
+import { modelSwatchStyles } from '../../styles/model-swatch.styles';
 import { PlotController, type ChartLibrary, type ChartTokens } from './charts/plot-controller';
+import {
+	MODEL_COLOR_ENCODING,
+	PLOT_SYMBOL_PATHS,
+	computeAxisMargin,
+	resolveModelMarkStyle,
+	truncateLabel
+} from './charts/chart-encoding';
 import type { BaselineMark, ChartCaption, FoldSeries } from './results-view-model';
 
 /** Text supplied by the connected results view. */
@@ -16,6 +24,15 @@ export interface FoldStripLabels {
 	readonly time: string;
 	readonly mean: string;
 	readonly standardDeviation: string;
+	readonly xAxis: string;
+	readonly intervalNote: string;
+	readonly clampedNote: (mean: string, sd: string) => string;
+	readonly description: (
+		series: readonly FoldSeries[],
+		baselines: readonly BaselineMark[]
+	) => string;
+	readonly legendLabel: string;
+	readonly baselineColumn: string;
 }
 
 /** Empty labels: the parent supplies every string. */
@@ -27,17 +44,14 @@ export const DEFAULT_FOLD_STRIP_LABELS: FoldStripLabels = {
 	score: '',
 	time: '',
 	mean: '',
-	standardDeviation: ''
+	standardDeviation: '',
+	xAxis: '',
+	intervalNote: '',
+	clampedNote: () => '',
+	description: () => '',
+	legendLabel: '',
+	baselineColumn: ''
 };
-
-const SERIES_TOKENS = [
-	'--chart-1',
-	'--chart-2',
-	'--chart-3',
-	'--chart-4',
-	'--chart-5',
-	'--chart-6'
-] as const;
 
 /**
  * Dot-and-interval strip of held-out scores on a fixed 0 to 100% scale. Every dot, mean mark,
@@ -45,7 +59,7 @@ const SERIES_TOKENS = [
  */
 @customElement('app-fold-strip')
 export class AppFoldStrip extends LitElement {
-	static override styles = [tableStyles, resultsStyles];
+	static override styles = [tableStyles, resultsStyles, modelSwatchStyles];
 
 	/** Rows of dots, one per model. */
 	@property({ attribute: false }) accessor series: readonly FoldSeries[] = [];
@@ -57,13 +71,13 @@ export class AppFoldStrip extends LitElement {
 	@property({ attribute: false }) accessor formatPercent: (value: number) => string = String;
 	/** Localised text. */
 	@property({ attribute: false }) accessor labels: FoldStripLabels = DEFAULT_FOLD_STRIP_LABELS;
-	/** Connect aligned partition scores across model rows. */
-	@property({ attribute: false }) accessor paired = false;
 
 	private readonly plot = new PlotController(
 		this,
 		() => this.renderRoot.querySelector<HTMLElement>('.chart'),
-		(chart, tokens, width) => this.draw(chart, tokens, width)
+		(chart, tokens, width, fontSize, measureText) =>
+			this.draw(chart, tokens, width, fontSize, measureText),
+		() => 'description'
 	);
 
 	/** Resolves when the current chart has been drawn or abandoned. */
@@ -71,35 +85,99 @@ export class AppFoldStrip extends LitElement {
 		return this.updateComplete.then(() => this.plot.whenSettled());
 	}
 
-	private draw(chart: ChartLibrary, tokens: ChartTokens, width: number) {
+	private seriesLabel(row: FoldSeries): string {
+		return row.num === undefined ? row.label : `${row.num} ${row.label}`;
+	}
+
+	private draw(
+		chart: ChartLibrary,
+		tokens: ChartTokens,
+		width: number,
+		fontSize: number,
+		measureText: (text: string) => number
+	) {
 		const rows = this.series;
 		if (rows.length === 0 || !this.caption) return null;
 		const count = rows.length;
 		const indexed = rows.map((row, index) => ({
 			row,
 			index,
-			colour: tokens[SERIES_TOKENS[index % SERIES_TOKENS.length]!]
+			colour: row.color ? resolveModelMarkStyle(row.color, tokens).fill : tokens['--chart-1']
 		}));
-		const dots = indexed.flatMap(({ row, index, colour }) =>
-			row.values.map((value, partition) => ({ score: value.score, index, colour, partition }))
-		);
 		const spread = indexed.filter(({ row }) => row.sd !== null);
+		const needsOutline = ({ row }: (typeof indexed)[number]) =>
+			row.color !== undefined && MODEL_COLOR_ENCODING[row.color].outlineRequired;
+		const outlinedSpread = spread.filter(needsOutline);
+		const outlinedMeans = indexed.filter(needsOutline);
+		const spreadRule = {
+			y: ({ index }: (typeof indexed)[number]) => index,
+			x1: ({ row }: (typeof indexed)[number]) => Math.max(0, row.mean - row.sd!),
+			x2: ({ row }: (typeof indexed)[number]) => Math.min(1, row.mean + row.sd!)
+		};
+		const meanRule = {
+			x: ({ row }: (typeof indexed)[number]) => row.mean,
+			y1: ({ index }: (typeof indexed)[number]) => index - 0.25,
+			y2: ({ index }: (typeof indexed)[number]) => index + 0.25
+		};
+		const spreadWidth = 3;
+		const meanWidth = 4;
+		const outlineWidth = 1.5;
 		const sorted = [...this.baselines].sort((a, b) => a.value - b.value);
 		const top = count - 0.4;
+		const { margin, labelWidth } = computeAxisMargin(
+			rows.map((row) => this.seriesLabel(row)),
+			fontSize,
+			width,
+			measureText
+		);
+		const ticks = [0, 0.2, 0.4, 0.6, 0.8, 1];
+		const tickLabelWidth = (tick: number) => measureText(this.formatPercent(tick));
+		const marginRight = Math.ceil(Math.max(fontSize * 1.5, tickLabelWidth(1) / 2 + 2));
+		const tickSpacing = (width - margin - marginRight) / (ticks.length - 1);
+		const widestTick = Math.max(...ticks.map(tickLabelWidth));
+		// Stagger labels over as many rows as needed while leaving the ticks and grid at the same x positions.
+		const labelRows = Math.min(
+			ticks.length,
+			Math.ceil((widestTick + 4) / Math.max(1, tickSpacing))
+		);
+		const rowHeight = Math.ceil(Math.max(fontSize, 12)) + 2;
+		const tickLabels =
+			labelRows > 1
+				? Array.from({ length: labelRows }, (_, row) =>
+						chart.text(
+							ticks.filter((_, index) => index % labelRows === row),
+							{
+								x: (tick: number) => tick,
+								text: this.formatPercent,
+								frameAnchor: 'bottom',
+								lineAnchor: 'top',
+								dy: 9 + row * rowHeight
+							}
+						)
+					)
+				: [];
+		const marginBottom = labelRows > 1 ? 9 + labelRows * rowHeight : 34;
 		return chart.plot({
 			width,
-			height: 64 + count * 52,
+			height: 30 + count * 52 + marginBottom,
 			marginTop: sorted.length > 0 ? 34 : 14,
-			marginBottom: 34,
-			marginLeft: 14,
-			marginRight: 14,
+			marginBottom,
+			marginLeft: margin,
+			marginRight,
 			x: {
 				domain: [0, 1],
 				label: null,
-				tickFormat: this.formatPercent,
-				ticks: [0, 0.25, 0.5, 0.75, 1]
+				tickFormat: labelRows > 1 ? () => '' : this.formatPercent,
+				ticks,
+				grid: true
 			},
-			y: { domain: [-0.6, top], axis: null },
+			y: {
+				domain: [-0.6, top],
+				ticks: indexed.map(({ index }) => index),
+				tickFormat: (index: number) =>
+					truncateLabel(this.seriesLabel(rows[index]!), labelWidth, measureText),
+				label: null
+			},
 			ariaLabel: this.caption.title,
 			ariaDescription: this.caption.takeaway,
 			style: {
@@ -108,67 +186,51 @@ export class AppFoldStrip extends LitElement {
 				fontSize: '0.8125rem'
 			},
 			marks: [
-				chart.ruleX([0, 0.25, 0.5, 0.75, 1], { stroke: tokens['--chart-grid'] }),
-				chart.lineY(this.paired ? dots : [], {
-					x: 'score',
-					y: 'index',
-					z: 'partition',
-					stroke: tokens['--chart-neutral'],
-					strokeOpacity: 0.6
-				}),
+				...tickLabels,
 				chart.ruleX(sorted, {
 					x: 'value',
 					stroke: tokens['--chart-neutral'],
 					strokeDasharray: '5 4',
 					strokeWidth: 1.5
 				}),
-				chart.text(sorted.slice(0, 1), {
-					x: 'value',
-					y: top,
-					text: 'label',
-					fill: tokens['--chart-axis'],
-					textAnchor: 'end',
-					dx: -4,
-					dy: -8
-				}),
-				chart.text(sorted.slice(1), {
-					x: 'value',
-					y: top,
-					text: 'label',
-					fill: tokens['--chart-axis'],
-					textAnchor: 'start',
-					dx: 4,
-					dy: -8
+				chart.ruleY(outlinedSpread, {
+					...spreadRule,
+					stroke: tokens['--stone-900'],
+					strokeWidth: spreadWidth + 2 * outlineWidth,
+					strokeLinecap: 'round'
 				}),
 				chart.ruleY(spread, {
-					y: ({ index }: { index: number }) => index,
-					x1: ({ row }: { row: FoldSeries }) => Math.max(0, row.mean - row.sd!),
-					x2: ({ row }: { row: FoldSeries }) => Math.min(1, row.mean + row.sd!),
+					...spreadRule,
 					stroke: ({ colour }: { colour: string }) => colour,
-					strokeWidth: 3
+					strokeWidth: spreadWidth
+				}),
+				chart.ruleX(outlinedMeans, {
+					...meanRule,
+					stroke: tokens['--stone-900'],
+					strokeWidth: meanWidth + 2 * outlineWidth,
+					strokeLinecap: 'round'
 				}),
 				chart.ruleX(indexed, {
-					x: ({ row }: { row: FoldSeries }) => row.mean,
-					y1: ({ index }: { index: number }) => index - 0.25,
-					y2: ({ index }: { index: number }) => index + 0.25,
+					...meanRule,
 					stroke: ({ colour }: { colour: string }) => colour,
-					strokeWidth: 4
+					strokeWidth: meanWidth
 				}),
-				chart.dot(dots, {
-					x: 'score',
-					y: 'index',
-					r: 5,
-					fill: 'colour',
-					stroke: 'none',
-					fillOpacity: 0.85
+				...indexed.map(({ row, index }) => {
+					const style = row.color ? resolveModelMarkStyle(row.color, tokens) : null;
+					return chart.dot(row.values, {
+						x: 'score',
+						y: () => index,
+						r: 5,
+						symbol: style?.symbol ?? 'circle',
+						fill: style?.dotFill ?? tokens['--chart-1'],
+						stroke: style?.dotStroke ?? 'none',
+						strokeWidth: style?.dotStrokeWidth ?? 1
+					});
 				}),
-				chart.text(count > 1 ? indexed : [], {
-					x: 0,
-					y: ({ index }: { index: number }) => index,
-					text: ({ row }: { row: FoldSeries }) => row.label,
-					fill: tokens['--chart-axis'],
-					textAnchor: 'start',
-					dy: -16
+				chart.text(spread.length ? [this.labels.intervalNote] : [], {
+					frameAnchor: 'top',
+					text: (value: string) => value,
+					fill: tokens['--chart-axis']
 				})
 			]
 		});
@@ -183,7 +245,67 @@ export class AppFoldStrip extends LitElement {
 					<span class="caption-title">${this.caption.title}</span>
 					<span class="muted">${this.caption.takeaway}</span>
 				</figcaption>
+				<p class="visually-hidden" id="description">
+					${labels.description(this.series, this.baselines)}
+				</p>
+				${this.series.some((row) => row.color)
+					? html`<ul class="chart-legend" aria-label=${labels.legendLabel}>
+							${repeat(
+								this.series.filter((row) => row.color),
+								(row) => row.id,
+								(row) => {
+									const encoding = MODEL_COLOR_ENCODING[row.color!];
+									return html`<li>
+										${row.num === undefined
+											? nothing
+											: html`<span
+													class=${`swatch swatch-${row.color} ${encoding.outlineRequired ? 'amber' : ''}`}
+													>${row.num}</span
+												>`}
+										<svg
+											aria-hidden="true"
+											viewBox="-8 -8 16 16"
+											width="16"
+											height="16">
+											<path
+												d=${PLOT_SYMBOL_PATHS[encoding.symbol]}
+												fill=${encoding.stroked
+													? 'none'
+													: `var(${encoding.token})`}
+												stroke=${encoding.stroked
+													? `var(${encoding.token})`
+													: encoding.outlineRequired
+														? 'var(--stone-900)'
+														: 'none'}
+												stroke-width=${encoding.stroked
+													? 2
+													: encoding.outlineRequired
+														? 1.5
+														: 0}></path></svg
+										>${row.label}
+									</li>`;
+								}
+							)}
+						</ul>`
+					: nothing}
+				${this.series
+					.filter(
+						(row) => row.sd !== null && (row.mean - row.sd < 0 || row.mean + row.sd > 1)
+					)
+					.map(
+						(row) =>
+							html`<p>
+								${labels.clampedNote(
+									formatPercent(row.mean),
+									formatPercent(row.sd!)
+								)}
+							</p>`
+					)}
 				<div class="chart"></div>
+				<p>${labels.xAxis}</p>
+				${this.baselines.map(
+					(mark) => html`<p>${mark.label}: ${formatPercent(mark.value)}</p>`
+				)}
 				<details>
 					<summary>${labels.showTable}</summary>
 					<div class="table-region" role="region" tabindex="0" aria-labelledby="caption">
@@ -207,7 +329,8 @@ export class AppFoldStrip extends LitElement {
 											(value, index) => html`
 												<tr>
 													<th scope="row">
-														${row.label}: ${labels.partition(index + 1)}
+														${this.seriesLabel(row)}:
+														${labels.partition(index + 1)}
 													</th>
 													<td class="number">
 														${formatPercent(value.score)}
@@ -217,7 +340,9 @@ export class AppFoldStrip extends LitElement {
 											`
 										)}
 										<tr>
-											<th scope="row">${row.label}: ${labels.mean}</th>
+											<th scope="row">
+												${this.seriesLabel(row)}: ${labels.mean}
+											</th>
 											<td class="number">${formatPercent(row.mean)}</td>
 											<td></td>
 										</tr>
@@ -226,7 +351,7 @@ export class AppFoldStrip extends LitElement {
 											: html`
 													<tr>
 														<th scope="row">
-															${row.label}:
+															${this.seriesLabel(row)}:
 															${labels.standardDeviation}
 														</th>
 														<td class="number">

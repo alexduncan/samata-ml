@@ -25,6 +25,10 @@ export const Narrow: Story = {
 	render: () =>
 		html`<div style="inline-size: 20rem"><storybook-plot-host></storybook-plot-host></div>`
 };
+/** The chart scales with the viewer's text-size preference. */
+export const LargeText: Story = {
+	render: () => html`<storybook-plot-host style="font-size: 2rem"></storybook-plot-host>`
+};
 /** Logical layout under right-to-left direction. */
 export const RTL: Story = {
 	render: () => html`<div dir="rtl"><storybook-plot-host></storybook-plot-host></div>`

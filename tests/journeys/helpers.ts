@@ -203,8 +203,8 @@ export async function expectPopulatedResults(
 	await expect(summary.locator('.headline dt').first()).toHaveText(
 		'Balanced accuracy on held-out rows'
 	);
-	await expect(results.locator('app-fold-strip svg')).toBeVisible();
-	await expect(results.locator('app-classee-strips svg')).toBeVisible();
+	await expect(results.locator('app-fold-strip svg[role="img"]')).toBeVisible();
+	await expect(results.locator('app-classee-strips svg[role="img"]')).toBeVisible();
 	await expect(results.locator('app-confusion-matrix table')).toBeVisible();
 	await expect(results.locator('app-class-metrics-table table')).toBeVisible();
 	await expect(results.locator('app-threshold-explorer')).toHaveCount(0);

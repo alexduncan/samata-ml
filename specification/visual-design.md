@@ -74,6 +74,10 @@ Rules:
 - Never use a literal colour (`#hex`, `rgb()`, `hsl()`, or named colours), including inside a `var()` fallback.
 - Mockup literals map to tokens: `#fff` and `white` become `--surface`, and `rgb(30 25 22 / 55%)` becomes `--backdrop`.
 
+### Results chart colour channels
+
+On `/results`, each model instance keeps its `ModelColor`, numbered swatch and distinct marker, an explicit exception to a fixed per-classifier palette. Amber marks, bars and legend swatches have a `--stone-900` outline; the sidebar swatch styles stay unchanged. `--model-swatch-ink` supplies text on amber, sky and `--chart-neutral`, while `--surface` supplies text on the remaining dark fills. Dataset classes use a separate `--chart-1..6` channel with `--surface` separators; counts use `--chart-neutral`. Non-zero ROPE segments have 2px `--surface` gaps. See [chart design](charts.md) for the full colour and accessibility contract.
+
 ## 3. Where mockup CSS lives in the app
 
 Mockup CSS files map to application locations as follows:

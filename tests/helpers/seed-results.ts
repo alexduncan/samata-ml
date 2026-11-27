@@ -284,6 +284,14 @@ export async function seedComparableGroups(page: Page): Promise<void> {
 	await seedAdditionalModel(page, 4, evaluation);
 }
 
+/** Publishes four comparable cross-validation models through the training workflow. */
+export async function seedComparableFour(page: Page): Promise<void> {
+	await seedComparablePair(page);
+	const evaluation = irisCrossValidation();
+	await seedAdditionalModel(page, 3, evaluation);
+	await seedAdditionalModel(page, 4, evaluation);
+}
+
 /** Removes the stored result envelope of Model 1. */
 export function deleteEnvelope(page: Page): Promise<void> {
 	return page.evaluate(async () => {

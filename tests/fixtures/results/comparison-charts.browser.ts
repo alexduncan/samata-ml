@@ -22,9 +22,11 @@ const view = buildFoldStripView(
 const fold = document.createElement('app-fold-strip');
 fold.labels = englishFoldStripLabels;
 fold.caption = sampleCaption;
-fold.series = [...view.series, { ...view.series[0]!, id: 'second', label: 'Model 2' }];
+fold.series = [
+	{ ...view.series[0]!, num: 1, color: 'amber' },
+	{ ...view.series[0]!, id: 'second', num: 2, label: 'Model 2', color: 'blue' }
+];
 fold.baselines = view.baselines;
-fold.paired = true;
 fold.formatPercent = format.percent;
 
 const bars = document.createElement('app-class-error-bars');
@@ -34,15 +36,35 @@ bars.labels = {
 	model: 'Model',
 	errorRate: 'Error rate',
 	unavailable: 'Unavailable',
-	showData: 'Show data table'
+	showData: 'Show data table',
+	xAxis: 'Error rate (%, lower is better)',
+	yAxis: 'Class and model',
+	errorCountHeading: 'Errors',
+	errorCountCell: (errors, total) => `${errors} of ${total}`,
+	legendLabel: 'Models',
+	description: () => 'Class error rates and counts.'
 };
 bars.rows = [
 	{
 		classIndex: 0,
 		label: 'Adélie',
 		models: [
-			{ num: 1, label: 'Model 1', errorRate: 0.1 },
-			{ num: 2, label: 'Model 2', errorRate: 0.2 }
+			{
+				num: 1,
+				label: 'Model 1',
+				modelColor: 'amber',
+				errorRate: 0.1,
+				errorCount: 1,
+				support: 10
+			},
+			{
+				num: 2,
+				label: 'Model 2',
+				modelColor: 'sky',
+				errorRate: 0.2,
+				errorCount: 2,
+				support: 10
+			}
 		]
 	}
 ];
@@ -75,7 +97,8 @@ const renderLocale = () => {
 		trueClass: 'True class',
 		predictedClass: 'Predicted class',
 		correct: 'correct',
-		takeaway: `Adélie as Gentoo: ${signed(1234)}`
+		takeaway: `Adélie as Gentoo: ${signed(1234)}`,
+		filterStatus: (label) => `Showing ${label ?? 'all classes'}.`
 	};
 };
 locale.listen(renderLocale);

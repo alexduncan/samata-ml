@@ -25,6 +25,23 @@ const columns: readonly ComparisonColumn[] = [
 	'fitDuration'
 ];
 
+/** Converts a stored fraction to percentage points. */
+export function ropeFractionToPoints(fraction: number): number {
+	return Math.round(fraction * 1000) / 10;
+}
+
+/** Converts valid tenth-point input to its stored fraction. */
+export function ropePointsToFraction(points: number): number | null {
+	if (
+		!Number.isFinite(points) ||
+		points < 0.1 ||
+		points > 10 ||
+		Math.abs(points * 10 - Math.round(points * 10)) >= 1e-9
+	)
+		return null;
+	return Math.round(points * 10) / 1000;
+}
+
 /** Returns a fresh unowned set of comparison defaults. */
 export function emptyComparisonResults(): PersistedAppState['results'] {
 	return { owner: null, ui: { ...DEFAULT_COMPARISON_UI, selected: [] } };

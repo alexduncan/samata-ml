@@ -16,6 +16,7 @@ export interface ConfusionMatrixLabels {
 	readonly filter: string;
 	/** Text of the option that restores the default row selection. */
 	readonly defaultFilter: string;
+	readonly filterStatus: (label: string | null) => string;
 }
 
 /** Empty labels: the parent supplies every string. */
@@ -25,7 +26,8 @@ export const DEFAULT_CONFUSION_MATRIX_LABELS: ConfusionMatrixLabels = {
 	predictedClass: '',
 	support: '',
 	filter: '',
-	defaultFilter: ''
+	defaultFilter: '',
+	filterStatus: () => ''
 };
 
 /** Detail of `app-confusion-filter-change`. */
@@ -89,6 +91,14 @@ export class AppConfusionMatrix extends LitElement {
 							</select>
 						</p>
 					`
+				: nothing}
+			${matrix.filterable
+				? html`<p class="visually-hidden" aria-live="polite">
+						${this.labels.filterStatus(
+							matrix.options.find((option) => option.index === selected)?.label ??
+								null
+						)}
+					</p>`
 				: nothing}
 			<div class="table-region" role="region" tabindex="0" aria-labelledby="caption">
 				<table class="table table-compact">

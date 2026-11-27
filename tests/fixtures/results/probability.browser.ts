@@ -69,8 +69,11 @@ async function mount(spec: ProbabilityMountSpec): Promise<void> {
 	if (spec.longLabels) evaluation = withLongLabels(evaluation);
 	if (spec.element === 'threshold') {
 		const element = document.createElement('app-threshold-explorer') as AppThresholdExplorer;
-		element.labels = englishThresholdLabels;
 		element.explorer = buildThresholdView(evaluation, 'diagnosis');
+		element.labels = {
+			...englishThresholdLabels,
+			xAxis: `Predicted probability of ${element.explorer?.positive ?? ''} (%)`
+		};
 		element.thresholdIndex = spec.thresholdIndex ?? 50;
 		element.caption = {
 			title: 'Predicted probabilities by true class',
@@ -93,8 +96,14 @@ async function mount(spec: ProbabilityMountSpec): Promise<void> {
 		await element.whenSettled();
 	} else {
 		const element = document.createElement('app-reliability-diagram') as AppReliabilityDiagram;
-		element.labels = englishReliabilityLabels;
 		element.calibration = buildCalibrationView(evaluation, format);
+		element.labels = {
+			...englishReliabilityLabels,
+			observedHeading:
+				element.calibration?.mode === 'top-label'
+					? 'Correct prediction rate'
+					: 'Observed positive rate'
+		};
 		element.caption = {
 			title: 'Reliability of predicted probabilities',
 			takeaway: `Expected calibration error is ${element.calibration?.eceText ?? ''}.`

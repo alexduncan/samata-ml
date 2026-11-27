@@ -1,4 +1,5 @@
 import { foldSummary } from '../../common/evaluation/fold-statistics';
+import type { ModelColor } from '../../types/state';
 import type {
 	MetricUnavailableReason,
 	StoredEvaluation,
@@ -23,7 +24,7 @@ export interface ResultsFormatters {
 	points(value: number): string;
 	/** A fraction difference as signed percentage points. */
 	signedPoints(value: number): string;
-	/** A probability-based score such as ROC-AUC or log loss, to three decimal places. */
+	/** MCC, log loss, or Brier score, to three decimal places. */
 	decimal(value: number): string;
 }
 
@@ -164,14 +165,14 @@ export function buildSummaryView(
 	}
 	more.push(
 		metricRow('mcc', pooled.mcc, format.decimal),
-		metricRow('rocAuc', pooled.rocAuc, format.decimal),
-		metricRow('averagePrecision', pooled.averagePrecision, format.decimal),
+		metricRow('rocAuc', pooled.rocAuc, format.percent),
+		metricRow('averagePrecision', pooled.averagePrecision, format.percent),
 		metricRow('logLoss', pooled.logLoss, format.decimal),
 		metricRow('brier', pooled.brier, format.decimal),
 		calibration
 			? {
 					id: 'ece',
-					value: format.decimal(calibration.expectedCalibrationError),
+					value: format.percent(calibration.expectedCalibrationError),
 					reason: null
 				}
 			: { id: 'ece', value: null, reason: eceReason }
@@ -216,6 +217,8 @@ export interface FoldValue {
 
 /** A row of dots on the fold strip. */
 export interface FoldSeries {
+	readonly num?: number;
+	readonly color?: ModelColor;
 	readonly id: string;
 	readonly label: string;
 	readonly values: readonly FoldValue[];
@@ -479,6 +482,7 @@ export interface ClasseeRow {
 
 /** Per-class correct and wrong counts for the multiclass strips. */
 export interface ClasseeView {
+	readonly legendClasses: readonly { readonly classIndex: number; readonly label: string }[];
 	readonly classCount: number;
 	readonly rows: readonly ClasseeRow[];
 	readonly maxCorrect: number;
@@ -528,6 +532,15 @@ export function buildClasseeView(
 	return {
 		classCount: count,
 		rows,
+		legendClasses: labels
+			.flatMap((label, classIndex) =>
+				rows.some((row) =>
+					row.errors.some((segment) => segment.predictedIndex === classIndex)
+				)
+					? [{ classIndex, label }]
+					: []
+			)
+			.reverse(),
 		maxCorrect: Math.max(0, ...rows.map((row) => row.correct.count)),
 		maxErrors: Math.max(0, ...rows.map((row) => row.errorCount)),
 		totalErrors: rows.reduce((total, row) => total + row.errorCount, 0)
@@ -653,6 +666,6 @@ export function buildCalibrationView(
 			observed: calibration.observed[index] ?? null
 		})),
 		ece: calibration.expectedCalibrationError,
-		eceText: format.decimal(calibration.expectedCalibrationError)
+		eceText: format.percent(calibration.expectedCalibrationError)
 	};
 }

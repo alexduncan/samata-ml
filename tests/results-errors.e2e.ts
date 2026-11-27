@@ -32,16 +32,56 @@ test.describe('Section 6 error views', () => {
 	}) => {
 		await mount(page, { element: 'flowchart', evaluation: 'breast-cancer' });
 		const flowchart = page.locator('app-confusion-flowchart');
+		await expect(flowchart.locator('figure figcaption')).toContainText('Held-out outcomes');
 		await expect(flowchart.locator('.rows > li')).toHaveCount(2);
 		await expect(flowchart.locator('.outcomes li')).toHaveText([
-			'✓ 68 rows with diagnosis Benign were predicted Benign (correct)',
-			'✗ 3 rows with diagnosis Benign were predicted Malignant (incorrect)',
-			'✗ 4 rows with diagnosis Malignant were predicted Benign (incorrect)',
-			'✓ 39 rows with diagnosis Malignant were predicted Malignant (correct)'
+			'✓ 68 of 71 rows with diagnosis Benign were predicted Benign (correct; 95.8%)',
+			'✗ 3 of 71 rows with diagnosis Benign were predicted Malignant (incorrect; 4.2%)',
+			'✗ 4 of 43 rows with diagnosis Malignant were predicted Benign (incorrect; 9.3%)',
+			'✓ 39 of 43 rows with diagnosis Malignant were predicted Malignant (correct; 90.7%)'
 		]);
 		await expect(flowchart.locator('.heading').first()).toHaveText(
 			'Rows with diagnosis Benign: 71'
 		);
+	});
+
+	test('CHT-SINGLE-2: wide class labels fit after resize and remain complete in the table', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 320, height: 800 });
+		await mount(page, { element: 'classee', evaluation: 'iris' }, { width: '100%' });
+		await page.addStyleTag({ content: 'html { font-size: 200% }' });
+		const strips = page.locator('app-classee-strips');
+		const label = 'WWWW MMMM WWWW MMMM wide class label';
+		await strips.evaluate(async (host, value) => {
+			const chart =
+				host as import('../src/features/results/app-classee-strips').AppClasseeStrips;
+			chart.strips = {
+				...chart.strips!,
+				rows: chart.strips!.rows.map((row, i) => (i ? row : { ...row, label: value }))
+			};
+			await chart.whenSettled();
+		}, label);
+		await strips.locator('summary').click();
+		await expect(strips.locator('tbody')).toContainText(label);
+		await expect(strips.locator('.chart > svg:not([data-plot-probe])')).toContainText('…');
+		for (const width of [320, 280]) {
+			await page.setViewportSize({ width, height: 800 });
+			await expect
+				.poll(() =>
+					strips.evaluate((host) => {
+						const svg = host.shadowRoot!.querySelector('.chart > svg')!;
+						const bounds = svg.getBoundingClientRect();
+						return [...svg.querySelectorAll('text')]
+							.filter((node) => {
+								const rect = node.getBoundingClientRect();
+								return rect.left < bounds.left - 1 || rect.right > bounds.right + 1;
+							})
+							.map((node) => node.textContent);
+					})
+				)
+				.toEqual([]);
+		}
 	});
 
 	test('BETA-ERR-2b / WML-P4-UI-5: outcome bar widths are proportional to the counts', async ({
@@ -75,7 +115,7 @@ test.describe('Section 6 error views', () => {
 		const flowchart = page.locator('app-confusion-flowchart');
 		await expect(flowchart.locator('.segment')).toHaveCount(2);
 		await expect(flowchart.locator('.outcomes li').nth(1)).toContainText(
-			'0 rows with diagnosis Benign were predicted Malignant (incorrect)'
+			'0 of 71 rows with diagnosis Benign were predicted Malignant (incorrect; 0%)'
 		);
 	});
 
@@ -124,12 +164,14 @@ test.describe('Section 6 error views', () => {
 	}) => {
 		await mount(page, { element: 'classee', evaluation: 'iris' });
 		const geometry = await page.locator('app-classee-strips').evaluate((host) => {
-			const rects = [...host.shadowRoot!.querySelectorAll('svg rect')].map((rect) => ({
-				x: Number(rect.getAttribute('x')),
-				width: Number(rect.getAttribute('width')),
-				y: rect.getAttribute('y'),
-				fill: getComputedStyle(rect).fill
-			}));
+			const rects = [...host.shadowRoot!.querySelectorAll('.chart > svg rect')].map(
+				(rect) => ({
+					x: Number(rect.getAttribute('x')),
+					width: Number(rect.getAttribute('width')),
+					y: rect.getAttribute('y'),
+					fill: getComputedStyle(rect).fill
+				})
+			);
 			return rects;
 		});
 		const neutral = geometry.filter((rect) => rect.fill === 'rgb(136, 123, 113)');
@@ -166,7 +208,7 @@ test.describe('Section 6 error views', () => {
 		const strips = page.locator('app-classee-strips');
 		await expect(strips).toContainText('No errors');
 		const probe = await strips.evaluate((host) => {
-			const rects = [...host.shadowRoot!.querySelectorAll('svg rect')];
+			const rects = [...host.shadowRoot!.querySelectorAll('.chart > svg rect')];
 			const fills = new Set(rects.map((rect) => getComputedStyle(rect).fill));
 			const text = host.shadowRoot!.querySelector('svg')!.textContent!;
 			return { fills: [...fills], hasErrorsSide: text.includes('Errors') };
@@ -185,8 +227,8 @@ test.describe('Section 6 error views', () => {
 				.evaluate(
 					(host) =>
 						new Set(
-							[...host.shadowRoot!.querySelectorAll('svg rect')].map((rect) =>
-								rect.getAttribute('y')
+							[...host.shadowRoot!.querySelectorAll('.chart > svg rect')].map(
+								(rect) => rect.getAttribute('y')
 							)
 						).size
 				);

@@ -26,9 +26,12 @@ export class StorybookPlotHost extends LitElement {
 	private readonly plot = new PlotController(
 		this,
 		() => this.renderRoot.querySelector<HTMLElement>('.chart'),
-		(chart, tokens, width) => {
+		(chart, tokens, width, fontSizePx, measureText) => {
 			this.renderCount += 1;
 			this.dataset.width = String(width);
+			this.dataset.fontSize = String(fontSizePx);
+			this.dataset.wideText = String(measureText('WWWW'));
+			this.dataset.narrowText = String(measureText('iiii'));
 			return chart.plot({
 				width,
 				height: 80,
@@ -43,7 +46,8 @@ export class StorybookPlotHost extends LitElement {
 					chart.dot(this.values, { x: (d: number) => d, y: 0, fill: tokens['--chart-1'] })
 				]
 			});
-		}
+		},
+		() => 'chart-description'
 	);
 
 	/** Resolves when the first visible render has completed. */
@@ -52,7 +56,8 @@ export class StorybookPlotHost extends LitElement {
 	}
 
 	override render() {
-		return html`<div class="chart"></div>`;
+		return html`<p id="chart-description">Three scores between 40% and 80%.</p>
+			<div class="chart"></div>`;
 	}
 }
 

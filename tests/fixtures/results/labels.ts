@@ -73,7 +73,14 @@ export const englishFoldStripLabels: FoldStripLabels = {
 	score: 'Balanced accuracy',
 	time: 'Fit and scoring time',
 	mean: 'Mean',
-	standardDeviation: 'Standard deviation'
+	standardDeviation: 'Standard deviation',
+	xAxis: 'Balanced accuracy (%, higher is better)',
+	intervalNote: 'Mean ± 1 SD',
+	clampedNote: (mean, sd) => `Mean ${mean} ± ${sd} extends beyond the score range.`,
+	description: (series, baselines) =>
+		[...series.map((row) => row.label), ...baselines.map((row) => row.label)].join(', '),
+	legendLabel: 'Models',
+	baselineColumn: 'Baseline'
 };
 
 /** English labels for `app-class-metrics-table`. */
@@ -96,7 +103,8 @@ export const englishConfusionMatrixLabels: ConfusionMatrixLabels = {
 	predictedClass: 'Predicted class',
 	support: 'Rows',
 	filter: 'Show true class',
-	defaultFilter: 'Twenty largest classes'
+	defaultFilter: 'Twenty largest classes',
+	filterStatus: (label) => `Showing ${label ?? 'twenty largest classes'}.`
 };
 
 /** A caption for tests and stories. */
@@ -109,9 +117,9 @@ export const sampleCaption: ChartCaption = {
 export const englishFlowchartLabels: ConfusionFlowchartLabels = {
 	rowHeading: (row, flow) => `Rows with ${flow.target} ${row.actual}: ${row.totalText}`,
 	outcome: (outcome, row, flow) =>
-		`${outcome.text} rows with ${flow.target} ${row.actual} were predicted ${outcome.predicted} (${
+		`${outcome.text} of ${row.totalText} rows with ${flow.target} ${row.actual} were predicted ${outcome.predicted} (${
 			outcome.correct ? 'correct' : 'incorrect'
-		})`
+		}; ${new Intl.NumberFormat('en-GB', { style: 'percent', maximumFractionDigits: 1 }).format(outcome.share)})`
 };
 
 /** English labels for `app-classee-strips`. */
@@ -126,7 +134,11 @@ export const englishClasseeLabels: ClasseeStripsLabels = {
 	error: 'Error',
 	noErrors: 'No errors: every held-out row was predicted correctly.',
 	errorsSide: 'Errors',
-	correctSide: 'Correct'
+	correctSide: 'Correct',
+	xAxis: 'Held-out rows',
+	yAxis: 'True class',
+	legendLabel: 'Predicted classes',
+	description: (view) => `Held-out errors: ${view.totalErrors}.`
 };
 
 /** English labels for `app-threshold-explorer`. */
@@ -144,7 +156,14 @@ export const englishThresholdLabels: ThresholdExplorerLabels = {
 	truePositiveRate: (view) => `Share of ${view.positive} rows found`,
 	falsePositiveRate: (view) => `Share of ${view.negative} rows wrongly flagged`,
 	trueClass: (label) => `True class ${label}`,
-	xAxis: 'Predicted probability',
+	cutoffLabel: (threshold) => `Cutoff ${threshold}`,
+	description: (_view, readout) =>
+		`At ${readout.threshold}, ${readout.tp} of ${readout.tp + readout.fn} positive rows and ${readout.fp} of ${readout.fp + readout.tn} negative rows are flagged.`,
+	liveUpdate: (_view, readout) =>
+		`At ${readout.threshold}, ${readout.tp} of ${readout.tp + readout.fn} positive rows and ${readout.fp} of ${readout.fp + readout.tn} negative rows are flagged.`,
+	rateWithCounts: (rate, hits, total) => `${rate} (${hits} of ${total})`,
+	legendLabel: 'True class',
+	xAxis: 'Predicted probability of positive (%)',
 	yAxis: 'Rows',
 	showTable: 'Show data table',
 	tableCaption: 'Held-out rows by predicted probability and true class',
@@ -154,10 +173,15 @@ export const englishThresholdLabels: ThresholdExplorerLabels = {
 
 /** English labels for `app-reliability-diagram`. */
 export const englishReliabilityLabels: ReliabilityDiagramLabels = {
+	description: (view) => `Expected calibration error is ${view.eceText}.`,
+	countsDescription: (view) =>
+		`Rows in bins: ${view.bins.reduce((sum, bin) => sum + bin.count, 0)}.`,
+	observedHeading: 'Observed positive rate',
+	countHeading: 'Rows',
 	unavailable:
 		'The reliability diagram is unavailable because this model was trained without probability estimates.',
-	xAxis: 'Mean predicted probability',
-	yAxis: 'Observed rate',
+	xAxis: 'Mean predicted probability (%)',
+	yAxis: 'Observed positive rate (%)',
 	countsTitle: 'Rows in each probability bin',
 	countsAxis: 'Rows',
 	diagonal: 'Perfect calibration',

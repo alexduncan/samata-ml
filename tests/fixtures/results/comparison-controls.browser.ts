@@ -3,9 +3,21 @@ import '../../../src/features/results/app-comparison-table';
 import '../../../src/features/results/app-model-pair-picker';
 
 const root = document.getElementById('column')!;
+const colors = [
+	'amber',
+	'sky',
+	'olive',
+	'neutral',
+	'blue',
+	'teal',
+	'purple',
+	'red',
+	'green'
+] as const;
 const models = Array.from({ length: 9 }, (_, index) => ({
 	num: index + 1,
-	label: `Model ${index + 1}`
+	label: `Model ${index + 1}`,
+	color: colors[index]!
 }));
 const controls = document.createElement('app-comparison-controls');
 controls.groups = [

@@ -62,6 +62,10 @@ async function mount(spec: ErrorMountSpec): Promise<void> {
 	if (spec.element === 'flowchart') {
 		const element = document.createElement('app-confusion-flowchart') as AppConfusionFlowchart;
 		element.labels = englishFlowchartLabels;
+		element.caption = {
+			title: 'Held-out outcomes',
+			takeaway: 'Correct and incorrect predictions'
+		};
 		element.flow = buildBinaryFlowView(evaluation, 'diagnosis', format);
 		column.append(element);
 		await element.updateComplete;

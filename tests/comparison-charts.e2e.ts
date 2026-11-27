@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { AppConfusionDelta } from '../src/features/results/app-confusion-delta';
+import type { AppClassErrorBars } from '../src/features/results/app-class-error-bars';
+import type { AppFoldStrip } from '../src/features/results/app-fold-strip';
 import { bundleResultsFixture, mountResultsFixture } from './helpers/mount-results-fixture';
 
 const bundle = bundleResultsFixture('tests/fixtures/results/comparison-charts.browser.ts');
@@ -8,20 +10,180 @@ test.beforeEach(async ({ page }) => {
 	await mountResultsFixture(page, bundle, 'summaryFixture');
 });
 
-test('WML-P5-UI-4: paired fold strip draws one line per aligned partition', async ({ page }) => {
+test('CHT-SINGLE-1: model folds have distinct symbols without connecting lines', async ({
+	page
+}) => {
 	const fold = page.locator('app-fold-strip');
-	await expect(fold.locator('svg [stroke-opacity="0.6"] path')).toHaveCount(5);
-	await expect(fold.locator('svg circle')).toHaveCount(10);
+	await expect(fold.locator('.chart svg [stroke-opacity="0.6"] path')).toHaveCount(0);
+	await expect(fold.locator('.chart-legend li')).toHaveCount(2);
+	await expect(fold).toContainText('Balanced accuracy (%, higher is better)');
+	await expect(fold.locator('.chart svg:not([data-plot-probe])')).toContainText('Mean ± 1 SD');
 });
+
+test('CHT-FOUND-2: amber fold interval and mean have dark outlines', async ({ page }) => {
+	const fold = page.locator('app-fold-strip');
+	await fold.evaluate((element) => (element as AppFoldStrip).whenSettled());
+	const { lines, amber, blue, dark } = await fold.evaluate((element) => {
+		const root = element.shadowRoot!;
+		const sample = document.createElement('span');
+		root.append(sample);
+		const colour = (name: string) => {
+			sample.style.color = `var(${name})`;
+			return getComputedStyle(sample).color;
+		};
+		const amber = colour('--amber-500');
+		const blue = colour('--blue-700');
+		const dark = colour('--stone-900');
+		sample.remove();
+		const lines = Array.from(
+			root.querySelectorAll('.chart > svg[role="img"] line'),
+			(line) => ({
+				stroke: getComputedStyle(line).stroke,
+				width: parseFloat(getComputedStyle(line).strokeWidth),
+				coordinates: ['x1', 'y1', 'x2', 'y2'].map((name) => line.getAttribute(name))
+			})
+		);
+		return { lines, amber, blue, dark };
+	});
+	const amberRules = lines.filter((line) => line.stroke === amber);
+	const blueRules = lines.filter((line) => line.stroke === blue);
+	const outlines = lines.filter((line) => line.stroke === dark);
+	expect(amberRules.map((line) => line.width)).toEqual([3, 4]);
+	expect(blueRules.map((line) => line.width)).toEqual([3, 4]);
+	expect(outlines).toEqual(
+		amberRules.map((line) => ({ ...line, stroke: dark, width: line.width + 3 }))
+	);
+	for (const [index, outline] of outlines.entries()) {
+		expect(lines.indexOf(outline)).toBeLessThan(lines.indexOf(amberRules[index]!));
+	}
+});
+
+for (const mode of ['comparison', 'single model'] as const) {
+	test(`CHT-A11Y-1: all fold percentage ticks fit at 200% after resize (${mode})`, async ({
+		page
+	}) => {
+		await page.addStyleTag({
+			content: 'html { font-size: 32px } body { padding-inline: 16px }'
+		});
+		await page.locator('#column').evaluate((element) => {
+			element.style.inlineSize = '100%';
+		});
+		const fold = page.locator('app-fold-strip');
+		if (mode === 'single model') {
+			await fold.evaluate((element) => {
+				const chart = element as AppFoldStrip;
+				const { color: _color, num: _num, ...row } = chart.series[0]!;
+				chart.series = [row];
+			});
+		}
+		for (const direction of ['ltr', 'rtl'] as const) {
+			await page.evaluate((value) => {
+				document.documentElement.dir = value;
+			}, direction);
+			for (const width of [320, 360, 320]) {
+				await page.setViewportSize({ width, height: 800 });
+				await expect
+					.poll(() =>
+						fold.evaluate((element) => {
+							const svg = element.shadowRoot?.querySelector(
+								'.chart > svg[role="img"]'
+							);
+							if (!svg) return null;
+							const bounds = svg.getBoundingClientRect();
+							const ticks = [...svg.querySelectorAll('text')]
+								.filter((text) => /^\d+%$/.test(text.textContent?.trim() ?? ''))
+								.map((text) => ({
+									label: text.textContent!.trim(),
+									box: text.getBoundingClientRect()
+								}))
+								.sort(
+									(a, b) => a.box.left + a.box.right - (b.box.left + b.box.right)
+								);
+							return {
+								width: bounds.width,
+								enlarged: parseFloat(getComputedStyle(svg).fontSize) >= 24,
+								labels: ticks.map(({ label }) => label),
+								clipped: ticks
+									.filter(
+										({ box }) =>
+											box.width <= 0 ||
+											box.height <= 0 ||
+											box.left < bounds.left - 1 ||
+											box.right > bounds.right + 1 ||
+											box.top < bounds.top - 1 ||
+											box.bottom > bounds.bottom + 1
+									)
+									.map(({ label }) => label),
+								overlaps: ticks.flatMap((a, index) =>
+									ticks
+										.slice(index + 1)
+										.filter(
+											(b) =>
+												Math.min(a.box.right, b.box.right) >
+													Math.max(a.box.left, b.box.left) &&
+												Math.min(a.box.bottom, b.box.bottom) >
+													Math.max(a.box.top, b.box.top)
+										)
+										.map((b) => [a.label, b.label])
+								)
+							};
+						})
+					)
+					.toEqual({
+						width: width - 32,
+						enlarged: true,
+						labels: ['0%', '20%', '40%', '60%', '80%', '100%'],
+						clipped: [],
+						overlaps: []
+					});
+			}
+		}
+	});
+}
 
 test('WML-P5-UI-5: class error bars retain labels and data in forced colours', async ({ page }) => {
 	await page.emulateMedia({ forcedColors: 'active' });
 	const bars = page.locator('app-class-error-bars');
 	await expect(bars.locator('svg rect')).toHaveCount(2);
-	await expect(bars.locator('svg').getByText('Adélie · Model 1')).toBeVisible();
+	await expect(bars.locator('svg').getByText('1 · Adélie · Model 1')).toBeVisible();
 	await bars.getByText('Show data table').click();
 	await expect(bars.getByRole('table').getByText('Model 1')).toBeVisible();
 	await expect(bars.getByRole('table').getByText('20%')).toBeVisible();
+});
+
+test('CHT-COMP-3: wide labels fit at 200% through resize and stay complete in the table', async ({
+	page
+}) => {
+	await page.setViewportSize({ width: 320, height: 800 });
+	await page.addStyleTag({ content: 'html { font-size: 200% }' });
+	const bars = page.locator('app-class-error-bars');
+	const full = 'WWWWMMMMWWWWMMMM wide class label';
+	await bars.evaluate((element, label) => {
+		const chart = element as AppClassErrorBars;
+		chart.rows = chart.rows.map((row) => ({ ...row, label }));
+	}, full);
+	for (const width of [320, 280, 320]) {
+		await page.setViewportSize({ width, height: 800 });
+		await bars.evaluate(async (element) => (element as AppClassErrorBars).whenSettled());
+		const svg = bars.locator('.chart > svg:not([data-plot-probe])');
+		await expect(svg.getByText('…', { exact: false }).first()).toBeVisible();
+		await expect
+			.poll(() =>
+				svg.evaluate((element) => {
+					const bounds = element.getBoundingClientRect();
+					return [...element.querySelectorAll('text')]
+						.filter((text) => {
+							const box = text.getBoundingClientRect();
+							return box.left < bounds.left - 1 || box.right > bounds.right + 1;
+						})
+						.map((text) => text.textContent);
+				})
+			)
+			.toEqual([]);
+	}
+	await bars.getByText('Show data table').click();
+	await expect(bars.getByRole('rowheader', { name: full })).toHaveCount(2);
+	await expect(bars.getByRole('rowheader', { name: full }).first()).toBeVisible();
 });
 
 test('WML-P5-UI-6: signed counts and takeaway follow the active locale', async ({ page }) => {

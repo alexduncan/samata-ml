@@ -15,21 +15,21 @@ The numbered route shows one trained classifier. The builder owns the route head
 
 ## 3. Public API (closed)
 
-| Element                   | Properties (`attribute: false` unless stated)                                                                   | Events (all `bubbles` and `composed`)                     |
-| ------------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `app-model-results`       | `modelNum` (reflected `model-num`), `headingLevel: 2 \| 3` (default `3`), and `whenSettled()`                   | none                                                      |
-| `app-results-summary`     | `summary`, `moreOpen`, `labels`                                                                                 | `app-results-more-toggle` `{ open }`                      |
-| `app-fold-strip`          | `series`, `baselines`, `caption`, `formatPercent`, `labels`, `paired` (default `false`); method `whenSettled()` | none                                                      |
-| `app-class-metrics-table` | `rows`, `labels`                                                                                                | none                                                      |
-| `app-confusion-matrix`    | `matrix`, `classFilter`, `labels`                                                                               | `app-confusion-filter-change` `{ classFilter }`           |
-| `app-confusion-flowchart` | `flow`, `labels`                                                                                                | none                                                      |
-| `app-classee-strips`      | `strips`, `caption`, `formatCount`, `labels`; method `whenSettled()`                                            | none                                                      |
-| `app-threshold-explorer`  | `explorer`, `thresholdIndex`, `caption`, `formatPercent`, `formatCount`, `labels`; method `whenSettled()`       | `app-threshold-change` `{ index }`, at most one per frame |
-| `app-reliability-diagram` | `calibration`, `caption`, `formatPercent`, `formatCount`, `labels`; method `whenSettled()`                      | none                                                      |
+| Element                   | Properties (`attribute: false` unless stated)                                                             | Events (all `bubbles` and `composed`)                     |
+| ------------------------- | --------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `app-model-results`       | `modelNum` (reflected `model-num`), `headingLevel: 2 \| 3` (default `3`), and `whenSettled()`             | none                                                      |
+| `app-results-summary`     | `summary`, `moreOpen`, `labels`                                                                           | `app-results-more-toggle` `{ open }`                      |
+| `app-fold-strip`          | `series`, `baselines`, `caption`, `formatPercent`, `labels`; method `whenSettled()`                       | none                                                      |
+| `app-class-metrics-table` | `rows`, `labels`                                                                                          | none                                                      |
+| `app-confusion-matrix`    | `matrix`, `classFilter`, `labels`                                                                         | `app-confusion-filter-change` `{ classFilter }`           |
+| `app-confusion-flowchart` | `flow`, `caption`, `labels`                                                                               | none                                                      |
+| `app-classee-strips`      | `strips`, `caption`, `formatCount`, `labels`; method `whenSettled()`                                      | none                                                      |
+| `app-threshold-explorer`  | `explorer`, `thresholdIndex`, `caption`, `formatPercent`, `formatCount`, `labels`; method `whenSettled()` | `app-threshold-change` `{ index }`, at most one per frame |
+| `app-reliability-diagram` | `calibration`, `caption`, `formatPercent`, `formatCount`, `labels`; method `whenSettled()`                | none                                                      |
 
-There are no slots, CSS parts or CSS properties. View-model types and their pure builders are in `src/features/results/results-view-model.ts`. `ChartCaption` is `{ title, takeaway }`. `whenSettled()` on the chart elements resolves when the chart has been drawn or abandoned (hidden or disconnected). It lets `app-model-results.whenSettled()` wait for the first visible render; see Open questions.
+The exported label interfaces include axis names, interval and baseline notes, descriptions, legend labels and live-status formatting where applicable; their exact typed fields are declared with each element. There are no slots, CSS parts or CSS properties. View-model types and their pure builders are in `src/features/results/results-view-model.ts`. `ChartCaption` is `{ title, takeaway }`. `whenSettled()` on the chart elements resolves when the chart has been drawn or abandoned (hidden or disconnected). It lets `app-model-results.whenSettled()` wait for the first visible render; see Open questions.
 
-For comparison, `paired = true` connects the corresponding partition indices across model series. The data table retains one value per model and partition; no separate line data is introduced. The single-model default remains unpaired.
+Fold strips show one dot per partition and a labelled mean ± standard-deviation interval; unordered model rows are never connected. The data table retains the full model and partition values.
 
 `app-model-results.whenSettled()` resolves after the saved result reaches a terminal state for the current run and the visible charts have drawn. It resolves immediately without an active trained run and also when the run is superseded or the element is removed while waiting. The builder's own `whenSettled()` awaits it.
 
@@ -43,13 +43,13 @@ Display preferences persist per model through `setModelResultsUi`: the threshold
 
 ## 5. Visual specification
 
-The numbered heading and Training Details use the scoped port of [03-7](../mockups/03-7_train-models-5-results.html) and the shared swatch styles. The chart surfaces remain draft-only. Shared table, notification, button and results styles own the result blocks, chart figures and scroll regions. Chart marks use the existing chart tokens. Flowchart outcomes use distinct outlines, fill and icons as well as colour. See [visual-design](../visual-design.md#3-where-mockup-css-lives-in-the-app).
+The numbered heading and Training Details use the scoped port of [03-7](../mockups/03-7_train-models-5-results.html) and the shared swatch styles. The chart surfaces remain draft-only. Shared table, notification, button and results styles own the result blocks, chart figures and scroll regions. Chart marks use the existing chart tokens; class colours have direct labels and surface separators. The reliability plot is square and its aligned histogram uses stored bin totals; binary bins describe observed positive rate and multiclass bins top-label accuracy. ROC-AUC, average precision and ECE use 0–100% formatting. Flowchart outcomes use distinct outlines, fill and icons as well as colour. See [visual-design](../visual-design.md#3-where-mockup-css-lives-in-the-app).
 
 ## 6. Accessibility
 
 - Every chart is a `figure` with a `figcaption` (title and one-sentence takeaway), the Plot output named by the title and described by the takeaway, and a "Show data table" `details` holding a native table with a caption and `th scope`. A wide table scrolls inside a focusable `role="region"` named by its caption. No information is tooltip-only.
 - Plot's per-mark labels are removed by the controller; the chart is one `img` and the table carries the detail.
-- The threshold is a labelled native range input from 0 to 100 with a formatted `aria-valuetext`. The readout is an ordinary definition list with no live region, and the sentence that exploring does not change the stored scores stays visible beside it. Arrow keys move one point; Home and End reach the ends.
+- The threshold is a labelled native range input from 0 to 100 with a formatted `aria-valuetext`. The readout is a definition list and the sentence that exploring does not change the stored scores stays visible beside it. A polite live region announces a committed change immediately and otherwise announces the latest value after 250 ms of inactivity. Arrow keys move one point; Home and End reach the ends.
 - Tables use `contain: inline-size` on their scroll region so a wide matrix never widens the page at 320 px.
 - The diagnostic gap card is a `.notification` without `role="alert"`; only the read-error message is an alert.
 - The native summary adds one keyboard stop, preserves the marker and has a visible focus outline with a target at least 24 × 24 CSS px. A definition list presents full terms and expansions. The visible expansions accompany the `title` values for MCC, ROC-AUC and ECE.
@@ -61,7 +61,7 @@ The numbered heading and Training Details use the scoped port of [03-7](../mocku
 
 ## 8. Acceptance criteria
 
-Test names begin with the ID. `WML-P4-UI-1` to `WML-P4-UI-4` cover the summary, fold strip, confusion matrix and per-class table. `WML-P4-UI-5` and `WML-P4-UI-6` cover the flowchart and Classee strips. `WML-P4-UI-7` to `WML-P4-UI-9` cover threshold exploration and reliability. The numbered page, details table, persisted preferences and accessibility are exercised by `tests/model-results.e2e.ts`, `tests/a11y.e2e.ts`, and the Iris and Penguins journeys. The scroll-landing part of `WML-P4-UI-11` remains open (see Open questions).
+`CHT-SINGLE-*`, `CHT-PROB-*` and `CHT-A11Y-*` cover chart encoding, responsive labels, descriptions, controls and live updates. Test names begin with the ID. `WML-P4-UI-1` to `WML-P4-UI-4` cover the summary, fold strip, confusion matrix and per-class table. `WML-P4-UI-5` and `WML-P4-UI-6` cover the flowchart and Classee strips. `WML-P4-UI-7` to `WML-P4-UI-9` cover threshold exploration and reliability. The numbered page, details table, persisted preferences and accessibility are exercised by `tests/model-results.e2e.ts`, `tests/a11y.e2e.ts`, and the Iris and Penguins journeys. The scroll-landing part of `WML-P4-UI-11` remains open (see Open questions).
 
 `TERM-AC-6`, `TERM-AC-8` and `TERM-AC-9` exercise the single disclosure, unchanged metric reasons and other disclosures, and reflow. A six-row fixture distinguishes the 75% cross-validation fold mean and 25-point paired gap from the 83.3% pooled score.
 

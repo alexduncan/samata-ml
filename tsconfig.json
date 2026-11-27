@@ -10,6 +10,7 @@
 
 		// Bundler mode
 		"moduleResolution": "bundler",
+		"paths": { "samata-plot-types": ["./node_modules/@observablehq/plot/src/index.d.ts"] },
 		"allowImportingTsExtensions": true,
 		"verbatimModuleSyntax": true,
 		"noEmit": true,

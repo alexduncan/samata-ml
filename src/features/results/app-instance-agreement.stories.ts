@@ -32,6 +32,10 @@ const meta = {
 			correctModels: 'Correct models',
 			rowCount: 'Rows',
 			showData: 'Show data table',
+			xAxis: (n) => `Models correct (out of ${n})`,
+			yAxis: 'Rows',
+			shareHeading: 'Share (%)',
+			description: (counts) => `Agreement counts: ${counts.join(', ')}.`,
 			bucket: (count) =>
 				args.long
 					? `${count} of the compared models predicted this row correctly`
@@ -48,9 +52,15 @@ type Story = StoryObj<Args>;
 	args: { counts: [4, 7, 12, 27] }
 };
 /** No hard cases. */ export const NoHardCases: Story = { args: { counts: [0, 7, 12, 31] } };
+/** Small counts use distinct integer ticks. */ export const SmallCounts: Story = {
+	args: { counts: [0, 1, 2, 3] }
+};
 /** Long labels. */ export const LongLabel: Story = {
 	args: { counts: [4, 7, 12, 27], long: true }
 };
 /** Right-to-left layout. */ export const RTL: Story = {
 	args: { counts: [4, 7, 12, 27], dir: 'rtl' }
 };
+
+/** Long labels in right-to-left layout. */
+export const LongLabelRTL: Story = { args: { counts: [4, 70, 120, 270], long: true, dir: 'rtl' } };

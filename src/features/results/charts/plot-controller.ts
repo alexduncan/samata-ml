@@ -1,7 +1,7 @@
 import type { ReactiveController, ReactiveControllerHost } from 'lit';
 import * as Plot from '@observablehq/plot';
 
-/** The nine chart token names defined in `css/root.css`. */
+/** Chart and model palette token names defined in `css/root.css`. */
 export const CHART_TOKEN_NAMES = [
 	'--chart-1',
 	'--chart-2',
@@ -11,7 +11,21 @@ export const CHART_TOKEN_NAMES = [
 	'--chart-6',
 	'--chart-neutral',
 	'--chart-axis',
-	'--chart-grid'
+	'--chart-grid',
+	'--surface',
+	'--stone-50',
+	'--stone-900',
+	'--model-swatch-ink',
+	'--amber-500',
+	'--blue-700',
+	'--teal-700',
+	'--purple-700',
+	'--red-700',
+	'--green-800',
+	'--pink-700',
+	'--sky-600',
+	'--olive-700',
+	'--neutral-600'
 ] as const;
 
 /** Name of a chart token. */
@@ -30,7 +44,9 @@ export type ChartLibrary = Pick<
 export type PlotRenderer = (
 	chart: ChartLibrary,
 	tokens: ChartTokens,
-	width: number
+	width: number,
+	fontSizePx: number,
+	measureText: (text: string) => number
 ) => SVGSVGElement | HTMLElement | null;
 
 /** Host that owns the chart wrapper. */
@@ -46,17 +62,27 @@ export class PlotController implements ReactiveController {
 	private readonly host: PlotHost;
 	private readonly getContainer: () => HTMLElement | null;
 	private readonly render: PlotRenderer;
+	private readonly getDescribedBy?: () => string | null;
 	private observer: ResizeObserver | null = null;
 	private observed: HTMLElement | null = null;
+	private sizeProbe: HTMLElement | null = null;
+	private textProbe: SVGSVGElement | null = null;
+	private renderedProbeWidth = -1;
 	private frame = 0;
 	private pending = false;
 	private waiters: (() => void)[] = [];
 	private renderedWidth = -1;
 
-	constructor(host: PlotHost, getContainer: () => HTMLElement | null, render: PlotRenderer) {
+	constructor(
+		host: PlotHost,
+		getContainer: () => HTMLElement | null,
+		render: PlotRenderer,
+		getDescribedBy?: () => string | null
+	) {
 		this.host = host;
 		this.getContainer = getContainer;
 		this.render = render;
+		this.getDescribedBy = getDescribedBy;
 		host.addController(this);
 	}
 
@@ -68,8 +94,13 @@ export class PlotController implements ReactiveController {
 
 	hostConnected(): void {
 		this.observer = new ResizeObserver(() => {
-			if (this.measure() !== this.renderedWidth) this.schedule();
+			if (
+				this.measure() !== this.renderedWidth ||
+				(this.sizeProbe?.clientWidth ?? 0) !== this.renderedProbeWidth
+			)
+				this.schedule();
 		});
+		document.fonts.addEventListener('loadingdone', this.onFontsLoaded);
 		this.schedule();
 	}
 
@@ -77,17 +108,24 @@ export class PlotController implements ReactiveController {
 		const container = this.getContainer();
 		if (container !== this.observed) {
 			if (this.observed) this.observer?.unobserve(this.observed);
+			this.removeProbes();
 			this.observed = container;
-			if (container) this.observer?.observe(container);
+			if (container) {
+				this.observer?.observe(container);
+				this.createProbes(container);
+			}
 		}
 		// Data may have changed even when the width did not.
 		this.schedule();
 	}
 
 	hostDisconnected(): void {
+		document.fonts.removeEventListener('loadingdone', this.onFontsLoaded);
 		this.observer?.disconnect();
 		this.observer = null;
 		this.observed = null;
+		this.removeProbes();
+		this.renderedProbeWidth = -1;
 		if (this.frame) cancelAnimationFrame(this.frame);
 		this.frame = 0;
 		this.renderedWidth = -1;
@@ -96,6 +134,47 @@ export class PlotController implements ReactiveController {
 
 	private measure(): number {
 		return this.getContainer()?.clientWidth ?? 0;
+	}
+
+	private readonly onFontsLoaded = (): void => this.schedule();
+
+	private createProbes(container: HTMLElement): void {
+		const size = document.createElement('span');
+		size.dataset.plotProbe = '';
+		Object.assign(size.style, {
+			inlineSize: '1rem',
+			blockSize: '0',
+			position: 'absolute',
+			visibility: 'hidden',
+			pointerEvents: 'none'
+		});
+		container.append(size);
+		this.sizeProbe = size;
+		this.observer?.observe(size);
+		const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+		svg.setAttribute('data-plot-probe', '');
+		svg.setAttribute('width', '0');
+		svg.setAttribute('height', '0');
+		const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+		Object.assign(svg.style, {
+			position: 'absolute',
+			visibility: 'hidden',
+			pointerEvents: 'none',
+			fontFamily: 'inherit',
+			fontSize: 'max(12px, 0.75rem)'
+		});
+		svg.setAttribute('aria-hidden', 'true');
+		svg.append(text);
+		container.append(svg);
+		this.textProbe = svg;
+	}
+
+	private removeProbes(): void {
+		if (this.sizeProbe) this.observer?.unobserve(this.sizeProbe);
+		this.sizeProbe?.remove();
+		this.textProbe?.remove();
+		this.sizeProbe = null;
+		this.textProbe = null;
 	}
 
 	private schedule(): void {
@@ -119,16 +198,33 @@ export class PlotController implements ReactiveController {
 			return;
 		}
 		try {
-			const chart = this.render(Plot, this.resolveTokens(), width);
+			if (!this.textProbe) this.createProbes(container);
+			const textProbe = this.textProbe!.querySelector('text')!;
+			const measureText = (text: string): number => {
+				textProbe.textContent = text;
+				return textProbe.getComputedTextLength();
+			};
+			const chart = this.render(
+				Plot,
+				this.resolveTokens(),
+				width,
+				parseFloat(getComputedStyle(this.host).fontSize) || 16,
+				measureText
+			);
 			if (chart) {
 				this.normalise(chart);
 				chart.style.fontFamily = 'inherit';
 				chart.style.maxInlineSize = '100%';
-				container.replaceChildren(chart);
+				chart.style.fontSize = 'max(12px, 0.75rem)';
+				for (const child of [...container.children])
+					if (child !== this.sizeProbe && child !== this.textProbe) child.remove();
+				container.prepend(chart);
 			} else {
-				container.replaceChildren();
+				for (const child of [...container.children])
+					if (child !== this.sizeProbe && child !== this.textProbe) child.remove();
 			}
 			this.renderedWidth = width;
+			this.renderedProbeWidth = this.sizeProbe?.clientWidth ?? 0;
 		} finally {
 			this.settle();
 		}
@@ -142,8 +238,11 @@ export class PlotController implements ReactiveController {
 	private normalise(chart: SVGSVGElement | HTMLElement): void {
 		const root = chart instanceof SVGSVGElement ? chart : chart.querySelector('svg');
 		if (!root) return;
+		const description = this.getDescribedBy?.();
+		if (description) root.setAttribute('aria-describedby', description);
 		for (const node of root.querySelectorAll('[aria-label]'))
 			node.removeAttribute('aria-label');
+		for (const group of root.querySelectorAll('g')) group.setAttribute('aria-hidden', 'true');
 		if (root.hasAttribute('aria-label')) root.setAttribute('role', 'img');
 	}
 

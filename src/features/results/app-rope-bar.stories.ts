@@ -26,16 +26,18 @@ const meta = {
 		wrapper.dir = args.dir ?? 'ltr';
 		const element = document.createElement('app-rope-bar');
 		element.result = args.result;
+		element.modelA = { num: 1, label: 'Logistic Regression', modelColor: 'amber' };
+		element.modelB = { num: 2, label: 'Logistic Regression', modelColor: 'sky' };
 		element.status = args.status;
 		element.caption = {
 			title: 'Practical equivalence',
 			takeaway: args.long
 				? 'The probability compares a very long model name with another long model name within a width of 0.01.'
-				: 'Model 1 and Model 2 compared within 0.01.'
+				: '1 Logistic Regression and 2 Logistic Regression compared within 0.01.'
 		};
 		element.labels = {
 			width: 'Equivalence width',
-			invalidWidth: 'Enter a value from 0.001 to 0.1.',
+			invalidWidth: 'Enter a value from 0.1 to 10.',
 			aHigher: 'A higher',
 			equivalent: 'Equivalent',
 			bHigher: 'B higher',
@@ -45,7 +47,15 @@ const meta = {
 			retry: 'Retry',
 			outcome: 'Outcome',
 			probability: 'Probability',
-			showData: 'Show data table'
+			showData: 'Show data table',
+			xAxis: args.long
+				? 'Posterior probability for the compared model outcomes (%)'
+				: 'Posterior probability (%)',
+			frequencyHeading: 'Frequency',
+			inHundred: (count) => `${count} in 100`,
+			description: (a, b, ap, eq, bp) => `${a} and ${b}: ${ap}, ${eq}, ${bp}.`,
+			liveStatus: (status, summary) => `${status}: ${summary}`,
+			modelHigher: (label) => `${label} higher`
 		};
 		element.formatPercent = (value) =>
 			new Intl.NumberFormat('en-GB', { style: 'percent' }).format(value);
@@ -73,6 +83,20 @@ type Story = StoryObj<Args>;
 		status: 'ready'
 	}
 };
+/** Amber and dark outcomes can meet with no equivalence segment. */
+export const ZeroEquivalent: Story = {
+	args: {
+		result: { probabilityLower: 0.49, probabilityEquivalent: 0, probabilityHigher: 0.51 },
+		status: 'ready'
+	}
+};
+/** A narrow outcome keeps its value in the legend. */
+export const NarrowOutcome: Story = {
+	args: {
+		result: { probabilityLower: 0.01, probabilityEquivalent: 0.49, probabilityHigher: 0.5 },
+		status: 'ready'
+	}
+};
 /** Pending analysis. */ export const Loading: Story = {
 	args: { result: null, status: 'loading' }
 };
@@ -95,5 +119,14 @@ type Story = StoryObj<Args>;
 		result: { probabilityLower: 0.2, probabilityEquivalent: 0.3, probabilityHigher: 0.5 },
 		status: 'ready',
 		dir: 'rtl'
+	}
+};
+/** A long probability-axis label wraps in right-to-left layout. */
+export const LongLabelRTL: Story = {
+	args: {
+		result: { probabilityLower: 0.2, probabilityEquivalent: 0.3, probabilityHigher: 0.5 },
+		status: 'ready',
+		dir: 'rtl',
+		long: true
 	}
 };

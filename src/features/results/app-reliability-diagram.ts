@@ -4,12 +4,17 @@ import { repeat } from 'lit/directives/repeat.js';
 import { resultsStyles } from '../../styles/results.styles';
 import { tableStyles } from '../../styles/table.styles';
 import { PlotController, type ChartLibrary, type ChartTokens } from './charts/plot-controller';
+import { integerTicks } from './charts/chart-encoding';
 import type { CalibrationView, ChartCaption } from './results-view-model';
 
 /** Text supplied by the connected results view. */
 export interface ReliabilityDiagramLabels {
 	/** Shown instead of the diagram when the model reports no probabilities. */
 	readonly unavailable: string;
+	readonly description: (view: CalibrationView) => string;
+	readonly countsDescription: (view: CalibrationView) => string;
+	readonly observedHeading: string;
+	readonly countHeading: string;
 	readonly xAxis: string;
 	readonly yAxis: string;
 	/** Accessible name of the aligned count histogram. */
@@ -31,6 +36,10 @@ export interface ReliabilityDiagramLabels {
 /** Empty labels: the parent supplies every string. */
 export const DEFAULT_RELIABILITY_DIAGRAM_LABELS: ReliabilityDiagramLabels = {
 	unavailable: '',
+	description: () => '',
+	countsDescription: () => '',
+	observedHeading: '',
+	countHeading: '',
 	xAxis: '',
 	yAxis: '',
 	countsTitle: '',
@@ -45,9 +54,6 @@ export const DEFAULT_RELIABILITY_DIAGRAM_LABELS: ReliabilityDiagramLabels = {
 	range: () => '',
 	emptyBin: ''
 };
-
-const MARGIN_LEFT = 56;
-const MARGIN_RIGHT = 16;
 
 /**
  * Reliability diagram: observed against mean predicted probability per bin, the dashed
@@ -73,12 +79,15 @@ export class AppReliabilityDiagram extends LitElement {
 	private readonly reliabilityPlot = new PlotController(
 		this,
 		() => this.renderRoot.querySelector<HTMLElement>('.reliability'),
-		(chart, tokens, width) => this.drawReliability(chart, tokens, width)
+		(chart, tokens, width, fontSize, measureText) =>
+			this.drawReliability(chart, tokens, width, fontSize, measureText),
+		() => 'description'
 	);
 	private readonly countsPlot = new PlotController(
 		this,
 		() => this.renderRoot.querySelector<HTMLElement>('.counts'),
-		(chart, tokens, width) => this.drawCounts(chart, tokens, width)
+		(chart, tokens, width, fontSize) => this.drawCounts(chart, tokens, width, fontSize),
+		() => 'counts-description'
 	);
 
 	/** Resolves when both charts have been drawn or abandoned. */
@@ -90,7 +99,13 @@ export class AppReliabilityDiagram extends LitElement {
 		);
 	}
 
-	private drawReliability(chart: ChartLibrary, tokens: ChartTokens, width: number) {
+	private drawReliability(
+		chart: ChartLibrary,
+		tokens: ChartTokens,
+		width: number,
+		fontSize: number,
+		measureText: (text: string) => number
+	) {
 		const view = this.calibration;
 		if (!view || !this.caption) return null;
 		let run = 0;
@@ -101,24 +116,41 @@ export class AppReliabilityDiagram extends LitElement {
 			previousDefined = defined;
 			return defined ? [{ x: bin.meanPredicted!, y: bin.observed!, run }] : [];
 		});
+		const size = Math.min(width, 420);
+		const marginLeft = Math.ceil(fontSize * 3.5);
+		const marginRight = Math.ceil(fontSize * 1.5);
+		const centre = (marginLeft + size - marginRight) / 2;
+		const available = Math.max(fontSize, 2 * Math.min(centre, size - centre) - fontSize);
+		const lines: string[] = [];
+		for (const word of this.labels.diagonal.split(/\s+/)) {
+			const last = lines.at(-1);
+			if (last && measureText(`${last} ${word}`) <= available) {
+				lines[lines.length - 1] = `${last} ${word}`;
+			} else {
+				lines.push(word);
+			}
+		}
 		return chart.plot({
-			width,
-			height: 296,
-			marginLeft: MARGIN_LEFT,
-			marginRight: MARGIN_RIGHT,
+			width: size,
+			height: size,
+			marginLeft,
+			marginRight,
 			marginTop: 32,
-			marginBottom: 44,
+			marginBottom: width < 400 ? Math.ceil(fontSize * 2.8) : 44,
 			x: {
 				domain: [0, 1],
-				label: this.labels.xAxis,
-				ticks: [0, 0.25, 0.5, 0.75, 1],
-				tickFormat: this.formatPercent
+				label: null,
+				ticks: [0, 0.2, 0.4, 0.6, 0.8, 1],
+				tickRotate: width < 400 ? -90 : 0,
+				tickFormat: this.formatPercent,
+				grid: true
 			},
 			y: {
 				domain: [0, 1],
-				label: this.labels.yAxis,
-				ticks: [0, 0.25, 0.5, 0.75, 1],
-				tickFormat: this.formatPercent
+				label: null,
+				ticks: [0, 0.2, 0.4, 0.6, 0.8, 1],
+				tickFormat: this.formatPercent,
+				grid: true
 			},
 			ariaLabel: this.caption.title,
 			ariaDescription: this.caption.takeaway,
@@ -128,7 +160,6 @@ export class AppReliabilityDiagram extends LitElement {
 				fontSize: '0.8125rem'
 			},
 			marks: [
-				chart.ruleY([0, 0.25, 0.5, 0.75, 1], { stroke: tokens['--chart-grid'] }),
 				chart.lineY(
 					[
 						{ x: 0, y: 0 },
@@ -142,12 +173,12 @@ export class AppReliabilityDiagram extends LitElement {
 						strokeWidth: 1.5
 					}
 				),
-				chart.text([this.labels.diagonal], {
-					frameAnchor: 'bottom-right',
-					text: (d: string) => d,
+				chart.text([{ x: 0.5, y: 0.5, label: lines.join('\n') }], {
+					x: 'x',
+					y: 'y',
+					text: 'label',
 					fill: tokens['--chart-axis'],
-					dy: -8,
-					dx: -4
+					dy: -fontSize
 				}),
 				chart.lineY(points, {
 					x: 'x',
@@ -161,23 +192,38 @@ export class AppReliabilityDiagram extends LitElement {
 		});
 	}
 
-	private drawCounts(chart: ChartLibrary, tokens: ChartTokens, width: number) {
+	private drawCounts(chart: ChartLibrary, tokens: ChartTokens, width: number, fontSize: number) {
 		const view = this.calibration;
 		if (!view || !this.caption) return null;
+		const maxCount = Math.max(0, ...view.bins.map((bin) => bin.count));
+		const countTicks = integerTicks(0, maxCount);
+		const marginTop = Math.max(32, Math.ceil(fontSize));
+		const marginBottom = width < 400 ? Math.ceil(fontSize * 2.8) : 32;
+		// Leave each count tick a line at the current text size, including room for scale rounding.
+		const plotHeight = Math.ceil(countTicks.length * fontSize * 1.25);
 		return chart.plot({
-			width,
-			height: 154,
-			marginLeft: MARGIN_LEFT,
-			marginRight: MARGIN_RIGHT,
-			marginTop: 32,
-			marginBottom: 32,
+			width: Math.min(width, 420),
+			height: Math.max(154, marginTop + plotHeight + marginBottom),
+			marginLeft: Math.ceil(fontSize * 3.5),
+			marginRight: Math.ceil(fontSize * 1.5),
+			marginTop,
+			marginBottom,
 			x: {
 				domain: [0, 1],
 				label: null,
-				ticks: [0, 0.25, 0.5, 0.75, 1],
-				tickFormat: this.formatPercent
+				ticks: [0, 0.2, 0.4, 0.6, 0.8, 1],
+				tickRotate: width < 400 ? -90 : 0,
+				tickFormat: this.formatPercent,
+				grid: true
 			},
-			y: { label: this.labels.countsAxis, nice: true, tickFormat: this.formatCount },
+			y: {
+				label: null,
+				zero: true,
+				nice: true,
+				ticks: countTicks,
+				grid: true,
+				tickFormat: this.formatCount
+			},
 			ariaLabel: this.labels.countsTitle,
 			style: {
 				background: 'transparent',
@@ -189,7 +235,7 @@ export class AppReliabilityDiagram extends LitElement {
 					x1: 'lower',
 					x2: 'upper',
 					y: 'count',
-					fill: tokens['--chart-1'],
+					fill: tokens['--chart-neutral'],
 					insetLeft: 0.5,
 					insetRight: 0.5
 				}),
@@ -209,7 +255,14 @@ export class AppReliabilityDiagram extends LitElement {
 					<span class="caption-title">${this.caption.title}</span>
 					<span class="muted">${this.caption.takeaway}</span>
 				</figcaption>
+				<p class="visually-hidden" id="description">${labels.description(view)}</p>
+				<p class="visually-hidden" id="counts-description">
+					${labels.countsDescription(view)}
+				</p>
+				<p>${labels.yAxis}</p>
 				<div class="chart reliability"></div>
+				<p>${labels.xAxis}</p>
+				<p>${labels.countsAxis}</p>
 				<div class="chart counts"></div>
 				<details>
 					<summary>${labels.showTable}</summary>
@@ -221,9 +274,9 @@ export class AppReliabilityDiagram extends LitElement {
 							<thead>
 								<tr>
 									<th scope="col">${labels.binHeading}</th>
-									<th scope="col" class="number">${labels.count}</th>
+									<th scope="col" class="number">${labels.countHeading}</th>
 									<th scope="col" class="number">${labels.meanPredicted}</th>
-									<th scope="col" class="number">${labels.observed}</th>
+									<th scope="col" class="number">${labels.observedHeading}</th>
 								</tr>
 							</thead>
 							<tbody>
