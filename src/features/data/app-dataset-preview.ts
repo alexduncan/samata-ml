@@ -67,7 +67,7 @@ const DEFAULT_LABELS: PreviewLabels = {
  * Presentational view for the dataset preview: page header, notices and the document-scrolled
  * virtual table.
  *
- * Follows specification/plans/virtual-table-improvements.md (D8, D14, D22, D25).
+ * Follows the dataset preview design in specification/preview-dataset.md.
  *
  * @fires app-preview-retry - The user asked to reload metadata and rows.
  * @fires app-preview-change-dataset - The user asked to change the dataset.
