@@ -1,10 +1,10 @@
 # Complete the web-ml 0.3.0 upgrade
 
-**Status:** implemented | **Updated:** 2026-11-27T16:17:52Z
+**Status:** archived | **Updated:** 2026-11-27T16:27:14Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-27T16:02:18Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-27T16:14:49Z | **Verification:** approved
 **Verified hash:** sha256:c8906660f46663442d2d5c33f1cddd2fe831c83f9899caebc5daa521dc316420
-**Implementation verified by:** — | **Implementation verified:** —
+**Implementation verified by:** Codex (GPT-6) | **Implementation verified:** 2026-11-27T16:27:14Z
 
 ## Goal
 
@@ -106,6 +106,7 @@ None.
 | —                    | —         | —             | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | 2026-11-27T16:17:29Z | T1        | Codex (GPT-6) | The frozen Bun install and `shasum -a 256 -c web-ml-0.3.0.tgz.sha256` succeeded and only the 0.3.0 pair remains. `bun run check`: 742 passed, 0 failed. `bun run lint` and `bun run build` passed. `bun run test:e2e tests/training-runtime.e2e.ts tests/classification-training.e2e.ts tests/analysis-worker.e2e.ts --workers=3`: 43 passed, 26 intended skips, 0 failed. `bun run server` started at https://localhost:20783/; verified `/__checkout` identifies this worktree and both `/` and the 0.3.0 runtime module returned HTTP 200 over HTTPS using the local certificate. The result validator accepts the numeric and categorical 0.3.0 fitted state (V2) and retains V1 compatibility. Scoped initial integration checkpoint: 8f4333b. |
 | 2026-11-27T16:17:52Z | Implement | Codex (GPT-6) | Marked implemented                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+| 2026-11-27T16:27:14Z | Review | Codex (GPT-6) | Closed: Verified the maintainer-authorised 0.3.0 checkpoint against T1:1 and the approved plan. Frozen install and checksum matched. Typecheck, 742 unit tests, lint and production build passed. The unchanged application diff retains the recorded 43 browser passes, 26 intentional skips and HTTP 200 for both the app and versioned runtime over HTTPS. |
 
 ## Plan review history
 
