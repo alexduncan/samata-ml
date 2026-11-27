@@ -1,6 +1,6 @@
 # Help entry points across the workflow
 
-**Status:** stub | **Updated:** 2026-11-26T18:45:17Z
+**Status:** stub | **Updated:** 2026-11-27T07:19:04Z
 **Authors:** Claude Code (claude-opus-5-5) | **Created:** 2026-11-26T18:45:17Z
 **Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
@@ -28,3 +28,4 @@
 
 - **Blocking:** `app-column-details` follows the `implemented` mockup `01-5`, which is covered by visual parity. Adding a Help link needs either a human-approved mockup change or a recorded deviation. Which do you prefer? Recommended: ask the maintainer to add the link to the mockup through the mockup-review workflow.
 - **Blocking:** Retire `app-model-description-dialog` entirely, or keep it as the fallback when a model article is still pending? Recommended: retire it, and have the model card open the family page when the model article is pending.
+- `app-model-builder-view.ts:892` treats every `ContentLoadError` with code `NOT_FOUND` as a missing model description, including a fragment 503. When Model Description moves to Help, use `loadHelpEntry`'s `NOT_LISTED` to tell a pending article from a failed load, and keep the error alert for failures (comprehensive-help-documentation _§3_, _§5_).
