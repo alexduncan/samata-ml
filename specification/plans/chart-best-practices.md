@@ -1,9 +1,9 @@
 # Remediate charts and establish chart design specification
 
-**Status:** ready | **Updated:** 2026-11-27T04:14:07Z
+**Status:** ready-for-review | **Updated:** 2026-11-27T05:58:22Z
 **Authors:** Google Antigravity (Gemini 4 Neon High), Codex (GPT-6) | **Created:** 2026-11-25T16:05:29Z
-**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-26T18:59:22Z | **Verification:** approved
-**Verified hash:** sha256:edea179eefe1e5cd9c3c88dda73a30d2173afd98bd76bd0cc1b842be84fa33a4
+**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -337,14 +337,14 @@ All presentational elements are Tier 2 (`src/features/results/`), own **no** i18
 - **Implementation:** Author `specification/charts.md` (`**Status:** implemented`) in present tense following `specification/README.md` writing rules, covering all lasting rules from `Chart-Design-Principles-for-Agents-Simplified.md` (§§1–7) plus the explicit `/results` `ModelColor` exception and 10-slot symbol/outline/ink contract. Index `specification/charts.md` in `specification/README.md`. Apply every item in `## Specification changes` across `COMPONENTS.md`, `visual-design.md`, `testing.md`, `workflow-steps.md`, `components/model-results.md`, `components/results-comparison.md`, and `HUMAN.md` (adding the non-blocking review item for adopting `modelColor` on single-model `/models/{num}` charts and manual CVD/VoiceOver check items). Format changed markdown files and run `bun run plans:check`.
 - **Acceptance criteria:**
     - [x] CHT-SPEC-1 — `specification/charts.md` exists with `**Status:** implemented`, documents every chart design rule, the `ModelColor` exception, Observable Plot `0.6.18` rules, and the pre-merge checklist, and is indexed with matching status in `specification/README.md`.
-    - [x] CHT-SPEC-2 — Every item under `## Specification changes` is complete, no two specs contradict each other on `paired`, `.bar`, metric formatting, ROPE units, or Observable Plot version, `specification/HUMAN.md` records the single-model `modelColor` follow-up and manual CVD/VoiceOver checks, and `bun run plans:check` and `bun run format:check` pass.
-- **Verification:** `bun run plans:check`, `bun run format:check`.
+    - [x] CHT-SPEC-2 — Every item under `## Specification changes` is complete, no two specs contradict each other on `paired`, `.bar`, metric formatting, ROPE units, or Observable Plot version, `specification/HUMAN.md` records the single-model `modelColor` follow-up and manual CVD/VoiceOver checks, and `bun run plans:check` and the changed-file formatting check defined under `## Verification and definition of done` pass.
+- **Verification:** `bun run plans:check`, `bun run format:check <explicit changed-file paths>` as defined under `## Verification and definition of done`.
 - **Progress:** [x] Completed (2026-11-26T20:14:53Z)
 
 ## Verification and definition of done
 
 - [ ] All task acceptance criteria (`CHT-FOUND-1..4`, `CHT-MODEL-1..3`, `CHT-SINGLE-1..3`, `CHT-PROB-1..2`, `CHT-COMP-1..5`, `CHT-A11Y-1..2`, `CHT-SPEC-1..2`) met.
-- [ ] Relevant verification commands from `AGENTS.md` pass with no new failures (`bun run check`, `bun run lint`, `bun run build`, `bun run test:stories`, `bun run test:e2e`, `bun run format:check`, `bun run plans:check`).
+- [ ] Relevant verification commands from `AGENTS.md` pass with no new failures (`bun run check`, `bun run lint`, `bun run build`, `bun run test:stories`, `bun run test:e2e`, `bun run format:check <explicit changed-file paths>`, `bun run plans:check`). For formatting, compare the current plan branch against pre-plan commit `2c6d039f01af07f95abc8eafd63de45f934d0ab2`, enumerate every existing tracked added, copied, modified or renamed file that Prettier supports (including `.ts`, `.json`, `.md`, styles, HTML and configuration files), and pass those paths explicitly to `bun run format:check`. Include the plan and its index when changed, exclude deleted paths and `bun.lock` (managed by Bun), verify that the path list is nonempty and covers every supported changed file, and record the exact command and result. Bare `bun run format:check` is not evidence: it supplies no paths. This scope does not waive the remaining verification commands or permit new formatting failures.
 - [ ] Type-check, TSDoc lint, Prettier formatting, token guard (`tests/style-tokens.test.ts`, `tests/chart-tokens.test.ts`), and production build pass.
 - [ ] Accessibility (WCAG 2.2 AA), 320px reflow, 200% text size, forced colours, RTL, and v1 storage compatibility verified across Chromium, Firefox, and WebKit.
 - [ ] Every item under _Specification changes_ is ticked, and specifications match the implemented code.
@@ -452,6 +452,7 @@ All presentational elements are Tier 2 (`src/features/results/`), own **no** i18
 | 2026-11-26T13:36:16Z | Comparison fold labels        | Allow the comparison owner to supply the required shared chart labels and correct obsolete connected-dot copy during T3.                                                                                                                                         |
 | 2026-11-26T13:35:42Z | Invalidated approval          | Resolve T3 comparison owner label binding scope conflict                                                                                                                                                                                                         |
 | 2026-11-26T13:39:46Z | Comparison owner evidence     | Exercise the real `/results` owner in the existing comparison end-to-end suite and run it as part of T3 verification.                                                                                                                                            |
+| 2026-11-27T05:57:52Z | Formatting verification scope | Check every existing Prettier-supported tracked file changed from the pinned pre-plan base explicitly; the bare command receives no paths and does not check formatting.                                                                                         |
 | 2026-11-26T16:16:11Z | Invalidated approval          | Record the user-authorised Firefox enlarged-text tick exception and follow-up after the final retry failed                                                                                                                                                       |
 | 2026-11-26T16:19:14Z | Firefox tick known issue      | Record the failed retry, warning-only exception for that specific bounds check, accessible limitations and follow-up; preserve all other hard assertions.                                                                                                        |
 | 2026-11-26T16:21:32Z | Invalidated approval          | Precisely scope the warning to the observed single failing tick without assuming the chart host                                                                                                                                                                  |
@@ -464,3 +465,4 @@ All presentational elements are Tier 2 (`src/features/results/`), own **no** i18
 | 2026-11-26T18:38:11Z | ROPE RTL label remediation | Permit the existing ROPE axis label to wrap adjacent to the chart; retain full labels and hard cross-browser description and reflow checks. |
 | 2026-11-26T18:55:55Z | Complete chart reflow scope | Permit E13 fixes and evidence-driven text-layout fixes within all seven existing chart components and their shared measurement helpers, preserving public contracts and hard cross-browser checks. |
 | 2026-11-26T18:55:49Z | Invalidated approval | Authorise T6 to correct all evidenced chart text clipping while preserving existing accessibility contracts |
+| 2026-11-27T05:57:27Z | Invalidated approval | Define a nonempty formatting check for all plan-changed supported files against the pre-plan base |
