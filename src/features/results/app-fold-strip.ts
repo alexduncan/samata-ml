@@ -105,6 +105,23 @@ export class AppFoldStrip extends LitElement {
 			colour: row.color ? resolveModelMarkStyle(row.color, tokens).fill : tokens['--chart-1']
 		}));
 		const spread = indexed.filter(({ row }) => row.sd !== null);
+		const needsOutline = ({ row }: (typeof indexed)[number]) =>
+			row.color !== undefined && MODEL_COLOR_ENCODING[row.color].outlineRequired;
+		const outlinedSpread = spread.filter(needsOutline);
+		const outlinedMeans = indexed.filter(needsOutline);
+		const spreadRule = {
+			y: ({ index }: (typeof indexed)[number]) => index,
+			x1: ({ row }: (typeof indexed)[number]) => Math.max(0, row.mean - row.sd!),
+			x2: ({ row }: (typeof indexed)[number]) => Math.min(1, row.mean + row.sd!)
+		};
+		const meanRule = {
+			x: ({ row }: (typeof indexed)[number]) => row.mean,
+			y1: ({ index }: (typeof indexed)[number]) => index - 0.25,
+			y2: ({ index }: (typeof indexed)[number]) => index + 0.25
+		};
+		const spreadWidth = 3;
+		const meanWidth = 4;
+		const outlineWidth = 1.5;
 		const sorted = [...this.baselines].sort((a, b) => a.value - b.value);
 		const top = count - 0.4;
 		const { margin, labelWidth } = computeAxisMargin(
@@ -149,19 +166,27 @@ export class AppFoldStrip extends LitElement {
 					strokeDasharray: '5 4',
 					strokeWidth: 1.5
 				}),
+				chart.ruleY(outlinedSpread, {
+					...spreadRule,
+					stroke: tokens['--stone-900'],
+					strokeWidth: spreadWidth + 2 * outlineWidth,
+					strokeLinecap: 'round'
+				}),
 				chart.ruleY(spread, {
-					y: ({ index }: { index: number }) => index,
-					x1: ({ row }: { row: FoldSeries }) => Math.max(0, row.mean - row.sd!),
-					x2: ({ row }: { row: FoldSeries }) => Math.min(1, row.mean + row.sd!),
+					...spreadRule,
 					stroke: ({ colour }: { colour: string }) => colour,
-					strokeWidth: 3
+					strokeWidth: spreadWidth
+				}),
+				chart.ruleX(outlinedMeans, {
+					...meanRule,
+					stroke: tokens['--stone-900'],
+					strokeWidth: meanWidth + 2 * outlineWidth,
+					strokeLinecap: 'round'
 				}),
 				chart.ruleX(indexed, {
-					x: ({ row }: { row: FoldSeries }) => row.mean,
-					y1: ({ index }: { index: number }) => index - 0.25,
-					y2: ({ index }: { index: number }) => index + 0.25,
+					...meanRule,
 					stroke: ({ colour }: { colour: string }) => colour,
-					strokeWidth: 4
+					strokeWidth: meanWidth
 				}),
 				...indexed.map(({ row, index }) => {
 					const style = row.color ? resolveModelMarkStyle(row.color, tokens) : null;

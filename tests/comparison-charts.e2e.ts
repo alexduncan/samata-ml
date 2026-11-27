@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import type { AppConfusionDelta } from '../src/features/results/app-confusion-delta';
 import type { AppClassErrorBars } from '../src/features/results/app-class-error-bars';
+import type { AppFoldStrip } from '../src/features/results/app-fold-strip';
 import { bundleResultsFixture, mountResultsFixture } from './helpers/mount-results-fixture';
 
 const bundle = bundleResultsFixture('tests/fixtures/results/comparison-charts.browser.ts');
@@ -17,6 +18,44 @@ test('CHT-SINGLE-1: model folds have distinct symbols without connecting lines',
 	await expect(fold.locator('.chart-legend li')).toHaveCount(2);
 	await expect(fold).toContainText('Balanced accuracy (%, higher is better)');
 	await expect(fold.locator('.chart svg:not([data-plot-probe])')).toContainText('Mean ± 1 SD');
+});
+
+test('CHT-FOUND-2: amber fold interval and mean have dark outlines', async ({ page }) => {
+	const fold = page.locator('app-fold-strip');
+	await fold.evaluate((element) => (element as AppFoldStrip).whenSettled());
+	const { lines, amber, blue, dark } = await fold.evaluate((element) => {
+		const root = element.shadowRoot!;
+		const sample = document.createElement('span');
+		root.append(sample);
+		const colour = (name: string) => {
+			sample.style.color = `var(${name})`;
+			return getComputedStyle(sample).color;
+		};
+		const amber = colour('--amber-500');
+		const blue = colour('--blue-700');
+		const dark = colour('--stone-900');
+		sample.remove();
+		const lines = Array.from(
+			root.querySelectorAll('.chart > svg[role="img"] line'),
+			(line) => ({
+				stroke: getComputedStyle(line).stroke,
+				width: parseFloat(getComputedStyle(line).strokeWidth),
+				coordinates: ['x1', 'y1', 'x2', 'y2'].map((name) => line.getAttribute(name))
+			})
+		);
+		return { lines, amber, blue, dark };
+	});
+	const amberRules = lines.filter((line) => line.stroke === amber);
+	const blueRules = lines.filter((line) => line.stroke === blue);
+	const outlines = lines.filter((line) => line.stroke === dark);
+	expect(amberRules.map((line) => line.width)).toEqual([3, 4]);
+	expect(blueRules.map((line) => line.width)).toEqual([3, 4]);
+	expect(outlines).toEqual(
+		amberRules.map((line) => ({ ...line, stroke: dark, width: line.width + 3 }))
+	);
+	for (const [index, outline] of outlines.entries()) {
+		expect(lines.indexOf(outline)).toBeLessThan(lines.indexOf(amberRules[index]!));
+	}
 });
 
 test('WML-P5-UI-5: class error bars retain labels and data in forced colours', async ({ page }) => {
