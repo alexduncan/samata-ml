@@ -180,6 +180,7 @@ export const hyperparametersStyles: CSSResult = css`
 	}
 
 	.fold-matrix-scroll {
+		position: relative;
 		min-inline-size: 0;
 		max-inline-size: 100%;
 		overflow-x: auto;

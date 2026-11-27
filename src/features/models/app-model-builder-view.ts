@@ -518,6 +518,7 @@ export class AppModelBuilderView extends LitElement {
 
 			/* Features selection in Section 2 */
 			.features-table-container {
+				position: relative;
 				margin-block-start: 1rem;
 				inline-size: 100%;
 				overflow-x: auto;

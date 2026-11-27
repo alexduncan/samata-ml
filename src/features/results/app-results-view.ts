@@ -233,6 +233,10 @@ export class AppResultsView extends LitElement {
 			.page-body {
 				margin: 0 2rem 2rem;
 			}
+
+			h2 {
+				overflow-wrap: anywhere;
+			}
 			section + section {
 				margin-block-start: 1rem;
 			}

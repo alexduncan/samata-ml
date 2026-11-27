@@ -97,6 +97,7 @@ export class AppModelsView extends LitElement {
 			}
 
 			.table-scroll-container {
+				position: relative;
 				inline-size: 100%;
 				overflow-x: auto;
 			}

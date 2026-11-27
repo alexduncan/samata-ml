@@ -99,7 +99,7 @@ export class AppThresholdExplorer extends LitElement {
 
 			.readout {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+				grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
 				gap: 0.25rem 1.5rem;
 				margin: 0 0 0.75rem;
 			}
