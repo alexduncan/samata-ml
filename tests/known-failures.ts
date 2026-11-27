@@ -26,90 +26,8 @@ export interface KnownFailure {
 	human: string;
 }
 
-/**
- * Inherited and pre-existing E2E failures verified across two consecutive unflagged runs
- * (plus platform-specific baseline gaps).
- */
-export const KNOWN_FAILURES: readonly KnownFailure[] = [
-	{
-		id: 'WML-P2-ROUTE-2',
-		file: 'content.e2e.ts',
-		title: 'WML-P2-ROUTE-2: Training Setup Help preserves the Model 1 underlay',
-		projects: ['chromium'],
-		human: 'Repair Chromium content-modal and data-preview E2E failures'
-	},
-	{
-		id: 'PARITY-sidebar-steps',
-		file: 'visual-parity.e2e.ts',
-		title: 'PARITY-sidebar-steps',
-		projects: ['chromium'],
-		human: 'Repair inherited visual parity'
-	},
-	{
-		id: 'PARITY-sidebar-step-first',
-		file: 'visual-parity.e2e.ts',
-		title: 'PARITY-sidebar-step-first',
-		projects: ['chromium'],
-		human: 'Repair inherited visual parity'
-	},
-	{
-		id: 'PARITY-sidebar-step-adjacent',
-		file: 'visual-parity.e2e.ts',
-		title: 'PARITY-sidebar-step-adjacent',
-		projects: ['chromium'],
-		human: 'Repair inherited visual parity'
-	},
-	{
-		id: 'PARITY-sidebar-step-last',
-		file: 'visual-parity.e2e.ts',
-		title: 'PARITY-sidebar-step-last',
-		projects: ['chromium'],
-		human: 'Repair inherited visual parity'
-	},
-	{
-		id: 'PARITY-sidebar-step-label',
-		file: 'visual-parity.e2e.ts',
-		title: 'PARITY-sidebar-step-label',
-		projects: ['chromium'],
-		human: 'Repair inherited visual parity'
-	},
-	{
-		id: 'PARITY-step-links',
-		file: 'visual-parity.e2e.ts',
-		title: 'PARITY-step-links',
-		projects: ['chromium'],
-		human: 'Repair inherited visual parity'
-	},
-	{
-		id: 'PARITY-models-features-table',
-		file: 'visual-parity.e2e.ts',
-		title: 'PARITY-models-features-table',
-		projects: ['chromium'],
-		human: 'Repair inherited visual parity'
-	},
-	{
-		id: 'SIDE-AC-11',
-		file: 'visual-parity.e2e.ts',
-		title: 'SIDE-AC-11: a temporary workflow gap fails the blocking geometry assertion and restoration passes',
-		projects: ['chromium'],
-		human: 'Repair inherited visual parity'
-	},
-	{
-		id: 'SIDE-AC-10',
-		file: 'visual-parity.e2e.ts',
-		title: 'SIDE-AC-10: paired empty and populated sidebar reference review',
-		projects: ['chromium'],
-		platforms: ['linux'],
-		human: 'Commit Linux Chromium sidebar screenshot baselines'
-	},
-	{
-		id: 'TRAIN-REMOTE-RECOVERY',
-		file: 'training-panels.e2e.ts',
-		title: 'a remote tab reads the running state and recovers a pending result without fitting again',
-		projects: ['firefox'],
-		human: 'Fix intermittent full-suite Firefox crash in remote training recovery'
-	}
-];
+/** E2E failures specifically approved for per-project suppression. */
+export const KNOWN_FAILURES: readonly KnownFailure[] = [];
 
 function escapeRegExp(text: string): string {
 	return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -121,20 +39,25 @@ function escapeRegExp(text: string): string {
  *
  * @param project - Playwright project name (`chromium`, `firefox`, or `webkit`).
  * @param platform - Target host platform (`darwin`, `linux`, or `win32`).
+ * @param entries - Optional failure entries to match. Defaults to the repository register.
  * @returns Regular expression matching the applicable known failures, or `undefined`.
  */
 export function knownFailureGrep(
 	project: string,
-	platform: string = process.platform
+	platform: string = process.platform,
+	entries: readonly KnownFailure[] = KNOWN_FAILURES
 ): RegExp | undefined {
-	const patterns = KNOWN_FAILURES.filter(
+	const applicable = entries.filter(
 		(entry) =>
 			entry.projects.includes(project as PlaywrightProjectName) &&
 			(entry.platforms === undefined ||
 				entry.platforms.includes(platform as KnownFailurePlatform))
-	).map(
-		(entry) => `${escapeRegExp(entry.file)}\\b.*(?:^|\\s)${escapeRegExp(entry.title)}(?=\\s|$)`
 	);
+	const patterns = applicable.map(({ file, title }) => {
+		const spec = escapeRegExp(file);
+		const test = escapeRegExp(title);
+		return `(?:^|\\s)${spec}\\s+(?:.*\\s)?${test}$`;
+	});
 
 	if (patterns.length === 0) {
 		return undefined;

@@ -1,5 +1,24 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { INITIAL_APP_STATE, type ModelRecord, type PersistedAppState } from '../../src/types/state';
+
+/** Sets common Welcome text before measurement, keeping each document's elements and styles. */
+export async function setWelcomeParityCopy(lead: Locator, body: Locator): Promise<void> {
+	for (const [locator, copy] of [
+		[lead, 'Train a model in your browser.'],
+		[body, 'Choose a sample dataset to explore how machine learning works.']
+	] as const) {
+		await locator.evaluate((element, text) => {
+			const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+			let replacement: string = text;
+			for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+				if (node.textContent?.trim()) {
+					node.textContent = replacement;
+					replacement = '';
+				}
+			}
+		}, copy);
+	}
+}
 
 /** Deterministic in-memory sidebar states shared by stories and browser assertions. */
 export type SidebarFixture = 'empty' | 'dataset' | 'target' | 'models' | 'provisional' | 'long';

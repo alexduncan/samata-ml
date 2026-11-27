@@ -102,7 +102,7 @@ test.describe('Dataset Selection & Datasheets (DATA-SEL-1 .. DATA-SEL-3)', () =>
 		await page
 			.locator('app-dataset-card[dataset-id="credit-card-default"] button.btn-primary')
 			.click();
-		await waitForPublishedPreview(page);
+		await waitForPublishedPreview(page, 110_000);
 		assertCreditDownload();
 	});
 

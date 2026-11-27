@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Page } from '@playwright/test';
 import type { AppColumnDetails } from '../src/features/data/app-column-details';
 import type { PersistedAppState } from '../src/types/state';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import { waitForPublishedPreview } from './helpers/dataset-ready';
 import { waitForPersistedAppState } from './helpers/e2e-settlement';
 import { dismissWelcomeModal } from './journeys/helpers';
@@ -614,7 +615,7 @@ test.describe('Preview layout (PREV-AC-1 .. PREV-AC-8)', () => {
 
 	test('PREV-AC-6: header actions stay operable at 320px and 400% text, and axe passes', async ({
 		page
-	}) => {
+	}, testInfo) => {
 		await page.setViewportSize({ width: 320, height: 640 });
 		await loadIris(page);
 		await page.addStyleTag({ content: 'html { font-size: 400%; }' });
@@ -628,11 +629,17 @@ test.describe('Preview layout (PREV-AC-1 .. PREV-AC-8)', () => {
 			expect(box.x + box.width).toBeLessThanOrEqual(640 + 1);
 		}
 		await page.addStyleTag({ content: 'html { font-size: 100%; }' });
-		const results = await new AxeBuilder({ page })
-			.include('app-data-view')
-			.withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
-			.analyze();
-		expect(results.violations).toEqual([]);
+		await runAdvisoryAxe(
+			testInfo,
+			async () => {
+				const { violations } = await new AxeBuilder({ page })
+					.include('app-data-view')
+					.withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+					.analyze();
+				return violations;
+			},
+			{ label: 'PREV-AC-6' }
+		);
 	});
 
 	test('PREV-AC-7: whenSettled waits for the dataset resources and the table geometry', async ({

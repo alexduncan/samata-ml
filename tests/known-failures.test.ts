@@ -2,8 +2,11 @@ import { describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ROOT_DIR } from '../scripts/config';
+import type { AdvisoryCheckMode } from './helpers/advisory-a11y';
 import {
 	KNOWN_FAILURES,
+	knownFailureGrep,
+	type KnownFailure,
 	type KnownFailurePlatform,
 	type PlaywrightProjectName
 } from './known-failures';
@@ -62,17 +65,25 @@ function collectSpecs(
 function listPlaywrightSpecs(
 	project: PlaywrightProjectName,
 	skipKnownFailures: boolean,
-	platform: KnownFailurePlatform
+	platform: KnownFailurePlatform,
+	tier?: 'blocking',
+	mode?: AdvisoryCheckMode,
+	inheritedEnv = process.env
 ): ListedSpec[] {
+	const env: NodeJS.ProcessEnv = {
+		...inheritedEnv,
+		SAMATA_SKIP_KNOWN_FAILURES: skipKnownFailures ? '1' : '0',
+		SAMATA_KNOWN_FAILURE_PLATFORM: platform
+	};
+	delete env.SAMATA_E2E_TIER;
+	delete env.SAMATA_ADVISORY_CHECKS;
+	if (tier) env.SAMATA_E2E_TIER = tier;
+	if (mode) env.SAMATA_ADVISORY_CHECKS = mode;
 	const result = Bun.spawnSync(
 		['bunx', 'playwright', 'test', '--list', '--reporter=json', `--project=${project}`],
 		{
 			cwd: ROOT_DIR,
-			env: {
-				...process.env,
-				SAMATA_SKIP_KNOWN_FAILURES: skipKnownFailures ? '1' : '0',
-				SAMATA_KNOWN_FAILURE_PLATFORM: platform
-			},
+			env,
 			stdout: 'pipe',
 			stderr: 'pipe'
 		}
@@ -86,6 +97,53 @@ function listPlaywrightSpecs(
 }
 
 describe('known E2E failures', () => {
+	test('beta CI has no suppressed functional specs', () => {
+		expect(KNOWN_FAILURES).toHaveLength(0);
+		expect(knownFailureGrep('chromium')).toBeUndefined();
+	});
+
+	test('matches only the exact synthetic spec on its project and platform', () => {
+		const title = 'Example: value [a] + value (b)';
+		const entries: KnownFailure[] = [
+			{
+				id: 'FIXTURE-1',
+				file: 'example.e2e.ts',
+				title,
+				projects: ['chromium'],
+				platforms: ['linux'],
+				human: 'Example follow-up'
+			}
+		];
+		const pattern = knownFailureGrep('chromium', 'linux', entries);
+		expect(`chromium example.e2e.ts A describe ${title}`).toMatch(pattern!);
+		expect(`example.e2e.ts ${title}`).toMatch(pattern!);
+		expect(`chromium other-example.e2e.ts ${title}`).not.toMatch(pattern!);
+		expect(`chromium example.e2e.ts ${title} too`).not.toMatch(pattern!);
+		expect('chromium example.e2e.ts Example: value a + value b').not.toMatch(pattern!);
+		expect(knownFailureGrep('chromium', 'darwin', entries)).toBeUndefined();
+		expect(knownFailureGrep('firefox', 'linux', entries)).toBeUndefined();
+	});
+
+	test('blocking selection isolates inherited tier and severity', () => {
+		const collect = (tier?: 'blocking', mode?: AdvisoryCheckMode) =>
+			listPlaywrightSpecs('chromium', false, 'linux', tier, mode, {
+				...process.env,
+				SAMATA_E2E_TIER: 'blocking',
+				SAMATA_ADVISORY_CHECKS: mode === 'error' ? 'warn' : 'error'
+			}).map(({ key, file }) => ({ key, file }));
+		const all = collect();
+		const dedicated = ['visual-parity.e2e.ts', 'a11y.e2e.ts'];
+		const functional = all.filter(({ file }) => !dedicated.includes(file));
+		for (const name of [...dedicated, 'chart-accessibility.e2e.ts']) {
+			expect(all.some(({ file }) => file === name)).toBe(true);
+		}
+		expect(collect(undefined, 'warn')).toEqual(all);
+		expect(collect(undefined, 'error')).toEqual(all);
+		expect(collect('blocking')).toEqual(functional);
+		expect(collect('blocking', 'warn')).toEqual(functional);
+		expect(collect('blocking', 'error')).toEqual(all);
+	}, 60_000);
+
 	test('REL-KF-1: each entry maps to HUMAN.md and removes exactly one intended spec per project and platform', async () => {
 		const humanText = await readFile(path.join(ROOT_DIR, 'specification', 'HUMAN.md'), 'utf8');
 		for (const entry of KNOWN_FAILURES) {

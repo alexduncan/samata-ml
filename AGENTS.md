@@ -46,6 +46,8 @@ Bun only: never npm, yarn, pnpm, or `npx` (use `bunx`).
 - `bun run deploy:dry-run` — Run the production build and validate the Cloudflare Workers bundle without deploying.
 - `bun run format` and `bun run format:check` — Whole-repository formatting for maintainer, CI and baseline work.
 - `bun run test:e2e [file]` — Playwright end-to-end tests (including `tests/visual-parity.e2e.ts` and `tests/a11y.e2e.ts`); servers use this checkout's ports from `scripts/ports.ts`; a result from another checkout's server is not evidence.
+- `bun run test:e2e:blocking [--project=<browser>]` — Run blocking functional E2E. With `SAMATA_ADVISORY_CHECKS=error`, also run the applicable dedicated visual-parity and accessibility suites.
+- `bun run test:e2e:advisory` — Run dedicated visual-parity and accessibility suites in Chromium.
 - `bun run server` · `bun run mockups` · `bun run audit:mockups [paths]`.
 - `bun run storybook` · `bun run storybook:build` · `bun run storybook:manifest` · `bun run test:stories`.
 - `bun run --silent now` — Current UTC timestamp for plan metadata.
@@ -69,6 +71,8 @@ Follow the shared rules in `agent-workflow/AGENTS.md` § Git workflow (summarise
 `src/` app code · `css/` styles · `content/` Markdown pages & datasets · `public/` static assets · `scripts/` build and dev servers · `tests/` tests · `vendor/web-ml/` vendored release and checksum · `specification/` specs ([`specification/README.md`](specification/README.md)) · `specification/plans/` plans · `specification/notes/` inbox · `specification/HUMAN.md` human queue · `specification/mockups/` flat mockup HTML (`<meta name="status" content="draft|ready|implemented" />`), `style.css`, human-owned `mockups.css`, and `css/*.css`.
 
 ## Rules
+
+- **Beta test severity:** Functional E2E, Storybook interactions and static token and CSP checks block CI. Inline automated WCAG findings warn in Chromium and dedicated visual-parity and WCAG suites run in a non-blocking Chromium job. Set `SAMATA_ADVISORY_CHECKS=error` locally or as the same-named GitHub repository variable to restore strict Storybook and E2E enforcement, including the dedicated suites in the blocking E2E matrix.
 
 - **Visual fidelity:** Ready and implemented mockups in `specification/mockups/` define appearance; follow [`specification/visual-design.md`](specification/visual-design.md), use only tokens from `css/root.css` with no fallbacks, record visual deviations, and run parity/token tests (`bun test tests/style-tokens.test.ts`) for UI changes.
 - **Missing mockups don't block:** Write an unstyled semantic-HTML draft directly in `specification/mockups/` with `<meta name="name">`, `<meta name="description">`, and `<meta name="status" content="draft" />` (wrapping each multi-state fragment in `<!-- {State} -->` / `<!-- This will display when ... -->` / `<!-- / {State} -->` comments per `visual-design` §1.1) and add it to `specification/HUMAN.md`.

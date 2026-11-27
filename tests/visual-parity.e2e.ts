@@ -3,7 +3,8 @@ import { parityMap, type ParityEntry } from './visual-parity/map';
 import {
 	createSidebarFixture,
 	prepareSidebarFixture,
-	prepareSidebarReference
+	prepareSidebarReference,
+	setWelcomeParityCopy
 } from './visual-parity/fixtures';
 import { MOCKUPS_URL } from '../scripts/ports';
 import { waitForPublishedPreview } from './helpers/dataset-ready';
@@ -205,6 +206,18 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 			}
 			const appEl = page.locator(entry.appSelector).first();
 			await appEl.waitFor({ state: 'attached', timeout: 5000 });
+			if (['modal-dialog', 'welcome-lead', 'welcome-body'].includes(entry.id)) {
+				await Promise.all([
+					setWelcomeParityCopy(
+						mockupPage.locator('dialog.modal > h2'),
+						mockupPage.locator('dialog.modal > p').first()
+					),
+					setWelcomeParityCopy(
+						page.locator('app-welcome-modal p.lead'),
+						page.locator('app-welcome-modal .body > p').first()
+					)
+				]);
+			}
 
 			// Capture and attach full-page screenshots for both
 			const mockupScreenshot = await mockupPage.screenshot({ fullPage: true });

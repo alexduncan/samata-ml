@@ -51,6 +51,12 @@ const CHECKOUT_PIN = 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1'
 const BUN_PIN = 'oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6';
 const CHECKSUM_CMD = 'cd vendor/web-ml && sha256sum -c web-ml-0.2.0.tgz.sha256';
 const FROZEN_INSTALL_CMD = 'bun install --frozen-lockfile --ignore-scripts';
+const WORKFLOW_SEVERITY = "${{ vars.SAMATA_ADVISORY_CHECKS || 'warn' }}";
+const BLOCKING_E2E_CMD = 'bun run test:e2e:blocking --project="$PROJECT"';
+
+function isSoftFailure(value: boolean | string | undefined): boolean {
+	return value !== undefined && value !== false;
+}
 
 function collectWorkflowViolations(rawYaml: string): string[] {
 	const violations: string[] = [];
@@ -69,6 +75,9 @@ function collectWorkflowViolations(rawYaml: string): string[] {
 	if (workflow.env?.WRANGLER_SEND_METRICS !== 'false') {
 		violations.push("Root env must set WRANGLER_SEND_METRICS: 'false'");
 	}
+	if (workflow.env?.SAMATA_ADVISORY_CHECKS !== WORKFLOW_SEVERITY) {
+		violations.push('Root env must inherit advisory severity from the repository variable');
+	}
 
 	const usesLines = rawYaml.split(/\r?\n/).filter((line) => /^\s*(?:-\s*)?uses:\s*/.test(line));
 	for (const line of usesLines) {
@@ -78,6 +87,20 @@ function collectWorkflowViolations(rawYaml: string): string[] {
 	}
 
 	for (const [jobId, job] of Object.entries(workflow.jobs ?? {})) {
+		if (jobId === 'verify' || jobId === 'e2e') {
+			const items = [
+				[jobId, job] as const,
+				...(job.steps ?? []).map((step) => [`${jobId} step ${step.name}`, step] as const)
+			];
+			for (const [label, item] of items) {
+				if (isSoftFailure(item['continue-on-error'])) {
+					violations.push(`${label} must remain blocking`);
+				}
+				if (item.env && Object.hasOwn(item.env, 'SAMATA_ADVISORY_CHECKS')) {
+					violations.push(`${label} must inherit workflow advisory severity`);
+				}
+			}
+		}
 		if (job['runs-on'] !== 'ubuntu-24.04') {
 			violations.push(`${jobId} must use ubuntu-24.04`);
 		}
@@ -129,8 +152,8 @@ function collectWorkflowViolations(rawYaml: string): string[] {
 		if (
 			contentStep?.run?.trim() !== 'bun run content:check' ||
 			contentStep.if !== undefined ||
-			contentStep['continue-on-error'] !== undefined ||
-			verify['continue-on-error'] !== undefined
+			isSoftFailure(contentStep['continue-on-error']) ||
+			isSoftFailure(verify['continue-on-error'])
 		) {
 			violations.push('verify step 4 must run bun run content:check as a blocking check');
 		}
@@ -208,12 +231,48 @@ function collectWorkflowViolations(rawYaml: string): string[] {
 		if (
 			runStep?.env?.PROJECT !== '${{ matrix.project }}' ||
 			runStep?.env?.SAMATA_SKIP_KNOWN_FAILURES !== '1' ||
-			runStep?.run?.trim() !== 'bun run test:e2e --project="$PROJECT"' ||
+			runStep?.run?.trim() !== BLOCKING_E2E_CMD ||
 			runStep?.run?.includes('--grep-invert')
 		) {
 			violations.push(
-				'e2e step 5 must run test:e2e with env.PROJECT and SAMATA_SKIP_KNOWN_FAILURES=1 without --grep-invert'
+				'e2e step 5 must run test:e2e:blocking with env.PROJECT and SAMATA_SKIP_KNOWN_FAILURES=1 without --grep-invert'
 			);
+		}
+	}
+
+	const advisory = workflow.jobs?.advisory;
+	if (!advisory) {
+		violations.push('Missing advisory job');
+	} else {
+		if (advisory['continue-on-error'] !== true) {
+			violations.push('advisory must have literal continue-on-error: true');
+		}
+		if (JSON.stringify(advisory.needs) !== '["verify"]') {
+			violations.push('advisory.needs must equal ["verify"]');
+		}
+		if (
+			advisory.concurrency?.group !== 'advisory-${{ github.ref }}' ||
+			advisory.concurrency?.['cancel-in-progress'] !==
+				"${{ github.event_name == 'pull_request' }}"
+		) {
+			violations.push('advisory concurrency mismatch');
+		}
+		const timeout = advisory['timeout-minutes'];
+		if (typeof timeout !== 'number' || timeout < 30 || timeout > 120 || timeout % 10 !== 0) {
+			violations.push('advisory timeout must be a multiple of 10 between 30 and 120');
+		}
+		const setupSteps = advisory.steps.slice(0, 4);
+		if (JSON.stringify(setupSteps) !== JSON.stringify(e2e?.steps.slice(0, 4))) {
+			violations.push('advisory setup must match the first four e2e steps');
+		}
+		if (advisory.steps[4]?.run?.trim() !== 'bunx playwright install --with-deps chromium') {
+			violations.push('advisory must install Chromium with system dependencies');
+		}
+		if (
+			advisory.steps[5]?.run?.trim() !== 'bun run test:e2e:advisory' ||
+			advisory.steps[5]?.env?.SAMATA_ADVISORY_CHECKS !== 'error'
+		) {
+			violations.push('advisory must run test:e2e:advisory with severity error');
 		}
 	}
 
@@ -282,8 +341,8 @@ describe('.github/workflows/ci.yml', () => {
 		expect(
 			collectWorkflowViolations(
 				rawYaml.replace(
-					'bun run test:e2e --project="$PROJECT"',
-					'bun run test:e2e --project=${{ matrix.project }} --grep-invert foo'
+					BLOCKING_E2E_CMD,
+					'bun run test:e2e:blocking --project=${{ matrix.project }} --grep-invert foo'
 				)
 			)
 		).not.toEqual([]);
@@ -298,5 +357,79 @@ describe('.github/workflows/ci.yml', () => {
 				rawYaml.replace("WRANGLER_SEND_METRICS: 'false'", "WRANGLER_SEND_METRICS: 'true'")
 			)
 		).not.toEqual([]);
+	});
+
+	it('checks advisory job isolation, browser install and severity', () => {
+		const cases = [
+			[
+				'            - e2e\n',
+				'            - e2e\n            - advisory\n',
+				'deploy.needs must equal ["verify","e2e"]'
+			],
+			[
+				'        continue-on-error: true\n',
+				'',
+				'advisory must have literal continue-on-error: true'
+			],
+			[
+				'bunx playwright install --with-deps chromium\n',
+				'bunx playwright install chromium\n',
+				'advisory must install Chromium with system dependencies'
+			],
+			[
+				"SAMATA_ADVISORY_CHECKS: 'error'",
+				"SAMATA_ADVISORY_CHECKS: 'warn'",
+				'advisory must run test:e2e:advisory with severity error'
+			]
+		] as const;
+		for (const [original, replacement, violation] of cases) {
+			const mutated = rawYaml.replace(original, replacement);
+			expect(collectWorkflowViolations(mutated)).toContain(violation);
+		}
+	});
+
+	it('rejects disabled workflow severity and overrides in blocking jobs and steps', () => {
+		const severityLine = `    SAMATA_ADVISORY_CHECKS: ${WORKFLOW_SEVERITY}\n`;
+		for (const replacement of ['', "    SAMATA_ADVISORY_CHECKS: 'warn'\n"]) {
+			const mutated = rawYaml.replace(severityLine, replacement);
+			expect(collectWorkflowViolations(mutated)).toContain(
+				'Root env must inherit advisory severity from the repository variable'
+			);
+		}
+
+		for (const [job, step, name] of [
+			['verify', 'bun run lint', 'Run TSDoc lint'],
+			['e2e', BLOCKING_E2E_CMD, 'Run E2E suite']
+		] as const) {
+			const jobStart = `    ${job}:\n`;
+			const override = "SAMATA_ADVISORY_CHECKS: 'warn'";
+			const jobOverride = `${jobStart}        env:\n            ${override}\n`;
+			const jobEnv = rawYaml.replace(jobStart, jobOverride);
+			expect(collectWorkflowViolations(jobEnv)).toContain(
+				`${job} must inherit workflow advisory severity`
+			);
+			const run = `run: ${step}`;
+			const skip = "SAMATA_SKIP_KNOWN_FAILURES: '1'";
+			const stepEnv =
+				job === 'verify'
+					? rawYaml.replace(
+							run,
+							`${run}\n              env:\n                  ${override}`
+						)
+					: rawYaml.replace(skip, `${skip}\n                  ${override}`);
+			expect(collectWorkflowViolations(stepEnv)).toContain(
+				`${job} step ${name} must inherit workflow advisory severity`
+			);
+
+			const soft = "${{ github.event_name == 'pull_request' }}";
+			const jobFlag = `${jobStart}        continue-on-error: ${soft}\n`;
+			const stepFlag = `${run}\n              continue-on-error: true`;
+			expect(collectWorkflowViolations(rawYaml.replace(jobStart, jobFlag))).toContain(
+				`${job} must remain blocking`
+			);
+			expect(collectWorkflowViolations(rawYaml.replace(run, stepFlag))).toContain(
+				`${job} step ${name} must remain blocking`
+			);
+		}
 	});
 });

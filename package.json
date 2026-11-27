@@ -14,6 +14,8 @@
 		"audit:mockups": "bun run scripts/audit-mockups.ts",
 		"test": "bun test",
 		"test:e2e": "playwright test",
+		"test:e2e:blocking": "SAMATA_E2E_TIER=blocking playwright test",
+		"test:e2e:advisory": "playwright test tests/visual-parity.e2e.ts tests/a11y.e2e.ts --project=chromium",
 		"storybook:manifest": "custom-elements-manifest analyze",
 		"storybook": "bun run storybook:manifest && storybook dev --port 6006 --ci",
 		"storybook:build": "bun run storybook:manifest && storybook build --output-dir storybook-static",

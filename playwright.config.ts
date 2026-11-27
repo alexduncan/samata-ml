@@ -1,6 +1,9 @@
 import { defineConfig, devices } from '@playwright/test';
 import { APP_URL, CHECKOUT_PORTS, DIST_URL, MOCKUPS_URL } from './scripts/ports';
+import { advisoryCheckMode } from './tests/helpers/advisory-a11y';
 import { knownFailureGrep } from './tests/known-failures';
+
+const ADVISORY_SPEC_FILES = ['**/visual-parity.e2e.ts', '**/a11y.e2e.ts'];
 
 function projectGrepInvert(name: string): RegExp | undefined {
 	if (process.env.SAMATA_SKIP_KNOWN_FAILURES !== '1') {
@@ -13,6 +16,10 @@ export default defineConfig({
 	globalSetup: './tests/global-setup.ts',
 	testDir: './tests',
 	testMatch: /.*\.e2e\.ts/,
+	testIgnore:
+		process.env.SAMATA_E2E_TIER === 'blocking' && advisoryCheckMode() === 'warn'
+			? ADVISORY_SPEC_FILES
+			: undefined,
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,

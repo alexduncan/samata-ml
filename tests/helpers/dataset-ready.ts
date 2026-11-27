@@ -10,12 +10,11 @@ import { expect, type Page } from '@playwright/test';
  * or interacts as if a dataset exists (virtual-table-improvements D27).
  *
  * @param page - The page showing the data route.
+ * @param timeout - Maximum wait for each readiness assertion, in milliseconds.
  */
-export async function waitForPublishedPreview(page: Page): Promise<void> {
+export async function waitForPublishedPreview(page: Page, timeout = 60_000): Promise<void> {
 	const preview = page.locator('app-dataset-preview');
-	await expect(preview).toBeAttached({ timeout: 60_000 });
-	await expect(preview.locator('progress')).toHaveCount(0, { timeout: 60_000 });
-	await expect(preview.locator('ui-virtual-table .table-row').first()).toBeAttached({
-		timeout: 60_000
-	});
+	await expect(preview).toBeAttached({ timeout });
+	await expect(preview.locator('progress')).toHaveCount(0, { timeout });
+	await expect(preview.locator('ui-virtual-table .table-row').first()).toBeAttached({ timeout });
 }

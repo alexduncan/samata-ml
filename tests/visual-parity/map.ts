@@ -512,7 +512,7 @@ export const parityMap: ParityEntry[] = [
 			[
 				'body',
 				'dialog.modal > p',
-				'p.body',
+				'.body > p',
 				['margin-top', 'margin-bottom', 'font-size', 'font-weight', 'line-height', 'color']
 			],
 			[

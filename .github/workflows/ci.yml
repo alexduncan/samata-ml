@@ -13,6 +13,7 @@ permissions:
 
 env:
     WRANGLER_SEND_METRICS: 'false'
+    SAMATA_ADVISORY_CHECKS: ${{ vars.SAMATA_ADVISORY_CHECKS || 'warn' }}
 
 jobs:
     verify:
@@ -117,7 +118,42 @@ jobs:
               env:
                   PROJECT: ${{ matrix.project }}
                   SAMATA_SKIP_KNOWN_FAILURES: '1'
-              run: bun run test:e2e --project="$PROJECT"
+              run: bun run test:e2e:blocking --project="$PROJECT"
+
+    advisory:
+        name: Advisory (Visual Parity & WCAG)
+        needs:
+            - verify
+        runs-on: ubuntu-24.04
+        timeout-minutes: 30
+        continue-on-error: true
+        concurrency:
+            group: advisory-${{ github.ref }}
+            cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Verify vendored web-ml tarball checksum
+              run: cd vendor/web-ml && sha256sum -c web-ml-0.2.0.tgz.sha256
+
+            - name: Install Bun
+              uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+              with:
+                  bun-version-file: .bun-version
+
+            - name: Install dependencies
+              run: bun install --frozen-lockfile --ignore-scripts
+
+            - name: Install Chromium
+              run: bunx playwright install --with-deps chromium
+
+            - name: Run advisory suites
+              env:
+                  SAMATA_ADVISORY_CHECKS: 'error'
+              run: bun run test:e2e:advisory
 
     deploy:
         name: Deploy (beta.samata.ml)

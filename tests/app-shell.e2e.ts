@@ -12,7 +12,7 @@ import { dismissWelcomeModal, loadSampleDataset } from './journeys/helpers';
 import { MOCKUPS_URL } from '../scripts/ports';
 import { waitForPublishedPreview } from './helpers/dataset-ready';
 import { expectFixturePage, mockReservedPages } from './helpers/content-fixtures';
-import { expectReservedModalClosed } from './helpers/e2e-settlement';
+import { expectReservedModalClosed, waitForPersistedAppState } from './helpers/e2e-settlement';
 
 type FocusableView = HTMLElement & { focusHeading(signal: AbortSignal): Promise<void> };
 interface FocusTestWindow extends Window {
@@ -89,8 +89,12 @@ async function keyboardNavigate(page: Page, path: string): Promise<void> {
 async function createIrisModel(page: Page): Promise<void> {
 	await loadSampleDataset(page, 'iris');
 	await keyboardNavigate(page, '/target');
-	await page.locator('app-target-view tbody tr:has(th:has-text("class")) button').click();
+	const target = page.locator('app-target-view tbody tr:has(th:has-text("class")) button');
+	await target.click();
+	await expect(target).toHaveText('Current Target');
+	await waitForPersistedAppState(page, (state) => state.target === 'class');
 	await keyboardNavigate(page, '/models');
+	await expect(page).toHaveURL('/models');
 	await page.locator('app-models-view a[href="/models/new"]').click();
 	await expect(page).toHaveURL(/\/models\/new$/);
 	await expect(page.locator('app-model-builder-view h1')).toHaveText('Model 1');
