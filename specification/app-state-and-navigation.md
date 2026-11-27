@@ -289,7 +289,7 @@ Traversals without a valid shared stack/index, document reload and cross-documen
 ### 5.5 Mounting views
 
 - The shell mounts one Lit workflow view for the resolved route and retains that same view under reserved content. Switching workflows unmounts the preceding view. Persistent state lives in stores. Dynamic route imports remain target.
-- A view that needs async data before its layout height is final (dataset metadata, table row count, results) MUST expose `whenSettled(): Promise<void>`, resolving once layout is stable. The scroll restorer waits on it (§8.4). _(This is part of the view contract and must be added to each view's component spec.)_
+- A view that needs async data before its layout height is final (dataset metadata, table row count, results) MUST expose `whenSettled(): Promise<void>`, resolving once layout is stable. The scroll restorer waits on it (§8.4). _(This is part of the view contract and must be added to each view's component spec.)_ In preview mode, `app-data-view.whenSettled()` first waits for `$datasetResources` of the active dataset to reach `ready` or `error`, then for its own render and for `app-dataset-preview.whenSettled()`, which waits for the table's block size to be set (its rail height depends on the row count, not on rows), so the router's single `scrollTo` lands on a full-height document.
 
 ### 5.6 Document title and focus
 
@@ -317,11 +317,11 @@ Corresponds to workflow-steps §1.
 
 - **Sub-view** is `data.mode` (`'select' | 'preview'`), a persisted value (not derived), so the exact view survives reloads:
   - `'select'`: sample dataset cards from the generated sample-dataset catalogue ([sample-datasets.md](sample-datasets.md)) and the **Upload Dataset** header button.
-  - `'preview'`: dataset header, virtual table, and the column-details `<aside>`.
+  - `'preview'`: dataset header, virtual table, and the column-details `<aside>`. The preview branch is also shown while a load is ingesting (`selectDataViewMode`): one `app-dataset-preview` persists from loading through publication into the ready preview, and a failed load returns to selection with an alert (data-view D20).
 - On successful ingestion (`loadDatasetSucceeded`) the store sets `dataset`, `data.mode = 'preview'`, `data.selectedColumn = null`.
 - `data.selectedColumn` (the column whose `<aside>` is open) is persisted. Column statistics themselves are read from the IndexedDB `metadata` store, never from `localStorage`.
-- The virtual table's own scroll offset is persisted as a scroll _region_ (§8.3).
-- Transient and **not** persisted: the Datasheet modal, the Upload modal, in-flight parsing progress, validation errors from a failed upload. A reload during ingestion lands on `'select'` (the previous dataset, if any, is untouched until the new one completes; see [state-and-storage.md §6](state-and-storage.md#6-indexeddb-reconciliation)).
+- The virtual table scrolls with the document, so its offset is the route's document snapshot (`data:preview`, including horizontal `left`), not a region (§8.3). A dataset discard or the publication of a different dataset id clears `data:preview` as well as the non-data keys (a target discard keeps it), so a new dataset never reopens at the old one's offset.
+- Transient and **not** persisted: the Datasheet modal, the Upload modal, in-flight parsing progress, validation errors from a failed upload. A reload during validation or ingestion lands on `'select'` with no progress bar (the previous dataset, if any, is untouched until the new one completes; see [state-and-storage.md §6](state-and-storage.md#6-indexeddb-reconciliation)).
 - **Change Dataset.** A header action **Change Dataset** on the preview view opens a confirmation modal before discarding the active dataset. On user confirmation, the action `clearDataset()` resets `dataset = null`, `data.mode = 'select'`, `data.selectedColumn = null`, clears `target = null`, `models = []`, `nextModelNum = 1`, and clears remembered table scroll regions. If cancelled, all state remains intact.
 
 **Dataset change reconciliation** (`loadDatasetSucceeded` when a dataset already exists):
@@ -425,7 +425,7 @@ Goal G2: each workflow step remembers its own scroll position, and a new tab or 
 
 ### 8.1 Scroll container
 
-The **document** scrolls (`document.scrollingElement`). `<main>` MUST NOT be `overflow: scroll|auto` with a fixed height, and the sidebar is `position: fixed` (as in the mockups). This keeps mobile browser chrome behaviour, keyboard scrolling, find-in-page and focus-into-view native. Inner scrollers (the virtual table, wide tables) are tracked as named **regions** (§8.3).
+The **document** scrolls (`document.scrollingElement`). `<main>` MUST NOT be `overflow: scroll|auto` with a fixed height, and the sidebar is `position: fixed` (as in the mockups). This keeps mobile browser chrome behaviour, keyboard scrolling, find-in-page and focus-into-view native. The page header of every route is `position: sticky` against the document (static below a 30rem viewport height), and `html { scroll-padding-block-start }` follows its measured size. The virtual table scrolls with the document too. Only genuine inner scrollers (the Training Setup matrix, wide tables) are tracked as named **regions** (§8.3).
 
 ### 8.2 Scroll keys
 
@@ -449,9 +449,11 @@ One snapshot is kept per key, latest write wins:
 export interface ScrollSnapshot {
 	/** window.innerWidth (CSS px) when saved. */
 	viewportWidth: number;
-	/** Document scroll offset. */
+	/** Document block scroll offset. */
 	top: number;
-	/** Named inner scrollers, e.g. { 'data-table': { top, left } }. */
+	/** Document inline scroll offset (`scrollX`, raw so RTL negatives round-trip); absent in older snapshots. */
+	left?: number;
+	/** Named inner scrollers, e.g. { 'training-setup': { top, left } }. */
 	regions?: Record<string, { top: number; left: number }>;
 	savedAt: number;
 }
@@ -475,7 +477,7 @@ export interface ScrollSnapshot {
 
 1. Look up the key's snapshot; ignore it if the viewport width differs (§8.3). No snapshot → leave at top.
 2. Await `view.whenSettled()` (§5.5).
-3. Call `scrollTo({ top, behavior: 'instant' })` explicitly (global `scroll-behavior: smooth` must not animate a restore; reduced-motion users must not see a long glide). Then restore each region once the owning component reports its content height (the virtual table needs `rowCount` for its height rail).
+3. Call `scrollTo({ top, left, behavior: 'instant' })` explicitly (global `scroll-behavior: smooth` must not animate a restore; reduced-motion users must not see a long glide). Then restore each region once the owning component reports its content height (the virtual table needs `rowCount` for its height rail).
 4. If the document is not yet tall enough, retry on a `ResizeObserver` for `main` for at most ~2 s, then clamp and stop.
 5. Abort restoration immediately on any user scroll input (`wheel`, `touchstart`, `keydown` of scroll keys, `pointerdown` on the scrollbar). Never fight the user.
 6. Restoration never moves focus.

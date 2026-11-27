@@ -41,7 +41,7 @@ These rules apply whenever a spec changes, whether in a plan's `Sync specificati
 | [data-ingestion.md](data-ingestion.md)                               | implemented | CSV upload/parsing, column statistics, IndexedDB dataset storage                                                         |
 | [sample-datasets.md](sample-datasets.md)                             | implemented | Typed sample descriptors, build-time validation, generated catalogue and datasheets                                      |
 | [publication-history.md](publication-history.md)                     | implemented | First-push dataset history audit and maintainer publication procedure                                                    |
-| [preview-dataset.md](preview-dataset.md)                             | implemented | Dataset preview table and column inspector                                                                               |
+| [preview-dataset.md](preview-dataset.md)                             | implemented | Dataset preview, in-page loading and column inspector                                                                    |
 | [machine-learning-orchestrator.md](machine-learning-orchestrator.md) | implemented | Browser worker, evaluation and durable classification training                                                           |
 | [content-and-i18n.md](content-and-i18n.md)                           | partial     | Markdown content pipeline, localisation and contextual Help definitions                                                  |
 | [testing.md](testing.md)                                             | partial     | Writing or running tests                                                                                                 |
@@ -57,7 +57,7 @@ Read [COMPONENTS.md](COMPONENTS.md) first; a component spec overrides it only wh
 | [button.md](components/button.md)                           | draft       | Style primitive `.btn`                                                                        |
 | [chiclet.md](components/chiclet.md)                         | implemented | Style primitive `.chiclet`                                                                    |
 | [dialog.md](components/dialog.md)                           | implemented | Shared native-dialog style primitive                                                          |
-| [page-header.md](components/page-header.md)                 | implemented | Page-header/focus style primitive                                                             |
+| [page-header.md](components/page-header.md)                 | implemented | Page-header/focus style primitive and sticky-header helpers                                   |
 | [sidebar.md](components/sidebar.md)                         | implemented | Connected `app-sidebar`                                                                       |
 | [welcome-modal.md](components/welcome-modal.md)             | implemented | Connected `app-welcome-modal`                                                                 |
 | [content-modal.md](components/content-modal.md)             | implemented | Connected `app-content-modal` and presentational `app-content-dialog`; prose styling pending  |

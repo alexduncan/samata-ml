@@ -58,7 +58,6 @@ export interface VirtualTableLabels {
 
 - **Properties** (`attribute: false` unless noted): `columns` (`[]`), `window` (`{ startIndex: 0, rows: [] }`), `loading` (`false`), `totalRows` (`0`, attribute `total-rows`), `label` (`''`, attribute `label`), `labels` (`VirtualTableLabels`).
 - **Methods:** `focusColumn(column: string): void`. `updateComplete` resolves after `.table-body`'s block size is set for the current `totalRows`, without waiting for an animation frame (so the document is full height when a restore runs).
-- **Transitional (removed once consumers use the document scroll snapshot):** `scrollToRow(index, offset = 0, inlineOffset = 0): Promise<void>` (`window.scrollTo` to the body's document top + `clamp(index) × rowHeight + offset`), `restoreScroll(top, left): Promise<void>` (`window.scrollTo`), and `ui-virtual-table-position-change` with `VirtualTablePosition { rowIndex, offset, inlineOffset, top }` (first visible row, offset inside it, document `scrollX`, document `scrollY`), emitted from each frame update.
 - **Events** (host, `bubbles: false`, `composed: false`; listen on the element):
   - `ui-virtual-table-range-change` — `VirtualTableRange`; deduplicated: emitted only when the needed range is not covered by the last request.
   - `ui-virtual-table-column-select` — `{ column: string }`.
@@ -134,7 +133,6 @@ Structure and styling follow the authorised draft `specification/mockups/01-6_vi
 - **VTB-AC-9:** the header sticks at `--ui-virtual-table-sticky-offset` while the document scrolls; no table element or ancestor is a scroll container and none has `tabindex`; no CSP violation and no `style` attributes or `styleMap` in templates.
 - **VTB-AC-10:** disconnect removes the window listeners and observers (no range events afterwards); reconnect restores them; RTL renders from the inline start; axe passes in Chromium, Firefox and WebKit.
 - **VTB-AC-11:** setting `totalRows` from 0 to 20,000 gives `.table-body` a block size of `20,000 × rowHeight` by the time `updateComplete` resolves, with `requestAnimationFrame` stubbed to never fire.
-- **VTB-AC-12 (transitional):** `scrollToRow(50, 5, 25)` scrolls the document to the body's top + `50 × rowHeight + 5` and `scrollX` 25; `restoreScroll(top, left)` calls `window.scrollTo`; `ui-virtual-table-position-change` reports the first visible row.
 
 Tests run in Playwright, `tests/virtual-table.e2e.ts`, in Chromium, Firefox and WebKit.
 
