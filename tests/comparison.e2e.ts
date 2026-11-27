@@ -36,6 +36,54 @@ test('CHT-COMP-1: comparison sections and model identities are exposed', async (
 	await expect(view.locator('p[aria-live="polite"]').first()).toBeAttached();
 });
 
+test('CHT-COMP-1: charts distinguish two models with the same label', async ({ page }) => {
+	await seedComparablePair(page);
+	await page.goto('/results');
+	const view = page.locator('app-results-view');
+	const fold = view.locator('app-fold-strip');
+	const classErrors = view.locator('app-class-error-bars');
+	const rope = view.locator('app-rope-bar');
+	const modelName = 'Logistic Regression';
+	const modelA = `1 ${modelName}`;
+	const modelB = `2 ${modelName}`;
+	const bothModels = new RegExp(`${modelA}.*${modelB}`);
+
+	for (const chart of [fold, classErrors, rope]) {
+		const legend = chart.locator('.chart-legend');
+		await expect(legend.locator('.swatch')).toHaveText(['1', '2']);
+		await expect(legend.getByRole('listitem').first()).toMatchAriaSnapshot(
+			`- listitem: /1 ${modelName}/`
+		);
+		await expect(legend.getByRole('listitem').last()).toMatchAriaSnapshot(
+			`- listitem: /2 ${modelName}/`
+		);
+		await expect(chart.getByRole('img')).toHaveAccessibleDescription(bothModels);
+		await chart.getByText('Show data table', { exact: true }).click();
+	}
+
+	const foldImage = fold.locator('.chart > svg[role="img"]');
+	for (const num of [1, 2]) {
+		await expect(foldImage.getByText(new RegExp(`^${num} Logistic`))).toBeVisible();
+		await expect(
+			fold.getByRole('rowheader', { name: `${num} ${modelName}: Mean`, exact: true })
+		).toBeVisible();
+		await expect(
+			classErrors.getByRole('cell', { name: `${num} ${modelName}`, exact: true }).first()
+		).toBeVisible();
+		await expect(
+			rope.getByRole('rowheader', { name: `${num} ${modelName} higher`, exact: true })
+		).toBeVisible();
+	}
+
+	await view.getByRole('button', { name: 'Swap models A and B' }).click();
+	await expect(rope.locator('.chart-legend .swatch')).toHaveText(['2', '1']);
+	await expect(rope.getByRole('img')).toHaveAccessibleDescription(
+		new RegExp(`${modelB}.*${modelA}`)
+	);
+	await rope.getByText('Show data table', { exact: true }).click();
+	await expect(rope.getByRole('rowheader').first()).toHaveAccessibleName(`${modelB} higher`);
+});
+
 test('CHT-COMP-2: comparison values update on a reused row without truncated bars', async ({
 	page
 }) => {
@@ -106,10 +154,9 @@ test('TERM-AC-7: comparison terms explain pooled scores and the paired fold gap'
 	await expect(disclosure).toHaveCount(1);
 	await expect(disclosure).toHaveJSProperty('open', false);
 
-	const model = table
-		.getByRole('row')
-		.filter({ has: page.getByRole('rowheader', { name: 'Logistic Regression', exact: true }) })
-		.first();
+	const model = table.getByRole('row').filter({
+		has: page.getByRole('rowheader', { name: '1 Logistic Regression', exact: true })
+	});
 	const balancedAccuracy = table.getByRole('columnheader', {
 		name: 'Balanced accuracy',
 		exact: true

@@ -23,8 +23,8 @@ const fold = document.createElement('app-fold-strip');
 fold.labels = englishFoldStripLabels;
 fold.caption = sampleCaption;
 fold.series = [
-	{ ...view.series[0]!, color: 'amber' },
-	{ ...view.series[0]!, id: 'second', label: 'Model 2', color: 'blue' }
+	{ ...view.series[0]!, num: 1, color: 'amber' },
+	{ ...view.series[0]!, id: 'second', num: 2, label: 'Model 2', color: 'blue' }
 ];
 fold.baselines = view.baselines;
 fold.formatPercent = format.percent;

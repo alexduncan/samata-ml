@@ -125,6 +125,7 @@ const messages = i18n('app-results-view', {
 		'Mean {mean} ± {sd} extends beyond the score range.'
 	),
 	foldDescription: params<{ values: string }>('Fold scores and baselines: {values}.'),
+	numberedModel: params<{ n: string; label: string }>('{n} {label}'),
 	foldLegend: 'Models',
 	foldTable: 'Held-out balanced accuracy by partition',
 	series: 'Model',
@@ -626,6 +627,10 @@ export class AppResultsView extends LitElement {
 				maximumFractionDigits: 0,
 				useGrouping: true
 			});
+		const numberedModel = (num: number, label: string) =>
+			t.numberedModel({ n: format.count(num), label });
+		const foldLabel = (row: FoldSeries) =>
+			row.num === undefined ? row.label : numberedModel(row.num, row.label);
 		const diff = data.confusionView;
 		const takeaway = diff?.largest
 			? t.difference({
@@ -639,7 +644,7 @@ export class AppResultsView extends LitElement {
 		const classValues = data.classErrors.flatMap((row) =>
 			row.models.map((model) => ({
 				className: row.label,
-				model: model.label,
+				model: numberedModel(model.num, model.label),
 				rate: model.errorRate
 			}))
 		);
@@ -742,7 +747,7 @@ export class AppResultsView extends LitElement {
 												.baselines=${views.marks}
 												.caption=${{
 													title: t.foldTitle,
-													takeaway: `${t.foldTakeaway} ${views.series.map((row) => `${row.label}: ${format.percent(row.mean)}`).join('; ')}`
+													takeaway: `${t.foldTakeaway} ${views.series.map((row) => `${foldLabel(row)}: ${format.percent(row.mean)}`).join('; ')}`
 												}}
 												.formatPercent=${format.percent}
 												.labels=${{
@@ -767,7 +772,7 @@ export class AppResultsView extends LitElement {
 															values: [
 																...series.map(
 																	(row) =>
-																		`${row.label}: ${format.percent(row.mean)}`
+																		`${foldLabel(row)}: ${format.percent(row.mean)}`
 																),
 																...baselines.map(
 																	(mark) =>
@@ -824,7 +829,7 @@ export class AppResultsView extends LitElement {
 																.flatMap((row) =>
 																	row.models.map(
 																		(model) =>
-																			`${row.label}, ${model.label}: ${model.errorRate === null ? t.unavailable : format.percent(model.errorRate)}`
+																			`${row.label}, ${numberedModel(model.num, model.label)}: ${model.errorRate === null ? t.unavailable : format.percent(model.errorRate)}`
 																	)
 																)
 																.join('; ')
@@ -887,8 +892,8 @@ export class AppResultsView extends LitElement {
 												.caption=${{
 													title: t.ropeTitle,
 													takeaway: t.ropeTakeaway({
-														a: name(a.num),
-														b: name(b.num),
+														a: numberedModel(a.num, name(a.num)),
+														b: numberedModel(b.num, name(b.num)),
 														width: format.points(ui.ropeWidth),
 														folds: format.count(
 															a.evaluation.partitions.length

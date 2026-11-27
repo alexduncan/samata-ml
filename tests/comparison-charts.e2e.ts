@@ -23,7 +23,7 @@ test('WML-P5-UI-5: class error bars retain labels and data in forced colours', a
 	await page.emulateMedia({ forcedColors: 'active' });
 	const bars = page.locator('app-class-error-bars');
 	await expect(bars.locator('svg rect')).toHaveCount(2);
-	await expect(bars.locator('svg').getByText('Adélie · Model 1')).toBeVisible();
+	await expect(bars.locator('svg').getByText('1 · Adélie · Model 1')).toBeVisible();
 	await bars.getByText('Show data table').click();
 	await expect(bars.getByRole('table').getByText('Model 1')).toBeVisible();
 	await expect(bars.getByRole('table').getByText('20%')).toBeVisible();

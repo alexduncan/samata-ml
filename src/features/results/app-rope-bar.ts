@@ -132,11 +132,13 @@ export class AppRopeBar extends LitElement {
 			this.labels.equivalent,
 			this.modelB ? this.labels.modelHigher(this.modelB.label) : this.labels.bHigher
 		];
+		const models = [this.modelA, null, this.modelB];
 		let start = 0;
 		return whole.map((value, index) => {
 			const item = {
 				id: index,
 				label: labels[index]!,
+				model: models[index]!,
 				value,
 				start: start / 100,
 				end: (start + value) / 100
@@ -273,8 +275,12 @@ export class AppRopeBar extends LitElement {
 						</figcaption>
 						<p id="description" class="visually-hidden">
 							${this.labels.description(
-								this.modelA?.label ?? this.labels.aHigher,
-								this.modelB?.label ?? this.labels.bHigher,
+								this.modelA
+									? `${this.modelA.num} ${this.modelA.label}`
+									: this.labels.aHigher,
+								this.modelB
+									? `${this.modelB.num} ${this.modelB.label}`
+									: this.labels.bHigher,
 								this.result.probabilityHigher,
 								this.result.probabilityEquivalent,
 								this.result.probabilityLower
@@ -282,17 +288,11 @@ export class AppRopeBar extends LitElement {
 						</p>
 						<ul class="chart-legend">
 							${this.values().map((value) => {
-								const model =
-									value.id === 0
-										? this.modelA
-										: value.id === 2
-											? this.modelB
-											: null;
+								const { model } = value;
 								return html`<li>
 									${model
 										? html`<span
 												class=${`swatch swatch-${model.modelColor} ${model.modelColor === 'amber' ? 'amber' : ''}`}
-												aria-hidden="true"
 												>${model.num}</span
 											>`
 										: nothing}
@@ -327,7 +327,13 @@ export class AppRopeBar extends LitElement {
 											(value) => value.id,
 											(value) =>
 												html`<tr>
-													<th scope="row">${value.label}</th>
+													<th scope="row">
+														${value.model
+															? this.labels.modelHigher(
+																	`${value.model.num} ${value.model.label}`
+																)
+															: value.label}
+													</th>
 													<td class="number">
 														${this.formatPercent(value.value / 100)}
 													</td>

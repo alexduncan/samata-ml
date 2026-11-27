@@ -3,6 +3,7 @@ import { customElement, property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { resultsStyles } from '../../styles/results.styles';
 import { tableStyles } from '../../styles/table.styles';
+import { modelSwatchStyles } from '../../styles/model-swatch.styles';
 import { PlotController, type ChartLibrary, type ChartTokens } from './charts/plot-controller';
 import {
 	MODEL_COLOR_ENCODING,
@@ -58,7 +59,7 @@ export const DEFAULT_FOLD_STRIP_LABELS: FoldStripLabels = {
  */
 @customElement('app-fold-strip')
 export class AppFoldStrip extends LitElement {
-	static override styles = [tableStyles, resultsStyles];
+	static override styles = [tableStyles, resultsStyles, modelSwatchStyles];
 
 	/** Rows of dots, one per model. */
 	@property({ attribute: false }) accessor series: readonly FoldSeries[] = [];
@@ -84,6 +85,10 @@ export class AppFoldStrip extends LitElement {
 		return this.updateComplete.then(() => this.plot.whenSettled());
 	}
 
+	private seriesLabel(row: FoldSeries): string {
+		return row.num === undefined ? row.label : `${row.num} ${row.label}`;
+	}
+
 	private draw(
 		chart: ChartLibrary,
 		tokens: ChartTokens,
@@ -103,7 +108,7 @@ export class AppFoldStrip extends LitElement {
 		const sorted = [...this.baselines].sort((a, b) => a.value - b.value);
 		const top = count - 0.4;
 		const { margin, labelWidth } = computeAxisMargin(
-			rows.map((row) => row.label),
+			rows.map((row) => this.seriesLabel(row)),
 			fontSize,
 			width,
 			measureText
@@ -127,7 +132,7 @@ export class AppFoldStrip extends LitElement {
 				domain: [-0.6, top],
 				ticks: indexed.map(({ index }) => index),
 				tickFormat: (index: number) =>
-					truncateLabel(rows[index]?.label ?? '', labelWidth, measureText),
+					truncateLabel(this.seriesLabel(rows[index]!), labelWidth, measureText),
 				label: null
 			},
 			ariaLabel: this.caption.title,
@@ -193,11 +198,18 @@ export class AppFoldStrip extends LitElement {
 				</p>
 				${this.series.some((row) => row.color)
 					? html`<ul class="chart-legend" aria-label=${labels.legendLabel}>
-							${this.series
-								.filter((row) => row.color)
-								.map((row) => {
+							${repeat(
+								this.series.filter((row) => row.color),
+								(row) => row.id,
+								(row) => {
 									const encoding = MODEL_COLOR_ENCODING[row.color!];
 									return html`<li>
+										${row.num === undefined
+											? nothing
+											: html`<span
+													class=${`swatch swatch-${row.color} ${encoding.outlineRequired ? 'amber' : ''}`}
+													>${row.num}</span
+												>`}
 										<svg
 											aria-hidden="true"
 											viewBox="-8 -8 16 16"
@@ -220,7 +232,8 @@ export class AppFoldStrip extends LitElement {
 														: 0}></path></svg
 										>${row.label}
 									</li>`;
-								})}
+								}
+							)}
 						</ul>`
 					: nothing}
 				${this.series
@@ -264,7 +277,8 @@ export class AppFoldStrip extends LitElement {
 											(value, index) => html`
 												<tr>
 													<th scope="row">
-														${row.label}: ${labels.partition(index + 1)}
+														${this.seriesLabel(row)}:
+														${labels.partition(index + 1)}
 													</th>
 													<td class="number">
 														${formatPercent(value.score)}
@@ -274,7 +288,9 @@ export class AppFoldStrip extends LitElement {
 											`
 										)}
 										<tr>
-											<th scope="row">${row.label}: ${labels.mean}</th>
+											<th scope="row">
+												${this.seriesLabel(row)}: ${labels.mean}
+											</th>
 											<td class="number">${formatPercent(row.mean)}</td>
 											<td></td>
 										</tr>
@@ -283,7 +299,7 @@ export class AppFoldStrip extends LitElement {
 											: html`
 													<tr>
 														<th scope="row">
-															${row.label}:
+															${this.seriesLabel(row)}:
 															${labels.standardDeviation}
 														</th>
 														<td class="number">

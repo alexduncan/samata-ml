@@ -26,14 +26,14 @@ const meta = {
 		wrapper.dir = args.dir ?? 'ltr';
 		const element = document.createElement('app-rope-bar');
 		element.result = args.result;
-		element.modelA = { num: 1, label: 'Model 1', modelColor: 'amber' };
-		element.modelB = { num: 2, label: 'Model 2', modelColor: 'sky' };
+		element.modelA = { num: 1, label: 'Logistic Regression', modelColor: 'amber' };
+		element.modelB = { num: 2, label: 'Logistic Regression', modelColor: 'sky' };
 		element.status = args.status;
 		element.caption = {
 			title: 'Practical equivalence',
 			takeaway: args.long
 				? 'The probability compares a very long model name with another long model name within a width of 0.01.'
-				: 'Model 1 and Model 2 compared within 0.01.'
+				: '1 Logistic Regression and 2 Logistic Regression compared within 0.01.'
 		};
 		element.labels = {
 			width: 'Equivalence width',

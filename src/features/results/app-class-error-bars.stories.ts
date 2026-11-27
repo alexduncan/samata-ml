@@ -13,7 +13,7 @@ const rows: ClassErrorRowView[] = [
 		models: [
 			{
 				num: 1,
-				label: 'Model 1',
+				label: 'Logistic Regression',
 				modelColor: 'amber',
 				errorRate: 0.1,
 				errorCount: 1,
@@ -21,7 +21,7 @@ const rows: ClassErrorRowView[] = [
 			},
 			{
 				num: 2,
-				label: 'Model 2',
+				label: 'Logistic Regression',
 				modelColor: 'sky',
 				errorRate: 0.2,
 				errorCount: 2,
@@ -35,7 +35,7 @@ const rows: ClassErrorRowView[] = [
 		models: [
 			{
 				num: 1,
-				label: 'Model 1',
+				label: 'Logistic Regression',
 				modelColor: 'amber',
 				errorRate: 0.15,
 				errorCount: 3,
@@ -43,7 +43,7 @@ const rows: ClassErrorRowView[] = [
 			},
 			{
 				num: 2,
-				label: 'Model 2',
+				label: 'Logistic Regression',
 				modelColor: 'sky',
 				errorRate: null,
 				errorCount: null,

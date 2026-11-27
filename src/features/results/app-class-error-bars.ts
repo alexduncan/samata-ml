@@ -92,7 +92,7 @@ export class AppClassErrorBars extends LitElement {
 		const values = this.rows.flatMap((row) =>
 			row.models.map((model) => ({
 				key: `${row.classIndex}:${model.num}`,
-				label: `${row.label} · ${model.label}`,
+				label: `${model.num} · ${row.label} · ${model.label}`,
 				value: model.errorRate,
 				style: resolveModelMarkStyle(model.modelColor, tokens)
 			}))
@@ -170,7 +170,6 @@ export class AppClassErrorBars extends LitElement {
 					return html`<li>
 						<span
 							class=${`swatch swatch-${model.modelColor} ${model.modelColor === 'amber' ? 'amber' : ''}`}
-							aria-hidden="true"
 							>${model.num}</span
 						>
 						<svg aria-hidden="true" viewBox="-8 -8 16 16" width="16" height="16">
@@ -217,7 +216,7 @@ export class AppClassErrorBars extends LitElement {
 										(model) =>
 											html` <tr>
 												<th scope="row">${row.label}</th>
-												<td>${model.label}</td>
+												<td>${model.num} ${model.label}</td>
 												<td class="number">
 													${model.errorRate === null
 														? this.labels.unavailable

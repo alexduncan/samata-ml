@@ -58,8 +58,8 @@ const meta = {
 		element.labels = englishFoldStripLabels;
 		element.series = multiModel
 			? [
-					{ ...view.series[0]!, color: 'amber' },
-					{ ...view.series[0]!, id: 'second', label: 'Model 2', color: 'blue' }
+					{ ...view.series[0]!, num: 1, color: 'amber' },
+					{ ...view.series[0]!, id: 'second', num: 2, color: 'blue' }
 				]
 			: clamped
 				? view.series.map((row) => ({ ...row, mean: 0.95, sd: 0.1 }))
@@ -87,7 +87,7 @@ export const CrossValidation: Story = {
 };
 /** One test split draws a single dot and no spread. */
 export const OneShot: Story = { args: { evaluation: breastCancerOneShot() } };
-/** Multiple models retain distinct symbols and colours. */
+/** Equally named models retain distinct numbers, symbols and colours. */
 export const MultipleModels: Story = {
 	args: { evaluation: irisCrossValidation(), multiModel: true }
 };
