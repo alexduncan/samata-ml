@@ -1,9 +1,9 @@
 # Remediate charts and establish chart design specification
 
-**Status:** ready | **Updated:** 2026-11-27T09:32:31Z
-**Authors:** Google Antigravity (Gemini 4 Neon High), Codex (GPT-6) | **Created:** 2026-11-25T16:05:29Z
-**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-27T06:01:37Z | **Verification:** approved
-**Verified hash:** sha256:01a7c33eab3dbd0a789addb04aaf542f584ad10ced304ceab0e279fd2c04c18f
+**Status:** ready-for-review | **Updated:** 2026-11-27T09:54:48Z
+**Authors:** Google Antigravity (Gemini 4 Neon High), Codex (GPT-6), Codex (GPT-6.2-sol) | **Created:** 2026-11-25T16:05:29Z
+**Verified by:** — | **Verified:** — | **Verification:** pending
+**Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -344,11 +344,18 @@ All presentational elements are Tier 2 (`src/features/results/`), own **no** i18
 ## Verification and definition of done
 
 - [ ] All task acceptance criteria (`CHT-FOUND-1..4`, `CHT-MODEL-1..3`, `CHT-SINGLE-1..3`, `CHT-PROB-1..2`, `CHT-COMP-1..5`, `CHT-A11Y-1..2`, `CHT-SPEC-1..2`) met.
-- [ ] Relevant verification commands from `AGENTS.md` pass with no new failures (`bun run check`, `bun run lint`, `bun run build`, `bun run test:stories`, `bun run test:e2e`, `bun run format:check <explicit changed-file paths>`, `bun run plans:check`). For formatting, compare the current plan branch against pre-plan commit `2c6d039f01af07f95abc8eafd63de45f934d0ab2`, enumerate every existing tracked added, copied, modified or renamed file that Prettier supports (including `.ts`, `.json`, `.md`, styles, HTML and configuration files), and pass those paths explicitly to `bun run format:check`. Include the plan and its index when changed, exclude deleted paths and `bun.lock` (managed by Bun), verify that the path list is nonempty and covers every supported changed file, and record the exact command and result. Bare `bun run format:check` is not evidence: it supplies no paths. This scope does not waive the remaining verification commands or permit new formatting failures.
+- [ ] Relevant verification commands from `AGENTS.md` pass with no new failures (`bun run check`, `bun run lint`, `bun run build`, `bun run test:stories`, the file-scoped `bun run test:e2e` checks for this plan, `bun run format:check <explicit changed-file paths>`, `bun run plans:check`). For formatting, compare the current plan branch against pre-plan commit `2c6d039f01af07f95abc8eafd63de45f934d0ab2`, enumerate every existing tracked added, copied, modified or renamed file that Prettier supports (including `.ts`, `.json`, `.md`, styles, HTML and configuration files), and pass those paths explicitly to `bun run format:check`. Include the plan and its index when changed, exclude deleted paths and `bun.lock` (managed by Bun), verify that the path list is nonempty and covers every supported changed file, and record the exact command and result. Bare `bun run format:check` is not evidence: it supplies no paths.
+- [ ] Apply the maintainer's release-first decision to this plan's repository-wide, unfiltered E2E gate only. Closure may proceed with the evidence below rather than requiring a green fresh full run before this chart release. Independently confirm the chart task and remediation checks pass, reusing the audit at `0210ea3ebf02b759e8780c2e2ddfa3f54deb4340` only for identical product, browser-test, fixture, configuration and lockfile inputs. Confirm the historical failures and blocked cases have the recorded dispositions. Any other observed, unresolved failure or missing chart evidence blocks closure. Record the suite's failed status in closure evidence. This decision authorises no exclusions or relaxed assertions in tests, no change to the CI exception list, and no exception for another plan.
 - [ ] Type-check, TSDoc lint, Prettier formatting, token guard (`tests/style-tokens.test.ts`, `tests/chart-tokens.test.ts`), and production build pass.
 - [ ] Accessibility (WCAG 2.2 AA), 320px reflow, 200% text size, forced colours, RTL, and v1 storage compatibility verified across Chromium, Firefox, and WebKit.
 - [ ] Every item under _Specification changes_ is ticked, and specifications match the implemented code.
 - [ ] No unintended changes outside the tasks' likely files.
+
+**Release E2E evidence and deferred work.** The earlier full unfiltered `bun run test:e2e --workers 1` at chart product and test revision `2b34f70` returned a failure with 1,197 passed, 32 failed, 181 skipped and nine not run. It predates R2–R11. At pre-plan base `2c6d039`, 29 failures reproduced: all three browsers for `PH-AC-2`, `DATA-FLOW-2`, `DATA-UP-2` and the three failing mockup-review cases, Chromium for `DATA-PRE-2` and nine visual-parity cases, and Firefox for `FOCUS-AC-5`. Three other failures subsequently passed isolated replays: Firefox `A11Y-E2E-13` and `WML-P1-UI-4`, and WebKit `WML-P2-UI-6`. Eight of the nine blocked cases passed separately. The remaining Firefox axe page crash (`A11Y-E2E-17`) also reproduced on the baseline.
+
+The independent checkpoint on `0210ea3` passed 24 cross-browser chart checks, five WebKit resize repeats, typecheck and 692 unit tests, lint, build, 18 token and helper tests, and formatting of all 77 affected supported files. Its Firefox unfiltered targeted replay ran five tests. All three `FOCUS-AC-5` cases passed, while `PH-AC-2` retained the 32px versus 0px padding mismatch and `DATA-UP-2` retained the 11 versus 12 card mismatch. The implementation check at the same revision passed all 822 Storybook tests. The checkpoint commands and signatures are retained in `/private/tmp/chart-landing-readiness-audit.md`, with raw full, targeted baseline and chart reports in `/private/tmp/chart-verification-e2e.json`, `/private/tmp/chart-landing-audit-baseline.json` and `/private/tmp/chart-landing-audit-regressions.json`. These results establish the targeted chart gate and inherited blockers. There is no green full-suite result at the final tip.
+
+The maintainer requested that this verified chart release be archived and landed first because the remaining failures require separate work. Draft the follow-up repair plan after integration, using the current `main` baseline and accounting for fixes already there, including the dataset-count and mockup updates at `17d7ad1`. The follow-up owns remaining inherited failures and unresolved repeatability, including shell layout and visual parity, browser stability and any still-reproducible test or fixture failures. It does not reopen the chart acceptance criteria.
 
 ## Risks and open questions
 
@@ -494,3 +501,5 @@ All presentational elements are Tier 2 (`src/features/results/`), own **no** i18
 | 2026-11-26T18:55:55Z | Complete chart reflow scope | Permit E13 fixes and evidence-driven text-layout fixes within all seven existing chart components and their shared measurement helpers, preserving public contracts and hard cross-browser checks. |
 | 2026-11-26T18:55:49Z | Invalidated approval | Authorise T6 to correct all evidenced chart text clipping while preserving existing accessibility contracts |
 | 2026-11-27T05:57:27Z | Invalidated approval | Define a nonempty formatting check for all plan-changed supported files against the pre-plan base |
+| 2026-11-27T09:52:51Z | Invalidated approval | Record the maintainer-authorised release exception for the observed inherited full E2E failures and defer repair without changing chart requirements or CI policy |
+| 2026-11-27T09:52:58Z | Release-first E2E decision | Retain all chart verification and the raw failed full-suite result, permit closure on independently audited chart evidence and the recorded baseline dispositions, and defer inherited repair to a separate post-integration plan. |
