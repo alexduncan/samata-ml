@@ -1,5 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { runAdvisoryAxe } from './helpers/advisory-a11y';
+import { expectFixturePage, mockReservedPages } from './helpers/content-fixtures';
+import { expectReservedModalClosed } from './helpers/e2e-settlement';
+import { dismissWelcomeModal } from './journeys/helpers';
 import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -386,10 +389,12 @@ test.describe('Presentational content dialog', () => {
 test('CDLG-AC-8: a new reserved route survives the queued close from a Back transition', async ({
 	page
 }) => {
+	await mockReservedPages(page);
 	await page.goto('/data');
-	await page.getByRole('button', { name: 'Get Started', exact: true }).click();
+	await dismissWelcomeModal(page);
+	const modal = page.locator('app-content-modal dialog');
 	await page.locator('app-sidebar a[href="/about"]').click();
-	await expect(page.locator('app-content-modal h2')).toHaveText('About samatā.ml');
+	await expectFixturePage(modal, 'about');
 	await page.evaluate(
 		() =>
 			new Promise<void>((resolve) => {
@@ -410,13 +415,10 @@ test('CDLG-AC-8: a new reserved route survives the queued close from a Back tran
 			})
 	);
 	await expect(page).toHaveURL(/\/privacy$/);
-	await expect(page.locator('app-content-modal h2')).toHaveText('Privacy Policy');
-	await expect(page.locator('app-content-modal .modal-content')).toContainText(
-		'Complete privacy is the only option.'
-	);
-	await page.locator('app-content-modal .btn-icon').click();
-	await expect(page).toHaveURL(/\/data$/);
-	await expect(page.locator('app-content-modal dialog')).not.toBeVisible();
+	await expectFixturePage(modal, 'privacy-policy');
+	await expect(modal.locator('#fixture-about')).toHaveCount(0);
+	await modal.getByRole('button', { name: 'Close' }).click();
+	await expectReservedModalClosed(page, modal, /\/data$/);
 });
 
 test('CDLG-AC-3: loaded content uses the existing draft structure', async ({

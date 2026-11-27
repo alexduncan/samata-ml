@@ -229,10 +229,13 @@ test('REL-UI-2 & REL-UI-4: legacy blobs, Escape reopen, privacy link/route, and 
 
 		// Direct reserved route /privacy keeps notice hidden and never accepts
 		await page1.goto(`${server!.url}/privacy`);
-		await expect(page1.locator('app-content-modal dialog')).toBeVisible();
-		await expect(page1.locator('app-content-modal')).toContainText('Umami Cloud');
-		await expect(page1.locator('app-content-modal')).toContainText('screen dimensions');
-		await expect(page1.locator('app-content-modal')).toContainText('IP address');
+		const privacy = page1.locator('app-content-modal dialog');
+		const policy = privacy.locator('.modal-content');
+		await expect(privacy).toBeVisible();
+		await expect(policy).toHaveAttribute('aria-busy', 'false');
+		await expect(policy).toContainText('Umami Cloud');
+		await expect(policy).toContainText('screen dimensions');
+		await expect(policy).toContainText('IP address');
 		await expect(page1.locator('app-welcome-modal dialog')).toBeHidden();
 		expect(sends1).toHaveLength(0);
 
@@ -257,7 +260,8 @@ test('REL-UI-2 & REL-UI-4: legacy blobs, Escape reopen, privacy link/route, and 
 
 		// Clicking privacy link hides beta dialog without accepting and closing returns to beta dialog
 		await dialog1.getByRole('link', { name: 'Read the privacy policy' }).click();
-		await expect(page1.locator('app-content-modal dialog')).toBeVisible();
+		await expect(privacy).toBeVisible();
+		await expect(policy).toHaveAttribute('aria-busy', 'false');
 		await expect(dialog1).toBeHidden();
 		await page1.keyboard.press('Escape');
 		await expect(dialog1).toBeVisible();

@@ -14,7 +14,6 @@ test.beforeEach(async ({ page }) => {
 				request.onblocked = () => reject(new Error('samata-db deletion was blocked'));
 			})
 	);
-	await page.goto('/data');
 });
 
 test('storage worker builds the catalogue and ingests sample and in-page files', async ({
@@ -34,8 +33,13 @@ test('storage worker builds the catalogue and ingests sample and in-page files',
 				const onMessage = (event: MessageEvent) => {
 					if (event.data.requestId !== id || event.data.type === 'progress') return;
 					worker.removeEventListener('message', onMessage);
-					if (event.data.type === 'error') reject(event.data.error);
-					else resolve(event.data.value as T);
+					if (event.data.type === 'error') {
+						reject(
+							new Error(
+								`Storage worker error (${type}): ${JSON.stringify(event.data.error)}`
+							)
+						);
+					} else resolve(event.data.value as T);
 				};
 				worker.addEventListener('message', onMessage);
 				worker.postMessage({ requestId: id, type, ...payload });

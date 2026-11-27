@@ -11,6 +11,8 @@ import { dialogStyles } from '../src/styles/dialog.styles';
 import { dismissWelcomeModal, loadSampleDataset } from './journeys/helpers';
 import { MOCKUPS_URL } from '../scripts/ports';
 import { waitForPublishedPreview } from './helpers/dataset-ready';
+import { expectFixturePage, mockReservedPages } from './helpers/content-fixtures';
+import { expectReservedModalClosed } from './helpers/e2e-settlement';
 
 type FocusableView = HTMLElement & { focusHeading(signal: AbortSignal): Promise<void> };
 interface FocusTestWindow extends Window {
@@ -310,25 +312,24 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 	test('NAV-E2E-3: Opening and closing reserved route modal leaves underlay intact', async ({
 		page
 	}) => {
+		await mockReservedPages(page);
 		// Go to /models
 		await page.locator('app-sidebar a[href="/models"]').click();
 		await expect(page.locator('#content h1')).toHaveText('Train Models');
 
 		// Open about modal via footer
 		await page.locator('app-sidebar footer a[href="/about"]').click();
-		expect(page.url()).toContain('/about');
+		await expect(page).toHaveURL('/about');
 
 		const modal = page.locator('app-content-modal dialog');
-		await expect(modal).toBeVisible();
-		await expect(modal.locator('h2')).toHaveText('About samatā.ml');
+		await expectFixturePage(modal, 'about');
 
 		// Underlay content is still mounted underneath
 		await expect(page.locator('#content h1')).toHaveText('Train Models');
 
 		// Close modal via close button
 		await modal.locator('button.btn-icon').click();
-		await expect(modal).not.toBeVisible();
-		await expect(page).toHaveURL(/\/models$/);
+		await expectReservedModalClosed(page, modal, /\/models$/);
 		await expect(page.locator('#content h1')).toHaveText('Train Models');
 	});
 
@@ -691,8 +692,14 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 
 		// Close /about
 		await modal.locator('button.btn-icon').click();
-		await expect(modal).not.toBeVisible();
+		await expectReservedModalClosed(page, modal, /\/target$/);
 		await expect(page.locator('html')).toHaveCSS('overflow-y', 'scroll');
+		await page.evaluate(
+			() =>
+				new Promise<void>((resolve) =>
+					requestAnimationFrame(() => requestAnimationFrame(() => resolve()))
+				)
+		);
 
 		const scrollYAfterModal = await page.evaluate(() => window.scrollY);
 		expect(scrollYAfterModal).toBe(scrollYOnReturn);
@@ -1004,31 +1011,37 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await keyboardNavigate(page, '/target');
 		await keyboardNavigate(page, '/data');
 		await expect(page.locator('app-data-view h1')).toBeFocused();
-		expect(await outline(page.locator('app-data-view h1'))).toMatchObject({
-			width: '2px',
-			style: 'solid',
-			offset: '2px'
-		});
+		await expect
+			.poll(() => outline(page.locator('app-data-view h1')))
+			.toMatchObject({
+				width: '2px',
+				style: 'solid',
+				offset: '2px'
+			});
 		await createIrisModel(page);
 		await page.goto('/models');
 		for (const path of ['/data', '/target', '/models', '/results']) {
 			await keyboardNavigate(page, path);
 			const heading = page.locator('#content h1');
 			await expect(heading).toBeFocused();
-			expect(await outline(heading)).toMatchObject({
-				width: '2px',
-				style: 'solid',
-				offset: '2px'
-			});
+			await expect
+				.poll(() => outline(heading))
+				.toMatchObject({
+					width: '2px',
+					style: 'solid',
+					offset: '2px'
+				});
 		}
 		await page.goBack();
 		await keyboardNavigate(page, '/models/new');
 		await expect(page.locator('#content h1')).toBeFocused();
-		expect(await outline(page.locator('#content h1'))).toMatchObject({
-			width: '2px',
-			style: 'solid',
-			offset: '2px'
-		});
+		await expect
+			.poll(() => outline(page.locator('#content h1')))
+			.toMatchObject({
+				width: '2px',
+				style: 'solid',
+				offset: '2px'
+			});
 	});
 
 	test('FOCUS-AC-5: long RTL headings retain geometry, forced-colour outlines and preventScroll', async ({
@@ -1043,17 +1056,21 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 			element.textContent = 'عنوان طويل لاختبار التركيز وإعادة تدفق النص '.repeat(8);
 		});
 		const before = await heading.boundingBox();
-		expect(await outline(heading)).toMatchObject({
-			width: '2px',
-			style: 'solid',
-			offset: '2px'
-		});
+		await expect
+			.poll(() => outline(heading))
+			.toMatchObject({
+				width: '2px',
+				style: 'solid',
+				offset: '2px'
+			});
 		await page.emulateMedia({ forcedColors: 'active', reducedMotion: 'reduce' });
-		expect(await outline(heading)).toMatchObject({
-			width: '2px',
-			style: 'solid',
-			offset: '2px'
-		});
+		await expect
+			.poll(() => outline(heading))
+			.toMatchObject({
+				width: '2px',
+				style: 'solid',
+				offset: '2px'
+			});
 		expect((await outline(heading)).colour).not.toBe('rgba(0, 0, 0, 0)');
 		expect(await heading.boundingBox()).toEqual(before);
 		await page.addStyleTag({ content: '#content { min-block-size: 300vh; }' });
@@ -1222,46 +1239,6 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 				fullPage: true
 			});
 		}
-	});
-
-	test('PH-AC-2: main uses reference geometry and the results header retains semantic markup', async ({
-		page,
-		context
-	}, testInfo) => {
-		await page.setViewportSize({ width: 1440, height: 900 });
-		const reference = await context.newPage();
-		await reference.setViewportSize({ width: 1440, height: 900 });
-		await reference.goto(`${MOCKUPS_URL}/01-1_select-data.html?clean=1`);
-		await reference.screenshot({
-			path: testInfo.outputPath('main-reference.png'),
-			fullPage: true
-		});
-		await page.screenshot({ path: testInfo.outputPath('main-app.png'), fullPage: true });
-		const geometry = (element: Element) => {
-			const style = getComputedStyle(element);
-			return {
-				padding: style.padding,
-				margin: style.marginInlineStart,
-				minHeight: style.minBlockSize,
-				sizing: style.boxSizing
-			};
-		};
-		expect(await page.locator('main').evaluate(geometry)).toEqual(
-			await reference.locator('main').evaluate(geometry)
-		);
-		await reference.close();
-		await keyboardNavigate(page, '/results');
-		await expect(page.locator('app-results-view header.page-header > p')).toHaveText(
-			'Compare performance metrics across trained models.'
-		);
-		await expect(page.locator('app-results-view .notification')).toContainText(
-			'Train at least two models'
-		);
-		await expect(page.locator('app-results-view .notification a')).toHaveAttribute(
-			'href',
-			'/models'
-		);
-		await expect(page.locator('#app > style, #app-container, main[role]')).toHaveCount(0);
 	});
 
 	test('PH-AC-2: results header and main non-padding geometry match independently', async ({

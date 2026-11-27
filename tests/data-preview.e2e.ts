@@ -3,6 +3,7 @@ import { expect, test, type Page } from '@playwright/test';
 import type { AppColumnDetails } from '../src/features/data/app-column-details';
 import type { PersistedAppState } from '../src/types/state';
 import { waitForPublishedPreview } from './helpers/dataset-ready';
+import { waitForPersistedAppState } from './helpers/e2e-settlement';
 import { dismissWelcomeModal } from './journeys/helpers';
 
 async function loadIrisPreview(page: Page): Promise<void> {
@@ -183,17 +184,7 @@ test.describe('Dataset Preview & Column Inspector (DATA-PRE-1 .. DATA-PRE-3)', (
 
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/data');
-		// Dismiss welcome modal if open
-		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
-		try {
-			await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
-			await getStartedBtn.click();
-			await page
-				.locator('app-welcome-modal dialog')
-				.waitFor({ state: 'hidden', timeout: 2000 });
-		} catch {
-			// Already dismissed
-		}
+		await dismissWelcomeModal(page);
 	});
 
 	test('DATA-PRE-1: bounded requests, no segment controls or Go to row, grouping decimals', async ({
@@ -309,14 +300,18 @@ test.describe('Dataset Preview & Column Inspector (DATA-PRE-1 .. DATA-PRE-3)', (
 		await expect(aside.locator('.overlay-title h4')).toContainText('petal length');
 		// The selection is persisted through the guarded (asynchronous) state write, so wait for it
 		// to reach storage before reloading.
-		await expect
-			.poll(() =>
-				page.evaluate(() => {
-					const raw = localStorage.getItem('samata-ml:state');
-					return raw ? (JSON.parse(raw) as PersistedAppState).data.selectedColumn : null;
-				})
-			)
-			.toBe('petal length');
+		const datasetId = await page.evaluate(() => window.__appState!.get().dataset?.id);
+		expect(datasetId).toBeTruthy();
+		await waitForPersistedAppState(page, (state) => {
+			const { data, dataset, onboarding } = state as Partial<PersistedAppState>;
+			return (
+				onboarding?.welcomeDismissed === true &&
+				dataset?.sampleId === 'iris' &&
+				dataset.id === datasetId &&
+				data?.mode === 'preview' &&
+				data.selectedColumn === 'petal length'
+			);
+		});
 
 		await page.reload();
 

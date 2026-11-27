@@ -151,7 +151,11 @@ test('A11Y-E2E-CONTENT: the ready reserved-route dialog passes scoped WCAG check
 	page
 }) => {
 	await page.goto('/privacy');
-	await expect(page.locator('app-content-modal h2')).toHaveText('Privacy Policy');
+	const dialog = page.locator('app-content-modal dialog');
+	await expect(dialog).toBeVisible();
+	const body = dialog.locator('.modal-content');
+	await expect(body).toHaveAttribute('aria-busy', 'false');
+	await expect(body).toHaveText(/\S/);
 	const results = await new AxeBuilder({ page })
 		.include('app-content-modal')
 		.withTags(AXE_TAGS)

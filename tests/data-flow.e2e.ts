@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { dismissWelcomeModal } from './journeys/helpers';
 import { waitForPublishedPreview } from './helpers/dataset-ready';
+import { fetchSampleDatasetCount } from './helpers/e2e-settlement';
 
 /** Scrolls the document so the given zero-based table row is at the top of the table body. */
 async function scrollToRow(table: Locator, row: number): Promise<void> {
@@ -18,17 +19,7 @@ test.describe('Data Flow, Route & Scroll Integration (DATA-FLOW-1 .. DATA-FLOW-3
 
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/data');
-		// Dismiss welcome modal if open
-		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
-		try {
-			await getStartedBtn.waitFor({ state: 'visible', timeout: 2000 });
-			await getStartedBtn.click();
-			await page
-				.locator('app-welcome-modal dialog')
-				.waitFor({ state: 'hidden', timeout: 2000 });
-		} catch {
-			// Already dismissed
-		}
+		await dismissWelcomeModal(page);
 	});
 
 	test('DATA-FLOW-1: preview mode, selected column, document scroll survives reload and back/forward', async ({
@@ -128,7 +119,9 @@ test.describe('Data Flow, Route & Scroll Integration (DATA-FLOW-1 .. DATA-FLOW-3
 		// 4. Returns to selection mode
 		await expect(page.locator('header.page-header h1')).toHaveText('Select Data');
 		const cards = page.locator('app-dataset-card');
-		await expect(cards).toHaveCount(11);
+		const expectedCount = await fetchSampleDatasetCount(page);
+		expect(expectedCount).toBeGreaterThan(0);
+		await expect(cards).toHaveCount(expectedCount);
 
 		// 5. Sidebar step 1 reverts to default
 		await expect(sidebarStep).not.toContainText('Iris Flower Species');
@@ -136,7 +129,7 @@ test.describe('Data Flow, Route & Scroll Integration (DATA-FLOW-1 .. DATA-FLOW-3
 		// 6. Survives reload
 		await page.reload();
 		await expect(page.locator('header.page-header h1')).toHaveText('Select Data');
-		await expect(cards).toHaveCount(11);
+		await expect(cards).toHaveCount(expectedCount);
 	});
 
 	test('DATA-FLOW-3: accessibility, RTL, and keyboard navigation', async ({ page }) => {

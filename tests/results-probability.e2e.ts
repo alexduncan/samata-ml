@@ -144,24 +144,22 @@ test.describe('Section 6 probability views', () => {
 	test('WML-P4-UI-7: the rule moves with the threshold', async ({ page }) => {
 		await mount(page, { element: 'threshold', evaluation: 'breast-cancer' });
 		const slider = page.getByRole('slider', { name: 'Probability threshold' });
+		const explorer = page.locator('app-threshold-explorer');
+		const setThreshold = async (index: number): Promise<void> => {
+			await slider.fill(String(index));
+			await explorer.evaluate((host: HTMLElementTagNameMap['app-threshold-explorer']) =>
+				host.whenSettled()
+			);
+		};
 		const positions: number[] = [];
 		for (const index of [0, 50, 100]) {
-			await slider.fill(String(index));
-			await page
-				.locator('app-threshold-explorer')
-				.evaluate((host) =>
-					(host as unknown as { whenSettled(): Promise<void> }).whenSettled()
-				);
+			await setThreshold(index);
 			await expect.poll(() => ruleX(page)).not.toBeNaN();
 			positions.push(await ruleX(page));
 		}
-		await expect
-			.poll(async () => {
-				await slider.fill('0');
-				await slider.fill('100');
-				return (await ruleX(page)) > positions[1]!;
-			})
-			.toBe(true);
+		await setThreshold(0);
+		await setThreshold(100);
+		await expect.poll(() => ruleX(page)).toBeGreaterThan(positions[1]!);
 		expect(positions[0]).toBeLessThan(positions[1]!);
 		expect(Math.abs(positions[1]! - (positions[0]! + positions[2]!) / 2)).toBeLessThan(40);
 	});

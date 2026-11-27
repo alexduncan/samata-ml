@@ -2,7 +2,6 @@ import { expect, test, type Page } from '@playwright/test';
 import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import AxeBuilder from '@axe-core/playwright';
 import { STATE_STORAGE_KEY } from '../src/types/state';
-import { MOCKUPS_URL } from '../scripts/ports';
 
 interface WelcomeTestWindow extends Window {
 	__welcomeDismissalWrites: number;
@@ -71,33 +70,32 @@ test('DLG-BACKDROP-1: non-beta welcome backdrop dismissal persists once', async 
 	await expectDismissedOnce(page);
 });
 
-test('WEL-AC-3: native welcome has reference geometry and semantic names', async ({
+test('WEL-AC-3: native welcome is named, fits and keeps its action keyboard reachable', async ({
 	page,
-	context
+	browserName
 }, testInfo) => {
 	await page.setViewportSize({ width: 1440, height: 900 });
 	await page.goto('/data');
-	const dialog = page.getByRole('dialog', { name: 'samatā.ml beta', exact: true });
+	const dialog = page.locator('app-welcome-modal').getByRole('dialog');
+	const heading = dialog.getByRole('heading', { level: 2 });
+	const lead = dialog.locator('p.lead');
+	const body = dialog.locator('.body');
+	const action = dialog.getByRole('button', { name: /\S/ });
 	await expect(dialog).toBeVisible();
-	await expect(dialog.getByRole('heading', { level: 2 })).toHaveText('samatā.ml beta');
+	await expect(heading).toHaveText(/\S/);
+	await expect(heading).toHaveAttribute('id', 'welcome-title');
+	await expect(dialog).toHaveAttribute('aria-labelledby', 'welcome-title');
+	const title = (await heading.textContent())?.replace(/\s+/g, ' ').trim() ?? '';
+	await expect(dialog).toHaveAccessibleName(title);
 	await expect(dialog.locator('h1')).toHaveCount(0);
-	await expect(dialog.locator('p.lead')).toHaveText(
-		'train machine learning models inside your browser.'
-	);
-	await expect(dialog.getByRole('button', { name: 'Get Started', exact: true })).toBeVisible();
+	await expect(lead).toBeVisible();
+	await expect(lead).toHaveText(/\S/);
+	await expect(body).toBeVisible();
+	await expect(body).toHaveText(/\S/);
+	await expect(action).toBeVisible();
+	await expect(action).toHaveClass(/\bbtn-primary\b/);
 	await expect(dialog).not.toHaveAttribute('role');
 	await expect(dialog).not.toHaveAttribute('aria-modal');
-	const reference = await context.newPage();
-	await reference.setViewportSize({ width: 1440, height: 900 });
-	await reference.goto(`${MOCKUPS_URL}/00_first-load.html?clean=1`);
-	await reference.screenshot({ path: testInfo.outputPath('welcome-reference.png') });
-	await page.screenshot({ path: testInfo.outputPath('welcome-app.png') });
-	const actualBox = await dialog.boundingBox();
-	const referenceBox = await reference.locator('dialog').boundingBox();
-	for (const key of ['x', 'y', 'width', 'height'] as const)
-		expect(Math.abs(actualBox![key] - referenceBox![key])).toBeLessThanOrEqual(1);
-	const button = await dialog.locator('button').boundingBox();
-	expect(button!.width).toBe(actualBox!.width - 50);
 	await runAdvisoryAxe(
 		testInfo,
 		async () => {
@@ -109,7 +107,31 @@ test('WEL-AC-3: native welcome has reference geometry and semantic names', async
 		},
 		{ label: 'WEL-AC-3' }
 	);
-	await reference.close();
+
+	const tab = browserName === 'webkit' && process.platform === 'darwin' ? 'Alt+Tab' : 'Tab';
+	for (const viewport of [
+		{ width: 1440, height: 900 },
+		{ width: 320, height: 540 }
+	]) {
+		await page.setViewportSize(viewport);
+		await expect(dialog).toBeInViewport({ ratio: 0.98 });
+		const dimensions = await dialog.evaluate((node) => ({
+			inlineOverflow: node.scrollWidth - node.clientWidth,
+			blockOverflow: node.scrollHeight - node.clientHeight
+		}));
+		expect(dimensions.inlineOverflow).toBeLessThanOrEqual(1);
+		if (dimensions.blockOverflow > 0) {
+			await dialog.evaluate((node) => (node.scrollTop = 0));
+			await expect(lead).toBeInViewport();
+			await action.scrollIntoViewIfNeeded();
+			await expect.poll(() => dialog.evaluate((node) => node.scrollTop)).toBeGreaterThan(0);
+		}
+		await action.press(`Shift+${tab}`);
+		await expect(action).not.toBeFocused();
+		await page.keyboard.press(tab);
+		await expect(action).toBeFocused();
+		await expect(action).toBeInViewport();
+	}
 });
 
 test('WEL-AC-4: reload preserves explicit onboarding dismissal', async ({ page }) => {

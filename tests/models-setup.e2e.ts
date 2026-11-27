@@ -4,7 +4,13 @@ import { DIST_URL } from '../scripts/ports';
 import { interceptSampleDownload } from './fixtures/sample-dataset-downloads';
 import { controlTraining, openSetup } from './fixtures/training/browser';
 import { runAdvisoryAxe } from './helpers/advisory-a11y';
+import {
+	expectFixturePage,
+	mockReservedPages,
+	type ReservedPageFixture
+} from './helpers/content-fixtures';
 import { waitForPublishedPreview } from './helpers/dataset-ready';
+import { expectReservedModalClosed } from './helpers/e2e-settlement';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
@@ -27,6 +33,7 @@ test.describe('Contextual wizard Help', () => {
 	}) => {
 		test.setTimeout(60_000);
 		await page.emulateMedia({ reducedMotion: 'reduce' });
+		await mockReservedPages(page);
 		await page.goto('/data');
 		const welcome = page.locator('app-welcome-modal').getByRole('dialog');
 		await welcome.getByRole('button', { name: 'Get Started' }).click();
@@ -52,7 +59,6 @@ test.describe('Contextual wizard Help', () => {
 			.click();
 		const source = await page.evaluate(() => history.state.entryId);
 		const modal = page.locator('app-content-modal').getByRole('dialog');
-		const article = modal.locator('.modal-content');
 		const readDraft = () =>
 			page.evaluate(() => {
 				const state = window.__appState!.get();
@@ -61,11 +67,10 @@ test.describe('Contextual wizard Help', () => {
 
 		async function exerciseHelp(
 			stepTitle: string,
-			topic: string,
-			title: string,
-			verifyArticle: () => Promise<void>,
+			fixture: ReservedPageFixture,
 			verifyForm: () => Promise<void>
 		): Promise<void> {
+			const topic = `/help/${fixture}`;
 			const link = builder.locator(`h2#${stepTitle} .help-link`);
 			await expect(link).toHaveAttribute('href', topic);
 			const draft = await readDraft();
@@ -76,16 +81,21 @@ test.describe('Contextual wizard Help', () => {
 				else if (mode === 'keyboard') await link.press('Enter');
 				else await link.tap();
 				await expect(page).toHaveURL(topic);
-				await expect(modal).toHaveAccessibleName(title);
+				await expectFixturePage(modal, fixture);
 				expect(await page.evaluate(() => history.state.underlayEntryId)).toBe(source);
 				expect(await page.evaluate(() => history.state.underlayPath)).toBe('/models/new');
-				await verifyArticle();
+				if (fixture === 'training-setup') {
+					await expect(modal.getByRole('table').getByRole('columnheader')).toHaveText([
+						'Strategy',
+						'Benefits',
+						'Drawbacks'
+					]);
+				}
 
 				if (mode === 'mouse') await modal.getByRole('button', { name: 'Close' }).click();
 				else if (mode === 'keyboard') await page.keyboard.press('Escape');
 				else await page.goBack();
-				await expect(page).toHaveURL('/models/new');
-				await expect(modal).toBeHidden();
+				await expectReservedModalClosed(page, modal, '/models/new');
 				await expect(link).toBeFocused();
 				await expect(builder.locator('[aria-current="step"] h2')).toHaveAttribute(
 					'id',
@@ -99,41 +109,19 @@ test.describe('Contextual wizard Help', () => {
 
 		const feature = builder.getByRole('checkbox', { name: 'Include sepal length' });
 		await feature.uncheck();
-		await exerciseHelp(
-			'step-2-title',
-			'/help/select-features',
-			'What are features?',
-			async () => {
-				await expect(article).toContainText('the column you want the model to predict');
-				await expect(article).toContainText('petal length and petal width');
-				await expect(
-					article.getByRole('heading', { name: 'Watch out for data leakage' })
-				).toBeVisible();
-			},
-			async () => {
-				await expect(feature).not.toBeChecked();
-			}
-		);
+		await exerciseHelp('step-2-title', 'select-features', async () => {
+			await expect(feature).not.toBeChecked();
+		});
 		await builder.getByRole('button', { name: 'Continue', exact: true }).click();
 
 		const configuration = builder.locator('app-model-configuration');
 		await configuration.locator('select#penalty').selectOption('l2');
 		const regularisation = configuration.locator('#C-number');
 		await regularisation.fill('0.00');
-		await exerciseHelp(
-			'step-3-title',
-			'/help/configure-model',
-			'What do these settings mean?',
-			async () => {
-				await expect(article).toContainText(
-					'The exact stopping check depends on the solver.'
-				);
-			},
-			async () => {
-				await expect(regularisation).toHaveValue('0.00');
-				await expect(regularisation).toHaveAttribute('aria-invalid', 'true');
-			}
-		);
+		await exerciseHelp('step-3-title', 'configure-model', async () => {
+			await expect(regularisation).toHaveValue('0.00');
+			await expect(regularisation).toHaveAttribute('aria-invalid', 'true');
+		});
 		await regularisation.fill('1');
 		await configuration.getByRole('button', { name: 'Save & Continue' }).click();
 
@@ -141,30 +129,10 @@ test.describe('Contextual wizard Help', () => {
 		await setup.getByRole('combobox').selectOption('nested_cv');
 		const folds = setup.getByRole('spinbutton');
 		await folds.fill('11');
-		await exerciseHelp(
-			'step-4-title',
-			'/help/training-setup',
-			'Training Setup',
-			async () => {
-				const tradeOffs = article.getByRole('table');
-				await expect(
-					tradeOffs.getByRole('columnheader', { name: 'Benefits' })
-				).toBeVisible();
-				await expect(
-					tradeOffs.getByRole('columnheader', { name: 'Drawbacks' })
-				).toBeVisible();
-				await expect(tradeOffs.getByRole('row', { name: /^One-Shot/ })).toContainText(
-					'depends on which rows land in the single test group'
-				);
-				await expect(
-					tradeOffs.getByRole('row', { name: /^Cross-Validation/ })
-				).toContainText('Trains several times');
-			},
-			async () => {
-				await expect(folds).toHaveValue('11');
-				await expect(folds).toHaveAttribute('aria-invalid', 'true');
-			}
-		);
+		await exerciseHelp('step-4-title', 'training-setup', async () => {
+			await expect(folds).toHaveValue('11');
+			await expect(folds).toHaveAttribute('aria-invalid', 'true');
+		});
 	});
 });
 

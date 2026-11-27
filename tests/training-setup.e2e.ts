@@ -4,6 +4,8 @@ import type { ModelSectionId, ValidationMethodology } from '../src/types/state';
 import type { AppTrainingSetup } from '../src/features/models/app-training-setup';
 import type { StorageRequest } from '../src/features/data/ingestion/protocol';
 import { openLegacyModel, openLegacyTrainingSetup, openSetup } from './fixtures/training/browser';
+import { expectFixturePage, mockReservedPages } from './helpers/content-fixtures';
+import { expectReservedModalClosed } from './helpers/e2e-settlement';
 
 const earlierSteps: ModelSectionId[] = ['choose-model', 'select-features', 'configure-model'];
 const oneShot = { type: 'one_shot', testRatio: 0.2, randomState: 42 } as const;
@@ -639,6 +641,7 @@ test.describe('Connected Training Setup', () => {
 	test('TERM-AC-5: WML-P2-UI-4 both Help links open the article and preserve the form', async ({
 		page
 	}) => {
+		await mockReservedPages(page);
 		const form = await openSetup(page);
 		await seedSetup(page, oneShot, true);
 		const edit = setupStep(page).getByRole('button', { name: 'Edit Training Setup' });
@@ -648,20 +651,11 @@ test.describe('Connected Training Setup', () => {
 		await expect(builder(page).locator('dialog[data-confirm="reopen-section"]')).toBeHidden();
 
 		await setupStep(page).getByRole('link', { name: 'What is this?' }).click();
-		const modal = page.getByRole('dialog', { name: 'Training Setup' });
+		const modal = page.locator('app-content-modal dialog');
 		await expect(page).toHaveURL('/help/training-setup');
-		const article = modal.locator('.modal-content');
-		for (const text of [
-			'Rows left out of training for the model that made those predictions',
-			'The test rows are set aside to check how it performs on other rows',
-			'A stratified split tries to keep the shares of each class similar',
-			'The validation fold is the group set aside for one check',
-			'Train the final model again using all the eligible rows'
-		]) {
-			await expect(article).toContainText(text, { ignoreCase: true });
-		}
+		await expectFixturePage(modal, 'training-setup');
 		await modal.getByRole('button', { name: 'Close' }).click();
-		await expect(page).toHaveURL('/models/new');
+		await expectReservedModalClosed(page, modal, '/models/new');
 
 		await form.getByRole('combobox').selectOption('nested_cv');
 		const number = form.getByRole('spinbutton');
@@ -677,10 +671,7 @@ test.describe('Connected Training Setup', () => {
 		]);
 		await page.keyboard.press('Enter');
 		await expect(page).toHaveURL('/help/training-setup');
-		await expect(modal).toBeVisible();
-		await expect(article).toContainText(
-			'using all the eligible rows after cross-validation has checked performance'
-		);
+		await expectFixturePage(modal, 'training-setup');
 		await builder(page).evaluate(async (el) => {
 			const host = el as HTMLElementTagNameMap['app-model-builder-view'];
 			host.requestUpdate();
@@ -695,7 +686,7 @@ test.describe('Connected Training Setup', () => {
 		);
 		expect(await trainingState(page)).toEqual(before);
 		await modal.getByRole('button', { name: 'Close' }).click();
-		await expect(page).toHaveURL('/models/new');
+		await expectReservedModalClosed(page, modal, '/models/new');
 		for (const [locator, original] of [
 			[form, oldForm],
 			[number, oldNumber],

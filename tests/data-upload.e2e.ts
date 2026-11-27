@@ -3,6 +3,7 @@ import type { StorageRequest, StorageResponse } from '../src/features/data/inges
 import { INGESTION_ERROR_MESSAGES } from '../src/features/data/ingestion/errors';
 import { PARSE_CHUNK_BYTES } from '../src/features/data/ingestion/limits';
 import { waitForPublishedPreview } from './helpers/dataset-ready';
+import { fetchSampleDatasetCount } from './helpers/e2e-settlement';
 import { dismissWelcomeModal } from './journeys/helpers';
 
 interface UploadTestWindow extends Window {
@@ -12,17 +13,7 @@ interface UploadTestWindow extends Window {
 test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/data');
-		// Dismiss welcome modal if open
-		const getStartedBtn = page.locator('app-welcome-modal button.btn-primary');
-		try {
-			await getStartedBtn.waitFor({ state: 'visible', timeout: 3000 });
-			await getStartedBtn.click();
-			await page
-				.locator('app-welcome-modal dialog')
-				.waitFor({ state: 'hidden', timeout: 3000 });
-		} catch {
-			// Already dismissed
-		}
+		await dismissWelcomeModal(page);
 	});
 
 	test('DATA-UP-1: upload dialog opening, file selection, validation, error mapping and cancel', async ({
@@ -243,9 +234,11 @@ test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
 		await dialog.locator('button.btn-icon[aria-label="Close modal"]').click();
 		await expect(dialog).not.toBeVisible();
 
-		// 4. Page should still be on selection mode with 12 dataset cards
+		// 4. Selection mode still shows the full sample catalogue.
 		const cards = page.locator('app-dataset-card');
-		await expect(cards).toHaveCount(11);
+		const expectedCount = await fetchSampleDatasetCount(page);
+		expect(expectedCount).toBeGreaterThan(0);
+		await expect(cards).toHaveCount(expectedCount);
 	});
 
 	test('DATA-UP-3: valid CSV file upload succeeds and triggers preview', async ({ page }) => {

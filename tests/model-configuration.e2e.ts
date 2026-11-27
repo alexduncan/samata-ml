@@ -2,7 +2,9 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { featureA11yFindings } from './a11y-feature-findings';
 import { runAdvisoryAxe } from './helpers/advisory-a11y';
+import { expectFixturePage, mockReservedPages } from './helpers/content-fixtures';
 import { waitForPublishedPreview } from './helpers/dataset-ready';
+import { expectReservedModalClosed } from './helpers/e2e-settlement';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
@@ -530,38 +532,35 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		test.use({ hasTouch: true });
 
 		test('TERM-AC-1: Configure Model Help works by keyboard and touch', async ({ page }) => {
+			await mockReservedPages(page);
 			await openConfigure(page);
 			const help = page.locator('app-model-builder-view a[href="/help/configure-model"]');
-			const dialog = page.getByRole('dialog', { name: 'What do these settings mean?' });
-			const article = dialog.locator('.modal-content');
+			const dialog = page.locator('app-content-modal dialog');
 			await help.focus();
 			await page.keyboard.press('Enter');
-			await expect(article).toContainText('The exact stopping check depends on the solver.');
-			await expect(article).toContainText('limited-memory Broyden–Fletcher–Goldfarb–Shanno');
+			await expectFixturePage(dialog, 'configure-model');
 			await page.keyboard.press('Escape');
-			await expect(dialog).toBeHidden();
+			await expectReservedModalClosed(page, dialog, /\/models\/new$/);
 			await expect(help).toBeFocused();
 
 			await help.tap();
-			await expect(dialog).toBeVisible();
+			await expectFixturePage(dialog, 'configure-model');
 			await dialog.getByRole('button', { name: 'Close' }).tap();
-			await expect(dialog).toBeHidden();
+			await expectReservedModalClosed(page, dialog, /\/models\/new$/);
 		});
 	});
 
 	test('WML-P1-UI-5: help link opens the dialog and closing returns to the model', async ({
 		page
 	}) => {
+		await mockReservedPages(page);
 		await openConfigure(page);
 		await page.locator('app-model-builder-view a.help-link').click();
 		await expect(page).toHaveURL(/\/help\/configure-model$/);
 		const dialog = page.locator('app-content-modal dialog');
-		await expect(dialog).toBeVisible();
-		await expect(
-			dialog.getByRole('heading', { name: 'What do these settings mean?' })
-		).toBeVisible();
+		await expectFixturePage(dialog, 'configure-model');
 		await page.keyboard.press('Escape');
-		await expect(page).toHaveURL(/\/models\/new$/);
+		await expectReservedModalClosed(page, dialog, /\/models\/new$/);
 
 		const form = page.locator('app-model-configuration');
 		await form.locator('select#penalty').selectOption('l2');
