@@ -43,10 +43,15 @@ test('CHT-COMP-1: charts distinguish two models with the same label', async ({ p
 	const fold = view.locator('app-fold-strip');
 	const classErrors = view.locator('app-class-error-bars');
 	const rope = view.locator('app-rope-bar');
+	const delta = view.locator('app-confusion-delta');
+	const pairStatus = view.locator('app-model-pair-picker').getByRole('status');
 	const modelName = 'Logistic Regression';
 	const modelA = `1 ${modelName}`;
 	const modelB = `2 ${modelName}`;
 	const bothModels = new RegExp(`${modelA}.*${modelB}`);
+	const initialCaption = `Confusion differences: ${modelA} minus ${modelB}`;
+	await expect(delta.getByRole('region', { name: initialCaption })).toBeVisible();
+	await expect(delta.getByRole('table', { name: initialCaption })).toBeVisible();
 
 	for (const chart of [fold, classErrors, rope]) {
 		const legend = chart.locator('.chart-legend');
@@ -76,6 +81,10 @@ test('CHT-COMP-1: charts distinguish two models with the same label', async ({ p
 	}
 
 	await view.getByRole('button', { name: 'Swap models A and B' }).click();
+	await expect(pairStatus).toHaveText(`Model A is ${modelB}; Model B is ${modelA}.`);
+	const swappedCaption = `Confusion differences: ${modelB} minus ${modelA}`;
+	await expect(delta.getByRole('region', { name: swappedCaption })).toBeVisible();
+	await expect(delta.getByRole('table', { name: swappedCaption })).toBeVisible();
 	await expect(rope.locator('.chart-legend .swatch')).toHaveText(['2', '1']);
 	await expect(rope.getByRole('img')).toHaveAccessibleDescription(
 		new RegExp(`${modelB}.*${modelA}`)

@@ -156,7 +156,7 @@ const messages = i18n('app-results-view', {
 	modelB: 'Model B',
 	swap: 'Swap models A and B',
 	order: params<{ a: string; b: string }>('Model A is {a}; Model B is {b}.'),
-	confusion: 'Confusion differences',
+	confusion: params<{ a: string; b: string }>('Confusion differences: {a} minus {b}'),
 	filter: 'True class',
 	allClasses: 'Default classes',
 	trueClass: 'True class',
@@ -629,6 +629,7 @@ export class AppResultsView extends LitElement {
 			});
 		const numberedModel = (num: number, label: string) =>
 			t.numberedModel({ n: format.count(num), label });
+		const numberedName = (num: number) => numberedModel(num, name(num));
 		const foldLabel = (row: FoldSeries) =>
 			row.num === undefined ? row.label : numberedModel(row.num, row.label);
 		const diff = data.confusionView;
@@ -849,8 +850,8 @@ export class AppResultsView extends LitElement {
 													modelB: t.modelB,
 													swap: t.swap,
 													order: t.order({
-														a: name(a.num),
-														b: name(b.num)
+														a: numberedName(a.num),
+														b: numberedName(b.num)
 													})
 												}}
 												@app-model-pair-change=${this
@@ -860,7 +861,10 @@ export class AppResultsView extends LitElement {
 												.classFilter=${data.classFilter}
 												.formatSignedCount=${signed}
 												.labels=${{
-													caption: t.confusion,
+													caption: t.confusion({
+														a: numberedName(a.num),
+														b: numberedName(b.num)
+													}),
 													filter: t.filter,
 													allClasses: t.allClasses,
 													trueClass: t.targetTrue({
@@ -892,8 +896,8 @@ export class AppResultsView extends LitElement {
 												.caption=${{
 													title: t.ropeTitle,
 													takeaway: t.ropeTakeaway({
-														a: numberedModel(a.num, name(a.num)),
-														b: numberedModel(b.num, name(b.num)),
+														a: numberedName(a.num),
+														b: numberedName(b.num),
 														width: format.points(ui.ropeWidth),
 														folds: format.count(
 															a.evaluation.partitions.length
