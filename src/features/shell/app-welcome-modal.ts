@@ -18,8 +18,7 @@ import { dialogStyles } from '../../styles/dialog.styles';
 const messages = i18n('app-welcome-modal', {
 	brand: 'samatā.ml',
 	beta: 'beta',
-	lead: 'train machine learning models inside your browser.',
-	body: 'The samatā.ml platform allows anyone to learn key Artificial Intelligence concepts through hands-on experimentation.',
+	lead: 'Train machine learning models inside your browser.',
 	betaNotice:
 		'By clicking Get Started, you accept cookieless analytics and error reporting for this beta.',
 	privacyLink: 'Read the privacy policy',
@@ -72,7 +71,23 @@ export class AppWelcomeModal extends LitElement {
 				color: var(--stone-800);
 				font-weight: 400;
 				font-size: 1rem;
-				line-height: 2rem;
+				line-height: 1.5rem;
+			}
+			.body h3 {
+				margin-block: 0 0.75rem;
+				color: var(--stone-800);
+				font-weight: 600;
+				font-size: 1.125rem;
+				line-height: 1.4;
+			}
+			.body ul {
+				margin-block: 0.5rem 0.75rem;
+			}
+			.body p {
+				margin-block: 0 0.75rem;
+			}
+			.body p:last-child {
+				margin-block-end: 0;
 			}
 			.beta-notice {
 				margin-inline: 0;
@@ -82,10 +97,10 @@ export class AppWelcomeModal extends LitElement {
 				font-size: 1rem;
 				line-height: 1.5rem;
 			}
-			.beta-notice a {
+			.modal-content a {
 				color: var(--blue-700);
 			}
-			.beta-notice a:focus-visible {
+			.modal-content a:focus-visible {
 				outline: 2px solid var(--focus-ring);
 				outline-offset: 2px;
 			}
@@ -190,7 +205,48 @@ export class AppWelcomeModal extends LitElement {
 				</header>
 				<div class="modal-content">
 					<p class="lead">${t.lead}</p>
-					<p class="body">${t.body}</p>
+					<div class="body">
+						<h3>
+							My name is
+							<a
+								href="https://alexduncan.co.uk/"
+								target="_blank"
+								rel="noopener noreferrer"
+								>Alex Duncan</a
+							>
+							and during my masters in AI &amp; Ethics I learned:
+						</h3>
+						<ul>
+							<li>
+								Machines learn from historical data that inevitably includes biases
+								that we don’t want machines to perpetuate.
+							</li>
+							<li>
+								Current AI courses require a high level of technical knowledge.
+								Skills that aren’t essential to understanding how algorithms are
+								biased.<br />
+								<em
+									>(Some research even shows that
+									<a
+										href="https://dl.acm.org/doi/10.1145/3341525.3393997"
+										target="_blank"
+										rel="noopener noreferrer"
+										>code can get in the way</a
+									>.)</em
+								>
+							</li>
+						</ul>
+						<p>
+							For society to have safer algorithms we need more people who understand
+							AI. To achieve this we need tools for learners without deep knowledge of
+							maths and coding.
+						</p>
+						<p><strong>samatā.ml</strong> is my attempt to build that tool.</p>
+						<p>
+							This is just the first version. I would love your feedback
+							<a href="mailto:alex@samata.ml">alex@samata.ml</a>.
+						</p>
+					</div>
 					${isBeta
 						? html`<p id="welcome-beta" class="beta-notice">
 								${t.betaNotice}
