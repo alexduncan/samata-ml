@@ -139,8 +139,11 @@ This is the implementation. Values marked `/* Qn */` wait on Open questions.
 		background-color: var(--surface);
 		color: var(--red-700);
 
+		/* Repeats border and colour: `.btn:hover:not(:disabled)` is more specific than `.btn.btn-red`. */
 		&:hover:not(:disabled) {
+			border-color: var(--red-700);
 			background-color: var(--red-100);
+			color: var(--red-700);
 		}
 	}
 }

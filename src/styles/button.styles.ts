@@ -53,7 +53,9 @@ export const buttonStyles: CSSResult = css`
 			color: var(--red-700);
 
 			&:hover:not(:disabled) {
+				border-color: var(--red-700);
 				background-color: var(--red-100);
+				color: var(--red-700);
 			}
 		}
 	}

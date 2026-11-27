@@ -30,7 +30,7 @@ describe('shared style primitives', () => {
 			/\.btn-red \{[^}]*border-color: var\(--red-700\);[^}]*background-color: var\(--surface\);[^}]*color: var\(--red-700\);/
 		);
 		expect(css).toMatch(
-			/\.btn-red \{[^}]*&:hover:not\(:disabled\) \{ background-color: var\(--red-100\);/
+			/\.btn-red \{[^}]*&:hover:not\(:disabled\) \{ border-color: var\(--red-700\); background-color: var\(--red-100\); color: var\(--red-700\);/
 		);
 		expect(css).not.toMatch(/\.btn-red[^}]*outline/);
 
