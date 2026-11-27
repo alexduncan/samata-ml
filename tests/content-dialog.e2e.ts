@@ -426,10 +426,9 @@ test('CDLG-AC-3: loaded content uses the existing draft structure', async ({
 	context
 }, testInfo) => {
 	await page.setViewportSize({ width: 1440, height: 900 });
+	await mockReservedPages(page);
 	await page.goto('/privacy');
-	await expect(page.locator('app-content-modal .modal-content')).toContainText(
-		'Complete privacy is the only option.'
-	);
+	await expectFixturePage(page.locator('app-content-modal dialog'), 'privacy-policy');
 	const reference = await context.newPage();
 	await reference.setViewportSize({ width: 1440, height: 900 });
 	await reference.goto(`${MOCKUPS_URL}/00-2_content-modal.html?clean=1`);
