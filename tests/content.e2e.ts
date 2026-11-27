@@ -238,7 +238,12 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 
 		await page.goto('/data');
 		await dismissWelcomeModal(page);
-		const documentStarted = await page.evaluate(() => performance.timeOrigin);
+		const documentRoot = page.locator('html');
+		const documentMarker = 'data-content-history-document';
+		await documentRoot.evaluate(
+			(element, marker) => element.setAttribute(marker, ''),
+			documentMarker
+		);
 		const modal = page.locator('app-content-modal dialog');
 		const about = page.locator('app-sidebar footer a[href="/about"]');
 		const privacy = page.locator('app-sidebar footer a[href="/privacy"]');
@@ -282,12 +287,16 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		await expect(page).toHaveURL('/about');
 		await expectFixturePage(modal, 'about');
 		await expect(modal.locator('#fixture-privacy-policy')).toHaveCount(0);
+		await expect(documentRoot).toHaveAttribute(documentMarker, '');
 		await page.goForward();
 		await expectReservedModalClosed(page, modal, /\/models$/);
 		await page.goForward();
 		await expect(page).toHaveURL('/privacy');
 		await expectFixturePage(modal, 'privacy-policy');
 		await expect(modal.locator('#fixture-about')).toHaveCount(0);
-		expect(await page.evaluate(() => performance.timeOrigin)).toBe(documentStarted);
+		await expect(documentRoot).toHaveAttribute(documentMarker, '');
+
+		await page.reload();
+		await expect(documentRoot).not.toHaveAttribute(documentMarker);
 	});
 });
