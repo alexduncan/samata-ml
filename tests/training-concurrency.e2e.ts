@@ -1,10 +1,11 @@
 import { expect, test, type Page } from '@playwright/test';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 async function configuredTarget(page: Page): Promise<void> {
 	await page.goto('/data');
 	await page.getByRole('button', { name: 'Get Started' }).click();
 	await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
-	await expect(page.locator('app-dataset-preview')).toBeVisible();
+	await waitForPublishedPreview(page);
 	await page.locator('app-sidebar a[href="/target"]').click();
 	await page.getByRole('button', { name: 'Set as Target: class' }).click();
 	await expect(page.getByRole('link', { name: 'Train Models' }).last()).toBeVisible();

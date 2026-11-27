@@ -57,7 +57,7 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 
 		// 2. Verify preview header and summary
 		await expect(preview.locator('.page-header h1')).toHaveText(
-			'Preview Dataset: Palmer Archipelago Penguins'
+			'Palmer Archipelago Penguins Preview'
 		);
 		await expect(preview.locator('.page-header p')).toContainText('344 rows | 8 columns');
 
@@ -88,7 +88,7 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		await speciesBtn.click();
 		const aside = page.locator('app-column-details aside.overlay');
 		await expect(aside).toBeVisible();
-		await expect(aside.locator('.overlay-title h4')).toHaveText('species');
+		await expect(aside.locator('.overlay-title h4')).toContainText('species');
 		await expect(aside.locator('code.type-tag')).toHaveText('categorical');
 		await expect(aside.locator('table.table').first()).toBeVisible();
 
@@ -100,7 +100,7 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		const billLengthBtn = table.locator('.header-btn[data-col-key="bill_length_mm"]');
 		await billLengthBtn.click();
 		await expect(aside).toBeVisible();
-		await expect(aside.locator('.overlay-title h4')).toHaveText('bill_length_mm');
+		await expect(aside.locator('.overlay-title h4')).toContainText('bill_length_mm');
 		await expect(aside.locator('code.type-tag')).toHaveText('numeric');
 		await expect(aside.locator('table.table').first()).toBeVisible();
 
@@ -116,7 +116,7 @@ test.describe('Reference Journey: Palmer Penguins Classification (JOURNEY-PENGUI
 		await page.reload();
 		await expect(preview).toBeVisible();
 		await expect(preview.locator('.page-header h1')).toHaveText(
-			'Preview Dataset: Palmer Archipelago Penguins'
+			'Palmer Archipelago Penguins Preview'
 		);
 		await expect(preview.locator('.page-header p')).toContainText('344 rows | 8 columns');
 		await expect(sidebarItem.locator('.step-value')).toHaveText('Palmer Archipelago Penguins');

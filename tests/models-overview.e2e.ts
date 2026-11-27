@@ -2,6 +2,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { configureDraft, openSetup } from './fixtures/training/browser';
 import { dismissWelcomeModal } from './journeys/helpers';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
@@ -32,7 +33,7 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
-		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+		await waitForPublishedPreview(page);
 
 		await page.goto('/models');
 		await expect(overview.locator('[data-testid="models-blocked"]')).toBeVisible();

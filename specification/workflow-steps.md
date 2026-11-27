@@ -45,22 +45,22 @@ The `.page-header` contains a button "Upload Dataset". Clicking the button displ
 The modal provides both a keyboard-reachable native file picker and a drag-and-drop zone. Upload criteria:
 
 - Single `.csv` file (case-insensitive filename check).
-- File size up to browser limits, max 256 columns.
-- Progress reporting through dedicated phases: _Downloading dataset_, _Reading CSV_, _Detecting column types_, _Calculating statistics_.
+- File size up to browser limits, max 200 columns.
+- Two passes. The modal checks the whole file first (_Checking file_, determinate bytes, nothing written to browser storage), so every parse, shape, size and quota error is reported in the modal. Once the file passes, the modal closes and the Preview Dataset page loads it with progress through dedicated phases: _Reading CSV_, _Detecting column types_, _Calculating statistics_ (step 1 of 3 to 3 of 3); a sample load shows _Downloading dataset_ first (four steps).
 - Plain-English error mappings without raw exceptions.
-- Dismissing or cancelling the dialog aborts the running ingestion worker request and retains any existing dataset, target, and models intact.
+- Dismissing or cancelling the dialog during the check aborts the running validation request, never starts an ingest and retains any existing dataset, target, and models intact. There is no Cancel once the page is loading; a later failure returns to the selection view with a plain-English alert.
 
 ### Preview Dataset
 
 Dataset preview displays after successful loading of a dataset by:
 
-1. Clicking the "Load Dataset" button on a Sample Dataset card.
-2. Successful parsing and ingestion of a custom uploaded dataset.
+1. Clicking the "Load Dataset" button on a Sample Dataset card: the page switches to the preview header and a labelled progress bar immediately, and the table replaces the bar when the dataset is published.
+2. A custom uploaded dataset passing the modal's file check: the modal closes and the same loading presentation continues until the dataset is published.
 
 The dataset preview view displays:
 
-- A page header with the dataset name, row and column counts, and a "Change Dataset" button. The button opens the plain-text `dialog.confirm-dialog`, with Cancel first. Confirmation cancels local training before the deletion and waits for its acknowledgement. If another tab is training, the confirmation stays open with an explanation. After a committed deletion that could not be published, Retry saving finishes the same change. The selection view loads the catalogue when entered from a reloaded preview and offers Retry if the request fails. New data enters preview after acknowledgement of the staged dataset pointer.
-- A virtual table (`ui-virtual-table`) rendering a 10,000-row active segment with segment navigation controls and "Go to row" input. Up to 10,000,000 rows can be browsed without unbounded DOM expansion.
+- A page header reading "{name} Preview" with row and column counts, a "Datasheet" button for sample datasets only (the datasheet dialog; none for uploads), and a red "Change Dataset" button. The button opens the plain-text `dialog.confirm-dialog`, with Cancel first. Confirmation cancels local training before the deletion and waits for its acknowledgement. If another tab is training, the confirmation stays open with an explanation. After a committed deletion that could not be published, Retry saving finishes the same change. The selection view loads the catalogue when entered from a reloaded preview and offers Retry if the request fails. New data enters preview after acknowledgement of the staged dataset pointer.
+- A virtual table (`ui-virtual-table`) scrolled by the document, with a sticky header, column headers showing a sample's display name and column name (only the name for uploads), column widths from the data, and unsupported columns (text, date, time, datetime) marked in red with a hidden ", not used for training". There are no segment controls or Go to row; above the browser's layout limit the table shows the first rows and a notice that all rows are still used for training.
 - An inspector overlay panel (`app-column-details`) on the right when clicking a column header. The existing Help & Guide explains CSV, column types and the statistics shown here.
   - Column name, data type, and description.
   - Missing and invalid record counts and tokens.

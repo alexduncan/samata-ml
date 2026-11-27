@@ -1,8 +1,12 @@
 import { expect, test } from '@playwright/test';
 import type { StorageRequest, StorageResponse } from '../src/features/data/ingestion/protocol';
+import { INGESTION_ERROR_MESSAGES } from '../src/features/data/ingestion/errors';
+import { PARSE_CHUNK_BYTES } from '../src/features/data/ingestion/limits';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
+import { dismissWelcomeModal } from './journeys/helpers';
 
 interface UploadTestWindow extends Window {
-	uploadCloseProbe: { closes: number; progressCancels: number; aborts: number };
+	uploadCloseProbe: { closes: number; progressCancels: number; aborts: number; ingests: number };
 }
 
 test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
@@ -86,7 +90,7 @@ test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
 		const component = page.locator('app-upload-dataset-dialog');
 		await component.waitFor({ state: 'attached' });
 		await component.evaluate((element) => {
-			const probe = { closes: 0, progressCancels: 0, aborts: 0 };
+			const probe = { closes: 0, progressCancels: 0, aborts: 0, ingests: 0 };
 			(window as unknown as UploadTestWindow).uploadCloseProbe = probe;
 			let heldRequest: number | undefined;
 			const abort = AbortController.prototype.abort;
@@ -99,10 +103,12 @@ test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
 				request: StorageRequest,
 				transfer?: Transferable[] | StructuredSerializeOptions
 			) {
-				if (request.type === 'ingest' && request.source.kind === 'file') {
+				// Pass 1 of an upload is the `validate` request; it is held so the dialog stays busy.
+				if (request.type === 'validate' && request.source.kind === 'file') {
 					heldRequest = request.requestId;
 					return;
 				}
+				if (request.type === 'ingest') probe.ingests++;
 				if (
 					heldRequest !== undefined &&
 					request.type === 'cancel' &&
@@ -153,14 +159,14 @@ test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
 		await page.mouse.click(2, 2);
 		await expect(dialog).toBeHidden();
 		await expect(invoker).toBeFocused();
-		await expect.poll(probe).toEqual({ closes: 1, progressCancels: 0, aborts: 0 });
+		await expect.poll(probe).toEqual({ closes: 1, progressCancels: 0, aborts: 0, ingests: 0 });
 
 		await open();
 		await holdUpload();
 		await cancel.click();
 		await expect(cancel).toBeHidden();
 		await expect(dialog).toBeVisible();
-		expect(await probe()).toEqual({ closes: 1, progressCancels: 1, aborts: 1 });
+		expect(await probe()).toEqual({ closes: 1, progressCancels: 1, aborts: 1, ingests: 0 });
 
 		const userCloses = [
 			() => dialog.getByRole('button', { name: 'Close modal' }).click(),
@@ -175,7 +181,7 @@ test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
 			await expect(invoker).toBeFocused();
 			await expect
 				.poll(probe)
-				.toEqual({ closes: index + 2, progressCancels: 1, aborts: index + 2 });
+				.toEqual({ closes: index + 2, progressCancels: 1, aborts: index + 2, ingests: 0 });
 		}
 
 		await open();
@@ -194,7 +200,20 @@ test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
 			element.remove();
 			await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 		});
-		expect(await probe()).toEqual({ closes: 4, progressCancels: 1, aborts: 4 });
+		expect(await probe()).toEqual({ closes: 4, progressCancels: 1, aborts: 4, ingests: 0 });
+		// Closing, backdrop dismissal and Cancel all leave the prior (empty) project untouched.
+		expect(
+			await page.evaluate(() => {
+				const state = (
+					window as unknown as {
+						__appState: {
+							get(): { dataset: unknown; target: unknown; models: unknown[] };
+						};
+					}
+				).__appState.get();
+				return [state.dataset, state.target, state.models.length];
+			})
+		).toEqual([null, null, 0]);
 	});
 
 	test('DATA-UP-2: cancel and failure preserve prior dataset state', async ({ page }) => {
@@ -282,6 +301,7 @@ test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
 		});
 		await expect(dialog).not.toBeVisible({ timeout: 10000 });
 
+		await waitForPublishedPreview(page);
 		const preview = page.locator('app-dataset-preview');
 		const table = preview.locator('ui-virtual-table');
 		await expect(table).toContainText('2013-08-14', { timeout: 10000 });
@@ -298,5 +318,104 @@ test.describe('Dataset Upload & Lifecycle (DATA-UP-1 .. DATA-UP-3)', () => {
 
 		await table.locator('.header-btn[data-col-key="moment"]').click();
 		await expect(aside.getByRole('rowheader', { name: 'Earliest (UTC)' })).toBeVisible();
+	});
+
+	test.describe('Two-pass upload (LOAD-AC-2, 3, 7)', () => {
+		test('LOAD-AC-2 / LOAD-AC-7: the modal checks the file, then the page shows the load', async ({
+			page
+		}) => {
+			// Hold each pass so the intermediate states can be observed.
+			await page.addInitScript(() => {
+				const send = Worker.prototype.postMessage;
+				Worker.prototype.postMessage = function (
+					request: { type?: string },
+					transfer?: Transferable[] | StructuredSerializeOptions
+				) {
+					const delay =
+						request?.type === 'validate' ? 800 : request?.type === 'ingest' ? 1800 : 0;
+					const forward = () =>
+						Reflect.apply(
+							send,
+							this,
+							transfer === undefined ? [request] : [request, transfer]
+						);
+					if (delay) setTimeout(forward, delay);
+					else forward();
+				};
+			});
+			await page.reload();
+			await dismissWelcomeModal(page);
+			await page.getByRole('button', { name: 'Upload Dataset', exact: true }).click();
+			const dialog = page.locator('app-upload-dataset-dialog dialog.modal');
+			await expect(dialog).toBeVisible();
+			await dialog.locator('input[type=file]').setInputFiles({
+				name: 'two-pass.csv',
+				mimeType: 'text/csv',
+				buffer: Buffer.from('Length,Class\n1,Plant\n2,Animal\n3,Plant\n')
+			});
+			await expect(dialog.getByText('Checking file')).toBeVisible();
+
+			// Pass 1 done: the dialog is gone and the page shows the in-page load.
+			const preview = page.locator('app-dataset-preview'); // loading-state: intentional
+			const heading = preview.locator('h1');
+			await expect(heading).toHaveText('two-pass Preview');
+			await expect(heading).toBeFocused();
+			await expect(preview.locator('#load-phase')).toHaveText('Reading CSV');
+			await expect(preview.locator('.load-step')).toHaveText('Step 1 of 3');
+			await expect(page.locator('app-upload-dataset-dialog')).toHaveCount(0);
+			expect(await page.evaluate(() => document.querySelector(':modal'))).toBeNull();
+			await expect(page.locator('html')).toHaveCSS('overflow-y', 'scroll');
+
+			// The ingest is not aborted: it completes into the preview.
+			await waitForPublishedPreview(page);
+			await expect(heading).toBeFocused();
+			await expect(preview.locator('ui-virtual-table')).toContainText('Plant');
+		});
+
+		test('LOAD-AC-3: a failure raised after the last chunk stays in the modal and writes nothing', async ({
+			page
+		}) => {
+			// Lines of only delimiters yield no data rows, so NO_DATA_ROWS is raised at the end.
+			const blank = ',\n'.repeat(Math.ceil((2.5 * PARSE_CHUNK_BYTES) / 2));
+			await page.getByRole('button', { name: 'Upload Dataset', exact: true }).click();
+			const dialog = page.locator('app-upload-dataset-dialog dialog.modal');
+			await dialog.locator('input[type=file]').setInputFiles({
+				name: 'late-failure.csv',
+				mimeType: 'text/csv',
+				buffer: Buffer.from(`a,b\n${blank}`)
+			});
+			await expect(dialog.getByRole('alert')).toHaveText(
+				INGESTION_ERROR_MESSAGES.NO_DATA_ROWS,
+				{
+					timeout: 30_000
+				}
+			);
+			await expect(dialog).toBeVisible();
+			await expect(page.locator('app-dataset-preview')).toHaveCount(0); // loading-state: intentional
+			const written = await page.evaluate(async () => {
+				const state = (
+					window as unknown as { __appState: { get(): { dataset: unknown } } }
+				).__appState.get();
+				const db = await new Promise<IDBDatabase>((resolve, reject) => {
+					const request = indexedDB.open('samata-db');
+					request.onsuccess = () => resolve(request.result);
+					request.onerror = () => reject(request.error);
+				});
+				try {
+					const count = await new Promise<number>((resolve, reject) => {
+						const request = db
+							.transaction('raw_records')
+							.objectStore('raw_records')
+							.count();
+						request.onsuccess = () => resolve(request.result);
+						request.onerror = () => reject(request.error);
+					});
+					return { dataset: state.dataset, count };
+				} finally {
+					db.close();
+				}
+			});
+			expect(written).toEqual({ dataset: null, count: 0 });
+		});
 	});
 });

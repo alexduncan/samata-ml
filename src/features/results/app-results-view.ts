@@ -52,6 +52,7 @@ import './app-confusion-delta';
 import './app-rope-bar';
 import './app-instance-agreement';
 import { RESULT_TERM_COPY } from './result-term-copy';
+import { StickyHeaderController } from '../shell/sticky-header-controller';
 
 const resultTerms = Object.entries(RESULT_TERM_COPY).filter(
 	([, term]) => term.surface === 'both' || term.surface === 'comparison'
@@ -229,6 +230,13 @@ export class AppResultsView extends LitElement {
 			:host([hidden]) {
 				display: none;
 			}
+			.page-body {
+				margin: 0 2rem 2rem;
+			}
+
+			h2 {
+				overflow-wrap: anywhere;
+			}
 			section + section {
 				margin-block-start: 1rem;
 			}
@@ -237,6 +245,7 @@ export class AppResultsView extends LitElement {
 			}
 		`
 	];
+	private readonly stickyHeader = new StickyHeaderController(this);
 	private readonly app = new StoreController(this, $appState);
 	private readonly canCompare = new StoreController(this, $canCompare);
 	private readonly comparison = new StoreController(this, $comparison);

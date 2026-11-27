@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { interceptSampleDownload } from './fixtures/sample-dataset-downloads';
 import { readFile } from 'node:fs/promises';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 test.describe('Dataset Selection & Datasheets (DATA-SEL-1 .. DATA-SEL-3)', () => {
 	let assertCreditDownload: () => void;
@@ -61,7 +62,7 @@ test.describe('Dataset Selection & Datasheets (DATA-SEL-1 .. DATA-SEL-3)', () =>
 		const card = page.locator('app-dataset-card[dataset-id="titanic-inquiry"]');
 		await expect(card).toContainText('Titanic Survival (1912 British Inquiry)');
 		await card.locator('button.btn-primary').click();
-		await expect(page.locator('app-dataset-preview')).toBeVisible({ timeout: 15000 });
+		await waitForPublishedPreview(page);
 		const facts = await page.evaluate(async () => {
 			const db = await new Promise<IDBDatabase>((resolve, reject) => {
 				const request = indexedDB.open('samata-db');
@@ -101,7 +102,7 @@ test.describe('Dataset Selection & Datasheets (DATA-SEL-1 .. DATA-SEL-3)', () =>
 		await page
 			.locator('app-dataset-card[dataset-id="credit-card-default"] button.btn-primary')
 			.click();
-		await expect(page.locator('app-dataset-preview')).toBeVisible({ timeout: 110_000 });
+		await waitForPublishedPreview(page);
 		assertCreditDownload();
 	});
 
@@ -298,5 +299,5 @@ test('production header and live publisher smoke', async ({ page, browserName })
 	const welcome = page.locator('app-welcome-modal button.btn-primary');
 	if (await welcome.isVisible()) await welcome.click();
 	await page.locator('app-dataset-card[dataset-id="palmer-penguins"] button.btn-primary').click();
-	await expect(page.locator('app-dataset-preview')).toBeVisible({ timeout: 30_000 });
+	await waitForPublishedPreview(page);
 });

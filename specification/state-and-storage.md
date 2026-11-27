@@ -259,7 +259,10 @@ export interface PersistedAppState {
 export interface ScrollSnapshot {
 	/** window.innerWidth (CSS px) when saved. */
 	viewportWidth: number;
+	/** Document block scroll offset. */
 	top: number;
+	/** Document inline scroll offset (`scrollX`, raw so RTL negatives round-trip); absent in older snapshots. */
+	left?: number;
 	regions?: Record<string, { top: number; left: number }>;
 	savedAt: number;
 }
@@ -326,21 +329,21 @@ After the IndexedDB commit, failures retain the pending candidate in the durable
 
 This is what makes "exact same UI" enforceable as the app grows. Each new feature spec MUST add its UI state to the registry below or state why it is transient.
 
-| UI state                                                                     | Persisted as                                 | Notes                                                                                                                               |
-| :--------------------------------------------------------------------------- | :------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
-| Welcome modal dismissed                                                      | `onboarding.welcomeDismissed`                |                                                                                                                                     |
-| Beta analytics notice accepted                                               | `onboarding.betaTelemetryAccepted`           | Monotonic cross-tab acceptance (`false \|\|` stored); `dismissWelcome` leaves it `false`; `acceptBetaTelemetry` sets both flags     |
-| `/data` picker vs preview                                                    | `data.mode`                                  |                                                                                                                                     |
-| Open column-details aside                                                    | `data.selectedColumn`                        |                                                                                                                                     |
-| Virtual table scroll offsets                                                 | `ScrollSnapshot.regions['data-table']`       |                                                                                                                                     |
-| Page scroll, per step                                                        | `PersistedScroll.snapshots[key]`             | Ignored if viewport width differs                                                                                                   |
-| Per-model section completion                                                 | `ModelRecord.completedSteps`                 | Drives section selection and completion checks                                                                                      |
-| Feature initialisation state                                                 | `ModelRecord.ui.featureSelectionInitialised` | Tracks one-time population on model continue                                                                                        |
-| Chosen model, features, options, hyperparameters, multiclass, training setup | `ModelRecord.*`                              | Committed values                                                                                                                    |
-| Training log disclosure                                                      | `ModelRecord.ui.trainingLogOpen`             | Boolean, defaults to closed when absent                                                                                             |
-| Numbered-result threshold, class filter and More metrics                     | `ModelRecord.ui.results`                     | `setModelResultsUi`. Invalid fields drop to defaults and Show data table disclosures are transient.                                 |
-| Compare Results view                                                         | `results.ui`                                 | Group fingerprint, up to eight selected models, sort, ordered pair, ROPE width and class filter; owned by dataset, target and epoch |
-| Location                                                                     | URL, plus `resumePath` for `/`               |                                                                                                                                     |
+| UI state                                                                     | Persisted as                                         | Notes                                                                                                                               |
+| :--------------------------------------------------------------------------- | :--------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------- |
+| Welcome modal dismissed                                                      | `onboarding.welcomeDismissed`                        |                                                                                                                                     |
+| Beta analytics notice accepted                                               | `onboarding.betaTelemetryAccepted`                   | Monotonic cross-tab acceptance (`false \|\|` stored); `dismissWelcome` leaves it `false`; `acceptBetaTelemetry` sets both flags     |
+| `/data` picker vs preview                                                    | `data.mode`                                          |                                                                                                                                     |
+| Open column-details aside                                                    | `data.selectedColumn`                                |                                                                                                                                     |
+| Preview table scroll offsets (document)                                      | `ScrollSnapshot.top` and `left` under `data:preview` |                                                                                                                                     |
+| Page scroll, per step                                                        | `PersistedScroll.snapshots[key]`                     | Ignored if viewport width differs                                                                                                   |
+| Per-model section completion                                                 | `ModelRecord.completedSteps`                         | Drives section selection and completion checks                                                                                      |
+| Feature initialisation state                                                 | `ModelRecord.ui.featureSelectionInitialised`         | Tracks one-time population on model continue                                                                                        |
+| Chosen model, features, options, hyperparameters, multiclass, training setup | `ModelRecord.*`                                      | Committed values                                                                                                                    |
+| Training log disclosure                                                      | `ModelRecord.ui.trainingLogOpen`                     | Boolean, defaults to closed when absent                                                                                             |
+| Numbered-result threshold, class filter and More metrics                     | `ModelRecord.ui.results`                             | `setModelResultsUi`. Invalid fields drop to defaults and Show data table disclosures are transient.                                 |
+| Compare Results view                                                         | `results.ui`                                         | Group fingerprint, up to eight selected models, sort, ordered pair, ROPE width and class filter; owned by dataset, target and epoch |
+| Location                                                                     | URL, plus `resumePath` for `/`                       |                                                                                                                                     |
 
 **Transient (never persisted):** reserved-route modals (including `/help/training-setup`; these are restored only because the URL says so), Datasheet, Upload and Model Description dialogs, focus, hover, uncommitted field text (including empty, out-of-range and native invalid fold drafts), fold errors and their live announcements, in-flight ingestion state, upload validation errors, live training progress between throttled writes.
 

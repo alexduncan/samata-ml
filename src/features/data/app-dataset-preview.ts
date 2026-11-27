@@ -1,45 +1,86 @@
 import { LitElement, css, html, nothing, type TemplateResult } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { ifDefined } from 'lit/directives/if-defined.js';
 import { buttonStyles } from '../../styles/button.styles';
 import { headingFocusStyles } from '../../styles/heading-focus.styles';
+import { notificationStyles } from '../../styles/notification.styles';
 import '../../components/ui-virtual-table';
 import type {
 	UiVirtualTable,
 	VirtualTableColumn,
-	VirtualTablePosition,
 	VirtualTableRange,
+	VirtualTableRowLimit,
 	VirtualTableWindow
 } from '../../components/ui-virtual-table';
 import type { DatasetMetadata } from '../../types/dataset';
-import { $format } from '../../i18n';
+import { StickyHeaderController } from '../shell/sticky-header-controller';
 
-/** Labels for dataset preview text. */
+/** Labels for dataset preview text; the connected view owns the strings and the locale. */
 export interface PreviewLabels {
-	table: string;
-	previousSegment: string;
-	nextSegment: string;
-	goToRow: string;
-	go: string;
-	empty: string;
-	loading: string;
-	retry: string;
+	/** Heading text for a dataset name, for example "Iris Preview". */
+	heading(name: string): string;
+	datasheet: string;
 	changeDataset: string;
-	capNotice: string;
-	rowRange: string;
+	/** Header description while a dataset is loading. */
+	loadingDescription: string;
+	/** Header description once rows and columns are known. */
+	rowsColumns(rows: number, columns: number): string;
+	/** Notice shown when the table renders fewer rows than the dataset has. */
+	rowLimitNotice(limit: number, total: number): string;
+	empty: string;
+	retry: string;
+	/** Alert text shown when metadata or rows could not be loaded. */
+	errorMessage: string;
+	/** Visually hidden suffix of unsupported column headers. */
+	unsupported: string;
+	/** Accessible name of the loading progress bar. */
+	progressLabel: string;
 }
 
-const SEGMENT_SIZE = 10_000;
-const MAX_PREVIEW_ROWS = 10_000_000;
+/** Presentation values for the loading progress bar shown in place of the table. */
+export interface PreviewLoadView {
+	/** Visible name of the current phase. */
+	phaseLabel: string;
+	/** Visible position in the sequence of phases, for example "Step 2 of 4". */
+	step: string;
+	/** Current value, or `null` for an indeterminate phase (the `value` attribute is omitted). */
+	value: number | null;
+	/** Maximum for a determinate phase. */
+	max: number;
+}
+
+const DEFAULT_LABELS: PreviewLabels = {
+	heading: (name) => name,
+	datasheet: 'Datasheet',
+	changeDataset: 'Change Dataset',
+	loadingDescription: '',
+	rowsColumns: (rows, columns) => `${rows} rows | ${columns} columns`,
+	rowLimitNotice: (limit, total) => `Previewing the first ${limit} of ${total} rows.`,
+	empty: 'No rows to preview.',
+	retry: 'Retry',
+	errorMessage: 'The preview could not be loaded.',
+	unsupported: ', not used for training',
+	progressLabel: 'Loading progress'
+};
 
 /**
- * Presentational view for dataset table preview, controls and segment navigation.
- * Follows specification/plans/step-1-load-data-and-preview.md T4.
+ * Presentational view for the dataset preview: page header, notices and the document-scrolled
+ * virtual table.
+ *
+ * Follows specification/plans/virtual-table-improvements.md (D8, D14, D22, D25).
+ *
+ * @fires app-preview-retry - The user asked to reload metadata and rows.
+ * @fires app-preview-change-dataset - The user asked to change the dataset.
+ * @fires app-dataset-preview-datasheet - The user asked for the datasheet (`{ invoker }`).
+ * @fires app-preview-range-change - The table needs another row range.
+ * @fires app-preview-column-select - A column header was activated.
  */
 @customElement('app-dataset-preview')
 export class AppDatasetPreview extends LitElement {
 	static override readonly styles = [
 		headingFocusStyles,
 		buttonStyles,
+		notificationStyles,
 		css`
 			:host {
 				display: block;
@@ -58,141 +99,228 @@ export class AppDatasetPreview extends LitElement {
 				row-gap: 0.5rem;
 				align-items: center;
 				z-index: 10;
-				margin-block-end: 1.5rem;
+				box-sizing: border-box;
 				inset-block-start: 0;
-				background-color: var(--surface);
+				inset-inline-start: var(--sidebar-width);
+				background-color: var(--stone-50);
+				padding: 1.5rem 2rem;
+				inline-size: 100%;
+				max-inline-size: calc(100vw - var(--sidebar-width));
+
+				@media (width < 50rem) {
+					inset-inline-start: 0;
+					max-inline-size: 100vw;
+				}
+
+				@media (max-height: 30rem) {
+					position: static;
+				}
 			}
 
 			.page-header h1 {
 				grid-area: title;
 				margin: 0;
+				min-inline-size: 0;
 				color: var(--stone-900);
 				font-weight: 500;
 				font-size: 1.5rem;
+				overflow-wrap: anywhere;
 			}
 
 			.page-header p {
 				grid-area: description;
 				margin: 0;
+				min-inline-size: 0;
 				color: var(--stone-700);
 				line-height: 1.75rem;
+				overflow-wrap: anywhere;
 			}
 
-			.page-header .btn {
-				grid-area: action;
-			}
-
-			.controls-bar {
+			.page-actions {
 				display: flex;
+				grid-area: action;
 				flex-wrap: wrap;
 				align-items: center;
-				gap: 1rem;
+				justify-self: end;
+				gap: 0.75rem;
+			}
+
+			.page-body {
+				margin: 0 2rem 2rem;
+			}
+
+			.page-body:has(+ ui-virtual-table) {
 				margin-block-end: 1rem;
-				border: 1px solid var(--stone-250);
-				border-radius: 0.5rem;
-				background-color: var(--stone-100);
-				padding: 0.75rem 1rem;
+			}
+
+			.page-body > * + * {
+				margin-block-start: 0.75rem;
+			}
+
+			.notification {
+				margin-block-end: 0;
+			}
+
+			.notification-alert {
+				justify-content: space-between;
+				gap: 1rem;
+			}
+
+			.page-body p {
+				margin: 0;
+			}
+
+			.load-phase {
+				color: var(--stone-900);
+				font-weight: 500;
+			}
+
+			.load-step {
+				color: var(--stone-700);
 				font-size: 0.875rem;
 			}
 
-			.segment-controls {
-				display: flex;
-				align-items: center;
-				gap: 0.5rem;
-			}
-
-			.go-to-row {
-				display: flex;
-				align-items: center;
-				gap: 0.5rem;
-			}
-
-			.go-to-row input[type='number'] {
-				border: 1px solid var(--stone-300);
-				border-radius: 0.25rem;
-				padding: 0.25rem 0.5rem;
-				inline-size: 5rem;
-				font: inherit;
-			}
-
-			.go-to-row input[type='number']:focus-visible {
-				outline: 2px solid;
-				outline-color: var(--blue-700);
-				outline-offset: 1px;
-			}
-
-			.segment-info {
-				color: var(--stone-700);
-				font-size: 0.8125rem;
-			}
-
-			.cap-notice {
-				color: var(--stone-600);
-				font-style: italic;
-				font-size: 0.8125rem;
-			}
-
-			.status-box {
-				margin-block: 1rem;
-				border: 1px dashed var(--stone-300);
+			.load-progress {
+				appearance: none;
+				box-shadow: 0 0 0 3px var(--blue-200);
+				border: 1.5px solid var(--blue-700);
 				border-radius: 0.5rem;
-				background-color: var(--stone-50);
-				padding: 1.5rem;
-				text-align: center;
+				background: var(--stone-100);
+				inline-size: 100%;
+				max-inline-size: 40rem;
+				block-size: 1.25rem;
+				overflow: clip;
 			}
 
-			.status-box p {
-				margin: 0 0 0.5rem 0;
+			.load-progress::-webkit-progress-bar {
+				background: transparent;
 			}
 
-			p[role='alert'] {
-				color: var(--red-700);
+			.load-progress::-webkit-progress-value {
+				background: var(--blue-600);
 			}
 
-			p[role='status'] {
-				color: var(--stone-700);
+			.load-progress::-moz-progress-bar {
+				background: var(--blue-600);
+			}
+
+			.load-progress:indeterminate {
+				animation: load-stripes 0.8s linear infinite;
+				background: repeating-linear-gradient(
+					-45deg,
+					var(--blue-600) 0,
+					var(--blue-600) 0.75rem,
+					var(--blue-400) 0.75rem,
+					var(--blue-400) 1.5rem
+				);
+				background-size: 2.12rem 100%;
+			}
+
+			@keyframes load-stripes {
+				from {
+					background-position: 0 0;
+				}
+
+				to {
+					background-position: 2.12rem 0;
+				}
+			}
+
+			/* Slowed, not removed: the bar must still show that work is going on. */
+			@media (prefers-reduced-motion: reduce) {
+				.load-progress:indeterminate {
+					animation-duration: 3.2s;
+				}
+			}
+
+			@media (forced-colors: active) {
+				.load-progress {
+					appearance: auto;
+					box-shadow: none;
+					border-color: CanvasText;
+				}
+			}
+
+			.visually-hidden {
+				position: absolute;
+				clip-path: inset(50%);
+				inline-size: 1px;
+				block-size: 1px;
+				overflow: hidden;
+				white-space: nowrap;
 			}
 		`
 	];
 
-	/** Dataset metadata. */
+	/** Dataset metadata; absent while the preview is being prepared. */
 	@property({ attribute: false })
 	accessor metadata: DatasetMetadata | null = null;
+
+	/** Dataset name for the heading, available before metadata. */
+	@property({ attribute: false })
+	accessor datasetName = '';
+
+	/** Row count shown in the header before metadata is available. */
+	@property({ attribute: false })
+	accessor rowCount = 0;
+
+	/** Column count shown in the header before metadata is available. */
+	@property({ attribute: false })
+	accessor columnCount = 0;
+
+	/** Table columns, built by the consumer from the metadata. */
+	@property({ attribute: false })
+	accessor columns: readonly VirtualTableColumn[] = [];
 
 	/** Active row window. */
 	@property({ attribute: false })
 	accessor window: VirtualTableWindow = { startIndex: 0, rows: [] };
 
-	/** Key of the currently selected column. */
-	@property({ attribute: false })
-	accessor selectedColumn: string | null = null;
-
 	/** Whether a row fetch is in progress. */
 	@property({ type: Boolean })
 	accessor loading = false;
 
-	/** Error string when preview fails to load. */
+	/** Set when metadata or rows failed to load. */
 	@property({ attribute: false })
 	accessor error: string | null = null;
 
+	/** Whether a datasheet exists for the active dataset (samples only). */
+	@property({ type: Boolean })
+	accessor datasheetAvailable = false;
+
+	/** Text for the persistent status region (announcements only, never focus). */
+	@property({ attribute: false })
+	accessor statusMessage = '';
+
+	/** When set, the loading presentation replaces notices and the table. */
+	@property({ attribute: false })
+	accessor loadView: PreviewLoadView | null = null;
+
 	/** Localised text labels. */
 	@property({ attribute: false })
-	accessor labels: PreviewLabels = {
-		table: '',
-		previousSegment: '',
-		nextSegment: '',
-		goToRow: '',
-		go: '',
-		empty: '',
-		loading: '',
-		retry: '',
-		changeDataset: '',
-		capNotice: '',
-		rowRange: ''
-	};
+	accessor labels: PreviewLabels = DEFAULT_LABELS;
 
-	@state() private accessor currentSegment = 0;
-	@state() private accessor targetRowInput = 1;
+	@state() private accessor rowLimit: number | null = null;
+
+	private stickyOffset = 0;
+	private readonly stickyHeader = new StickyHeaderController(this, {
+		onBlockSize: (px) => {
+			this.stickyOffset = px;
+			this.applyStickyOffset();
+		}
+	});
+
+	private applyStickyOffset(): void {
+		this.tableEl?.style.setProperty(
+			'--ui-virtual-table-sticky-offset',
+			`${this.stickyOffset}px`
+		);
+	}
+
+	protected override updated(): void {
+		// The table may be created after the header was first measured.
+		this.applyStickyOffset();
+	}
 
 	private get tableEl(): UiVirtualTable | null {
 		return this.renderRoot?.querySelector('ui-virtual-table') ?? null;
@@ -213,228 +341,136 @@ export class AppDatasetPreview extends LitElement {
 	}
 
 	/**
-	 * Restores logical scroll position in the underlying virtual table.
+	 * Resolves once this view and its table have final geometry, so a restored document scroll
+	 * lands on a full-height page (D17).
 	 */
-	async restorePosition(position: { top: number; left: number }): Promise<void> {
-		if (this.tableEl) {
-			await this.tableEl.restoreScroll(position.top, position.left);
-		}
+	async whenSettled(): Promise<void> {
+		await this.updateComplete;
+		await this.tableEl?.updateComplete;
+		await this.updateComplete;
 	}
 
 	/**
 	 * Directs focus to a column header button in the virtual table.
+	 *
+	 * @param column - Column key.
 	 */
 	focusColumn(column: string): void {
 		this.tableEl?.focusColumn(column);
 	}
 
-	private handleChangeDataset(): void {
-		this.dispatchEvent(
-			new CustomEvent('app-preview-change-dataset', {
-				bubbles: false,
-				composed: false
-			})
-		);
+	private emit<T>(name: string, detail?: T): void {
+		this.dispatchEvent(new CustomEvent<T>(name, { detail, bubbles: false, composed: false }));
 	}
 
-	private handleRetry(): void {
-		this.dispatchEvent(
-			new CustomEvent('app-preview-retry', {
-				bubbles: false,
-				composed: false
-			})
-		);
+	private handleDatasheet(event: Event): void {
+		this.emit('app-dataset-preview-datasheet', {
+			invoker: event.currentTarget as HTMLButtonElement
+		});
 	}
 
-	private handleRangeChange(e: CustomEvent<VirtualTableRange>): void {
-		this.dispatchEvent(
-			new CustomEvent<VirtualTableRange>('app-preview-range-change', {
-				detail: e.detail,
-				bubbles: false,
-				composed: false
-			})
-		);
+	private handleRangeChange(event: CustomEvent<VirtualTableRange>): void {
+		this.emit('app-preview-range-change', event.detail);
 	}
 
-	private handlePositionChange(e: CustomEvent<VirtualTablePosition>): void {
-		this.currentSegment = Math.floor(e.detail.rowIndex / SEGMENT_SIZE);
-		this.dispatchEvent(
-			new CustomEvent<VirtualTablePosition>('app-preview-position-change', {
-				detail: e.detail,
-				bubbles: false,
-				composed: false
-			})
-		);
+	private handleRowLimitChange(event: CustomEvent<VirtualTableRowLimit>): void {
+		this.rowLimit = event.detail.rowLimit;
 	}
 
-	private handleColumnSelect(e: CustomEvent<{ column: string }>): void {
-		this.dispatchEvent(
-			new CustomEvent<{ column: string }>('app-preview-column-select', {
-				detail: e.detail,
-				bubbles: false,
-				composed: false
-			})
-		);
+	private handleColumnSelect(event: CustomEvent<{ column: string }>): void {
+		this.emit('app-preview-column-select', event.detail);
 	}
 
-	private handlePreviousSegment(): void {
-		if (this.currentSegment > 0) {
-			const targetRow = (this.currentSegment - 1) * SEGMENT_SIZE;
-			void this.tableEl?.scrollToRow(targetRow);
-		}
+	private renderNotices(totalRows: number): TemplateResult | typeof nothing {
+		const showLimit = this.rowLimit !== null && totalRows > this.rowLimit;
+		const showEmpty = !this.error && this.metadata !== null && totalRows === 0;
+		if (!this.error && !showLimit && !showEmpty) return nothing;
+		return html`
+			<div class="page-body">
+				${this.error
+					? html`<div class="notification notification-alert" role="alert">
+							<span class="notification-text">${this.labels.errorMessage}</span>
+							<button
+								type="button"
+								class="btn"
+								@click=${() => this.emit('app-preview-retry')}>
+								${this.labels.retry}
+							</button>
+						</div>`
+					: nothing}
+				${showLimit
+					? html`<p class="notification">
+							${this.labels.rowLimitNotice(this.rowLimit!, totalRows)}
+						</p>`
+					: nothing}
+				${showEmpty ? html`<p>${this.labels.empty}</p>` : nothing}
+			</div>
+		`;
 	}
 
-	private handleNextSegment(): void {
-		const totalRows = this.metadata?.rowCount ?? 0;
-		const effectiveRows = Math.min(totalRows, MAX_PREVIEW_ROWS);
-		if ((this.currentSegment + 1) * SEGMENT_SIZE < effectiveRows) {
-			const targetRow = (this.currentSegment + 1) * SEGMENT_SIZE;
-			void this.tableEl?.scrollToRow(targetRow);
-		}
-	}
-
-	private handleGoToRow(e: Event): void {
-		e.preventDefault();
-		const totalRows = this.metadata?.rowCount ?? 0;
-		const effectiveRows = Math.min(totalRows, MAX_PREVIEW_ROWS);
-		const zeroBased = Math.max(0, Math.min(this.targetRowInput - 1, effectiveRows - 1));
-		void this.tableEl?.scrollToRow(zeroBased);
-	}
-
-	private handleRowInputChange(e: Event): void {
-		const input = e.target as HTMLInputElement;
-		const val = parseInt(input.value, 10);
-		if (!Number.isNaN(val)) {
-			this.targetRowInput = val;
-		}
-	}
-
-	private cachedMetadataColumns: unknown = null;
-	private cachedTableColumns: VirtualTableColumn[] = [];
-
-	private getTableColumns(): VirtualTableColumn[] {
-		const cols = this.metadata?.columns;
-		if (cols && cols === this.cachedMetadataColumns) {
-			return this.cachedTableColumns;
-		}
-		this.cachedMetadataColumns = cols ?? null;
-		if (cols && cols.length > 0) {
-			this.cachedTableColumns = cols.map((col) => ({ key: col.name, label: col.name }));
-		} else {
-			this.cachedTableColumns = [];
-		}
-		return this.cachedTableColumns;
+	private renderLoading(view: PreviewLoadView): TemplateResult {
+		return html`
+			<div class="page-body" role="group" aria-label=${this.labels.progressLabel}>
+				<p class="load-phase" id="load-phase">${view.phaseLabel}</p>
+				<p class="load-step">${view.step}</p>
+				<progress
+					class="load-progress"
+					aria-labelledby="load-phase"
+					max=${view.max}
+					value=${ifDefined(view.value ?? undefined)}></progress>
+			</div>
+		`;
 	}
 
 	override render(): TemplateResult {
-		const totalRows = this.metadata?.rowCount ?? 0;
-		const effectiveRows = Math.min(totalRows, MAX_PREVIEW_ROWS);
-
-		const name = this.metadata?.name ?? 'Dataset';
-		const columnsCount = this.metadata?.columns?.length ?? this.window.rows[0]?.length ?? 0;
-
-		const formatCount = (n: number) => $format.get().number(n, { useGrouping: true });
-
-		const segmentStart = this.currentSegment * SEGMENT_SIZE;
-		const segmentEnd = Math.min(segmentStart + SEGMENT_SIZE, effectiveRows);
-
-		const hasPrevious = this.currentSegment > 0;
-		const hasNext = segmentEnd < effectiveRows;
-
-		const tableColumns = this.getTableColumns();
+		const metadata = this.metadata;
+		const loading = this.loadView;
+		const totalRows = metadata?.rowCount ?? 0;
+		const name = metadata?.name ?? this.datasetName;
+		const rows = metadata?.rowCount ?? this.rowCount;
+		const columns = metadata?.columns.length ?? this.columnCount;
+		const heading = this.labels.heading(name);
 
 		return html`
 			<header class="page-header">
-				<h1 tabindex="-1">Preview Dataset: ${name}</h1>
+				<h1 tabindex="-1">${heading}</h1>
 				<p>
-					${formatCount(totalRows)} rows &nbsp;|&nbsp; ${formatCount(columnsCount)}
-					columns
+					${loading
+						? this.labels.loadingDescription
+						: this.labels.rowsColumns(rows, columns)}
 				</p>
-				<button type="button" class="btn" @click=${this.handleChangeDataset}>
-					${this.labels.changeDataset || 'Change Dataset'}
-				</button>
-			</header>
-
-			${this.error
-				? html`
-						<div class="status-box" role="alert">
-							<p role="alert">${this.error}</p>
-							<button type="button" class="btn" @click=${this.handleRetry}>
-								${this.labels.retry || 'Retry'}
-							</button>
-						</div>
-					`
-				: nothing}
-			${this.loading
-				? html`
-						<div class="status-box">
-							<p role="status">${this.labels.loading || 'Loading rows…'}</p>
-						</div>
-					`
-				: nothing}
-			${totalRows === 0 && !this.loading && !this.error
-				? html`
-						<div class="status-box">
-							<p>${this.labels.empty || 'No rows to preview.'}</p>
-						</div>
-					`
-				: nothing}
-
-			<section class="controls-bar" aria-label="Table controls">
-				<div class="segment-controls">
-					<button
-						type="button"
-						class="btn"
-						?disabled=${!hasPrevious}
-						@click=${this.handlePreviousSegment}>
-						${this.labels.previousSegment || 'Previous segment'}
-					</button>
-					<button
-						type="button"
-						class="btn"
-						?disabled=${!hasNext}
-						@click=${this.handleNextSegment}>
-						${this.labels.nextSegment || 'Next segment'}
-					</button>
+				<div class="page-actions">
+					${this.datasheetAvailable
+						? html`<button type="button" class="btn" @click=${this.handleDatasheet}>
+								${this.labels.datasheet}
+							</button>`
+						: nothing}
+					${loading
+						? nothing
+						: html`<button
+								type="button"
+								class="btn btn-red"
+								@click=${() => this.emit('app-preview-change-dataset')}>
+								${this.labels.changeDataset}
+							</button>`}
 				</div>
-
-				<form class="go-to-row" @submit=${this.handleGoToRow}>
-					<label for="row-number">${this.labels.goToRow || 'Go to row'}</label>
-					<input
-						type="number"
-						id="row-number"
-						name="row-number"
-						min="1"
-						max=${effectiveRows}
-						.value=${String(this.targetRowInput)}
-						@change=${this.handleRowInputChange} />
-					<button type="submit" class="btn">${this.labels.go || 'Go'}</button>
-				</form>
-
-				<span class="segment-info">
-					Rows ${formatCount(segmentStart + 1)}–${formatCount(segmentEnd)} of
-					${formatCount(totalRows)}
-				</span>
-
-				${totalRows > MAX_PREVIEW_ROWS
-					? html`
-							<span class="cap-notice">
-								${this.labels.capNotice ||
-								'Up to 10,000,000 rows can be previewed.'}
-							</span>
-						`
-					: nothing}
-			</section>
-
-			<ui-virtual-table
-				.columns=${tableColumns}
-				.window=${this.window}
-				?loading=${this.loading}
-				total-rows=${totalRows}
-				label=${this.labels.table || `${name} preview`}
-				@ui-virtual-table-range-change=${this.handleRangeChange}
-				@ui-virtual-table-position-change=${this.handlePositionChange}
-				@ui-virtual-table-column-select=${this.handleColumnSelect}></ui-virtual-table>
+			</header>
+			<p class="visually-hidden" role="status">${this.statusMessage}</p>
+			${loading ? this.renderLoading(loading) : nothing}
+			${loading ? nothing : this.renderNotices(totalRows)}
+			${!loading && metadata !== null && totalRows > 0
+				? html`<ui-virtual-table
+						.columns=${this.columns}
+						.window=${this.window}
+						.labels=${{ unsupported: this.labels.unsupported }}
+						?loading=${this.loading}
+						total-rows=${totalRows}
+						label=${heading}
+						@ui-virtual-table-range-change=${this.handleRangeChange}
+						@ui-virtual-table-row-limit-change=${this.handleRowLimitChange}
+						@ui-virtual-table-column-select=${this
+							.handleColumnSelect}></ui-virtual-table>`
+				: nothing}
 		`;
 	}
 }

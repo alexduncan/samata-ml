@@ -113,6 +113,7 @@ export const resultsStyles: CSSResult = css`
 	}
 
 	.table-region {
+		position: relative;
 		contain: inline-size;
 		max-inline-size: 100%;
 		overflow-x: auto;

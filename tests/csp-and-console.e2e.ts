@@ -3,6 +3,7 @@ import { DIST_URL } from '../scripts/ports';
 import type { AppConfusionFlowchart } from '../src/features/results/app-confusion-flowchart';
 import { configureOpenDraft, openSidebarDraft } from './fixtures/training/browser';
 import { loadSampleDataset, viewNumberedTrainingResult } from './journeys/helpers';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 interface CspProbeWindow extends Window {
 	reportCspViolation(directive: string, blocked: string): Promise<void>;
@@ -54,8 +55,9 @@ test('BETA-ERR-5: production data, training, results and dialogs stay clean unde
 	await page.goto('/data');
 	await loadSampleDataset(page, 'iris');
 	await page.reload();
+	await waitForPublishedPreview(page);
 	const preview = page.locator('app-dataset-preview');
-	await expect(preview.locator('h1')).toContainText('Preview Dataset: Iris');
+	await expect(preview.locator('h1')).toHaveText(/^Iris.* Preview$/);
 
 	await page.locator('app-sidebar footer a[href="/about"]').click();
 	const content = page.locator('app-content-modal dialog.modal');
@@ -71,23 +73,40 @@ test('BETA-ERR-5: production data, training, results and dialogs stay clean unde
 	await expect(confirm).toBeVisible();
 	await confirm.getByRole('button', { name: 'Cancel', exact: true }).click();
 	await expect(confirm).toBeHidden();
-	await expect(preview.locator('h1')).toContainText('Preview Dataset: Iris');
+	await expect(preview.locator('h1')).toHaveText(/^Iris.* Preview$/);
 	await change.click();
 	await confirm.getByRole('button', { name: 'Change Dataset', exact: true }).click();
 	await loadSampleDataset(page, 'breast-cancer-wisconsin');
 	await expect(preview.locator('h1')).toContainText('Breast Cancer Wisconsin');
 
 	const table = preview.locator('ui-virtual-table');
-	const row = preview.locator('input#row-number');
-	await row.fill('300');
-	await row.press('Enter');
-	await expect(table.locator('[aria-rowindex="301"]')).toBeInViewport();
-	for (const end of ['top', 'bottom']) {
-		const spacer = table.locator(`.rail-spacer-${end}`);
-		expect(
-			await spacer.evaluate((element) => element.getBoundingClientRect().height)
-		).toBeGreaterThan(0);
-	}
+	// The document now scrolls the table: let the load and any scroll restoration settle first.
+	await expect(table.locator('.table-cell').first()).not.toHaveText('');
+	await expect(preview.locator('.status-box')).toHaveCount(0);
+	// Firefox can ignore a window.scrollTo issued straight after Playwright's own scroll into
+	// view, so repeat the whole scroll step until the row is shown.
+	await expect(async () => {
+		await table.evaluate((element) => {
+			const root = element.shadowRoot!;
+			const body = root.querySelector('.table-body')!;
+			const rowHeight = root.querySelector('.table-row')!.getBoundingClientRect().height;
+			window.scrollTo(0, body.getBoundingClientRect().top + window.scrollY + 300 * rowHeight);
+		});
+		await expect(table.locator('[aria-rowindex="302"]')).toBeInViewport({ timeout: 1500 });
+	}).toPass({ timeout: 15_000 });
+	// Geometry is set through the CSSOM: the rail has the rows' height and rows are translated.
+	const geometry = await table.evaluate((element) => {
+		const root = element.shadowRoot!;
+		const body = root.querySelector<HTMLElement>('.table-body')!;
+		const row = root.querySelector<HTMLElement>('.table-row')!;
+		return {
+			rail: body.getBoundingClientRect().height,
+			rowHeight: row.getBoundingClientRect().height,
+			transform: getComputedStyle(row).transform
+		};
+	});
+	expect(geometry.rail).toBeGreaterThan(geometry.rowHeight * 100);
+	expect(geometry.transform).toMatch(/^matrix\(1, 0, 0, 1, 0, [\d.]+\)$/);
 
 	await page.locator('app-sidebar a[href="/target"]').click();
 	const target = page.getByRole('button', { name: 'Set as Target: Diagnosis' });

@@ -25,7 +25,7 @@
 
 **Out of scope**
 
-- [Virtual table D28 and T5](virtual-table-improvements.md#t5--sticky-page-headers-on-every-route) own document main padding, page-body spacing and sticky headers. Their planned geometry changes and the `PH-AC-2` registry retirement remain with that owner. The implementation branch at `4416bcb` has T1–T4 complete and T5 open.
+- [Virtual table D28 and T5](archive/virtual-table-improvements.md#t5--sticky-page-headers-on-every-route) own document main padding, page-body spacing and sticky headers. Their planned geometry changes and the `PH-AC-2` registry retirement remain with that owner. The implementation branch at `4416bcb` has T1–T4 complete and T5 open.
 - [Beta test robustness T2–T4](beta-test-robustness-and-advisory-checks.md#implementation-tasks) own `PH-AC-2` deduplication, `FOCUS-AC-5` timing, dynamic dataset counts, mixed functional E2E axe checks including the remote training recovery case, and CI and exception-list policy. The Linux `SIDE-AC-10` screenshot baseline remains its existing [human follow-up](../HUMAN.md#1-workflow-and-plan-review).
 - `17d7ad1` already corrected dataset and mockup counts and the data-preview persistence wait. The main Chromium replay passed all six affected cases: `DATA-FLOW-2`, `DATA-UP-2`, `DATA-PRE-2` and the three mockup-review checks.
 - Changes to charts, model or worker contracts, dependency versions, CI policy or product mockups.
@@ -41,7 +41,7 @@
 
 - [Component conventions](../COMPONENTS.md) §§3–10 and [sidebar](../components/sidebar.md) §§3–10.
 - [Visual design](../visual-design.md) §§1, 3, 5–6 and [testing](../testing.md) §End-to-End Testing.
-- [Chart release evidence](archive/chart-best-practices.md#verification-and-definition-of-done), [virtual table T5](virtual-table-improvements.md#t5--sticky-page-headers-on-every-route) and [beta test robustness scope](beta-test-robustness-and-advisory-checks.md#scope).
+- [Chart release evidence](archive/chart-best-practices.md#verification-and-definition-of-done), [virtual table T5](archive/virtual-table-improvements.md#t5--sticky-page-headers-on-every-route) and [beta test robustness scope](beta-test-robustness-and-advisory-checks.md#scope).
 
 ## Codebase context
 
@@ -121,7 +121,7 @@
 - **Risk:** needs care — current widths can change with the shared layout migration.
 - **Likely files:** `src/features/models/app-model-builder-view.ts`, `src/features/models/app-model-builder-view.stories.ts`, `tests/visual-parity.e2e.ts`
 - **Must not touch:** `src/app.ts`, `css/base.css`, `specification/mockups/`, `tests/visual-parity/map.ts`, `tests/known-failures.ts`
-- **Implementation:** Do not start this task until [virtual-table-improvements T5](virtual-table-improvements.md#t5--sticky-page-headers-on-every-route) is landed on `main`. Check the remaining `PH-AC-2` assertions and `PARITY-main` once the existing D28 changes land. Route any failure in shared geometry back to that owner. Replay the feature-table case first. If it passes, complete this task with no product changes. If it still fails, record measured `main`, page-body, form, fieldset, overflow wrapper and table boxes and compare the corresponding approved mockup containers at the same 1440×900. Adjust only a measured local Select Features sizing rule causing the difference and extend the existing co-located `SelectFeaturesHelp` story for that view, including narrow RTL and a long label, if product CSS changes. Preserve a native accessible table and off-screen cell access via the existing local scroll region. If the difference requires a broader owner or a new deviation, escalate.
+- **Implementation:** Do not start this task until [virtual-table-improvements T5](archive/virtual-table-improvements.md#t5--sticky-page-headers-on-every-route) is landed on `main`. Check the remaining `PH-AC-2` assertions and `PARITY-main` once the existing D28 changes land. Route any failure in shared geometry back to that owner. Replay the feature-table case first. If it passes, complete this task with no product changes. If it still fails, record measured `main`, page-body, form, fieldset, overflow wrapper and table boxes and compare the corresponding approved mockup containers at the same 1440×900. Adjust only a measured local Select Features sizing rule causing the difference and extend the existing co-located `SelectFeaturesHelp` story for that view, including narrow RTL and a long label, if product CSS changes. Preserve a native accessible table and off-screen cell access via the existing local scroll region. If the difference requires a broader owner or a new deviation, escalate.
 - **Acceptance criteria:**
   - [ ] PH-AC-2 and PARITY-main — Existing main geometry and semantic heading assertions pass after D28. Any duplicate deletion is handled by the beta plan's T3.
   - [ ] PARITY-models-features-table — Existing width and style comparisons pass; local reflow, table semantics and keyboard access remain intact across the browser matrix.

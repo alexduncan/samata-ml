@@ -46,6 +46,7 @@ import {
 	MemoryStorage,
 	mergeOnboarding,
 	readAppSnapshot,
+	readPersistedState,
 	publishNewerTrainingSnapshot,
 	TRAINING_STATE_LOCK,
 	type StorageAdapter
@@ -58,6 +59,7 @@ import {
 	DEFAULT_ONE_SHOT_SETUP,
 	INITIAL_APP_STATE,
 	INITIAL_SCROLL_STATE,
+	SCROLL_STORAGE_KEY,
 	STATE_STORAGE_KEY,
 	STORAGE_VERSION,
 	type DatasetSummary,
@@ -115,6 +117,38 @@ describe('comparison preference ownership', () => {
 		setTarget('species');
 		createModel();
 		createModel();
+	});
+
+	it('SCROLL-LEFT-1: round trips an inline offset, accepts a legacy snapshot and rejects a non-finite left', () => {
+		const storage = new MemoryStorage();
+		initPersister(storage);
+		const withLeft: ScrollSnapshot = {
+			viewportWidth: 1024,
+			top: 10,
+			left: -40,
+			savedAt: 1
+		};
+		const legacy: ScrollSnapshot = { viewportWidth: 1024, top: 20, savedAt: 2 };
+		$scrollState.set({
+			version: STORAGE_VERSION,
+			snapshots: { 'data:preview': withLeft, target: legacy }
+		});
+		flushNow();
+		const read = readPersistedState(storage);
+		expect(read.scroll.snapshots['data:preview']).toEqual(withLeft);
+		expect(read.scroll.snapshots.target).toEqual(legacy);
+		expect(read.scroll.snapshots.target?.left).toBeUndefined();
+		stopPersister();
+
+		const invalid = new MemoryStorage();
+		invalid.setItem(
+			SCROLL_STORAGE_KEY,
+			JSON.stringify({
+				version: STORAGE_VERSION,
+				snapshots: { 'data:preview': { ...withLeft, left: 'wide' } }
+			})
+		);
+		expect(readPersistedState(invalid).scroll.snapshots).toEqual({});
 	});
 
 	it('WML-P5-STATE-1: round trips owned choices and sanitises invalid values', async () => {

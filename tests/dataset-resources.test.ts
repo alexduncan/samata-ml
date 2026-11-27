@@ -4,6 +4,7 @@ import { $appState, clearDataset } from '../src/stores/app.store';
 import {
 	$datasetLoad,
 	$datasetResources,
+	type DatasetLoadState,
 	$previewRows,
 	cancelDatasetLoad,
 	changeDataset,
@@ -29,6 +30,15 @@ import { MemoryStorage } from '../src/stores/persister';
 import { STATE_STORAGE_KEY } from '../src/types/state';
 import { installFakeIndexedDB } from './helpers/fake-indexeddb';
 import { createTrainingTestLocks } from './helpers/training-locks';
+
+const IDLE_LOAD: DatasetLoadState = {
+	busy: false,
+	progress: null,
+	errorCode: null,
+	stage: 'idle',
+	name: '',
+	errorStage: null
+};
 
 function createMockModel(num = 1, status: ModelStatus = 'draft'): ModelRecord {
 	return {
@@ -146,6 +156,7 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 
 		const mockClient: StorageClient = {
 			ingest: async () => meta,
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async (id) => (id === 'ds-iris' ? meta : null),
 			fetchRows: async () => [],
 			deleteDatasetsExcept: async () => {},
@@ -212,6 +223,7 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 			const meta = createMockMetadata('ds-retired', sampleId);
 			const client: StorageClient = {
 				ingest: async () => meta,
+				validate: async () => ({ rowCount: 0, columnCount: 0 }),
 				getMetadata: async () => meta,
 				fetchRows: async () => createMockRows('ds-retired', 0, 1),
 				deleteDatasetsExcept: async () => {},
@@ -276,6 +288,7 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 
 		const mockClient: StorageClient = {
 			ingest: async () => meta,
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async (id) => (id === 'ds-upload' ? meta : null),
 			fetchRows: async () => [],
 			deleteDatasetsExcept: async () => {},
@@ -308,6 +321,7 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 
 		const mockClient: StorageClient = {
 			ingest: async () => createMockMetadata('ds-1'),
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async (id) => (id === 'ds-1' ? firstPromise : secondPromise),
 			fetchRows: async () => [],
 			deleteDatasetsExcept: async () => {},
@@ -354,6 +368,7 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 		let fetchCount = 0;
 		const mockClient: StorageClient = {
 			ingest: async () => createMockMetadata('ds-1'),
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async () => null,
 			fetchRows: async (datasetId, offset, limit) => {
 				fetchCount++;
@@ -409,6 +424,7 @@ describe('dataset resource actions (DATA-RES-1)', () => {
 
 		const mockClient: StorageClient = {
 			ingest: async () => createMockMetadata('ds-1'),
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async () => null,
 			fetchRows: async (datasetId, offset, limit) => {
 				requestedLimits.push(limit);
@@ -450,7 +466,7 @@ describe('clear and change dataset actions (DATA-RES-2)', () => {
 	let locks: LockManager;
 	beforeEach(async () => {
 		$appState.set(structuredClone(INITIAL_APP_STATE));
-		$datasetLoad.set({ busy: false, progress: null, errorCode: null });
+		$datasetLoad.set(IDLE_LOAD);
 		clearDatasetResources();
 		restore = installFakeIndexedDB();
 		db = await openSamataDb();
@@ -462,7 +478,7 @@ describe('clear and change dataset actions (DATA-RES-2)', () => {
 	afterEach(() => {
 		setStorageClientForTesting(null);
 		setTrainingServiceForTesting();
-		$datasetLoad.set({ busy: false, progress: null, errorCode: null });
+		$datasetLoad.set(IDLE_LOAD);
 		clearDatasetResources();
 		$appState.set(structuredClone(INITIAL_APP_STATE));
 		db.close();
@@ -516,7 +532,7 @@ describe('clear and change dataset actions (DATA-RES-2)', () => {
 			release();
 			await held;
 		}
-		$datasetLoad.set({ busy: true, progress: null, errorCode: null });
+		$datasetLoad.set({ ...IDLE_LOAD, busy: true });
 		expect(await changeDataset()).toEqual({ ok: false, code: 'busy' });
 	});
 
@@ -539,7 +555,7 @@ describe('clear and change dataset actions (DATA-RES-2)', () => {
 
 	it('successfully removes dataset and resets downstream state after acknowledgement', async () => {
 		await seed();
-		recordScroll('data:table', { top: 100, savedAt: Date.now(), viewportWidth: 1024 });
+		recordScroll('data:select', { top: 100, savedAt: Date.now(), viewportWidth: 1024 });
 		recordScroll('models', { top: 200, savedAt: Date.now(), viewportWidth: 1024 });
 		expect(await changeDataset()).toEqual({ ok: true, value: undefined });
 		expect(await db.get('metadata', 'ds-1')).toBeUndefined();
@@ -550,7 +566,7 @@ describe('clear and change dataset actions (DATA-RES-2)', () => {
 		expect(state.models).toEqual([]);
 		expect(state.nextModelNum).toBe(1);
 		expect(state.onboarding.welcomeDismissed).toBe(true);
-		expect($scrollState.get().snapshots['data:table']).toBeDefined();
+		expect($scrollState.get().snapshots['data:select']).toBeDefined();
 		expect($scrollState.get().snapshots.models).toBeUndefined();
 	});
 
@@ -576,6 +592,7 @@ describe('clear and change dataset actions (DATA-RES-2)', () => {
 				});
 				return ingestPromise;
 			},
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async () => null,
 			fetchRows: async () => [],
 			deleteDatasetsExcept: async () => {},
@@ -583,8 +600,7 @@ describe('clear and change dataset actions (DATA-RES-2)', () => {
 		};
 		setStorageClientForTesting(mockClient);
 
-		const fakeFile = new File(['a,b\n1,2'], 'data.csv', { type: 'text/csv' });
-		const startPromise = startDatasetLoad({ kind: 'file', file: fakeFile });
+		const startPromise = startDatasetLoad({ kind: 'sample', sampleId: 'iris' });
 
 		expect($datasetLoad.get().busy).toBe(true);
 		expect($datasetLoad.get().progress?.phase).toBe('parse');
@@ -596,5 +612,124 @@ describe('clear and change dataset actions (DATA-RES-2)', () => {
 		expect(outcome).toBe(false);
 		expect($datasetLoad.get().busy).toBe(false);
 		expect($datasetLoad.get().errorCode).toBe('CANCELLED');
+	});
+
+	function stagedClient(overrides: Partial<StorageClient>): {
+		client: StorageClient;
+		stages: string[];
+	} {
+		const stages: string[] = [];
+		const client: StorageClient = {
+			ingest: async () => {
+				stages.push(`ingest:${$datasetLoad.get().stage}`);
+				await db.put('metadata', createMockMetadata('ds-new'));
+				return createMockMetadata('ds-new');
+			},
+			validate: async () => {
+				stages.push(`validate:${$datasetLoad.get().stage}`);
+				return { rowCount: 1, columnCount: 1 };
+			},
+			getMetadata: async () => null,
+			fetchRows: async () => [],
+			deleteDatasetsExcept: async () => {},
+			dispose: () => {},
+			...overrides
+		};
+		return { client, stages };
+	}
+
+	it('LOAD-ST-1: a file load validates, then ingests, then returns to idle', async () => {
+		const { client, stages } = stagedClient({});
+		setStorageClientForTesting(client);
+		const file = new File(['a,b\n1,2'], 'my_data.csv', { type: 'text/csv' });
+		const start = startDatasetLoad({ kind: 'file', file });
+		expect($datasetLoad.get()).toMatchObject({ stage: 'validating', name: 'my_data' });
+		expect(await start).toBe(true);
+		expect(stages).toEqual(['validate:validating', 'ingest:ingesting']);
+		expect($datasetLoad.get()).toEqual(IDLE_LOAD);
+	});
+
+	it('LOAD-ST-1: a validation error never ingests and leaves the dataset unchanged', async () => {
+		const prior = await seed();
+		let ingested = false;
+		const { client } = stagedClient({
+			validate: async () => {
+				throw new IngestionError('NO_DATA_ROWS', 'no rows');
+			},
+			ingest: async () => {
+				ingested = true;
+				return createMockMetadata('ds-new');
+			}
+		});
+		setStorageClientForTesting(client);
+		const file = new File(['a'], 'x.csv', { type: 'text/csv' });
+		expect(await startDatasetLoad({ kind: 'file', file })).toBe(false);
+		expect(ingested).toBe(false);
+		expect($datasetLoad.get()).toEqual({
+			...IDLE_LOAD,
+			errorCode: 'NO_DATA_ROWS',
+			errorStage: 'validating'
+		});
+		expect($appState.get()).toEqual(prior);
+		expect(await db.get('metadata', 'ds-1')).toBeDefined();
+	});
+
+	it('LOAD-ST-1: a pass-2 failure sets errorStage to ingesting', async () => {
+		const { client } = stagedClient({
+			ingest: async () => {
+				throw new IngestionError('STORAGE_FAILED', 'quota');
+			}
+		});
+		setStorageClientForTesting(client);
+		const file = new File(['a'], 'x.csv', { type: 'text/csv' });
+		expect(await startDatasetLoad({ kind: 'file', file })).toBe(false);
+		expect($datasetLoad.get()).toMatchObject({
+			errorCode: 'STORAGE_FAILED',
+			errorStage: 'ingesting',
+			stage: 'idle'
+		});
+	});
+
+	it('LOAD-ST-2: a sample load never validates, blocks a second load and clears errors on restart', async () => {
+		let release!: () => void;
+		const gate = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let validated = false;
+		const { client } = stagedClient({
+			validate: async () => {
+				validated = true;
+				return { rowCount: 1, columnCount: 1 };
+			},
+			ingest: async () => {
+				await gate;
+				throw new IngestionError('HTTP_ERROR', 'offline');
+			}
+		});
+		setStorageClientForTesting(client);
+		const first = startDatasetLoad({ kind: 'sample', sampleId: 'iris' }, { name: 'Iris' });
+		expect($datasetLoad.get()).toMatchObject({ stage: 'ingesting', name: 'Iris' });
+		expect(await startDatasetLoad({ kind: 'sample', sampleId: 'iris' })).toBe(false);
+		release();
+		expect(await first).toBe(false);
+		expect(validated).toBe(false);
+		expect($datasetLoad.get()).toMatchObject({
+			errorCode: 'HTTP_ERROR',
+			errorStage: 'ingesting'
+		});
+
+		const { client: next } = stagedClient({
+			ingest: (_source, options) =>
+				new Promise((_resolve, reject) => {
+					options?.signal?.addEventListener('abort', () =>
+						reject(new IngestionError('CANCELLED', 'cancelled'))
+					);
+				})
+		});
+		setStorageClientForTesting(next);
+		const second = startDatasetLoad({ kind: 'sample', sampleId: 'iris' });
+		expect($datasetLoad.get()).toMatchObject({ errorCode: null, errorStage: null });
+		cancelDatasetLoad();
+		expect(await second).toBe(false);
 	});
 });

@@ -3,6 +3,7 @@ import { expect, test, type Locator } from '@playwright/test';
 import { DIST_URL } from '../scripts/ports';
 import { interceptSampleDownload } from './fixtures/sample-dataset-downloads';
 import { controlTraining, openSetup } from './fixtures/training/browser';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
 
@@ -30,7 +31,7 @@ test.describe('Contextual wizard Help', () => {
 		await welcome.getByRole('button', { name: 'Get Started' }).click();
 		await expect(welcome).toBeHidden();
 		await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
-		await expect(page.locator('app-dataset-preview')).toBeAttached();
+		await waitForPublishedPreview(page);
 		await page.goto('/target');
 		const target = page.locator('app-target-view');
 		await expect(target.getByTestId('target-ready')).toBeVisible();
@@ -296,7 +297,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
-		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+		await waitForPublishedPreview(page);
 		await expect
 			.poll(() =>
 				page.evaluate(
@@ -429,7 +430,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const penguinsCard = page.locator('app-dataset-card[dataset-id="palmer-penguins"]');
 		await penguinsCard.waitFor({ state: 'visible', timeout: 5000 });
 		await penguinsCard.locator('button.btn-primary').click();
-		await expect(page.locator('app-dataset-preview')).toBeVisible();
+		await waitForPublishedPreview(page);
 		assertDownload();
 		await expect
 			.poll(() =>
@@ -440,7 +441,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 				)
 			)
 			.not.toBeNull();
-		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+		await waitForPublishedPreview(page);
 		await expect
 			.poll(() =>
 				page.evaluate(
@@ -520,7 +521,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
-		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+		await waitForPublishedPreview(page);
 		await expect
 			.poll(() =>
 				page.evaluate(
@@ -647,7 +648,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
 		await irisCard.waitFor({ state: 'visible', timeout: 5000 });
 		await irisCard.locator('button.btn-primary').click();
-		await page.locator('app-dataset-preview').waitFor({ state: 'attached', timeout: 5000 });
+		await waitForPublishedPreview(page);
 		await expect
 			.poll(() =>
 				page.evaluate(
@@ -783,7 +784,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 			mimeType: 'text/csv',
 			buffer: Buffer.from('feature,flag\n1,true\n2,false\n3,true\n4,false\n')
 		});
-		await expect(page.locator('app-dataset-preview')).toBeVisible();
+		await waitForPublishedPreview(page);
 		await expect
 			.poll(() =>
 				page.evaluate(() => {

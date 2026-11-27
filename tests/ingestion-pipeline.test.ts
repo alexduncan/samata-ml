@@ -1,7 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { openSamataDb } from '../src/common/storage/db';
 import type { DatasetMetadata, RawRecord } from '../src/types/dataset';
-import { runIngestion } from '../src/features/data/ingestion/pipeline';
+import {
+	runIngestion,
+	runValidation,
+	type IngestionProgress
+} from '../src/features/data/ingestion/pipeline';
+import { INGESTION_ERROR_MESSAGES } from '../src/features/data/ingestion/errors';
+import {
+	MAX_COLUMNS,
+	MAX_FILE_BYTES,
+	PARSE_CHUNK_BYTES
+} from '../src/features/data/ingestion/limits';
 import { installFakeIndexedDB } from './helpers/fake-indexeddb';
 
 let restore: (() => void) | undefined;
@@ -369,5 +379,138 @@ describe('runIngestion', () => {
 				}
 			)
 		).rejects.toMatchObject({ code: 'SAMPLE_NOT_FOUND' });
+	});
+});
+
+describe('runValidation', () => {
+	it('ING-VAL-1: returns row and column counts and writes nothing', async () => {
+		const result = await runValidation({
+			kind: 'file',
+			file: file('a,b\n1,x\n2,y\n3,x\n')
+		});
+		expect(result).toEqual({ rowCount: 3, columnCount: 2 });
+		expect(await db!.getAll('raw_records')).toEqual([]);
+		expect(await db!.getAll('metadata')).toEqual([]);
+	});
+
+	it('ING-VAL-2: rejects too many columns, no data rows and an empty file', async () => {
+		const wide = Array.from({ length: MAX_COLUMNS + 1 }, (_, index) => `c${index}`).join(',');
+		const tooMany = runValidation({ kind: 'file', file: file(`${wide}\n1\n`) });
+		await expect(tooMany).rejects.toMatchObject({ code: 'TOO_MANY_COLUMNS' });
+		expect(INGESTION_ERROR_MESSAGES.TOO_MANY_COLUMNS).toContain(String(MAX_COLUMNS));
+		await expect(
+			runValidation({ kind: 'file', file: file('only_header') })
+		).rejects.toMatchObject({ code: 'NO_DATA_ROWS' });
+		await expect(runValidation({ kind: 'file', file: file('') })).rejects.toMatchObject({
+			code: 'EMPTY_FILE'
+		});
+	});
+
+	it('ING-VAL-2: reports parse progress for each chunk before a late NO_DATA_ROWS failure', async () => {
+		// Lines of only delimiters are skipped by the greedy empty-line rule, so no data rows result.
+		const blank = ',\n'.repeat(Math.ceil((2.5 * PARSE_CHUNK_BYTES) / 2));
+		const events: IngestionProgress[] = [];
+		let clock = 0;
+		await expect(
+			runValidation(
+				{ kind: 'file', file: file(`a,b\n${blank}`) },
+				{ onProgress: (value) => events.push(value), now: () => (clock += 200) }
+			)
+		).rejects.toMatchObject({ code: 'NO_DATA_ROWS' });
+		expect(events.filter((event) => event.phase === 'parse').length).toBeGreaterThanOrEqual(2);
+	});
+
+	it('ING-VAL-2: rejects as cancelled when the signal is aborted', async () => {
+		const controller = new AbortController();
+		controller.abort();
+		await expect(
+			runValidation({ kind: 'file', file: file('a\n1\n') }, { signal: controller.signal })
+		).rejects.toMatchObject({ code: 'CANCELLED' });
+	});
+
+	it('ING-VAL-4: reports quota and size failures before any parse progress', async () => {
+		const phases: string[] = [];
+		await expect(
+			runValidation(
+				{ kind: 'file', file: file('a\n1\n2\n') },
+				{
+					onProgress: (value) => phases.push(value.phase),
+					estimateStorage: async () => ({ quota: 10, usage: 9 })
+				}
+			)
+		).rejects.toMatchObject({ code: 'INSUFFICIENT_STORAGE' });
+		expect(phases).not.toContain('parse');
+
+		const huge = file('a\n1\n');
+		Object.defineProperty(huge, 'size', { value: MAX_FILE_BYTES + 1 });
+		await expect(runValidation({ kind: 'file', file: huge })).rejects.toMatchObject({
+			code: 'FILE_TOO_LARGE'
+		});
+		await expect(
+			runIngestion(
+				{ kind: 'file', file: file('a\n1\n2\n') },
+				{ db: db!, estimateStorage: async () => ({ quota: 10, usage: 9 }) }
+			)
+		).rejects.toMatchObject({ code: 'INSUFFICIENT_STORAGE' });
+		await expect(runIngestion({ kind: 'file', file: huge }, { db: db! })).rejects.toMatchObject(
+			{
+				code: 'FILE_TOO_LARGE'
+			}
+		);
+	});
+});
+
+describe('runIngestion progress', () => {
+	it('ING-VAL-3: reports monotonic byte, row and column progress ending at their totals', async () => {
+		const csv = [
+			'constant,odd,even',
+			'5,1,1',
+			'5,2,2',
+			'5,3,3',
+			'5,4,4',
+			'5,5,5',
+			'5,6,6',
+			'5,7,'
+		].join('\n');
+		const events: IngestionProgress[] = [];
+		// A frozen clock leaves only phase changes and forced final events through the throttle.
+		await runIngestion(
+			{ kind: 'file', file: file(csv) },
+			{ db: db!, now: () => 0, onProgress: (value) => events.push(value) }
+		);
+		const byPhase = (phase: IngestionProgress['phase']) =>
+			events.filter((event) => event.phase === phase);
+		const parse = byPhase('parse');
+		expect(parse.at(-1)!.bytesProcessed).toBe(parse.at(-1)!.totalBytes!);
+		for (let index = 1; index < parse.length; index++) {
+			expect(parse[index]!.bytesProcessed).toBeGreaterThanOrEqual(
+				parse[index - 1]!.bytesProcessed
+			);
+		}
+		const typing = byPhase('typing');
+		expect(typing.at(-1)!.rowsProcessed).toBe(typing.at(-1)!.totalRows!);
+		const statistics = byPhase('statistics');
+		expect(statistics.every((event) => event.columnsTotal === 3)).toBe(true);
+		expect(statistics.at(-1)!.columnsProcessed).toBe(3);
+		for (let index = 1; index < statistics.length; index++) {
+			expect(statistics[index]!.columnsProcessed!).toBeGreaterThanOrEqual(
+				statistics[index - 1]!.columnsProcessed!
+			);
+		}
+	});
+
+	it('ING-VAL-3: parse progress advances per chunk for a multi-chunk file', async () => {
+		const rows = Array.from({ length: 120_000 }, (_, index) => `${index},label${index % 7}`);
+		const events: IngestionProgress[] = [];
+		let clock = 0;
+		await runValidation(
+			{ kind: 'file', file: file(['n,label', ...rows].join('\n')) },
+			{ now: () => (clock += 200), onProgress: (value) => events.push(value) }
+		);
+		const parse = events.filter((event) => event.phase === 'parse');
+		const bytes = parse.map((event) => event.bytesProcessed);
+		expect(bytes.some((value) => value > 0 && value < parse[0]!.totalBytes!)).toBe(true);
+		expect([...bytes].sort((a, b) => a - b)).toEqual(bytes);
+		expect(bytes.at(-1)).toBe(parse[0]!.totalBytes!);
 	});
 });

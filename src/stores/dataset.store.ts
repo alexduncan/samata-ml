@@ -7,6 +7,7 @@ import { IngestionError, type IngestionErrorCode } from '../features/data/ingest
 import type { IngestionProgress, IngestionSource } from '../features/data/ingestion/pipeline';
 import { getStorageClient, type StorageClient } from '../features/data/ingestion/storage-client';
 import { loadDataset } from '../features/data/load-dataset';
+import { uploadDatasetName } from '../features/data/ingestion/dataset-name';
 import { loadSampleDescriptor } from '../features/data/sample-datasets';
 import { trackBetaEvent } from '../common/telemetry/telemetry-client';
 import { retiredSampleGuidance } from '../features/data/retired-sample-guidance';
@@ -40,7 +41,16 @@ export interface DatasetLoadState {
 	busy: boolean;
 	progress: IngestionProgress | null;
 	errorCode: IngestionErrorCode | null;
+	/** Current load stage; uploads validate before they ingest, samples only ingest. */
+	stage: DatasetLoadStage;
+	/** Dataset name shown while loading (empty when idle or unknown). */
+	name: string;
+	/** Stage that was running when `errorCode` was set, otherwise `null`. */
+	errorStage: 'validating' | 'ingesting' | null;
 }
+
+/** Stage of an active dataset load. */
+export type DatasetLoadStage = 'idle' | 'validating' | 'ingesting';
 
 const INITIAL_RESOURCES: DatasetResourcesState = {
 	datasetId: null,
@@ -61,7 +71,10 @@ const INITIAL_PREVIEW: PreviewRowsState = {
 const INITIAL_LOAD: DatasetLoadState = {
 	busy: false,
 	progress: null,
-	errorCode: null
+	errorCode: null,
+	stage: 'idle',
+	name: '',
+	errorStage: null
 };
 
 /**
@@ -317,32 +330,74 @@ export async function changeDataset(
 	return result;
 }
 
+/** Options for {@link startDatasetLoad}. */
+export interface StartDatasetLoadOptions {
+	/** Display name for a sample load; uploads derive theirs from the file name. */
+	name?: string;
+}
+
 /**
- * Starts a dataset ingestion run with cancellation tracking.
+ * Starts a dataset load with cancellation tracking. Uploads first validate the whole file
+ * (stage `validating`), then ingest it (stage `ingesting`); samples only ingest.
  *
  * @param source - Ingestion source to process.
- * @returns True if ingestion completed successfully, false otherwise.
+ * @param options - Optional display name for sample loads.
+ * @returns True if the load completed successfully, false otherwise.
  */
-export async function startDatasetLoad(source: IngestionSource): Promise<boolean> {
+export async function startDatasetLoad(
+	source: IngestionSource,
+	options: StartDatasetLoadOptions = {}
+): Promise<boolean> {
 	if ($datasetLoad.get().busy) return false;
 
 	const controller = new AbortController();
 	activeAbortController = controller;
-	$datasetLoad.set({ busy: true, progress: null, errorCode: null });
+	const name =
+		source.kind === 'file' ? uploadDatasetName(source.file.name) : (options.name ?? '');
+	let stage: 'validating' | 'ingesting' = source.kind === 'file' ? 'validating' : 'ingesting';
+	const isActive = () => activeAbortController === controller;
+	$datasetLoad.set({
+		busy: true,
+		progress: null,
+		errorCode: null,
+		stage,
+		name,
+		errorStage: null
+	});
 
 	try {
 		await loadDataset(source, {
 			client: getEffectiveClient(),
 			signal: controller.signal,
+			onStage: (next) => {
+				stage = next;
+				if (isActive()) {
+					$datasetLoad.set({
+						busy: true,
+						progress: null,
+						errorCode: null,
+						stage: next,
+						name,
+						errorStage: null
+					});
+				}
+			},
 			onProgress: (progress) => {
-				if (activeAbortController === controller) {
-					$datasetLoad.set({ busy: true, progress, errorCode: null });
+				if (isActive()) {
+					$datasetLoad.set({
+						busy: true,
+						progress,
+						errorCode: null,
+						stage,
+						name,
+						errorStage: null
+					});
 				}
 			}
 		});
 
-		if (activeAbortController === controller) {
-			$datasetLoad.set({ busy: false, progress: null, errorCode: null });
+		if (isActive()) {
+			$datasetLoad.set(INITIAL_LOAD);
 			activeAbortController = null;
 			trackBetaEvent(
 				source.kind === 'sample' ? 'sample_dataset_selected' : 'custom_dataset_uploaded'
@@ -350,7 +405,7 @@ export async function startDatasetLoad(source: IngestionSource): Promise<boolean
 		}
 		return true;
 	} catch (error) {
-		if (activeAbortController === controller) {
+		if (isActive()) {
 			activeAbortController = null;
 			let errorCode: IngestionErrorCode = 'UNKNOWN';
 			if (error instanceof IngestionError) {
@@ -358,7 +413,7 @@ export async function startDatasetLoad(source: IngestionSource): Promise<boolean
 			} else if (controller.signal.aborted) {
 				errorCode = 'CANCELLED';
 			}
-			$datasetLoad.set({ busy: false, progress: null, errorCode });
+			$datasetLoad.set({ ...INITIAL_LOAD, errorCode, errorStage: stage });
 		}
 		return false;
 	}

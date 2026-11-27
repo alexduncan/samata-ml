@@ -1,7 +1,7 @@
 import { css, type CSSResult } from 'lit';
 
 /**
- * Shared native text-button (.btn, .btn-primary) and icon-button (.btn-icon) styles.
+ * Shared native text-button (.btn, .btn-primary, .btn-red) and icon-button (.btn-icon) styles.
  * Follows specification/components/button.md §5.
  */
 export const buttonStyles: CSSResult = css`
@@ -43,6 +43,19 @@ export const buttonStyles: CSSResult = css`
 
 			&:hover:not(:disabled) {
 				background-color: var(--blue-100);
+			}
+		}
+
+		/* Destructive or discarding actions only. */
+		&.btn-red {
+			border-color: var(--red-700);
+			background-color: var(--surface);
+			color: var(--red-700);
+
+			&:hover:not(:disabled) {
+				border-color: var(--red-700);
+				background-color: var(--red-100);
+				color: var(--red-700);
 			}
 		}
 	}

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 	test.describe('Help term definitions', () => {
@@ -136,7 +137,7 @@ test.describe('Static Content Modal E2E (CNT-E2E-1 .. CNT-E2E-4)', () => {
 		await page.goto('/data');
 		await page.locator('app-welcome-modal button.btn-primary').click();
 		await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
-		await expect(page.locator('app-dataset-preview')).toBeAttached();
+		await waitForPublishedPreview(page);
 
 		await page.goto('/target');
 		const targetView = page.locator('app-target-view');

@@ -33,6 +33,7 @@ import {
 	refreshTrainingSnapshot
 } from './stores/persister';
 import { reconcileProtectedStartup } from './stores/reconciler';
+import { observeStickyHeader } from './common/sticky-header';
 import { initGlobalStyles } from './styles/global';
 import { $staleAssetDetected, installStaleReleaseDetection } from './common/release/stale-release';
 import { onWorkerFailure } from './common/release/worker-failures';
@@ -149,6 +150,22 @@ function renderWorkflowView(route: ParsedRoute) {
 			}
 			return html``;
 	}
+}
+
+/** The shell-rendered page header currently observed for its sticky block size, if any. */
+let shellHeaderObservation: { header: Element; dispose: () => void } | null = null;
+
+/**
+ * Observes the light-DOM page header the shell renders itself (the unbound `/models/new`
+ * placeholder and the startup-recovery page), releasing the previous observation when the
+ * header element changes or disappears. Route views observe their own headers through
+ * `StickyHeaderController`.
+ */
+function syncShellHeaderObservation(container: HTMLElement): void {
+	const header = container.querySelector('#content > .page-header');
+	if (header === (shellHeaderObservation?.header ?? null)) return;
+	shellHeaderObservation?.dispose();
+	shellHeaderObservation = header ? { header, dispose: observeStickyHeader(header) } : null;
 }
 
 /** Renders the pending, prerequisite or recovery view for the new-model entry. */
@@ -314,6 +331,7 @@ export function renderAppShell(container: HTMLElement): void {
 	`;
 
 	render(template, container);
+	syncShellHeaderObservation(container);
 
 	// Focus handling on user workflow navigation per §5.6
 	const requestedFocus = takeFocusRequest();

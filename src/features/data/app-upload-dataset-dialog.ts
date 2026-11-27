@@ -5,7 +5,6 @@ import { observeDialogHeader } from '../../common/dom/dialog-header';
 import { installBackdropDismiss } from '../../common/dom/dialog-backdrop';
 import { dialogStyles } from '../../styles/dialog.styles';
 import type { IngestionProgress } from './ingestion/pipeline';
-import { INGESTION_PHASE_LABELS } from './ingestion/errors';
 
 /**
  * Labels accepted by the upload dataset dialog.
@@ -277,10 +276,8 @@ export class AppUploadDatasetDialog extends LitElement {
 	}
 
 	private renderProgress(): TemplateResult {
-		const phaseKey = this.progress?.phase;
-		const phaseText =
-			this.labels.phase ||
-			(phaseKey ? (INGESTION_PHASE_LABELS[phaseKey] ?? 'Processing…') : 'Loading dataset…');
+		// Only the first pass runs in this dialog: it checks the whole file before anything is saved.
+		const phaseText = this.labels.phase || 'Checking file';
 
 		const hasBytes =
 			this.progress && this.progress.totalBytes !== null && this.progress.totalBytes > 0;

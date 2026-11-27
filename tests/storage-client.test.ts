@@ -165,6 +165,21 @@ describe('storage worker client and dataset service', () => {
 		expect(await client.getMetadata('unknown')).toBeNull();
 	});
 
+	it('validates through the protocol without writing rows and reports progress', async () => {
+		const client = connectWorker();
+		const phases: string[] = [];
+		const result = await client.validate(
+			{ kind: 'file', file: file('value\n1\n2\n3\n') },
+			{ onProgress: ({ phase }) => phases.push(phase) }
+		);
+		expect(result).toEqual({ rowCount: 3, columnCount: 1 });
+		expect(phases).toContain('parse');
+		expect(await db!.getAll('raw_records')).toEqual([]);
+		await expect(client.validate({ kind: 'file', file: file('') })).rejects.toMatchObject({
+			code: 'EMPTY_FILE'
+		});
+	});
+
 	it('returns BUSY for a second request, then cancels the active request', async () => {
 		let markStarted!: () => void;
 		const started = new Promise<void>((resolve) => {
@@ -265,6 +280,7 @@ describe('storage worker client and dataset service', () => {
 				await db!.put('metadata', result);
 				return result;
 			},
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async () => null,
 			fetchRows: async () => [],
 			deleteDatasetsExcept: async () => undefined,
@@ -296,6 +312,7 @@ describe('storage worker client and dataset service', () => {
 			ingest: async () => {
 				throw new IngestionError('READ_FAILED', 'broken CSV');
 			},
+			validate: async () => ({ rowCount: 0, columnCount: 0 }),
 			getMetadata: async () => null,
 			fetchRows: async () => [],
 			deleteDatasetsExcept: async () => undefined,

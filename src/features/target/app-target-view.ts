@@ -20,6 +20,7 @@ import {
 	type TargetColumnRow,
 	type TargetNoteCode
 } from './target-eligibility';
+import { StickyHeaderController } from '../shell/sticky-header-controller';
 
 const targetChangeMessages = i18n('app-target-change', {
 	remote: 'Training in another tab',
@@ -52,6 +53,14 @@ export class AppTargetView extends LitElement {
 				display: none;
 			}
 
+			.page-body {
+				margin: 0 2rem 2rem;
+			}
+
+			.models-exist-alert {
+				margin: 0 2rem 1rem;
+			}
+
 			.page-header {
 				display: grid;
 				position: sticky;
@@ -62,8 +71,16 @@ export class AppTargetView extends LitElement {
 				column-gap: 2rem;
 				row-gap: 0.5rem;
 				align-items: center;
-				margin-block-end: 1.5rem;
+				z-index: 10;
+				box-sizing: border-box;
 				inset-block-start: 0;
+				background-color: var(--stone-50);
+				padding: 1.5rem 2rem;
+				inline-size: 100%;
+
+				@media (max-height: 30rem) {
+					position: static;
+				}
 
 				> h1 {
 					grid-area: title;
@@ -96,6 +113,7 @@ export class AppTargetView extends LitElement {
 			}
 
 			.table-scroll-container {
+				position: relative;
 				inline-size: 100%;
 				overflow-x: auto;
 			}
@@ -124,6 +142,7 @@ export class AppTargetView extends LitElement {
 		`
 	];
 
+	private readonly stickyHeader = new StickyHeaderController(this);
 	private readonly appStateController = new StoreController(this, $appState);
 	private readonly resourcesController = new StoreController(this, $datasetResources);
 
@@ -444,7 +463,9 @@ export class AppTargetView extends LitElement {
 			${this.renderHeader(appState.target !== null)}
 			${appState.models.length > 0
 				? html`
-						<div class="notification notification-alert" role="alert">
+						<div
+							class="notification notification-alert models-exist-alert"
+							role="alert">
 							<p class="notification-text">
 								Changing the target will reset all existing models.
 							</p>
@@ -470,8 +491,25 @@ export class AppTargetView extends LitElement {
 						</tbody>
 					</table>
 				</div>
+				${this.renderTargetChangeError()}
 			</section>
 		`;
+	}
+
+	private renderTargetChangeError(): TemplateResult | typeof nothing {
+		if (!this.targetChangeError || this.pendingTarget) return nothing;
+		return html`<p class="notification notification-alert" role="alert">
+				${this.targetChangeError}
+			</p>
+			${this.targetPublicationPending
+				? html`<button
+						type="button"
+						class="btn"
+						?disabled=${this.targetChanging}
+						@click=${this.retryTargetPublication}>
+						${this.targetMessages.value.retry}
+					</button>`
+				: nothing}`;
 	}
 
 	override render(): TemplateResult {
@@ -492,20 +530,6 @@ export class AppTargetView extends LitElement {
 
 		return html`
 			${this.renderReadyState()}
-			${this.targetChangeError && !this.pendingTarget
-				? html`<p class="notification notification-alert" role="alert">
-							${this.targetChangeError}
-						</p>
-						${this.targetPublicationPending
-							? html`<button
-									type="button"
-									class="btn"
-									?disabled=${this.targetChanging}
-									@click=${this.retryTargetPublication}>
-									${this.targetMessages.value.retry}
-								</button>`
-							: nothing}`
-				: nothing}
 			<dialog
 				class="confirm-dialog"
 				aria-labelledby="confirm-target-title"

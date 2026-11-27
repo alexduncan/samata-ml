@@ -87,6 +87,11 @@ export class AppColumnDetails extends LitElement {
 				overflow-wrap: anywhere;
 			}
 
+			.overlay-title h4 .col-name {
+				font-weight: 400;
+				font-size: 0.875rem;
+			}
+
 			.btn-icon {
 				display: inline-flex;
 				justify-content: center;
@@ -210,6 +215,10 @@ export class AppColumnDetails extends LitElement {
 	/** Column statistics data. */
 	@property({ attribute: false })
 	accessor column: ColumnStats | null = null;
+
+	/** Authored display name for a sample column; empty for uploads. */
+	@property({ type: String, attribute: 'display-name' })
+	accessor displayName = '';
 
 	/** Column description when available. */
 	@property({ type: String })
@@ -491,7 +500,11 @@ export class AppColumnDetails extends LitElement {
 		return html`
 			<aside class="overlay" aria-label="Column details" @keydown=${this.handleKeyDown}>
 				<div class="overlay-title">
-					<h4>${col.name}</h4>
+					${this.displayName && this.displayName !== col.name
+						? html`<h4>
+								${this.displayName}<br /><span class="col-name">${col.name}</span>
+							</h4>`
+						: html`<h4>${col.name}</h4>`}
 					<button
 						type="button"
 						class="btn-icon"

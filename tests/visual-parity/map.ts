@@ -744,5 +744,140 @@ export const parityMap: ParityEntry[] = [
 		appRoute: '/models/1',
 		appSelector: 'app-model-builder-view table.table thead th',
 		properties: ['background-color', 'font-weight']
+	},
+	{
+		id: 'vtable-header-cell',
+		mockupPage: '01-6_virtual-table.html',
+		mockupSelector: '.table-header-cell:not(.unsupported)',
+		appRoute: '/data',
+		appSelector: 'app-dataset-preview ui-virtual-table .table-header-cell:not(.unsupported)',
+		properties: [
+			'font-size',
+			'font-weight',
+			'line-height',
+			'color',
+			'padding-top',
+			'padding-right',
+			'padding-bottom',
+			'padding-left',
+			'border-top-width',
+			'border-bottom-width',
+			'border-inline-end-width',
+			'block-size',
+			'text-align',
+			'background-color'
+		]
+	},
+	{
+		id: 'vtable-header-cell-unsupported',
+		mockupPage: '01-6_virtual-table.html',
+		mockupSelector: '.table-header-cell.unsupported',
+		appRoute: '/data',
+		appSelector: 'app-dataset-preview ui-virtual-table .table-header-cell.unsupported',
+		properties: ['background-color', 'color', 'align-items']
+	},
+	{
+		id: 'vtable-header-icon',
+		mockupPage: '01-6_virtual-table.html',
+		mockupSelector: '.table-header-cell.unsupported .icon',
+		appRoute: '/data',
+		appSelector: 'app-dataset-preview ui-virtual-table .table-header-cell.unsupported .icon',
+		properties: ['color', 'flex-grow', 'flex-shrink', 'margin-inline-end']
+	},
+	{
+		id: 'vtable-header-btn',
+		mockupPage: '01-6_virtual-table.html',
+		mockupSelector: '.header-btn',
+		appRoute: '/data',
+		appSelector: 'app-dataset-preview ui-virtual-table .header-btn',
+		properties: [
+			'font-size',
+			'font-weight',
+			'line-height',
+			'color',
+			'padding-top',
+			'padding-right',
+			'padding-bottom',
+			'padding-left',
+			'text-align'
+		]
+	},
+	{
+		id: 'vtable-row',
+		mockupPage: '01-6_virtual-table.html',
+		mockupSelector: '.table-row',
+		appRoute: '/data',
+		appSelector: 'app-dataset-preview ui-virtual-table .table-row',
+		properties: ['block-size', 'display'],
+		deviations: { display: { value: 'grid', register: 'DATA-UI-04' } }
+	},
+	{
+		id: 'vtable-cell',
+		mockupPage: '01-6_virtual-table.html',
+		mockupSelector: '.table-cell:not(.unsupported)',
+		appRoute: '/data',
+		appSelector: 'app-dataset-preview ui-virtual-table .table-cell:not(.unsupported)',
+		properties: [
+			'font-size',
+			'font-weight',
+			'line-height',
+			'color',
+			'padding-top',
+			'padding-right',
+			'padding-bottom',
+			'padding-left',
+			'border-top-width',
+			'border-bottom-width',
+			'border-inline-end-width',
+			'block-size',
+			'text-align'
+		]
+	},
+	{
+		id: 'vtable-cell-unsupported',
+		mockupPage: '01-6_virtual-table.html',
+		mockupSelector: '.table-cell.unsupported',
+		appRoute: '/data',
+		appSelector: 'app-dataset-preview ui-virtual-table .table-cell.unsupported',
+		properties: ['background-color']
+	},
+	{
+		id: 'vtable-cell-num',
+		mockupPage: '01-6_virtual-table.html',
+		mockupSelector: '.table-cell-num',
+		appRoute: '/data',
+		appSelector: 'app-dataset-preview ui-virtual-table .table-cell-num',
+		properties: ['text-align', 'font-variant-numeric']
+	},
+	{
+		id: 'vtable-cell-boolean',
+		mockupPage: '01-6_virtual-table.html',
+		mockupSelector: '.table-cell-boolean',
+		appRoute: '/data',
+		appSelector: 'app-dataset-preview ui-virtual-table .table-cell-boolean',
+		properties: ['text-align']
+	},
+	{
+		id: 'vtable-page-actions',
+		mockupPage: '01-6_virtual-table.html',
+		mockupSelector: '.page-header .page-actions',
+		appRoute: '/data',
+		appSelector: 'app-dataset-preview .page-header .page-actions',
+		properties: [
+			'display',
+			'flex-wrap',
+			'align-items',
+			'column-gap',
+			'row-gap',
+			'justify-content'
+		]
+	},
+	{
+		id: 'vtable-btn-red',
+		mockupPage: '01-6_virtual-table.html',
+		mockupSelector: '.btn-red',
+		appRoute: '/data',
+		appSelector: 'app-dataset-preview .btn-red',
+		properties: ['border-top-color', 'background-color', 'color']
 	}
 ];

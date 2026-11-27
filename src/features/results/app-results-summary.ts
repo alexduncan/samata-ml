@@ -86,11 +86,12 @@ export class AppResultsSummary extends LitElement {
 			.run,
 			.time {
 				margin-block: 0 0.75rem;
+				overflow-wrap: anywhere;
 			}
 
 			.headline {
 				display: grid;
-				grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+				grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
 				gap: 1rem;
 				margin-block: 0 1rem;
 			}
