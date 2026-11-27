@@ -1,9 +1,9 @@
 # Complete the web-ml 0.3.0 upgrade
 
-**Status:** ready-for-review | **Updated:** 2026-11-27T16:03:45Z
+**Status:** ready | **Updated:** 2026-11-27T16:05:40Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-27T16:02:18Z
-**Verified by:** — | **Verified:** — | **Verification:** pending
-**Verified hash:** —
+**Verified by:** Codex (GPT-6) | **Verified:** 2026-11-27T16:05:40Z | **Verification:** approved
+**Verified hash:** sha256:6141b0fdfb7625553184bffbae041ada98f9603b3fac24f269249f53063925d3
 **Implementation verified by:** — | **Implementation verified:** —
 
 ## Goal
@@ -99,8 +99,9 @@ None.
 
 ## Plan review history
 
-| Reviewed (UTC) | Agent (model) | Decision | Findings |
-| -------------- | ------------- | -------- | -------- |
+| Reviewed (UTC)       | Agent (model) | Decision | Findings                                                                                                                                                                                                                                                  |
+| -------------------- | ------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-11-27T16:05:40Z | Codex (GPT-6) | approved | Verified the shipped 0.3.0 catalogue, tree declarations and public prose, the unchanged 0.2.0 tree defaults, the hidden-option and saved-key flow, release integrity coverage and checkout-specific HTTPS and browser verification. No blocking findings. |
 
 ## Change log
 
