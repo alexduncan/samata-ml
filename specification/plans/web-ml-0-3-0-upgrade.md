@@ -1,8 +1,8 @@
 # Complete the web-ml 0.3.0 upgrade
 
-**Status:** draft | **Updated:** 2026-11-27T16:13:45Z
+**Status:** ready-for-review | **Updated:** 2026-11-27T16:14:24Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-27T16:02:18Z
-**Verified by:** — | **Verified:** — | **Verification:** changes-requested
+**Verified by:** — | **Verified:** — | **Verification:** pending
 **Verified hash:** —
 **Implementation verified by:** — | **Implementation verified:** —
 
@@ -56,7 +56,7 @@
 
 The runtime module URL remains `/web-ml/{version}-{graph-digest}/index.js`. Newly recorded model revisions use the verified 0.3.0 tarball SHA-256. The decision-tree policy omits the four new options from overrides and training requests, including if such values appear in previously persisted input. Exclude the same options from the decision-tree configuration key to preserve earlier saved results.
 
-The shared training-result validator checks nonempty columns and names for both fitted preprocessor versions. Preserve the V1 `standardize`, numeric and categorical checks. For V2, validate per-column `missingIndicator` and the imputation strategy and value for its kind. Check numeric scaling kind, finite offset and positive finite scale, and categorical encoding shape and unknown handling against the public declarations. Reject unsupported versions and malformed fields. The app’s training request retains its current encoding and scaling policy.
+The shared training-result validator preserves the V1 `standardize`, column name, numeric and categorical checks. For V2, require a nonempty set of uniquely named numeric or categorical columns, the column kinds Samata sends. Require a boolean `missingIndicator`, the imputation strategy and value for its kind, a supported scaling kind, a finite offset and a positive finite scale. Scaling `none` uses offset 0 and scale 1. One-hot state has unique, disjoint known and infrequent label lists that together include the imputation value, with unknown handling `ignore` or `error`. Ordinal state has a unique ordered label list containing the imputation value, a finite unknown value or null, and the same scaling rules. Preserve both label orders as supplied. The library enforces canonical category order and any additional invariants when it deserialises its own state. Reject unsupported snapshot versions and column kinds, including datetime. The app’s training request retains its current encoding and scaling policy.
 
 ## Specification changes
 
@@ -76,7 +76,7 @@ The shared training-result validator checks nonempty columns and names for both 
 - **Acceptance criteria:**
   - [ ] A frozen install selects 0.3.0. The vendored checksum and CI agree, and only the 0.3.0 release remains in `vendor/web-ml/`.
   - [ ] The build emits the verified 0.3.0 runtime URL and still rejects tampered or stale inputs. Existing tree controls retain their integer policy, added options are omitted from saved overrides and requests, and earlier decision-tree results restore with their existing key.
-  - [ ] Valid V1 and V2 fitted preprocessor states load unchanged and malformed V2 states are rejected. The 0.3.0 app worker completes and publishes One-Shot and fixed cross-validation results across the existing classifier suite.
+  - [ ] V1 and supported V2 fitted preprocessor states load unchanged. The shared guard rejects malformed V2 fields and unsupported column kinds. The 0.3.0 app worker completes and publishes One-Shot and fixed cross-validation results across the existing classifier suite.
   - [ ] `bun run server` starts from this checkout. Its HTTPS app route and the module at the emitted 0.3.0 runtime URL respond successfully. The production build and relevant runtime browser tests are checked.
 - **Verification:** `bun run check`, `bun run lint`, `bun run build`, `bun run server`, `bun run test:e2e tests/training-runtime.e2e.ts tests/classification-training.e2e.ts tests/analysis-worker.e2e.ts`.
 - **Progress:** [ ] Not started
