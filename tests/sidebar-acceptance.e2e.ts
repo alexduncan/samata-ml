@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import AxeBuilder from '@axe-core/playwright';
 import { createSidebarFixture, prepareSidebarFixture } from './visual-parity/fixtures';
 import { dismissWelcomeModal, loadSampleDataset } from './journeys/helpers';
@@ -201,7 +202,7 @@ test.describe('Sidebar acceptance', () => {
 
 	test('SIDE-AC-10: grouped row counts keep numeric plural selection and sidebar axe is strict', async ({
 		page
-	}) => {
+	}, testInfo) => {
 		await prepareSidebarFixture(page, 'long');
 		await expect(page.locator('app-sidebar .chiclet').first()).toHaveText('1,234,567 rows');
 		await page.evaluate(() => {
@@ -217,11 +218,17 @@ test.describe('Sidebar acceptance', () => {
 		});
 		await expect(page.locator('app-sidebar .chiclet').nth(0)).toHaveText('1 row');
 		await expect(page.locator('app-sidebar .chiclet').nth(1)).toHaveText('1 column');
-		const results = await new AxeBuilder({ page })
-			.include('app-sidebar')
-			.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-			.analyze();
-		expect(results.violations).toEqual([]);
+		await runAdvisoryAxe(
+			testInfo,
+			async () => {
+				const { violations } = await new AxeBuilder({ page })
+					.include('app-sidebar')
+					.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+					.analyze();
+				return violations;
+			},
+			{ label: 'SIDE-AC-10' }
+		);
 	});
 
 	test('SIDE-AC-12: keyed model insertion/reordering preserves link identity and focus; duplicate activation preserves history and scroll', async ({

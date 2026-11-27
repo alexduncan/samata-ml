@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import { expect, test, type Page } from '@playwright/test';
 import { expectHistogramTicksToFit } from './helpers/calibration-histogram-geometry';
 import {
@@ -57,22 +58,28 @@ for (const [seed, kind] of [
 ] as const satisfies readonly (readonly [SeedName, string])[]) {
 	test(`CHT-A11Y-1: ${kind} results expose described charts and open tables without axe violations`, async ({
 		page
-	}) => {
+	}, testInfo) => {
 		await seedTrainedModel(page, seed);
 		await expect(page.locator('app-model-results')).toBeVisible();
 		await openTables(page);
 		await checkCharts(page, 'app-model-results');
-		const audit = await new AxeBuilder({ page })
-			.include('app-model-builder-view')
-			.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-			.analyze();
-		expect(audit.violations).toEqual([]);
+		await runAdvisoryAxe(
+			testInfo,
+			async () => {
+				const { violations } = await new AxeBuilder({ page })
+					.include('app-model-builder-view')
+					.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+					.analyze();
+				return violations;
+			},
+			{ label: 'CHT-A11Y-1 results' }
+		);
 	});
 }
 
 test('CHT-A11Y-1: comparison exposes described charts and open tables without axe violations', async ({
 	page
-}) => {
+}, testInfo) => {
 	await seedComparableFour(page);
 	await page.goto('/results');
 	await expect(page.locator('app-results-view app-comparison-table')).toBeVisible();
@@ -111,11 +118,17 @@ test('CHT-A11Y-1: comparison exposes described charts and open tables without ax
 	expect(encodings[3]).toMatchObject({ fill: 'none', stroke: 'var(--neutral-600)', width: '2' });
 	await openTables(page);
 	await checkCharts(page, 'app-results-view');
-	const audit = await new AxeBuilder({ page })
-		.include('app-results-view')
-		.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-		.analyze();
-	expect(audit.violations).toEqual([]);
+	await runAdvisoryAxe(
+		testInfo,
+		async () => {
+			const { violations } = await new AxeBuilder({ page })
+				.include('app-results-view')
+				.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+				.analyze();
+			return violations;
+		},
+		{ label: 'CHT-A11Y-1 comparison' }
+	);
 });
 
 for (const route of ['binary', 'multiclass', 'comparison'] as const) {

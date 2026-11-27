@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import { expect, test, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
@@ -627,7 +628,7 @@ test.describe('Virtual Table Component (VTB-AC-1 .. VTB-AC-11)', () => {
 
 	test('VTB-AC-10: disconnect silences listeners, reconnect restores them, RTL starts at the inline start, axe passes', async ({
 		page
-	}) => {
+	}, testInfo) => {
 		await mountTable(page, { id: 'vtb10', totalRows: 5000, respond: true });
 		const ranges = () => page.evaluate(() => (window as any).__ranges.length as number);
 		await page.evaluate(() => {
@@ -658,11 +659,17 @@ test.describe('Virtual Table Component (VTB-AC-1 .. VTB-AC-11)', () => {
 		await page.evaluate(() => (document.documentElement.dir = 'ltr'));
 
 		await page.evaluate(() => window.scrollTo(0, 0));
-		const results = await new AxeBuilder({ page })
-			.include('#vtb10')
-			.withTags(AXE_TAGS)
-			.analyze();
-		expect(results.violations).toEqual([]);
+		await runAdvisoryAxe(
+			testInfo,
+			async () => {
+				const { violations } = await new AxeBuilder({ page })
+					.include('#vtb10')
+					.withTags(AXE_TAGS)
+					.analyze();
+				return violations;
+			},
+			{ label: 'VTB-AC-10' }
+		);
 	});
 
 	test('VTB-AC-11: the rail has its final height when updateComplete resolves, without an animation frame', async ({

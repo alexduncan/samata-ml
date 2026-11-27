@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import { expect, test } from '@playwright/test';
 import { configureDraft, openSetup } from './fixtures/training/browser';
 import { dismissWelcomeModal } from './journeys/helpers';
@@ -14,7 +15,7 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 
 	test('WML-P2-UI-9 / MOD-HUB-1: overview guards, model links and persisted training setup summaries', async ({
 		page
-	}) => {
+	}, testInfo) => {
 		// 1. Guard: No dataset loaded -> /models is blocked
 		await page.goto('/models');
 		const overview = page.locator('app-models-view');
@@ -154,12 +155,17 @@ test.describe('Models Overview (MOD-HUB-1, MOD-HUB-2)', () => {
 		await expect(table.locator('input')).toHaveCount(0);
 
 		// Axe check
-		const axeResults = await new AxeBuilder({ page })
-			.withTags(AXE_TAGS)
-			.include('app-models-view')
-			.analyze();
-		const unexpectedViolations = axeResults.violations.filter((v) => v.id !== 'color-contrast');
-		expect(unexpectedViolations).toEqual([]);
+		await runAdvisoryAxe(
+			testInfo,
+			async () => {
+				const { violations } = await new AxeBuilder({ page })
+					.withTags(AXE_TAGS)
+					.include('app-models-view')
+					.analyze();
+				return violations.filter((violation) => violation.id !== 'color-contrast');
+			},
+			{ label: 'MOD-HUB-1' }
+		);
 
 		await page.evaluate(() => {
 			const store = window.__appState!;

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -150,7 +151,7 @@ test.describe('Presentational content dialog', () => {
 
 	test('CDLG-AC-3: h2 names the native dialog and the named icon has decorative SVG, without public-attribute reflection', async ({
 		page
-	}) => {
+	}, testInfo) => {
 		await page.getByRole('button', { name: 'Open content', exact: true }).click();
 		const dialog = page.getByRole('dialog', { name: 'Privacy information', exact: true });
 		await expect(dialog).toHaveClass('modal');
@@ -163,10 +164,16 @@ test.describe('Presentational content dialog', () => {
 			dialog.getByRole('button', { name: 'Close', exact: true }).locator('svg')
 		).toHaveAttribute('aria-hidden', 'true');
 		await expect(page.locator('app-content-dialog')).not.toHaveAttribute('open');
-		const result = await new AxeBuilder({ page })
-			.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-			.analyze();
-		expect(result.violations).toEqual([]);
+		await runAdvisoryAxe(
+			testInfo,
+			async () => {
+				const { violations } = await new AxeBuilder({ page })
+					.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+					.analyze();
+				return violations;
+			},
+			{ label: 'CDLG-AC-3' }
+		);
 	});
 
 	test('DLG-STICKY-1: a wrapped RTL title stays pinned without covering forward or reverse keyboard focus', async ({

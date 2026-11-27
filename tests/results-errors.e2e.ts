@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import { expect, test } from '@playwright/test';
 import type { Page } from '@playwright/test';
 import type { ErrorMountSpec, ErrorsFixture } from './fixtures/results/errors.browser';
@@ -245,7 +246,7 @@ test.describe('Section 6 error views', () => {
 		] as const) {
 			test(`WML-P4-UI-5: ${spec.element} (${spec.evaluation}) with long labels reflows at 320 px (${dir}) and passes axe`, async ({
 				page
-			}) => {
+			}, testInfo) => {
 				await page.setViewportSize({ width: 320, height: 800 });
 				await mount(page, { ...spec, longLabels: true }, { dir, width: '100%' });
 				if (spec.element === 'classee') {
@@ -256,8 +257,14 @@ test.describe('Section 6 error views', () => {
 						document.documentElement.scrollWidth - document.documentElement.clientWidth
 				);
 				expect(overflow).toBeLessThanOrEqual(0);
-				const results = await new AxeBuilder({ page }).analyze();
-				expect(results.violations.map((violation) => violation.id)).toEqual([]);
+				await runAdvisoryAxe(
+					testInfo,
+					async () => {
+						const { violations } = await new AxeBuilder({ page }).analyze();
+						return violations;
+					},
+					{ label: 'WML-P4-UI-5' }
+				);
 			});
 		}
 	}

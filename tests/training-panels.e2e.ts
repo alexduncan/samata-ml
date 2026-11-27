@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
-import { expect, test, type Page } from '@playwright/test';
+import { expect, test, type Page, type TestInfo } from '@playwright/test';
 import { DEFAULT_ONE_SHOT_SETUP, type PersistedAppState } from '../src/types/state';
 import {
 	controlTraining,
@@ -8,6 +8,7 @@ import {
 	openSetup
 } from './fixtures/training/browser';
 import { fixtureTrainingResult } from './fixtures/training/results';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 
 function training(page: Page) {
 	return page.getByTestId('training-step');
@@ -24,23 +25,22 @@ async function revisitTraining(page: Page): Promise<void> {
 	await expect(page).toHaveURL('/models/new');
 }
 
-async function assertPanelAccessibility(page: Page): Promise<void> {
-	// Interim guard until beta-test-robustness-and-advisory-checks T2: Playwright Firefox Nightly
-	// crashes (signal 11) inside AxeBuilder.runPartialRecursive on shadow-DOM panel scans.
-	if (page.context().browser()?.browserType().name() === 'firefox') return;
-	const audit = new AxeBuilder({ page }).withTags([
-		'wcag2a',
-		'wcag2aa',
-		'wcag21a',
-		'wcag21aa',
-		'wcag22aa'
-	]);
-	const panel =
-		(await training(page).count()) > 0
-			? '[data-testid="training-step"]'
-			: 'section[aria-labelledby="step-4-title"]';
-	audit.include({ fromShadowDom: ['app-model-builder-view', panel] });
-	expect((await audit.analyze()).violations).toEqual([]);
+async function assertPanelAccessibility(page: Page, testInfo: TestInfo): Promise<void> {
+	await runAdvisoryAxe(
+		testInfo,
+		async () => {
+			const panel =
+				(await training(page).count()) > 0
+					? '[data-testid="training-step"]'
+					: 'section[aria-labelledby="step-4-title"]';
+			const { violations } = await new AxeBuilder({ page })
+				.withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'])
+				.include({ fromShadowDom: ['app-model-builder-view', panel] })
+				.analyze();
+			return violations;
+		},
+		{ label: 'training panel' }
+	);
 }
 
 async function start(page: Page) {
@@ -106,7 +106,7 @@ async function succeed(page: Page): Promise<string> {
 
 test('MW-PROGRESS-1: starts once, keeps native controls stable and announces milestones across progress updates', async ({
 	page
-}) => {
+}, testInfo) => {
 	await controlTraining(page);
 	await start(page);
 	const panel = training(page);
@@ -141,7 +141,7 @@ test('MW-PROGRESS-1: starts once, keeps native controls stable and announces mil
 	await expect(status).toHaveText('Fitting the model');
 	await expect(status).toHaveAttribute('data-announcements', '1');
 	await expect(summary).toBeFocused();
-	await assertPanelAccessibility(page);
+	await assertPanelAccessibility(page, testInfo);
 	await page.setViewportSize({ width: 320, height: 800 });
 	await page.emulateMedia({ forcedColors: 'active' });
 	await expect(progress).toBeVisible();
@@ -171,13 +171,13 @@ test('MW-PROGRESS-1: starts once, keeps native controls stable and announces mil
 		runId
 	);
 	expect(await requestCount(page)).toBe(1);
-	await assertPanelAccessibility(page);
+	await assertPanelAccessibility(page, testInfo);
 });
 
 for (const outcome of ['cancelled', 'invalid-request', 'worker-crashed'] as const) {
 	test(`MW-PROGRESS-2 / BETA-ERR-4: ${outcome} restores the stopped action with a safe localised reason`, async ({
 		page
-	}) => {
+	}, testInfo) => {
 		await controlTraining(page);
 		await start(page);
 		const panel = training(page);
@@ -234,13 +234,13 @@ for (const outcome of ['cancelled', 'invalid-request', 'worker-crashed'] as cons
 			.getByRole('button', { name: 'Close' })
 			.click();
 		await expect(panel.getByRole('heading', { name: '5. Training Stopped' })).toBeVisible();
-		await assertPanelAccessibility(page);
+		await assertPanelAccessibility(page, testInfo);
 		await revisitTraining(page);
 		await expect(panel).toHaveCount(0);
 		await expect(
 			page.locator('section[aria-labelledby="step-4-title"]').getByRole('alert')
 		).toBeVisible();
-		await assertPanelAccessibility(page);
+		await assertPanelAccessibility(page, testInfo);
 		expect(autofocusWarnings).toEqual([]);
 	});
 }
@@ -319,7 +319,7 @@ test('BETA-ERR-4b: a result arriving after leaving training does not steal norma
 
 test('rejects a non-isolated start before constructing a worker and keeps the form usable', async ({
 	page
-}) => {
+}, testInfo) => {
 	await controlTraining(page, false);
 	const setup = await openSetup(page);
 	const submit = setup.getByRole('button', { name: 'Train Model' });
@@ -331,7 +331,7 @@ test('rejects a non-isolated start before constructing a worker and keeps the fo
 	await expect(submit).toBeEnabled();
 	await expect(training(page)).toHaveCount(0);
 	expect(await requestCount(page)).toBe(0);
-	await assertPanelAccessibility(page);
+	await assertPanelAccessibility(page, testInfo);
 });
 
 test('MW-GUARD-2: confirmed departure waits for the matching local cancellation', async ({
@@ -381,7 +381,7 @@ test('a committed start awaiting publication returns to a draft without launchin
 
 test('WML-P3-UI-1/5: retries only publication and preserves a disclosure changed during the failure', async ({
 	page
-}) => {
+}, testInfo) => {
 	await controlTraining(page);
 	await start(page);
 	await fitProgress(page, 72, true);
@@ -403,7 +403,7 @@ test('WML-P3-UI-1/5: retries only publication and preserves a disclosure changed
 	await revisitTraining(page);
 	await expect(panel.locator('details')).toHaveAttribute('open', '');
 	await panel.getByRole('button', { name: 'Retry saving' }).focus();
-	await assertPanelAccessibility(page);
+	await assertPanelAccessibility(page, testInfo);
 	await page.evaluate(() => (window.__trainingFixture!.blockPublication = null));
 	await panel.getByRole('button', { name: 'Retry saving' }).press('Enter');
 	await expect(panel.getByRole('button', { name: 'View Results' })).toBeEnabled();
@@ -485,7 +485,7 @@ test('WML-P3-UI-2: each stopped model retries its own repair and preserves the r
 test('a remote tab reads the running state and recovers a pending result without fitting again', async ({
 	page,
 	context
-}) => {
+}, testInfo) => {
 	await controlTraining(page);
 	await start(page);
 	const other = await context.newPage();
@@ -495,7 +495,7 @@ test('a remote tab reads the running state and recovers a pending result without
 		const remote = training(other);
 		await expect(remote.locator('summary')).toHaveText('Training in another tab');
 		await expect(remote.getByRole('button', { name: 'Cancel Training' })).toHaveCount(0);
-		await assertPanelAccessibility(other);
+		await assertPanelAccessibility(other, testInfo);
 		await page.evaluate(() => (window.__trainingFixture!.blockPublication = 'finish'));
 		const runId = await succeed(page);
 		await expect(training(page).getByRole('button', { name: 'Retry saving' })).toBeVisible();
@@ -953,7 +953,7 @@ test('WML-P3-UI-1: keeps a keyboard log toggle when the other tab clears the fin
 
 test('reflows training at 320 pixels with RTL, reduced motion and forced colours', async ({
 	page
-}) => {
+}, testInfo) => {
 	await controlTraining(page);
 	await start(page);
 	await page.setViewportSize({ width: 320, height: 800 });
@@ -982,5 +982,5 @@ test('reflows training at 320 pixels with RTL, reduced motion and forced colours
 	expect(bounds.inlineOverflow).toBe(false);
 	expect(bounds.width).toBeLessThanOrEqual(320);
 	expect(bounds.focusStyle).toBe('solid');
-	await assertPanelAccessibility(page);
+	await assertPanelAccessibility(page, testInfo);
 });

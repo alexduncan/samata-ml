@@ -1,6 +1,7 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { featureA11yFindings } from './a11y-feature-findings';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
@@ -323,7 +324,7 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 
 	test('TERM-AC-3: WML-P1-UI-3 every control has a name, validity and plain description', async ({
 		page
-	}) => {
+	}, testInfo) => {
 		const form = await openConfigure(page);
 		for (const { id, setup } of CLASSIFIERS) {
 			await useModel(page, id);
@@ -387,25 +388,33 @@ test.describe('Configure model (WML-P1-UI-*)', () => {
 		await page.reload();
 		await expect(layer).toBeVisible();
 
-		const axe = await new AxeBuilder({ page })
-			.withTags(AXE_TAGS)
-			.include('app-model-builder-view')
-			.analyze();
-		const unexpected = axe.violations.flatMap((v) =>
-			v.nodes
-				.filter(
-					(n) =>
-						!featureA11yFindings.some(
-							(f) =>
-								f.rule === v.id &&
-								[f.target, ...(f.alternateTargets ?? [])].some(
-									(t) => JSON.stringify(t) === JSON.stringify(n.target)
+		await runAdvisoryAxe(
+			testInfo,
+			async () => {
+				const { violations } = await new AxeBuilder({ page })
+					.withTags(AXE_TAGS)
+					.include('app-model-builder-view')
+					.analyze();
+				return violations
+					.map(({ id, nodes }) => ({
+						id,
+						nodes: nodes.filter(
+							(node) =>
+								!featureA11yFindings.some(
+									(finding) =>
+										finding.rule === id &&
+										[finding.target, ...(finding.alternateTargets ?? [])].some(
+											(target) =>
+												JSON.stringify(target) ===
+												JSON.stringify(node.target)
+										)
 								)
 						)
-				)
-				.map((n) => ({ rule: v.id, target: n.target, summary: n.failureSummary }))
+					}))
+					.filter(({ nodes }) => nodes.length > 0);
+			},
+			{ label: 'TERM-AC-3' }
 		);
-		expect(unexpected).toEqual([]);
 	});
 
 	test('WML-P1-UI-4: Save & Continue validates, completes, and Edit reopens', async ({

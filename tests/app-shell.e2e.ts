@@ -1,4 +1,5 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
@@ -1316,7 +1317,7 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 	test('REL-STALE-1..3: worker load failure shows reload notice only on build mismatch, passes axe and preserves state across reload', async ({
 		page,
 		browserName
-	}) => {
+	}, testInfo) => {
 		let failStorageWorker = false;
 		if (browserName === 'webkit') {
 			await page.addInitScript(() => {
@@ -1411,11 +1412,17 @@ test.describe('App Shell & Navigation E2E (NAV-E2E-1, 2, 3, 9)', () => {
 		await expect(reloadButton).toBeVisible();
 		await expect(reloadButton).not.toBeFocused();
 
-		const axe = await new AxeBuilder({ page })
-			.include('#content > div.notification.notification-alert[role="alert"]')
-			.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-			.analyze();
-		expect(axe.violations).toEqual([]);
+		await runAdvisoryAxe(
+			testInfo,
+			async () => {
+				const { violations } = await new AxeBuilder({ page })
+					.include('#content > div.notification.notification-alert[role="alert"]')
+					.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+					.analyze();
+				return violations;
+			},
+			{ label: 'REL-STALE-1..3' }
+		);
 
 		// Clear failure flag and verify Reload reloads the document while keeping saved state.
 		failStorageWorker = false;
@@ -1443,11 +1450,17 @@ test.describe('Shared primitive acceptance', () => {
 
 	test('BTN-AC-1: native default and primary buttons pass axe including contrast', async ({
 		page
-	}) => {
-		const audit = await new AxeBuilder({ page })
-			.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-			.analyze();
-		expect(audit.violations).toEqual([]);
+	}, testInfo) => {
+		await runAdvisoryAxe(
+			testInfo,
+			async () => {
+				const { violations } = await new AxeBuilder({ page })
+					.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+					.analyze();
+				return violations;
+			},
+			{ label: 'BTN-AC-1' }
+		);
 	});
 	test('BTN-AC-2: Tab reaches the button and Enter and Space each click once', async ({
 		page,

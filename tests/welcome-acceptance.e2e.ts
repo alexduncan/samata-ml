@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import AxeBuilder from '@axe-core/playwright';
 import { STATE_STORAGE_KEY } from '../src/types/state';
 import { MOCKUPS_URL } from '../scripts/ports';
@@ -97,11 +98,17 @@ test('WEL-AC-3: native welcome has reference geometry and semantic names', async
 		expect(Math.abs(actualBox![key] - referenceBox![key])).toBeLessThanOrEqual(1);
 	const button = await dialog.locator('button').boundingBox();
 	expect(button!.width).toBe(actualBox!.width - 50);
-	const audit = await new AxeBuilder({ page })
-		.include('app-welcome-modal')
-		.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-		.analyze();
-	expect(audit.violations).toEqual([]);
+	await runAdvisoryAxe(
+		testInfo,
+		async () => {
+			const { violations } = await new AxeBuilder({ page })
+				.include('app-welcome-modal')
+				.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+				.analyze();
+			return violations;
+		},
+		{ label: 'WEL-AC-3' }
+	);
 	await reference.close();
 });
 

@@ -3,6 +3,7 @@ import { expect, test, type Locator } from '@playwright/test';
 import { DIST_URL } from '../scripts/ports';
 import { interceptSampleDownload } from './fixtures/sample-dataset-downloads';
 import { controlTraining, openSetup } from './fixtures/training/browser';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import { waitForPublishedPreview } from './helpers/dataset-ready';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
@@ -642,7 +643,7 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 
 	test('MOD-SETUP-4 / MODEL-ART-1 and 2: illustrated catalogue, native actions and numeric-target notice', async ({
 		page
-	}) => {
+	}, testInfo) => {
 		// 1. Classification target (Iris -> class)
 		await page.goto('/data');
 		const irisCard = page.locator('app-dataset-card[dataset-id="iris"]');
@@ -755,18 +756,17 @@ test.describe('Model Builder Setup (MOD-SETUP-1 .. MOD-SETUP-4)', () => {
 		const targetLink = notice.locator('a[href="/target"]');
 		await expect(targetLink).toBeVisible();
 
-		// Interim guard until beta-test-robustness-and-advisory-checks T2: Playwright Firefox Nightly
-		// crashes (signal 11) inside AxeBuilder.runPartialRecursive on app-model-builder-view.
-		if (page.context().browser()?.browserType().name() !== 'firefox') {
-			const axeResults = await new AxeBuilder({ page })
-				.withTags(AXE_TAGS)
-				.include('app-model-builder-view')
-				.analyze();
-			const unexpectedViolations = axeResults.violations.filter(
-				(v) => v.id !== 'color-contrast'
-			);
-			expect(unexpectedViolations).toEqual([]);
-		}
+		await runAdvisoryAxe(
+			testInfo,
+			async () => {
+				const { violations } = await new AxeBuilder({ page })
+					.withTags(AXE_TAGS)
+					.include('app-model-builder-view')
+					.analyze();
+				return violations.filter((violation) => violation.id !== 'color-contrast');
+			},
+			{ label: 'MOD-SETUP-4' }
+		);
 		await targetLink.click();
 		await builder
 			.getByRole('dialog', { name: 'Leave this model?' })

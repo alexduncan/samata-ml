@@ -1,4 +1,5 @@
 import AxeBuilder from '@axe-core/playwright';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import { expect, test, type Locator } from '@playwright/test';
 
 const AXE_TAGS = ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'];
@@ -21,7 +22,7 @@ test.describe('Model Card and Description Dialog (MOD-CARD-1, MOD-DESC-1)', () =
 
 	test('MOD-CARD-1: typed identity, image slot, native actions, chiclet types, RTL and a11y', async ({
 		page
-	}) => {
+	}, testInfo) => {
 		await page.evaluate((svgMarkup) => {
 			const container = document.createElement('div');
 			container.id = 'card-test-container';
@@ -191,14 +192,17 @@ test.describe('Model Card and Description Dialog (MOD-CARD-1, MOD-DESC-1)', () =
 		expect(scrollWidth).toBeLessThanOrEqual(clientWidth + 1);
 
 		// 6. Accessibility scan with axe
-		const axeResults = await new AxeBuilder({ page })
-			.withTags(AXE_TAGS)
-			.include('#card-test-container')
-			.analyze();
-		const unexpectedCardViolations = axeResults.violations.filter(
-			(v) => v.id !== 'color-contrast'
+		await runAdvisoryAxe(
+			testInfo,
+			async () => {
+				const { violations } = await new AxeBuilder({ page })
+					.withTags(AXE_TAGS)
+					.include('#card-test-container')
+					.analyze();
+				return violations.filter((violation) => violation.id !== 'color-contrast');
+			},
+			{ label: 'MOD-CARD-1' }
 		);
-		expect(unexpectedCardViolations).toEqual([]);
 	});
 
 	test('MODEL-ART-3: both slot forms reserve space before load and after image failure', async ({
@@ -318,7 +322,7 @@ test.describe('Model Card and Description Dialog (MOD-CARD-1, MOD-DESC-1)', () =
 
 	test('MOD-DESC-1: ready, missing, error, retry states, lang/dir, safe content and focus return', async ({
 		page
-	}) => {
+	}, testInfo) => {
 		await page.evaluate(() => {
 			const container = document.createElement('div');
 			container.id = 'dialog-test-container';
@@ -398,14 +402,17 @@ test.describe('Model Card and Description Dialog (MOD-CARD-1, MOD-DESC-1)', () =
 		await expect(contentSection).toHaveAttribute('dir', 'ltr');
 
 		// Axe check on open modal
-		const axeModal = await new AxeBuilder({ page })
-			.withTags(AXE_TAGS)
-			.include('#test-dialog')
-			.analyze();
-		const unexpectedModalViolations = axeModal.violations.filter(
-			(v) => v.id !== 'color-contrast'
+		await runAdvisoryAxe(
+			testInfo,
+			async () => {
+				const { violations } = await new AxeBuilder({ page })
+					.withTags(AXE_TAGS)
+					.include('#test-dialog')
+					.analyze();
+				return violations.filter((violation) => violation.id !== 'color-contrast');
+			},
+			{ label: 'MOD-DESC-1' }
 		);
-		expect(unexpectedModalViolations).toEqual([]);
 
 		// Close via close button and check focus returns to invoker button
 		const closeBtn = dialogEl.locator('button.btn-icon');

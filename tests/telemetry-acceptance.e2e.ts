@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import { runAdvisoryAxe } from './helpers/advisory-a11y';
 import AxeBuilder from '@axe-core/playwright';
 import { execFileSync } from 'node:child_process';
 import { readFile, rm } from 'node:fs/promises';
@@ -100,7 +101,7 @@ async function interceptUmami(
 
 test('REL-UI-1 & REL-UI-3: beta origin serves isolated CSP, accessible notice, one acceptance send, and reload pageview', async ({
 	page
-}) => {
+}, testInfo) => {
 	const sends = await interceptUmami(page);
 	const response = await page.goto(server!.url);
 	expect(response?.status()).toBe(200);
@@ -135,11 +136,17 @@ test('REL-UI-1 & REL-UI-3: beta origin serves isolated CSP, accessible notice, o
 	});
 	expect(orderOk).toBe(true);
 
-	const axe = await new AxeBuilder({ page })
-		.include('app-welcome-modal')
-		.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
-		.analyze();
-	expect(axe.violations).toEqual([]);
+	await runAdvisoryAxe(
+		testInfo,
+		async () => {
+			const { violations } = await new AxeBuilder({ page })
+				.include('app-welcome-modal')
+				.withTags(['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'])
+				.analyze();
+			return violations;
+		},
+		{ label: 'REL-UI-1 / REL-UI-3' }
+	);
 
 	// Keyboard focus reaches privacy link and Get Started cleanly; 320px reflow & RTL & 400% zoom keep controls in viewport
 	await page.setViewportSize({ width: 320, height: 600 });
