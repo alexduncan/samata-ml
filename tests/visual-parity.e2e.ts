@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test';
+import { expect, test, type Page } from '@playwright/test';
 import { parityMap, type ParityEntry } from './visual-parity/map';
 import {
 	createSidebarFixture,
@@ -9,6 +9,19 @@ import {
 import { MOCKUPS_URL } from '../scripts/ports';
 import { waitForPublishedPreview } from './helpers/dataset-ready';
 
+async function setWelcomeComparisonCopy(mockupPage: Page, appPage: Page): Promise<void> {
+	await Promise.all([
+		setWelcomeParityCopy(
+			mockupPage.locator('dialog.modal > h2'),
+			mockupPage.locator('dialog.modal > p')
+		),
+		setWelcomeParityCopy(
+			appPage.locator('app-welcome-modal p.lead'),
+			appPage.locator('app-welcome-modal .body')
+		)
+	]);
+}
+
 test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 	test.use({ viewport: { width: 1440, height: 900 } });
 
@@ -18,6 +31,52 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 
 	test('PARITY-contract: mapped surfaces have no drift exemptions', () => {
 		expect(parityMap.filter((entry) => entry.knownDrift)).toEqual([]);
+	});
+
+	test('PARITY-welcome-copy: editing nested body copy preserves measured dimensions', async ({
+		page,
+		context
+	}) => {
+		const mockupPage = await context.newPage();
+		await mockupPage.goto(`${MOCKUPS_URL}/00_first-load.html?clean=1`);
+		await page.goto('/data');
+		const appDialog = page.locator('app-welcome-modal dialog');
+		const mockupDialog = mockupPage.locator('dialog.modal');
+		const nestedCopy = appDialog.locator('.body > p:last-child a');
+		const measure = () =>
+			Promise.all(
+				[appDialog, mockupDialog].map((dialog) =>
+					dialog.evaluate((element) => {
+						const { width, height } = getComputedStyle(element);
+						return { width, height };
+					})
+				)
+			);
+
+		await setWelcomeComparisonCopy(mockupPage, page);
+		const before = await measure();
+		for (const copy of [nestedCopy, mockupDialog.locator(':scope > p').first()]) {
+			await copy.evaluate((element) => {
+				element.firstChild!.textContent = 'Edited copy adds enough words to wrap. '.repeat(
+					40
+				);
+			});
+		}
+		const withEditedCopy = await measure();
+		expect(withEditedCopy[0]!.height).not.toBe(before[0]!.height);
+		expect(withEditedCopy[1]!.height).not.toBe(before[1]!.height);
+		await setWelcomeComparisonCopy(mockupPage, page);
+		await expect(nestedCopy).toBeVisible();
+		expect(await measure()).toEqual(before);
+
+		await appDialog.evaluate((element) => {
+			element.style.width = '500px';
+		});
+		await setWelcomeComparisonCopy(mockupPage, page);
+		const withStyleChange = await measure();
+		expect(withStyleChange[0]!.width).not.toBe(before[0]!.width);
+		expect(withStyleChange[1]).toEqual(before[1]);
+		await mockupPage.close();
 	});
 
 	for (const entry of parityMap) {
@@ -207,16 +266,7 @@ test.describe('Visual Parity Suite (Chromium 1440x900)', () => {
 			const appEl = page.locator(entry.appSelector).first();
 			await appEl.waitFor({ state: 'attached', timeout: 5000 });
 			if (['modal-dialog', 'welcome-lead', 'welcome-body'].includes(entry.id)) {
-				await Promise.all([
-					setWelcomeParityCopy(
-						mockupPage.locator('dialog.modal > h2'),
-						mockupPage.locator('dialog.modal > p').first()
-					),
-					setWelcomeParityCopy(
-						page.locator('app-welcome-modal p.lead'),
-						page.locator('app-welcome-modal .body > p').first()
-					)
-				]);
+				await setWelcomeComparisonCopy(mockupPage, page);
 			}
 
 			// Capture and attach full-page screenshots for both

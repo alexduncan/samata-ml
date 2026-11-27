@@ -7,13 +7,12 @@ export async function setWelcomeParityCopy(lead: Locator, body: Locator): Promis
 		[lead, 'Train a model in your browser.'],
 		[body, 'Choose a sample dataset to explore how machine learning works.']
 	] as const) {
-		await locator.evaluate((element, text) => {
-			const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
-			let replacement: string = text;
-			for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-				if (node.textContent?.trim()) {
-					node.textContent = replacement;
-					replacement = '';
+		await locator.first().waitFor({ state: 'attached' });
+		await locator.evaluateAll((elements, text) => {
+			for (const element of elements) {
+				const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT);
+				for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+					if (node.textContent?.trim()) node.textContent = ` ${text} `;
 				}
 			}
 		}, copy);
