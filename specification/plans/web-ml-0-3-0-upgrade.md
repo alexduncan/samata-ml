@@ -1,6 +1,6 @@
 # Complete the web-ml 0.3.0 upgrade
 
-**Status:** ready | **Updated:** 2026-11-27T16:14:49Z
+**Status:** ready | **Updated:** 2026-11-27T16:17:29Z
 **Authors:** Codex (GPT-6) | **Created:** 2026-11-27T16:02:18Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-27T16:14:49Z | **Verification:** approved
 **Verified hash:** sha256:c8906660f46663442d2d5c33f1cddd2fe831c83f9899caebc5daa521dc316420
@@ -60,8 +60,8 @@ The shared training-result validator preserves the V1 `standardize`, column name
 
 ## Specification changes
 
-- [ ] `specification/machine-learning-orchestrator.md` §3 — document the decision-tree library defaults excluded from the saved configuration key. Status remains implemented.
-- [ ] `specification/machine-learning-orchestrator.md` §4 — state that preprocessor snapshot versions 1 and 2 are validated independently of the envelope version. Status remains implemented.
+- [x] `specification/machine-learning-orchestrator.md` §3 — document the decision-tree library defaults excluded from the saved configuration key. Status remains implemented.
+- [x] `specification/machine-learning-orchestrator.md` §4 — state that preprocessor snapshot versions 1 and 2 are validated independently of the envelope version. Status remains implemented.
 
 ## Implementation tasks
 
@@ -74,17 +74,17 @@ The shared training-result validator preserves the V1 `standardize`, column name
 - **Implementation:** Refresh release and asset integrity expectations from 0.3.0. Pin the public tree declaration barrel and option types, and the public hyperparameter prose. Preserve the existing emitted 20-file graph. Refresh the release-specific CI and test expectations, including the narrowed integer-or-null `maxDepth` catalogue test. Explicitly hide the four added options and exclude them from the decision-tree configuration key, extending the existing hidden-option and saved-result tests. Remove the old tarball and checksum and bring the contributor guide into line with CI and runtime verification.
 - **Result validation:** Extend `hasPreprocessor` for V2 and keep V1 fixtures and behaviour. Extend `tests/model-results.test.ts` with an IndexedDB round trip for a V2 state and representative rejection checks. Verify a real worker returns V2 state in the existing classification suite.
 - **Acceptance criteria:**
-  - [ ] A frozen install selects 0.3.0. The vendored checksum and CI agree, and only the 0.3.0 release remains in `vendor/web-ml/`.
-  - [ ] The build emits the verified 0.3.0 runtime URL and still rejects tampered or stale inputs. Existing tree controls retain their integer policy, added options are omitted from saved overrides and requests, and earlier decision-tree results restore with their existing key.
-  - [ ] V1 and supported V2 fitted preprocessor states load unchanged. The shared guard rejects malformed V2 fields and unsupported column kinds. The 0.3.0 app worker completes and publishes One-Shot and fixed cross-validation results across the existing classifier suite.
-  - [ ] `bun run server` starts from this checkout. Its HTTPS app route and the module at the emitted 0.3.0 runtime URL respond successfully. The production build and relevant runtime browser tests are checked.
+  - [x] A frozen install selects 0.3.0. The vendored checksum and CI agree, and only the 0.3.0 release remains in `vendor/web-ml/`.
+  - [x] The build emits the verified 0.3.0 runtime URL and still rejects tampered or stale inputs. Existing tree controls retain their integer policy, added options are omitted from saved overrides and requests, and earlier decision-tree results restore with their existing key.
+  - [x] V1 and supported V2 fitted preprocessor states load unchanged. The shared guard rejects malformed V2 fields and unsupported column kinds. The 0.3.0 app worker completes and publishes One-Shot and fixed cross-validation results across the existing classifier suite.
+  - [x] `bun run server` starts from this checkout. Its HTTPS app route and the module at the emitted 0.3.0 runtime URL respond successfully. The production build and relevant runtime browser tests are checked.
 - **Verification:** `bun run check`, `bun run lint`, `bun run build`, `bun run server`, `bun run test:e2e tests/training-runtime.e2e.ts tests/classification-training.e2e.ts tests/analysis-worker.e2e.ts`.
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-27T16:17:29Z)
 
 ## Verification and definition of done
 
-- [ ] Task acceptance criteria are met and verification outcomes are recorded.
-- [ ] Specifications match the completed work and there are no changes outside the task scope.
+- [x] Task acceptance criteria are met and verification outcomes are recorded.
+- [x] Specifications match the completed work and there are no changes outside the task scope.
 
 ## Risks and open questions
 
@@ -101,9 +101,10 @@ None.
 
 ## Implementation and verification log
 
-| When (UTC) | Task | Agent (model) | Outcome / commands / evidence |
-| ---------- | ---- | ------------- | ----------------------------- |
-| —          | —    | —             | Not started                   |
+| When (UTC)           | Task | Agent (model) | Outcome / commands / evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------------- | ---- | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —                    | —    | —             | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 2026-11-27T16:17:29Z | T1   | Codex (GPT-6) | The frozen Bun install and `shasum -a 256 -c web-ml-0.3.0.tgz.sha256` succeeded and only the 0.3.0 pair remains. `bun run check`: 742 passed, 0 failed. `bun run lint` and `bun run build` passed. `bun run test:e2e tests/training-runtime.e2e.ts tests/classification-training.e2e.ts tests/analysis-worker.e2e.ts --workers=3`: 43 passed, 26 intended skips, 0 failed. `bun run server` started at https://localhost:20783/; verified `/__checkout` identifies this worktree and both `/` and the 0.3.0 runtime module returned HTTP 200 over HTTPS using the local certificate. The result validator accepts the numeric and categorical 0.3.0 fitted state (V2) and retains V1 compatibility. Scoped initial integration checkpoint: 8f4333b. |
 
 ## Plan review history
 

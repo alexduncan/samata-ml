@@ -1,4 +1,4 @@
-import type { CrossValidationFoldResult, TrainingPhase } from 'web-ml';
+import type { ClassificationLabel, CrossValidationFoldResult, TrainingPhase } from 'web-ml';
 import { decodeStoredEvaluation } from '../../results/evaluation-decoder';
 import type { StoredEvaluation } from '../../../types/model-evaluation';
 import type {
@@ -72,7 +72,7 @@ function strings(value: unknown): value is string[] {
 	return Array.isArray(value) && value.every(nonempty);
 }
 
-function label(value: unknown): boolean {
+function label(value: unknown): value is ClassificationLabel {
 	return typeof value === 'string' || typeof value === 'boolean' || finite(value);
 }
 
@@ -169,16 +169,84 @@ function hasLog(value: unknown): value is readonly TrainingLogEntry[] {
 	return true;
 }
 
-function hasPreprocessor(value: unknown): boolean {
+function hasFittedScaling(value: Record<string, unknown>): boolean {
+	const { scaling, offset, scale } = value;
+	if (scaling === 'none') return offset === 0 && scale === 1;
+	return (
+		(scaling === 'standard' || scaling === 'min-max') &&
+		finite(offset) &&
+		finite(scale) &&
+		scale > 0
+	);
+}
+
+function denseLabels(value: unknown): value is readonly ClassificationLabel[] {
+	return labels(value) && !(value as readonly unknown[]).includes(undefined);
+}
+
+function hasFittedEncoding(value: unknown, imputed: ClassificationLabel): boolean {
+	if (!record(value)) return false;
+	if (value.kind === 'ordinal') {
+		return (
+			denseLabels(value.order) &&
+			value.order.includes(imputed) &&
+			(value.unknownValue === null || finite(value.unknownValue)) &&
+			hasFittedScaling(value)
+		);
+	}
 	if (
-		!record(value) ||
-		value.version !== 1 ||
-		typeof value.standardize !== 'boolean' ||
-		!Array.isArray(value.columns) ||
-		value.columns.length === 0
+		value.kind !== 'one-hot' ||
+		(value.unknown !== 'ignore' && value.unknown !== 'error') ||
+		!denseLabels(value.categories) ||
+		!denseLabels(value.infrequent)
 	)
 		return false;
-	return (value.columns as unknown[]).every((column) => {
+	const categories = new Set(value.categories);
+	return (
+		value.infrequent.every((category) => !categories.has(category)) &&
+		(categories.has(imputed) || value.infrequent.includes(imputed))
+	);
+}
+
+function hasPreprocessorV2Column(column: Record<string, unknown>): boolean {
+	const { imputation, kind, missingIndicator } = column;
+	if (!record(imputation) || typeof missingIndicator !== 'boolean') return false;
+	const { strategy, value } = imputation;
+	const mostFrequentOrConstant = strategy === 'most-frequent' || strategy === 'constant';
+	if (kind === 'numeric') {
+		return (
+			(mostFrequentOrConstant || strategy === 'mean' || strategy === 'median') &&
+			finite(value) &&
+			hasFittedScaling(column)
+		);
+	}
+	return (
+		kind === 'categorical' &&
+		mostFrequentOrConstant &&
+		label(value) &&
+		hasFittedEncoding(column.encoding, value)
+	);
+}
+
+function hasPreprocessor(value: unknown): boolean {
+	if (!record(value) || !Array.isArray(value.columns) || value.columns.length === 0) return false;
+	const columns = value.columns as unknown[];
+	if (value.version === 2) {
+		const names = new Set<string>();
+		for (const column of columns) {
+			if (
+				!record(column) ||
+				!nonempty(column.name) ||
+				names.has(column.name) ||
+				!hasPreprocessorV2Column(column)
+			)
+				return false;
+			names.add(column.name);
+		}
+		return true;
+	}
+	if (value.version !== 1 || typeof value.standardize !== 'boolean') return false;
+	return columns.every((column) => {
 		if (!record(column) || !nonempty(column.name)) return false;
 		if (column.kind === 'numeric') {
 			return finite(column.mean) && finite(column.scale) && column.scale > 0;
