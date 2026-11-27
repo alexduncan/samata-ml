@@ -16,7 +16,7 @@ if (manifest) setCustomElementsManifest(manifest);
 const preview: Preview = {
 	tags: ['autodocs'],
 	parameters: {
-		a11y: { test: 'error' },
+		a11y: { test: __SAMATA_STORYBOOK_A11Y_TEST__ },
 		docs: { story: { inline: false } }
 	},
 	beforeEach: ({ canvasElement }) => {

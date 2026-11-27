@@ -20,7 +20,8 @@ const window = new GlobalWindow({
 
 // Register DOM properties and classes onto globalThis
 for (const key of Object.getOwnPropertyNames(window)) {
-	if (key in globalThis) continue;
+	// Playwright's source-map-support would use the DOM XHR and spawn a failing HTTP request.
+	if (key === 'XMLHttpRequest' || key in globalThis) continue;
 	try {
 		Object.defineProperty(globalThis, key, {
 			value: (window as unknown as Record<string, unknown>)[key],

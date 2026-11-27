@@ -1,6 +1,6 @@
 # Beta test robustness, E2E hardening and advisory quality checks
 
-**Status:** ready | **Updated:** 2026-11-27T12:28:39Z
+**Status:** ready | **Updated:** 2026-11-27T12:57:59Z
 **Authors:** Google Antigravity (Gemini 4 Neon High), Codex (GPT-6) | **Created:** 2026-11-26T08:51:44Z
 **Verified by:** Codex (GPT-6) | **Verified:** 2026-11-27T12:28:39Z | **Verification:** approved
 **Verified hash:** sha256:c8e5d5f98b3520e4ec2bb9841ec476e426095556c9d64adf3247395d1116615f
@@ -245,14 +245,14 @@ export async function fetchSampleDatasetCount(page: Page): Promise<number>;
   5. Update `.storybook/main.ts` (`viteFinal`) to define `__SAMATA_STORYBOOK_A11Y_TEST__` as `JSON.stringify(process.env.SAMATA_ADVISORY_CHECKS === 'error' ? 'error' : 'todo')`, add `declare const __SAMATA_STORYBOOK_A11Y_TEST__: 'error' | 'todo';` to the existing `.storybook/vite-env.d.ts`, and update `.storybook/preview.ts` to use `a11y: { test: __SAMATA_STORYBOOK_A11Y_TEST__ }`.
   6. Update `tests/setup.ts#L22-L23` to skip copying `XMLHttpRequest` onto `globalThis` (`if (key === 'XMLHttpRequest' || key in globalThis) continue;`), with a concise comment noting that exposing `happy-dom`'s `XMLHttpRequest` globally tricks Playwright's bundled `source-map-support` into spawning a failing child HTTP request to `localhost:3000` during `tests/audit-mockups.test.ts`.
 - **Acceptance criteria:**
-  - [ ] `advisoryCheckMode()` defaults to `'warn'` and returns `'error'` only when `SAMATA_ADVISORY_CHECKS === 'error'`.
-  - [ ] `runAdvisoryAxe()` has zero runtime `@playwright/test` or `bun:test` imports, skips non-Chromium scans in `'warn'` mode with an `'a11y-skipped'` annotation, warns without throwing on Chromium violations or scan exceptions in `'warn'` mode, and throws a standard `Error` deterministically in `'error'` mode.
-  - [ ] `tests/test-server-urls.test.ts` scans `tests/helpers/**/*.ts` and passes.
-  - [ ] `bun test tests/audit-mockups.test.ts` produces zero `AggregateError` (`node:events:50:13`) stderr output or `::error ... title=AggregateError` annotations (and `'XMLHttpRequest' in globalThis` is `false` in unit tests).
-  - [ ] `bun run test:stories` passes with Storybook `a11y.test` defaulting to `'todo'` while retaining all story interaction assertions.
-  - [ ] `bun run check`, `bun run lint`, and `bun test tests/advisory-a11y.test.ts` pass.
+  - [x] `advisoryCheckMode()` defaults to `'warn'` and returns `'error'` only when `SAMATA_ADVISORY_CHECKS === 'error'`.
+  - [x] `runAdvisoryAxe()` has zero runtime `@playwright/test` or `bun:test` imports, skips non-Chromium scans in `'warn'` mode with an `'a11y-skipped'` annotation, warns without throwing on Chromium violations or scan exceptions in `'warn'` mode, and throws a standard `Error` deterministically in `'error'` mode.
+  - [x] `tests/test-server-urls.test.ts` scans `tests/helpers/**/*.ts` and passes.
+  - [x] `bun test tests/audit-mockups.test.ts` produces zero `AggregateError` (`node:events:50:13`) stderr output or `::error ... title=AggregateError` annotations (and `'XMLHttpRequest' in globalThis` is `false` in unit tests).
+  - [x] `bun run test:stories` passes with Storybook `a11y.test` defaulting to `'todo'` while retaining all story interaction assertions.
+  - [x] `bun run check`, `bun run lint`, and `bun test tests/advisory-a11y.test.ts` pass.
 - **Verification:** `bun test tests/advisory-a11y.test.ts`, `bun test tests/test-server-urls.test.ts`, `bun test tests/audit-mockups.test.ts`, `bun run check`, `bun run lint`, `bun run test:stories`, `bun run format:check --paths tests/helpers/advisory-a11y.ts tests/helpers/e2e-settlement.ts tests/advisory-a11y.test.ts tests/test-server-urls.test.ts tests/setup.ts .storybook/main.ts .storybook/preview.ts .storybook/vite-env.d.ts`
-- **Progress:** [ ] Not started
+- **Progress:** [x] Completed (2026-11-27T12:57:59Z)
 
 ### T2 — Route inline `AxeBuilder` checks in mixed functional E2E suites through `runAdvisoryAxe`
 
@@ -412,9 +412,10 @@ None.
 
 ## Implementation and verification log
 
-| When (UTC) | Task | Agent (model) | Outcome / commands / evidence |
-| ---------- | ---- | ------------- | ----------------------------- |
-| —          | —    | —             | Not started                   |
+| When (UTC)           | Task | Agent (model) | Outcome / commands / evidence                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| -------------------- | ---- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| —                    | —    | —             | Not started                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| 2026-11-27T12:57:59Z | T1   | Codex (GPT-6) | bun test tests/advisory-a11y.test.ts: 13 passed; bun test tests/test-server-urls.test.ts: 2 passed; bun test tests/audit-mockups.test.ts: 8 passed, no AggregateError diagnostic; bun run check: typecheck passed and 705 unit tests passed; bun run lint: passed; bun run test:stories: 822 passed across 123 files, including the three browser projects; bun run format:check --paths tests/helpers/advisory-a11y.ts tests/helpers/e2e-settlement.ts tests/advisory-a11y.test.ts tests/test-server-urls.test.ts tests/setup.ts .storybook/main.ts .storybook/preview.ts .storybook/vite-env.d.ts: passed. T1 scope gate: 8 changed paths, 0 warnings. Fresh worktree dependencies installed with maintainer authorisation using bun install --frozen-lockfile --ignore-scripts. |
 
 ## Plan review history
 

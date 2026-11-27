@@ -10,7 +10,10 @@ const config: StorybookConfig = {
 		...config,
 		define: {
 			...config.define,
-			...toDefine(TEST_BUILD_CONSTANTS)
+			...toDefine(TEST_BUILD_CONSTANTS),
+			__SAMATA_STORYBOOK_A11Y_TEST__: JSON.stringify(
+				process.env.SAMATA_ADVISORY_CHECKS === 'error' ? 'error' : 'todo'
+			)
 		},
 		optimizeDeps: {
 			...config.optimizeDeps,

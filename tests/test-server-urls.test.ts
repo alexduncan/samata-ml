@@ -31,6 +31,7 @@ describe('test server URLs', () => {
 		const files = [
 			path.join(ROOT_DIR, 'playwright.config.ts'),
 			...walk(testsDir, (file) => file.endsWith('.e2e.ts')),
+			...walk(path.join(testsDir, 'helpers'), (file) => file.endsWith('.ts')),
 			...walk(path.join(testsDir, 'visual-parity'), (file) => file.endsWith('.ts'))
 		];
 		const hits = files.flatMap((file) =>
