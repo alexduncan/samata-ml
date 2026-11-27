@@ -44,3 +44,7 @@ All functionality must be created alongside a comprehensive test setup. Code sub
 - `tests/classification-training.e2e.ts` runs the compiled deployment worker in Chromium for all eight classifiers with both strategies. It checks fixed folds, refit, held-out report counts, authoritative partition and model-domain errors, and validation-only feature leakage.
 - `tests/training-panels.e2e.ts` separates deterministic lifecycle fixtures from genuine fits. The worker fixture keeps browser IndexedDB and Web Locks active to check progress, keyboard focus, safe notices, cancellation, 95% publication recovery, remote replay and route independence. Panel axe and the three-engine stories supplement the engine journeys. The Phase 3 plan records Safari and manual check limits.
 - Result details and comparison remain target for subsequent stages.
+
+### Chart verification
+
+`tests/chart-accessibility.e2e.ts` checks axe, chart names and descriptions, 320px reflow, 200% text size, forced colours, polite live updates and RTL in Chromium, Firefox and WebKit. `tests/chart-tokens.test.ts` checks model-colour, outline and text contrast. Automated checks do not replace colour-vision-deficiency simulation or native Safari/VoiceOver spoken-output checks; pending manual work is in [HUMAN.md](HUMAN.md). See [charts.md](charts.md).

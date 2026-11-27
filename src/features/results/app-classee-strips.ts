@@ -4,6 +4,12 @@ import { repeat } from 'lit/directives/repeat.js';
 import { resultsStyles } from '../../styles/results.styles';
 import { tableStyles } from '../../styles/table.styles';
 import { PlotController, type ChartLibrary, type ChartTokens } from './charts/plot-controller';
+import {
+	DATASET_CLASS_TOKENS,
+	computeAxisMargin,
+	integerTicks,
+	truncateLabel
+} from './charts/chart-encoding';
 import type { ChartCaption, ClasseeView } from './results-view-model';
 
 /** Text supplied by the connected results view. */
@@ -21,6 +27,10 @@ export interface ClasseeStripsLabels {
 	/** Chart side labels. */
 	readonly errorsSide: string;
 	readonly correctSide: string;
+	readonly xAxis: string;
+	readonly yAxis: string;
+	readonly legendLabel: string;
+	readonly description: (view: ClasseeView) => string;
 }
 
 /** Empty labels: the parent supplies every string. */
@@ -35,29 +45,12 @@ export const DEFAULT_CLASSEE_STRIPS_LABELS: ClasseeStripsLabels = {
 	error: '',
 	noErrors: '',
 	errorsSide: '',
-	correctSide: ''
+	correctSide: '',
+	xAxis: '',
+	yAxis: '',
+	legendLabel: '',
+	description: () => ''
 };
-
-const PALETTE = [
-	'--chart-1',
-	'--chart-2',
-	'--chart-3',
-	'--chart-4',
-	'--chart-5',
-	'--chart-6'
-] as const;
-
-const CHARACTER_WIDTH = 7.5;
-
-/** Whole-number tick values, multiples of a common step, that cover a count range. */
-function integerTicks(min: number, max: number): number[] {
-	const step = Math.max(1, Math.ceil((max - min) / 6));
-	const ticks: number[] = [];
-	for (let value = Math.ceil(min / step) * step; value <= max; value += step) {
-		ticks.push(value === 0 ? 0 : value);
-	}
-	return ticks;
-}
 
 /**
  * Classee strips: one row per true class, correct predictions to the right of zero and errors
@@ -80,7 +73,9 @@ export class AppClasseeStrips extends LitElement {
 	private readonly plot = new PlotController(
 		this,
 		() => this.renderRoot.querySelector<HTMLElement>('.chart'),
-		(chart, tokens, width) => this.draw(chart, tokens, width)
+		(chart, tokens, width, fontSize, measureText) =>
+			this.draw(chart, tokens, width, fontSize, measureText),
+		() => 'description'
 	);
 
 	/** Resolves when the current chart has been drawn or abandoned. */
@@ -88,13 +83,22 @@ export class AppClasseeStrips extends LitElement {
 		return this.updateComplete.then(() => this.plot.whenSettled());
 	}
 
-	private draw(chart: ChartLibrary, tokens: ChartTokens, width: number) {
+	private draw(
+		chart: ChartLibrary,
+		tokens: ChartTokens,
+		width: number,
+		fontSize: number,
+		measureText: (text: string) => number
+	) {
 		const view = this.strips;
 		if (!view || !this.caption || view.rows.length === 0) return null;
-		const surface = getComputedStyle(this).getPropertyValue('--surface').trim();
-		const longest = Math.max(...view.rows.map((row) => row.label.length));
-		const marginLeft = Math.min(width * 0.35, longest * CHARACTER_WIDTH + 16);
-		const maxLabel = Math.max(4, Math.floor((marginLeft - 16) / CHARACTER_WIDTH));
+		const surface = tokens['--surface'];
+		const { margin: marginLeft, labelWidth } = computeAxisMargin(
+			view.rows.map((row) => row.label),
+			fontSize,
+			width,
+			measureText
+		);
 		const marginRight = 40;
 		const min = -view.maxErrors;
 		const max = Math.max(1, view.maxCorrect);
@@ -115,16 +119,18 @@ export class AppClasseeStrips extends LitElement {
 					label: row.label,
 					x1: -cumulative,
 					x2,
-					fill: tokens[PALETTE[segment.predictedIndex % PALETTE.length]!],
-					text: segment.text,
-					wide: segment.count * pixelsPerRow >= 28
+					fill: tokens[
+						DATASET_CLASS_TOKENS[segment.predictedIndex % DATASET_CLASS_TOKENS.length]!
+					],
+					text: segment.predicted,
+					wide: segment.count * pixelsPerRow >= measureText(segment.predicted) + fontSize
 				};
 			});
 		});
 		const mid = (d: { x1: number; x2: number }) => (d.x1 + d.x2) / 2;
 		return chart.plot({
 			width,
-			height: 56 + view.rows.length * 30,
+			height: 56 + view.rows.length * Math.max(30, fontSize * 2),
 			marginTop: 24,
 			marginBottom: 32,
 			marginLeft,
@@ -132,14 +138,14 @@ export class AppClasseeStrips extends LitElement {
 			x: {
 				domain: [min, max],
 				label: null,
+				grid: true,
 				ticks: integerTicks(min, max),
 				tickFormat: (value: number) => this.formatCount(Math.abs(value))
 			},
 			y: {
 				domain: labels,
 				label: null,
-				tickFormat: (label: string) =>
-					label.length > maxLabel ? `${label.slice(0, maxLabel - 1)}…` : label
+				tickFormat: (label: string) => truncateLabel(label, labelWidth, measureText)
 			},
 			ariaLabel: this.caption.title,
 			ariaDescription: this.caption.takeaway,
@@ -155,7 +161,14 @@ export class AppClasseeStrips extends LitElement {
 					y: 'label',
 					fill: tokens['--chart-neutral']
 				}),
-				chart.barX(wrong, { x1: 'x1', x2: 'x2', y: 'label', fill: 'fill' }),
+				chart.barX(wrong, {
+					x1: 'x1',
+					x2: 'x2',
+					y: 'label',
+					fill: 'fill',
+					stroke: surface,
+					strokeWidth: 1.5
+				}),
 				// Correct counts sit beyond the bar: white on the neutral grey would miss 4.5:1.
 				chart.text(correct, {
 					x: 'x2',
@@ -169,19 +182,7 @@ export class AppClasseeStrips extends LitElement {
 					wrong.filter((d) => d.wide),
 					{ x: mid, y: 'label', text: 'text', fill: surface }
 				),
-				chart.ruleX([0], { stroke: tokens['--chart-axis'], strokeWidth: 2 }),
-				chart.text(view.totalErrors > 0 ? [this.labels.errorsSide] : [], {
-					frameAnchor: 'top-left',
-					text: (d: string) => d,
-					fill: tokens['--chart-axis'],
-					dy: -20
-				}),
-				chart.text([this.labels.correctSide], {
-					frameAnchor: 'top-right',
-					text: (d: string) => d,
-					fill: tokens['--chart-axis'],
-					dy: -20
-				})
+				chart.ruleX([0], { stroke: tokens['--chart-axis'], strokeWidth: 2 })
 			]
 		});
 	}
@@ -196,8 +197,28 @@ export class AppClasseeStrips extends LitElement {
 					<span class="caption-title">${this.caption.title}</span>
 					<span class="muted">${this.caption.takeaway}</span>
 				</figcaption>
+				<p class="visually-hidden" id="description">${labels.description(view)}</p>
+				<ul class="chart-legend" aria-label=${labels.legendLabel}>
+					${view.legendClasses.map(
+						({ classIndex, label }) =>
+							html`<li>
+								<svg aria-hidden="true" width="16" height="16">
+									<rect
+										width="16"
+										height="16"
+										fill=${`var(${DATASET_CLASS_TOKENS[classIndex % DATASET_CLASS_TOKENS.length]})`}></rect></svg
+								>${label}
+							</li>`
+					)}
+				</ul>
 				${view.totalErrors === 0 ? html`<p>${labels.noErrors}</p>` : nothing}
+				<p>${labels.yAxis}</p>
+				<div class="chart-sides" dir="ltr">
+					<span dir="auto">${view.totalErrors > 0 ? labels.errorsSide : nothing}</span>
+					<span dir="auto">${labels.correctSide}</span>
+				</div>
 				<div class="chart"></div>
+				<p>${labels.xAxis}</p>
 				<details>
 					<summary>${labels.showTable}</summary>
 					<div class="table-region" role="region" tabindex="0" aria-labelledby="caption">

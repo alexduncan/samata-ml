@@ -6,6 +6,7 @@ import type {
 	ProbabilityMountSpec
 } from './fixtures/results/probability.browser';
 import { breastCancerOneShot } from './fixtures/results/evaluations';
+import { expectHistogramTicksToFit } from './helpers/calibration-histogram-geometry';
 import {
 	bundleResultsFixture,
 	mountResultsFixture,
@@ -49,8 +50,8 @@ test.describe('Section 6 probability views', () => {
 			fp: number(sweep.fp[index]!),
 			tn: number(sweep.tn[index]!),
 			fn: number(sweep.fn[index]!),
-			tpr: percent(sweep.tpr[index]!),
-			fpr: percent(sweep.fpr[index]!)
+			tpr: `${percent(sweep.tpr[index]!)} (${number(sweep.tp[index]!)} of ${number(sweep.tp[index]! + sweep.fn[index]!)})`,
+			fpr: `${percent(sweep.fpr[index]!)} (${number(sweep.fp[index]!)} of ${number(sweep.fp[index]! + sweep.tn[index]!)})`
 		};
 	}
 
@@ -205,9 +206,9 @@ test.describe('Section 6 probability views', () => {
 		await mount(page, { element: 'reliability', evaluation: 'iris' });
 		const diagram = page.locator('app-reliability-diagram');
 		await expect(diagram.locator('figcaption')).toContainText(
-			'Expected calibration error is 0.03'
+			'Expected calibration error is 3%'
 		);
-		await expect(diagram.locator('svg')).toHaveCount(2);
+		await expect(diagram.locator('.chart > svg:not([data-plot-probe])')).toHaveCount(2);
 		await diagram.locator('summary').click();
 		await expect(diagram.locator('tbody tr')).toHaveCount(10);
 	});
@@ -238,20 +239,23 @@ test.describe('Section 6 probability views', () => {
 	test('WML-P4-UI-8: the count histogram aligns with the reliability plot', async ({ page }) => {
 		await mount(page, { element: 'reliability', evaluation: 'breast-cancer' });
 		const origins = await page.locator('app-reliability-diagram').evaluate((host) =>
-			[...host.shadowRoot!.querySelectorAll('svg')].map((svg) => {
-				// The x axis is the lowest row of tick labels; the y axis repeats "0%" at the side.
-				const lowest = (label: string) =>
-					[...svg.querySelectorAll('text')]
-						.filter((text) => text.textContent === label)
-						.sort(
-							(a, b) => b.getBoundingClientRect().top - a.getBoundingClientRect().top
-						)[0]!;
-				const centre = (text: Element) => {
-					const box = text.getBoundingClientRect();
-					return box.left + box.width / 2;
-				};
-				return [centre(lowest('0%')), centre(lowest('100%'))];
-			})
+			[...host.shadowRoot!.querySelectorAll('.chart > svg:not([data-plot-probe])')].map(
+				(svg) => {
+					// The x axis is the lowest row of tick labels; the y axis repeats "0%" at the side.
+					const lowest = (label: string) =>
+						[...svg.querySelectorAll('text')]
+							.filter((text) => text.textContent === label)
+							.sort(
+								(a, b) =>
+									b.getBoundingClientRect().top - a.getBoundingClientRect().top
+							)[0]!;
+					const centre = (text: Element) => {
+						const box = text.getBoundingClientRect();
+						return box.left + box.width / 2;
+					};
+					return [centre(lowest('0%')), centre(lowest('100%'))];
+				}
+			)
 		);
 		expect(origins).toHaveLength(2);
 		expect(Math.abs(origins[0]![0]! - origins[1]![0]!)).toBeLessThan(1.5);
@@ -277,11 +281,181 @@ test.describe('Section 6 probability views', () => {
 			slider.boundingBox()
 		]);
 		expect(Math.abs(noticeBox!.y - sliderBox!.y)).toBeLessThan(80);
-		expect(
-			await page
-				.locator('app-threshold-explorer [role="status"], app-threshold-explorer output')
-				.count()
-		).toBe(0);
+		const announcement = page.locator('app-threshold-explorer [aria-live="polite"]');
+		await expect(announcement).toContainText(' of ');
+	});
+
+	test('CHT-PROB-1: calibration preserves stored rates and totals without invented numerators', async ({
+		page
+	}) => {
+		for (const evaluation of ['breast-cancer', 'iris'] as const) {
+			await mount(page, { element: 'reliability', evaluation });
+			const diagram = page.locator('app-reliability-diagram');
+			await diagram.evaluate(async (host) => {
+				const element =
+					host as import('../src/features/results/app-reliability-diagram').AppReliabilityDiagram;
+				const bins = element.calibration!.bins.map((bin, index) =>
+					index === 0
+						? { ...bin, count: 3, meanPredicted: 0.5, observed: 0.51 }
+						: index === 1
+							? { ...bin, count: 0, meanPredicted: null, observed: null }
+							: bin
+				);
+				element.calibration = { ...element.calibration!, bins };
+				await element.whenSettled();
+			});
+			const plot = diagram.locator('.reliability > svg:not([data-plot-probe])');
+			await expect(plot).toHaveAttribute('role', 'img');
+			const dimensions = await plot.evaluate((svg) => [
+				svg.getAttribute('width'),
+				svg.getAttribute('height')
+			]);
+			expect(dimensions[0]).toBe(dimensions[1]);
+			await expect(diagram.locator('.counts > svg:not([data-plot-probe])')).toHaveAttribute(
+				'aria-describedby',
+				'counts-description'
+			);
+			await diagram.locator('summary').click();
+			await expect(diagram.locator('thead')).toContainText(
+				evaluation === 'iris' ? 'Correct prediction rate' : 'Observed positive rate'
+			);
+			const row = diagram.locator('tbody tr').first();
+			await expect(row).toContainText('51%');
+			await expect(row.locator('td').first()).toHaveText('3');
+			await expect(row).not.toContainText('2 of 3');
+			await expect(diagram.locator('tbody tr').nth(1)).toContainText('No rows');
+		}
+	});
+
+	test('CHT-PROB-2: slider announces commits immediately and idle input once', async ({
+		page
+	}) => {
+		await mount(page, { element: 'threshold', evaluation: 'breast-cancer' });
+		const explorer = page.locator('app-threshold-explorer');
+		const live = explorer.locator('[aria-live="polite"]');
+		const slider = explorer.getByRole('slider');
+		await page.clock.install();
+		await page.clock.pauseAt(new Date(Date.now() + 100));
+		const dispatch = (type: 'input' | 'change', value: string) =>
+			slider.evaluate(
+				(control, data) => {
+					(control as HTMLInputElement).value = data.value;
+					control.dispatchEvent(new Event(data.type, { bubbles: true }));
+				},
+				{ type, value }
+			);
+
+		await dispatch('input', '60');
+		await expect(explorer.locator('.readout dd').first()).toHaveText('60%');
+		await expect(live).toBeEmpty();
+		// A different committed value proves the pending input cannot overwrite it later.
+		await dispatch('change', '70');
+		await expect(live).toContainText('At 0.7,');
+		await page.clock.runFor(250);
+		await expect(live).toContainText('At 0.7,');
+		const emittedIndexes = async () =>
+			(await events(page)).map(({ detail }) => (detail as { index: number }).index);
+		expect(await emittedIndexes()).toEqual([60]);
+
+		await dispatch('input', '80');
+		await dispatch('input', '90');
+		await expect(explorer.locator('.readout dd').first()).toHaveText('90%');
+		await page.clock.runFor(249);
+		await expect(live).toContainText('At 0.7,');
+		await page.clock.runFor(1);
+		await expect(live).toContainText('At 0.9,');
+		expect(await emittedIndexes()).toEqual([60, 90]);
+	});
+
+	test('CHT-PROB-2: slider announces the committed value and labels its cutoff', async ({
+		page
+	}) => {
+		await mount(page, { element: 'threshold', evaluation: 'breast-cancer' });
+		const explorer = page.locator('app-threshold-explorer');
+		const slider = page.getByRole('slider');
+		await slider.fill('0');
+		await slider.fill('100');
+		await expect(explorer.locator('[aria-live="polite"]')).toContainText(' of ');
+		await expect(explorer.locator('.chart > svg:not([data-plot-probe])')).toContainText(
+			'Cutoff 100%'
+		);
+		await expect(explorer.locator('figure details')).toHaveCount(1);
+		await expect(explorer.locator('figcaption')).toContainText(' of ');
+		await page.setViewportSize({ width: 320, height: 800 });
+		await page.addStyleTag({ content: 'html { font-size: 200% }' });
+		for (const value of ['0', '100']) {
+			await slider.fill(value);
+			await expect
+				.poll(() =>
+					explorer.evaluate((host) => {
+						const svg = host.shadowRoot!.querySelector(
+							'.chart > svg:not([data-plot-probe])'
+						)!;
+						const rect = svg.getBoundingClientRect();
+						return [...svg.querySelectorAll('text')]
+							.filter((text) => text.textContent?.startsWith('Cutoff'))
+							.every((text) => {
+								const box = text.getBoundingClientRect();
+								return box.left >= rect.left - 1 && box.right <= rect.right + 1;
+							});
+					})
+				)
+				.toBe(true);
+		}
+	});
+
+	test('CHT-A11Y-1: the five calibration count ticks fit at 200% after resize', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 320, height: 800 });
+		await mount(
+			page,
+			{ element: 'reliability', evaluation: 'breast-cancer' },
+			{ width: '100%' }
+		);
+		await page.addStyleTag({
+			content: 'html { font-size: 32px } body { padding-inline: 16px }'
+		});
+		const histogramContainer = page.locator('app-reliability-diagram .counts');
+		for (const dir of ['ltr', 'rtl'] as const) {
+			await page.evaluate((direction) => (document.documentElement.dir = direction), dir);
+			for (const width of [320, 360, 320]) {
+				await page.setViewportSize({ width, height: 800 });
+				await expectHistogramTicksToFit(histogramContainer, ['0', '10', '20', '30', '40']);
+			}
+		}
+	});
+
+	test('CHT-PROB-1/2: probability axis and annotation text stays within chart bounds at 200%', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 320, height: 800 });
+		for (const element of ['reliability', 'threshold'] as const) {
+			await mount(page, { element, evaluation: 'breast-cancer' }, { width: '100%' });
+			await page.addStyleTag({ content: 'html { font-size: 200% }' });
+			const host = page.locator(
+				element === 'reliability' ? 'app-reliability-diagram' : 'app-threshold-explorer'
+			);
+			await expect
+				.poll(() =>
+					host.evaluate((element) =>
+						[
+							...element.shadowRoot!.querySelectorAll(
+								'.chart > svg:not([data-plot-probe])'
+							)
+						].flatMap((svg) => {
+							const box = svg.getBoundingClientRect();
+							return [...svg.querySelectorAll('text')]
+								.filter((text) => {
+									const rect = text.getBoundingClientRect();
+									return rect.left < box.left - 1 || rect.right > box.right + 1;
+								})
+								.map((text) => text.textContent);
+						})
+					)
+				)
+				.toEqual([]);
+		}
 	});
 
 	test('WML-P4-UI-9: reduced motion leaves no transitions or animations', async ({ page }) => {

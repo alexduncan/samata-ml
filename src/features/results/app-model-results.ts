@@ -54,7 +54,8 @@ import {
 	type FoldStripView,
 	type ResultsFormatters,
 	type ResultsSummaryView,
-	type ThresholdView
+	type ThresholdView,
+	type ThresholdReadout
 } from './results-view-model';
 import { RESULT_TERM_COPY } from './result-term-copy';
 
@@ -163,6 +164,21 @@ const messages = i18n('app-model-results', {
 	foldTimeOneShot: 'Fit time',
 	foldMean: 'Mean',
 	foldSd: 'Standard deviation',
+	foldXAxis: 'Balanced accuracy (%, higher is better)',
+	foldInterval: 'Mean ± 1 SD',
+	foldClamped: params<{ mean: string; sd: string }>(
+		'Mean {mean} ± {sd} extends beyond the score range.'
+	),
+	foldDescription: params<{ values: string }>('Fold scores and baselines: {values}.'),
+	foldLegend: 'Models',
+	flowchartTitle: 'Held-out outcomes',
+	flowchartSubtitle: 'Correct and incorrect predictions',
+	flowchartDescription: 'The bars show outcomes for each true class.',
+	classeeXAxis: 'Held-out rows',
+	classeeYAxis: params<{ target: string }>('True {target}'),
+	classeeLegend: 'Predicted classes',
+	classeeDescription: params<{ errors: string }>('Held-out errors: {errors}.'),
+	matrixFilterStatus: params<{ selection: string }>('Showing {selection}.'),
 	baselineMostFrequent: 'Always the most frequent class',
 	baselineStratified: 'Random guesses by class share',
 	showTable: 'Show data table',
@@ -172,16 +188,16 @@ const messages = i18n('app-model-results', {
 	precisionHeading: 'Precision',
 	recallHeading: 'Recall',
 	f1Heading: 'F1',
-	matrixCaptionTest: params<{ shown: number; total: number }>(
-		'Confusion matrix: {shown} of {total} true classes, test rows only'
+	matrixCaptionTest: params<{ shown: number; total: number; target: string }>(
+		'Confusion matrix: {shown} of {total} true {target} classes, test rows only'
 	),
-	matrixCaptionHeldOut: params<{ shown: number; total: number }>(
-		'Confusion matrix: {shown} of {total} true classes, pooled held-out rows'
+	matrixCaptionHeldOut: params<{ shown: number; total: number; target: string }>(
+		'Confusion matrix: {shown} of {total} true {target} classes, pooled held-out rows'
 	),
-	trueClass: 'True class',
-	predictedClass: 'Predicted class',
+	trueClass: params<{ target: string }>('True {target}'),
+	predictedClass: params<{ target: string }>('Predicted {target}'),
 	matrixRows: 'Rows',
-	matrixFilter: 'Show true class',
+	matrixFilter: params<{ target: string }>('Show true {target}'),
 	matrixFilterDefault: 'The twenty largest classes',
 	flowRowHeading: params<{ target: string; actual: string; total: string }>(
 		'Rows with {target} {actual}: {total}'
@@ -191,10 +207,12 @@ const messages = i18n('app-model-results', {
 		target: string;
 		actual: string;
 		predicted: string;
+		share: string;
+		total: string;
 	}>(
 		count({
-			one: '{text} row with {target} {actual} was predicted {predicted} (correct)',
-			many: '{text} rows with {target} {actual} were predicted {predicted} (correct)'
+			one: '{text} of {total} rows with {target} {actual} were predicted {predicted} (correct; {share})',
+			many: '{text} of {total} rows with {target} {actual} were predicted {predicted} (correct; {share})'
 		})
 	),
 	flowOutcomeIncorrect: params<{
@@ -202,13 +220,15 @@ const messages = i18n('app-model-results', {
 		target: string;
 		actual: string;
 		predicted: string;
+		share: string;
+		total: string;
 	}>(
 		count({
-			one: '{text} row with {target} {actual} was predicted {predicted} (incorrect)',
-			many: '{text} rows with {target} {actual} were predicted {predicted} (incorrect)'
+			one: '{text} of {total} rows with {target} {actual} were predicted {predicted} (incorrect; {share})',
+			many: '{text} of {total} rows with {target} {actual} were predicted {predicted} (incorrect; {share})'
 		})
 	),
-	classeeTitle: 'Held-out errors by true class',
+	classeeTitle: params<{ target: string }>('Held-out errors by true {target}'),
 	classeeTakeawayNone: 'Every held-out row was predicted correctly.',
 	classeeTakeaway: params<{
 		errors: string;
@@ -219,7 +239,7 @@ const messages = i18n('app-model-results', {
 	}>(
 		'{errors} of {rows} held-out rows were predicted wrongly. The most common mistake was {actual} predicted as {predicted}, {count} times.'
 	),
-	classeeTableCaption: 'Held-out rows by true class and predicted class',
+	classeeTableCaption: params<{ target: string }>('Held-out rows by true and predicted {target}'),
 	classeeCount: 'Rows',
 	classeeOutcome: 'Outcome',
 	classeeCorrect: 'Correct',
@@ -248,8 +268,22 @@ const messages = i18n('app-model-results', {
 	),
 	thresholdTpr: params<{ positive: string }>('Share of {positive} rows found'),
 	thresholdFpr: params<{ negative: string }>('Share of {negative} rows wrongly flagged'),
-	thresholdTrueClass: params<{ label: string }>('True class {label}'),
-	thresholdXAxis: 'Predicted probability',
+	thresholdTrueClass: params<{ target: string; label: string }>('True {target}: {label}'),
+	thresholdXAxis: params<{ positive: string }>('Predicted probability of {positive} (%)'),
+	thresholdCutoff: params<{ threshold: string }>('Cutoff {threshold}'),
+	thresholdRateCounts: params<{ rate: string; hits: string; total: string }>(
+		'{rate} ({hits} of {total})'
+	),
+	thresholdDescription: params<{
+		threshold: string;
+		tp: string;
+		positives: string;
+		fp: string;
+		negatives: string;
+	}>(
+		'At {threshold}, {tp} of {positives} positive rows and {fp} of {negatives} negative rows are flagged.'
+	),
+	thresholdLegend: 'True class',
 	thresholdYAxis: 'Rows',
 	thresholdTableCaption: 'Held-out rows by predicted probability and true class',
 	thresholdRangeHeading: 'Probability range',
@@ -264,17 +298,24 @@ const messages = i18n('app-model-results', {
 	reliabilityTakeaway: params<{ ece: string }>(
 		'Expected calibration error is {ece}. Lower is better; zero means predicted probabilities match observed rates.'
 	),
-	reliabilityXAxis: 'Mean predicted probability',
-	reliabilityXAxisTopLabel: 'Mean confidence in the top class',
-	reliabilityYAxis: 'Observed rate',
-	reliabilityYAxisTopLabel: 'Observed accuracy',
+	reliabilityXAxis: 'Mean predicted probability (%)',
+	reliabilityXAxisTopLabel: 'Mean confidence in the top class (%)',
+	reliabilityYAxis: 'Observed positive rate (%)',
+	reliabilityYAxisTopLabel: 'Correct prediction rate (%)',
 	reliabilityCountsTitle: 'Rows in each probability bin',
 	reliabilityCountsAxis: 'Rows',
 	reliabilityDiagonal: 'Perfect calibration',
 	reliabilityTableCaption: 'Calibration by probability bin',
 	reliabilityBin: 'Probability bin',
 	reliabilityMeanPredicted: 'Mean predicted',
-	reliabilityObserved: 'Observed',
+	reliabilityObserved: 'Observed positive rate',
+	reliabilityObservedTopLabel: 'Correct prediction rate',
+	reliabilityDescription: params<{ ece: string }>(
+		'Expected calibration error is {ece}; each point represents a non-empty probability bin.'
+	),
+	reliabilityCountsDescription: params<{ total: string }>(
+		'The histogram shows {total} held-out rows across probability bins.'
+	),
 	reliabilityEmptyBin: 'No rows',
 	reliabilityUnavailableProbabilities: params<{ model: string }>(
 		'The reliability diagram is unavailable because this {model} was trained without probability estimates.'
@@ -300,6 +341,8 @@ function buildLabels(
 	t: Messages,
 	evaluation: StoredEvaluation,
 	model: string,
+	target: string,
+	format: ResultsFormatters,
 	unavailableReason: 'probabilities' | 'single-class'
 ): ElementLabels {
 	const oneShot = evaluation.protocol.kind === 'one_shot';
@@ -315,6 +358,15 @@ function buildLabels(
 		'insufficient-degrees-of-freedom': t.reasonFewRows,
 		'single-class': t.reasonSingleClass
 	};
+	const thresholdView = buildThresholdView(evaluation, target);
+	const thresholdDescription = (view: ThresholdView, readout: ThresholdReadout) =>
+		t.thresholdDescription({
+			threshold: format.percent(readout.threshold),
+			tp: format.count(readout.tp),
+			positives: format.count(readout.tp + readout.fn),
+			fp: format.count(readout.fp),
+			negatives: format.count(readout.fp + readout.tn)
+		});
 	const probabilities = unavailableReason === 'probabilities';
 	return {
 		summary: {
@@ -373,7 +425,19 @@ function buildLabels(
 			score: t.foldScore,
 			time: oneShot ? t.foldTimeOneShot : t.foldTimeCrossValidation,
 			mean: t.foldMean,
-			standardDeviation: t.foldSd
+			standardDeviation: t.foldSd,
+			xAxis: t.foldXAxis,
+			intervalNote: t.foldInterval,
+			clampedNote: (mean, sd) => t.foldClamped({ mean, sd }),
+			description: (series, baselines) =>
+				t.foldDescription({
+					values: [
+						...series.map((row) => `${row.label}: ${format.percent(row.mean)}`),
+						...baselines.map((mark) => `${mark.label}: ${format.percent(mark.value)}`)
+					].join('; ')
+				}),
+			legendLabel: t.foldLegend,
+			baselineColumn: t.foldSeries
 		},
 		classTable: {
 			caption: t.classTableCaption,
@@ -386,13 +450,23 @@ function buildLabels(
 		matrix: {
 			caption: (view) =>
 				view.scope === 'test'
-					? t.matrixCaptionTest({ shown: view.rows.length, total: view.classCount })
-					: t.matrixCaptionHeldOut({ shown: view.rows.length, total: view.classCount }),
-			trueClass: t.trueClass,
-			predictedClass: t.predictedClass,
+					? t.matrixCaptionTest({
+							shown: view.rows.length,
+							total: view.classCount,
+							target
+						})
+					: t.matrixCaptionHeldOut({
+							shown: view.rows.length,
+							total: view.classCount,
+							target
+						}),
+			trueClass: t.trueClass({ target }),
+			predictedClass: t.predictedClass({ target }),
 			support: t.matrixRows,
-			filter: t.matrixFilter,
-			defaultFilter: t.matrixFilterDefault
+			filter: t.matrixFilter({ target }),
+			defaultFilter: t.matrixFilterDefault,
+			filterStatus: (label) =>
+				t.matrixFilterStatus({ selection: label ?? t.matrixFilterDefault })
 		},
 		flowchart: {
 			rowHeading: (row, flow) =>
@@ -402,7 +476,9 @@ function buildLabels(
 					text: outcome.text,
 					target: flow.target,
 					actual: row.actual,
-					predicted: outcome.predicted
+					predicted: outcome.predicted,
+					share: format.percent(outcome.share),
+					total: row.totalText
 				};
 				return outcome.correct
 					? t.flowOutcomeCorrect(values)(outcome.count)
@@ -411,16 +487,20 @@ function buildLabels(
 		},
 		classee: {
 			showTable: t.showTable,
-			tableCaption: t.classeeTableCaption,
-			trueClass: t.trueClass,
-			predictedClass: t.predictedClass,
+			tableCaption: t.classeeTableCaption({ target }),
+			trueClass: t.trueClass({ target }),
+			predictedClass: t.predictedClass({ target }),
 			count: t.classeeCount,
 			outcome: t.classeeOutcome,
 			correct: t.classeeCorrect,
 			error: t.classeeError,
 			noErrors: t.classeeNoErrors,
 			errorsSide: t.classeeErrorsSide,
-			correctSide: t.classeeCorrectSide
+			correctSide: t.classeeCorrectSide,
+			xAxis: t.classeeXAxis,
+			yAxis: t.classeeYAxis({ target }),
+			legendLabel: t.classeeLegend,
+			description: (view) => t.classeeDescription({ errors: format.count(view.totalErrors) })
 		},
 		threshold: {
 			unavailable: probabilities
@@ -439,8 +519,13 @@ function buildLabels(
 				t.thresholdFn({ positive: view.positive, negative: view.negative }),
 			truePositiveRate: (view) => t.thresholdTpr({ positive: view.positive }),
 			falsePositiveRate: (view) => t.thresholdFpr({ negative: view.negative }),
-			trueClass: (label) => t.thresholdTrueClass({ label }),
-			xAxis: t.thresholdXAxis,
+			trueClass: (label) => t.thresholdTrueClass({ target, label }),
+			cutoffLabel: (threshold) => t.thresholdCutoff({ threshold }),
+			description: thresholdDescription,
+			liveUpdate: thresholdDescription,
+			rateWithCounts: (rate, hits, total) => t.thresholdRateCounts({ rate, hits, total }),
+			legendLabel: t.thresholdLegend,
+			xAxis: t.thresholdXAxis({ positive: thresholdView?.positive ?? '' }),
 			yAxis: t.thresholdYAxis,
 			showTable: t.showTable,
 			tableCaption: t.thresholdTableCaption,
@@ -448,6 +533,13 @@ function buildLabels(
 			range: (lower, upper) => t.range({ lower, upper })
 		},
 		reliability: {
+			description: (view) => t.reliabilityDescription({ ece: view.eceText }),
+			countsDescription: (view) =>
+				t.reliabilityCountsDescription({
+					total: format.count(view.bins.reduce((sum, bin) => sum + bin.count, 0))
+				}),
+			observedHeading: topLabel ? t.reliabilityObservedTopLabel : t.reliabilityObserved,
+			countHeading: t.matrixRows,
 			unavailable: probabilities
 				? t.reliabilityUnavailableProbabilities({ model })
 				: t.reliabilityUnavailableSingleClass,
@@ -710,6 +802,8 @@ export class AppModelResults extends LitElement {
 			t,
 			evaluation,
 			name,
+			target,
+			format,
 			evaluation.outputs.probabilities === null ? 'probabilities' : 'single-class'
 		);
 		const foldStrip = buildFoldStripView(
@@ -758,7 +852,7 @@ export class AppModelResults extends LitElement {
 			classee,
 			classeeCaption: classee
 				? {
-						title: t.classeeTitle,
+						title: t.classeeTitle({ target }),
 						takeaway: worst
 							? t.classeeTakeaway({
 									errors: format.count(classee.totalErrors),
@@ -781,7 +875,7 @@ export class AppModelResults extends LitElement {
 			thresholdCaption: threshold
 				? {
 						title: t.thresholdTitle,
-						takeaway: t.thresholdTakeaway({ positive: threshold.positive })
+						takeaway: labels.threshold.description(threshold, threshold.readouts[50]!)
 					}
 				: null,
 			calibration,
@@ -1019,6 +1113,10 @@ export class AppModelResults extends LitElement {
 				${binary
 					? html`<app-confusion-flowchart
 							.flow=${views.flow}
+							.caption=${{
+								title: t.flowchartTitle,
+								takeaway: `${t.flowchartSubtitle}. ${t.flowchartDescription}`
+							}}
 							.labels=${labels.flowchart}></app-confusion-flowchart>`
 					: html`<app-classee-strips
 							.strips=${views.classee}

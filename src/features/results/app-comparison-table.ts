@@ -1,9 +1,10 @@
-import { LitElement, css, html, nothing, type PropertyValues } from 'lit';
+import { LitElement, css, html, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
-import { ref } from 'lit/directives/ref.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { tableStyles } from '../../styles/table.styles';
 import { resultsStyles } from '../../styles/results.styles';
+import { modelSwatchStyles } from '../../styles/model-swatch.styles';
+import type { ModelColor } from '../../types/state';
 import type { ComparisonColumn, ComparisonUi } from '../../types/state';
 import type { ComparisonMetricCell } from './comparison-model';
 
@@ -14,6 +15,8 @@ export interface ComparisonRowView {
 	id: string;
 	label: string;
 	kind: 'model' | 'baseline';
+	num?: number;
+	modelColor?: ModelColor;
 	metrics: Readonly<Partial<Record<ComparisonColumn, ComparisonCellView>>>;
 }
 /** A visible sortable measure. */
@@ -50,6 +53,7 @@ export class AppComparisonTable extends LitElement {
 	static override styles = [
 		tableStyles,
 		resultsStyles,
+		modelSwatchStyles,
 		css`
 			button {
 				font-family: inherit;
@@ -57,11 +61,6 @@ export class AppComparisonTable extends LitElement {
 			button:focus-visible {
 				outline: 2px solid var(--focus-ring);
 				outline-offset: 2px;
-			}
-			.bar {
-				display: block;
-				background: currentColor;
-				block-size: 0.25rem;
 			}
 			th[scope='row'] {
 				max-inline-size: 16rem;
@@ -75,19 +74,6 @@ export class AppComparisonTable extends LitElement {
 	@property({ attribute: false }) accessor sort: ComparisonUi['sort'] = null;
 	@property({ attribute: false }) accessor labels: ComparisonTableLabels =
 		DEFAULT_COMPARISON_TABLE_LABELS;
-	private ranges = new Map<ComparisonColumn, { min: number; max: number }>();
-
-	override willUpdate(_changed: PropertyValues<this>): void {
-		this.ranges = new Map();
-		for (const column of this.columns) {
-			const values = [...this.rows, ...this.baselines]
-				.map((row) => row.metrics[column.id]?.value)
-				.filter((value): value is number => value !== null && value !== undefined);
-			if (values.length)
-				this.ranges.set(column.id, { min: Math.min(...values), max: Math.max(...values) });
-		}
-	}
-
 	private changeSort(event: Event): void {
 		const button = event.currentTarget as HTMLButtonElement;
 		const column = button.value as ComparisonColumn;
@@ -111,34 +97,18 @@ export class AppComparisonTable extends LitElement {
 	private renderRow(row: ComparisonRowView) {
 		return html`<tr>
 			<th scope="row">
+				${row.kind === 'model' && row.modelColor && row.num !== undefined
+					? html`<span class=${`swatch swatch-${row.modelColor}`}>${row.num}</span>`
+					: nothing}
 				${row.label} ${row.kind === 'baseline' ? this.labels.baseline : nothing}
 			</th>
 			${repeat(
 				this.columns,
 				(column) => column.id,
-				(column) => {
-					const cell = row.metrics[column.id],
-						range = this.ranges.get(column.id);
-					const width =
-						cell?.value !== null &&
-						cell?.value !== undefined &&
-						range &&
-						range.max > range.min
-							? ((cell.value - range.min) / (range.max - range.min)) * 100
-							: null;
-					return html`<td class="number">
-						${cell?.text || this.labels.unavailable}
-						${width !== null
-							? html`<span
-									class="bar"
-									aria-hidden="true"
-									${ref((element) => {
-										if (element instanceof HTMLElement)
-											element.style.inlineSize = `${width}%`;
-									})}></span>`
-							: nothing}
-					</td>`;
-				}
+				(column) =>
+					html`<td class="number">
+						${row.metrics[column.id]?.text || this.labels.unavailable}
+					</td>`
 			)}
 		</tr>`;
 	}

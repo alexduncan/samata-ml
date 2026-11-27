@@ -12,6 +12,7 @@ export function comparisonFixtures(): {
 	const iris = [1, 2, 3].map((num) => ({
 		num,
 		label: `Model ${num}`,
+		modelColor: 'blue' as const,
 		evaluation: irisCrossValidation()
 	}));
 	const partition = evaluation.partitions[0]!;
@@ -46,10 +47,11 @@ export function comparisonFixtures(): {
 	};
 	return {
 		iris,
-		oneShot: { num: 4, label: 'Model 4', evaluation: oneShot },
+		oneShot: { num: 4, label: 'Model 4', modelColor: 'teal', evaluation: oneShot },
 		differentSeed: {
 			num: 5,
 			label: 'Model 5',
+			modelColor: 'purple',
 			evaluation: {
 				...evaluation,
 				partitionFingerprint: 'c'.repeat(64),
@@ -59,6 +61,7 @@ export function comparisonFixtures(): {
 		binary: [6, 7].map((num) => ({
 			num,
 			label: `Model ${num}`,
+			modelColor: 'red' as const,
 			evaluation: breastCancerOneShot()
 		}))
 	};

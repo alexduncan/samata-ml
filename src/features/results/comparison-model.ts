@@ -6,12 +6,13 @@ import type {
 	StoredMetric,
 	StoredReport
 } from '../../types/model-evaluation';
-import type { ComparisonColumn } from '../../types/state';
+import type { ComparisonColumn, ModelColor } from '../../types/state';
 
 /** A model and its current saved evaluation. */
 export interface ComparisonModel {
 	num: number;
 	label: string;
+	modelColor: ModelColor;
 	evaluation: StoredEvaluation;
 }
 
@@ -34,6 +35,8 @@ export interface ComparisonMetricCell {
 export interface ComparisonTableRow {
 	id: string;
 	label: string;
+	num?: number;
+	modelColor?: ModelColor;
 	kind: 'model' | 'baseline';
 	metrics: Readonly<Partial<Record<ComparisonColumn, ComparisonMetricCell>>>;
 }
@@ -136,6 +139,8 @@ export function comparisonTableRow(model: ComparisonModel): ComparisonTableRow {
 	return {
 		id: String(model.num),
 		label: model.label,
+		num: model.num,
+		modelColor: model.modelColor,
 		kind: 'model',
 		metrics: {
 			...reportMetrics(e.pooled.test, e.positiveClassIndex),
@@ -270,6 +275,15 @@ export function classErrorRows(models: readonly ComparisonModel[]) {
 		models: models.map((model) => ({
 			num: model.num,
 			label: model.label,
+			modelColor: model.modelColor,
+			support: model.evaluation.pooled.test.support[classIndex] ?? null,
+			errorCount:
+				model.evaluation.pooled.test.support[classIndex] === undefined
+					? null
+					: model.evaluation.pooled.test.support[classIndex]! -
+						model.evaluation.pooled.test.confusionMatrix[
+							classIndex * first.evaluation.classLabels.length + classIndex
+						]!,
 			errorRate: model.evaluation.pooled.test.support[classIndex]
 				? 1 - model.evaluation.pooled.test.recallPerClass[classIndex]!
 				: null

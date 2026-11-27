@@ -2,6 +2,8 @@ import { LitElement, html, nothing } from 'lit';
 import { customElement, property } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
 import { resultsStyles } from '../../styles/results.styles';
+import { modelSwatchStyles } from '../../styles/model-swatch.styles';
+import type { ModelColor } from '../../types/state';
 import type { StoredEvaluation } from '../../types/model-evaluation';
 
 /** One localised group option. */
@@ -18,6 +20,7 @@ export interface GroupOptionView {
 export interface ModelOptionView {
 	num: number;
 	label: string;
+	readonly color: ModelColor;
 }
 
 /** Text supplied by the connected comparison view. */
@@ -50,7 +53,7 @@ export interface ComparisonSelectionChangeDetail {
  */
 @customElement('app-comparison-controls')
 export class AppComparisonControls extends LitElement {
-	static override styles = [resultsStyles];
+	static override styles = [resultsStyles, modelSwatchStyles];
 	@property({ attribute: false }) accessor groups: readonly GroupOptionView[] = [];
 	@property({ attribute: false }) accessor fingerprint: string | null = null;
 	@property({ attribute: false }) accessor models: readonly ModelOptionView[] = [];
@@ -128,7 +131,10 @@ export class AppComparisonControls extends LitElement {
 								!this.selected.includes(model.num)}
 								aria-describedby="limit"
 								@change=${this.changeSelection} />
-							<label for=${`model-${model.num}`}>${model.label}</label>
+							<label for=${`model-${model.num}`}
+								><span class=${`swatch swatch-${model.color}`}>${model.num}</span>
+								${model.label}</label
+							>
 						</div>`
 				)}
 			</fieldset>

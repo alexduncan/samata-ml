@@ -37,6 +37,10 @@ const meta = {
 		wrapper.dir = dir;
 		const element = document.createElement('app-confusion-flowchart');
 		element.labels = englishFlowchartLabels;
+		element.caption = {
+			title: 'Held-out outcomes',
+			takeaway: 'Correct and incorrect predictions'
+		};
 		element.flow = buildBinaryFlowView(evaluation, target, format);
 		wrapper.append(element);
 		return wrapper;

@@ -148,10 +148,46 @@ test.describe('Section 6 summary, fold strip and tables', () => {
 		expect(probe.dots).toBe(5);
 		expect(probe.dashed).toBeGreaterThanOrEqual(2);
 		expect(probe.label).toBe('Balanced accuracy by fold');
-		expect(probe.text).toContain('Most frequent class');
+		await expect(page.locator('app-fold-strip figure')).toContainText('Most frequent class');
+		await expect(page.locator('app-fold-strip figure')).toContainText('Random by class share');
 		await expect(page.locator('app-fold-strip figcaption')).toContainText(
 			'Scores ranged from 93.3% to 100%'
 		);
+	});
+
+	test('CHT-SINGLE-1: wide fold labels fit after resize at 200% and remain complete in the table', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 320, height: 800 });
+		await mount(page, { element: 'fold-strip', evaluation: 'iris' }, { width: '100%' });
+		await page.addStyleTag({ content: 'html { font-size: 200% }' });
+		const strip = page.locator('app-fold-strip');
+		const label = 'WWWW MMMM WWWW MMMM wide model label';
+		await strip.evaluate(async (host, value) => {
+			const chart = host as import('../src/features/results/app-fold-strip').AppFoldStrip;
+			chart.series = chart.series.map((row) => ({ ...row, label: value }));
+			await chart.whenSettled();
+		}, label);
+		await strip.locator('summary').click();
+		await expect(strip.locator('tbody')).toContainText(label);
+		await expect(strip.locator('.chart > svg:not([data-plot-probe])')).toContainText('…');
+		for (const width of [320, 280]) {
+			await page.setViewportSize({ width, height: 800 });
+			await expect
+				.poll(() =>
+					strip.evaluate((host) => {
+						const svg = host.shadowRoot!.querySelector('.chart > svg')!;
+						const bounds = svg.getBoundingClientRect();
+						return [...svg.querySelectorAll('text')]
+							.filter((node) => {
+								const rect = node.getBoundingClientRect();
+								return rect.left < bounds.left - 1 || rect.right > bounds.right + 1;
+							})
+							.map((node) => node.textContent);
+					})
+				)
+				.toEqual([]);
+		}
 	});
 
 	test('WML-P4-UI-2: the data table lists every score, timing, mean, SD and baseline', async ({

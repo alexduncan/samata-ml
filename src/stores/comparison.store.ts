@@ -13,7 +13,8 @@ import {
 	type ComparisonModel
 } from '../features/results/comparison-model';
 import { sameTrainingRun } from '../features/models/training/result-validation';
-import { $appState, setComparisonUi } from './app.store';
+import { $appState, modelSwatchAssignments, setComparisonUi } from './app.store';
+import { SUPERVISED_MODELS } from '../features/models/model-catalogue';
 import { comparisonOwner, ownedComparisonResults } from './comparison-preferences';
 import type { ComparisonOwner } from '../types/state';
 import {
@@ -26,6 +27,7 @@ import {
 /** Comparison groups and unavailable resources for the current trained models. */
 export const $comparison = computed([$appState, $modelResults], (state, resources) => {
 	const models: ComparisonModel[] = [];
+	const colours = modelSwatchAssignments(state).colours;
 	const unavailableModels: { num: number; reason: 'loading' | 'legacy' | 'lost' | 'error' }[] =
 		[];
 	for (const model of state.models.filter((entry) => entry.status === 'trained')) {
@@ -42,7 +44,12 @@ export const $comparison = computed([$appState, $modelResults], (state, resource
 		} else if (resource.status === 'ready' && resource.evaluation) {
 			models.push({
 				num: model.num,
-				label: `Model ${model.num}`,
+				label:
+					model.modelLabel?.trim() ||
+					SUPERVISED_MODELS.find(({ id }) => id === model.modelId)?.name ||
+					model.modelId ||
+					`Model ${model.num}`,
+				modelColor: colours.get(model.num)!,
 				evaluation: resource.evaluation
 			});
 		} else {

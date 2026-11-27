@@ -106,10 +106,67 @@ test.describe('Shared Plot controller', () => {
 			return {
 				role: svg.getAttribute('role'),
 				label: svg.getAttribute('aria-label'),
-				descendantLabels: svg.querySelectorAll('[aria-label]').length
+				description: svg.getAttribute('aria-describedby'),
+				descendantLabels: svg.querySelectorAll('[aria-label]').length,
+				visibleGroups: svg.querySelectorAll('g:not([aria-hidden="true"])').length,
+				fontSize: parseFloat(getComputedStyle(svg).fontSize)
 			};
 		});
-		expect(probe).toEqual({ role: 'img', label: 'Example scores', descendantLabels: 0 });
+		expect(probe.role).toBe('img');
+		expect(probe.label).toBe('Example scores');
+		expect(probe.description).toBe('chart-description');
+		expect(probe.descendantLabels).toBe(0);
+		expect(probe.visibleGroups).toBe(0);
+		expect(probe.fontSize).toBeGreaterThanOrEqual(12);
+	});
+
+	test('CHT-FOUND-1: measures on first render and responds to text size, fonts and reconnection', async ({
+		page
+	}) => {
+		const result = await page.evaluate(async () => {
+			const host = document.querySelector<StorybookPlotHost>('storybook-plot-host')!;
+			const column = document.getElementById('column')!;
+			column.style.inlineSize = '320px';
+			const frame = () =>
+				new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+			const flush = async () => {
+				await frame();
+				await frame();
+				await host.whenSettled();
+			};
+			await flush();
+			const initial = {
+				width: Number(host.dataset.width),
+				wide: Number(host.dataset.wideText),
+				narrow: Number(host.dataset.narrowText),
+				count: host.renderCount
+			};
+			document.documentElement.style.fontSize = '32px';
+			await flush();
+			const enlarged = {
+				width: Number(host.dataset.width),
+				font: Number(host.dataset.fontSize),
+				wide: Number(host.dataset.wideText),
+				count: host.renderCount
+			};
+			document.fonts.dispatchEvent(new Event('loadingdone'));
+			await flush();
+			const afterFonts = host.renderCount;
+			host.remove();
+			const detachedProbes = host.shadowRoot!.querySelectorAll('[data-plot-probe]').length;
+			column.append(host);
+			await flush();
+			return { initial, enlarged, afterFonts, detachedProbes, reattached: host.renderCount };
+		});
+		expect(result.initial.wide).toBeGreaterThan(result.initial.narrow);
+		expect(result.initial.narrow).toBeGreaterThan(0);
+		expect(result.enlarged.width).toBe(result.initial.width);
+		expect(result.enlarged.font).toBeGreaterThanOrEqual(32);
+		expect(result.enlarged.wide).toBeGreaterThan(result.initial.wide);
+		expect(result.enlarged.count).toBeGreaterThan(result.initial.count);
+		expect(result.afterFonts).toBeGreaterThan(result.enlarged.count);
+		expect(result.detachedProbes).toBe(0);
+		expect(result.reattached).toBeGreaterThan(result.afterFonts);
 	});
 
 	test('WML-P4-CHART-3: draws no hard-coded colour and keeps text inherited', async ({

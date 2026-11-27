@@ -158,26 +158,14 @@ test('BETA-ERR-5: production data, training, results and dialogs stay clean unde
 	await expect(page).toHaveURL('/results');
 	const comparison = page.locator('app-comparison-table');
 	await expect(comparison).toBeVisible();
-	const nonzeroBars = await comparison.locator('.bar').evaluateAll((bars) =>
-		bars.flatMap((element) => {
-			const bar = element as HTMLElement;
-			const fraction = Number.parseFloat(bar.style.inlineSize) / 100;
-			if (!(fraction > 0)) return [];
-			const cell = bar.parentElement!;
-			const style = getComputedStyle(cell);
-			const contentWidth =
-				cell.clientWidth -
-				Number.parseFloat(style.paddingInlineStart) -
-				Number.parseFloat(style.paddingInlineEnd);
-			return [
-				{ width: bar.getBoundingClientRect().width, expected: contentWidth * fraction }
-			];
-		})
-	);
-	expect(nonzeroBars.length).toBeGreaterThan(0);
-	for (const { width, expected } of nonzeroBars) {
-		expect(width).toBeGreaterThan(0);
-		expect(Math.abs(width - expected)).toBeLessThan(2);
+	await expect(comparison.locator('.bar')).toHaveCount(0);
+	const modelRows = comparison.locator('tbody').first().locator('tr');
+	await expect(modelRows).toHaveCount(2);
+	for (const [index, name] of ['Logistic Regression', 'Gaussian Naive Bayes'].entries()) {
+		const modelRow = modelRows.filter({ hasText: name });
+		await expect(modelRow).toHaveCount(1);
+		await expect(modelRow.locator('.swatch')).toHaveText(String(modelNumbers[index]));
+		await expect(modelRow.locator('td.number').first()).toHaveText(/^\s*\d+(?:\.\d+)?%\s*$/);
 	}
 
 	await page.evaluate(

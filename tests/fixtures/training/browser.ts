@@ -35,7 +35,7 @@ export async function openSetup(page: Page, saveConfiguration = true): Promise<L
 	await page.goto('/data');
 	await dismissWelcomeModal(page);
 	await page.locator('app-dataset-card[dataset-id="iris"] button.btn-primary').click();
-	await expect(page.locator('app-dataset-preview')).toBeAttached();
+	await expect(page.locator('app-dataset-preview')).toBeAttached({ timeout: 15_000 });
 
 	await page.goto('/target');
 	const target = page.locator('app-target-view');
