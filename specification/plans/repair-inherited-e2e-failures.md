@@ -26,7 +26,7 @@
 **Out of scope**
 
 - [Virtual table D28 and T5](archive/virtual-table-improvements.md#t5--sticky-page-headers-on-every-route) own document main padding, page-body spacing and sticky headers. Their planned geometry changes and the `PH-AC-2` registry retirement remain with that owner. The implementation branch at `4416bcb` has T1–T4 complete and T5 open.
-- [Beta test robustness T2–T4](beta-test-robustness-and-advisory-checks.md#implementation-tasks) own `PH-AC-2` deduplication, `FOCUS-AC-5` timing, dynamic dataset counts, mixed functional E2E axe checks including the remote training recovery case, and CI and exception-list policy. The Linux `SIDE-AC-10` screenshot baseline remains its existing [human follow-up](../HUMAN.md#1-workflow-and-plan-review).
+- [Beta test robustness T2–T4](archive/beta-test-robustness-and-advisory-checks.md#implementation-tasks) own `PH-AC-2` deduplication, `FOCUS-AC-5` timing, dynamic dataset counts, mixed functional E2E axe checks including the remote training recovery case, and CI and exception-list policy. The Linux `SIDE-AC-10` screenshot baseline remains its existing [human follow-up](../HUMAN.md#1-workflow-and-plan-review).
 - `17d7ad1` already corrected dataset and mockup counts and the data-preview persistence wait. The main Chromium replay passed all six affected cases: `DATA-FLOW-2`, `DATA-UP-2`, `DATA-PRE-2` and the three mockup-review checks.
 - Changes to charts, model or worker contracts, dependency versions, CI policy or product mockups.
 
@@ -41,7 +41,7 @@
 
 - [Component conventions](../COMPONENTS.md) §§3–10 and [sidebar](../components/sidebar.md) §§3–10.
 - [Visual design](../visual-design.md) §§1, 3, 5–6 and [testing](../testing.md) §End-to-End Testing.
-- [Chart release evidence](archive/chart-best-practices.md#verification-and-definition-of-done), [virtual table T5](archive/virtual-table-improvements.md#t5--sticky-page-headers-on-every-route) and [beta test robustness scope](beta-test-robustness-and-advisory-checks.md#scope).
+- [Chart release evidence](archive/chart-best-practices.md#verification-and-definition-of-done), [virtual table T5](archive/virtual-table-improvements.md#t5--sticky-page-headers-on-every-route) and [beta test robustness scope](archive/beta-test-robustness-and-advisory-checks.md#scope).
 
 ## Codebase context
 
