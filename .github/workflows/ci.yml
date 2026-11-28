@@ -64,8 +64,11 @@ jobs:
             - name: Run TSDoc lint
               run: bun run lint
 
-            - name: Install Playwright browsers for mockup and story checks
-              run: bunx playwright install --with-deps chromium firefox webkit
+            - name: Install Playwright browsers for Storybook
+              run: bun node_modules/playwright/cli.js install --with-deps chromium firefox webkit
+
+            - name: Install Chromium for mockup checks
+              run: bun node_modules/@playwright/test/cli.js install chromium
 
             - name: Run typecheck and unit tests
               run: bun run check

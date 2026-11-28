@@ -178,14 +178,15 @@ function collectWorkflowViolations(rawYaml: string): string[] {
 		const verifyRestRuns = verify.steps.slice(6).map((step) => step.run?.trim());
 		const expectedRestRuns = [
 			'bun run lint',
-			'bunx playwright install --with-deps chromium firefox webkit',
+			'bun node_modules/playwright/cli.js install --with-deps chromium firefox webkit',
+			'bun node_modules/@playwright/test/cli.js install chromium',
 			'bun run check',
 			'bun run deploy:dry-run',
 			'bun run test:stories'
 		];
 		if (JSON.stringify(verifyRestRuns) !== JSON.stringify(expectedRestRuns)) {
 			violations.push(
-				`verify steps 6..10 must be ${expectedRestRuns.join(' -> ')}, got ${verifyRestRuns.join(' -> ')}`
+				`verify steps 6..11 must be ${expectedRestRuns.join(' -> ')}, got ${verifyRestRuns.join(' -> ')}`
 			);
 		}
 		const verifyJson = JSON.stringify(verify);
