@@ -5,9 +5,9 @@
 html,
 body {
 	margin: 0;
-	overscroll-behavior-y: none;
 }
 
+/* Non-default viewport overscroll blocks wheel scrolling in Linux WebKit. */
 html {
 	overflow-y: scroll;
 	scroll-padding-block-start: var(--page-header-block-size);
