@@ -39,10 +39,12 @@ same install works in standalone clones, worktrees and CI.
 4. Delete the old tarball and its checksum file. Refresh the version, release SHA-256,
    package manifest hash, public contract digest and runtime hashes in
    `scripts/build-model-assets.ts`, using bytes from the verified release. Update the
-   expected asset graph and release URL in the model asset and training runtime tests.
+   checksum filename in all CI jobs and the CI workflow test. Update the expected asset
+   graph and release URL in the model asset, training runtime and analysis worker tests.
    Check the catalogue against samata-ml's model option policy.
-5. Run `bun run check`, `bun run build` and
-   `bun run test:e2e tests/training-runtime.e2e.ts tests/classification-training.e2e.ts`.
+5. Run `bun run check`, `bun run lint`, `bun run build` and
+   `bun run test:e2e tests/training-runtime.e2e.ts tests/classification-training.e2e.ts tests/analysis-worker.e2e.ts`.
+   Start `bun run server` and verify the HTTPS app route and versioned runtime module.
    Commit the new tarball and checksum along with the lockfile and integration changes.
 
 ## Create a Localhost SSL Certificate
@@ -245,7 +247,7 @@ bun run deploy:dry-run
 
 `.github/workflows/ci.yml` runs on `push` and `pull_request` to `main`:
 
-1. `verify` — Checks out full history, verifies `vendor/web-ml/web-ml-0.2.0.tgz.sha256`, installs Bun from `.bun-version`, installs frozen dependencies (`--ignore-scripts`), runs changed-file Prettier checks, runs `lint`, installs Playwright browsers, and runs `check`, `deploy:dry-run`, and `test:stories`.
+1. `verify` — Checks out full history, verifies `vendor/web-ml/web-ml-0.3.0.tgz.sha256`, installs Bun from `.bun-version`, installs frozen dependencies (`--ignore-scripts`), runs changed-file Prettier checks, runs `lint`, installs Playwright browsers, and runs `check`, `deploy:dry-run`, and `test:stories`.
 2. `e2e` (`needs: [verify]`) — Runs `SAMATA_SKIP_KNOWN_FAILURES=1 bun run test:e2e --project=<browser>` across Chromium, Firefox, and WebKit (`fail-fast: false`, `workers: 1` in CI).
 3. `deploy` (`needs: [verify, e2e]`) — Runs on `push` to `main` inside the `cloudflare-beta` GitHub environment with `BETA_TELEMETRY_ENABLED=true` and `SAMATA_CRAWLER_POLICY=closed`.
 

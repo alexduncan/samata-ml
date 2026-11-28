@@ -2,12 +2,53 @@ import { afterEach, beforeEach, expect, test } from 'bun:test';
 import { openSamataDb, TRAINING_DOMAIN_KEY } from '../src/common/storage/db';
 import { readModelResult } from '../src/features/models/training/result-repository';
 import { decodeResultEnvelope } from '../src/features/models/training/result-validation';
+import type { TrainingResultPayload } from '../src/types/model-result';
 import {
 	fixtureLegacyTrainingResult,
 	fixtureTrainingResult,
 	resultIdentity
 } from './fixtures/training/results';
 import { installFakeIndexedDB } from './helpers/fake-indexeddb';
+
+const numericColumn = {
+	kind: 'numeric',
+	name: 'measurement',
+	imputation: { strategy: 'median', value: 2 },
+	missingIndicator: true,
+	scaling: 'standard',
+	offset: 2,
+	scale: 3
+} as const;
+const oneHotColumn = {
+	kind: 'categorical',
+	name: 'habitat',
+	imputation: { strategy: 'most-frequent', value: 'peat' },
+	missingIndicator: false,
+	encoding: {
+		kind: 'one-hot',
+		categories: ['sand', 'stone'],
+		infrequent: ['peat'],
+		unknown: 'ignore'
+	}
+} as const;
+const ordinalColumn = {
+	kind: 'categorical',
+	name: 'grade',
+	imputation: { strategy: 'constant', value: 'low' },
+	missingIndicator: false,
+	encoding: {
+		kind: 'ordinal',
+		order: ['low', 'medium', 'high'],
+		unknownValue: null,
+		scaling: 'none',
+		offset: 0,
+		scale: 1
+	}
+} as const;
+const preprocessorV2 = {
+	version: 2,
+	columns: [numericColumn, oneHotColumn, ordinalColumn]
+} as const satisfies TrainingResultPayload['preprocessorJson'];
 
 let db: Awaited<ReturnType<typeof openSamataDb>>;
 let restore: () => void;
@@ -72,6 +113,52 @@ test.each(['one_shot', 'cross_validation'] as const)(
 	}
 );
 
+test('round-trips a fitted V2 preprocessor unchanged in either envelope version', async () => {
+	for (const seed of [fixtureLegacyTrainingResult(), fixtureTrainingResult()]) {
+		const result = { ...seed, preprocessorJson: preprocessorV2 };
+		await db.put('model_results', result);
+		expect(await readModelResult(db, seed.datasetId, seed.modelNum, resultIdentity)).toEqual(
+			result
+		);
+	}
+});
+
+test.each([
+	['empty columns', []],
+	['duplicate names', [numericColumn, { ...oneHotColumn, name: numericColumn.name }]],
+	['an unsupported column kind', [{ ...numericColumn, kind: 'datetime' }]],
+	['a non-boolean missing indicator', [{ ...numericColumn, missingIndicator: 1 }]],
+	[
+		'non-finite numeric imputation',
+		[{ ...numericColumn, imputation: { ...numericColumn.imputation, value: Infinity } }]
+	],
+	['a non-positive scale', [{ ...numericColumn, scale: 0 }]],
+	['a non-identity unscaled column', [{ ...numericColumn, scaling: 'none' }]],
+	[
+		'an unknown one-hot policy',
+		[{ ...oneHotColumn, encoding: { ...oneHotColumn.encoding, unknown: 'other' } }]
+	],
+	[
+		'overlapping one-hot lists',
+		[{ ...oneHotColumn, encoding: { ...oneHotColumn.encoding, infrequent: ['sand', 'peat'] } }]
+	],
+	[
+		'an imputation label outside the vocabulary',
+		[{ ...oneHotColumn, encoding: { ...oneHotColumn.encoding, infrequent: [] } }]
+	],
+	[
+		'a duplicate ordinal label',
+		[{ ...ordinalColumn, encoding: { ...ordinalColumn.encoding, order: ['low', 'low'] } }]
+	]
+] as const)('rejects a fitted V2 preprocessor with %s', (_case, columns) => {
+	expect(
+		decodeResultEnvelope({
+			...fixtureTrainingResult(),
+			preprocessorJson: { ...preprocessorV2, columns }
+		})
+	).toBeNull();
+});
+
 test('WML-P4-EVAL-6: rejects a version 2 envelope whose evaluation is missing or disagrees', () => {
 	const legacy = fixtureLegacyTrainingResult();
 	expect(decodeResultEnvelope({ ...legacy, schemaVersion: 2 })).toBeNull();
@@ -125,6 +212,9 @@ test('WML-P3-EVENT-2: rejects obsolete versions, mismatched shapes and legacy ke
 	expect(decodeResultEnvelope({ ...seed, schemaVersion: 3 })).toBeNull();
 	expect(decodeResultEnvelope({ ...seed, durationMs: NaN })).toBeNull();
 	expect(decodeResultEnvelope({ ...seed, sourceRowIndices: [0, 0] })).toBeNull();
+	expect(
+		decodeResultEnvelope({ ...seed, preprocessorJson: { ...preprocessorV2, version: 3 } })
+	).toBeNull();
 	expect(
 		decodeResultEnvelope({
 			...seed,

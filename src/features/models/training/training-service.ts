@@ -196,7 +196,13 @@ function configuration(model: ModelRecord, rowCount: number) {
 		.filter(
 			([name]) =>
 				!(classifier.algorithm === 'k-neighbors-classifier' && name === 'leafSize') &&
-				!(classifier.algorithm === 'mlp-classifier' && name === 'validationFraction')
+				!(classifier.algorithm === 'mlp-classifier' && name === 'validationFraction') &&
+				!(
+					classifier.algorithm === 'decision-tree-classifier' &&
+					['categoricalFeatures', 'ccpAlpha', 'maxLeafNodes', 'classWeight'].includes(
+						name
+					)
+				)
 		)
 		.sort(([left], [right]) => left.localeCompare(right, 'en'));
 	const configurationKey = JSON.stringify([

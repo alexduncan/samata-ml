@@ -137,6 +137,7 @@ test.describe('Deployed Chromium classification worker', () => {
 				'one_shot'
 			);
 			if (oneShot?.kind !== 'success' || oneShot.result.strategy !== 'one_shot') return;
+			expect(oneShot.result.preprocessorJson.version).toBe(2);
 			const { testIndices, trainIndices } = oneShot.result.holdout;
 			const report = oneShot.result.evaluation.partitions[0]!.test;
 			expect(trainIndices.length).toBe(48);
@@ -150,6 +151,7 @@ test.describe('Deployed Chromium classification worker', () => {
 			const cv = events.at(-1);
 			expect(cv?.kind === 'success' ? cv.result.strategy : cv).toBe('cross_validation');
 			if (cv?.kind !== 'success' || cv.result.strategy !== 'cross_validation') return;
+			expect(cv.result.preprocessorJson.version).toBe(2);
 			expect(cv.result.crossValidation.folds).toHaveLength(3);
 			expect(cv.result.crossValidation.diagnostics.sampleCount).toBe(60);
 			const validated = cv.result.crossValidation.folds.flatMap((fold) => [

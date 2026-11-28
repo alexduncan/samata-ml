@@ -239,7 +239,11 @@ export const MODEL_OPTION_POLICY = {
 		minImpurityDecrease: {
 			kind: 'number-reset',
 			domain: NON_NEGATIVE
-		}
+		},
+		categoricalFeatures: { kind: 'hidden' },
+		ccpAlpha: { kind: 'hidden' },
+		maxLeafNodes: { kind: 'hidden' },
+		classWeight: { kind: 'hidden' }
 	},
 	'k-neighbors-classifier': {
 		nNeighbors: {

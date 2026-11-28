@@ -62,7 +62,7 @@ for (const origin of origins) {
 			const reply = await runProbe(page, 'train');
 			expect(reply).toMatchObject({ kind: 'trained' });
 			if (reply.kind !== 'trained') throw new Error(JSON.stringify(reply));
-			expect(reply.runtimeUrl).toMatch(/^\/web-ml\/0\.2\.0-[0-9a-f]{64}\/index\.js$/);
+			expect(reply.runtimeUrl).toMatch(/^\/web-ml\/0\.3\.0-[0-9a-f]{64}\/index\.js$/);
 			const entry = new URL(reply.runtimeUrl, origin.url);
 			expect(entry.origin).toBe(origin.url);
 

@@ -38,12 +38,12 @@
 		"now": "date -u +%Y-%m-%dT%H:%M:%SZ"
 	},
 	"devDependencies": {
-		"@axe-core/playwright": "^4.14.0",
-		"@custom-elements-manifest/analyzer": "^0.10.4",
+		"@axe-core/playwright": "^4.14.1",
+		"@custom-elements-manifest/analyzer": "^0.10.10",
 		"@federicocarboni/saxe": "0.8.0",
 		"@microsoft/tsdoc": "0.17.1",
 		"@microsoft/tsdoc-config": "0.18.3",
-		"@playwright/test": "^1.50.0",
+		"@playwright/test": "^1.65.1",
 		"@storybook/addon-a11y": "10.6.7",
 		"@storybook/addon-docs": "10.6.7",
 		"@storybook/addon-vitest": "10.6.7",
@@ -57,8 +57,8 @@
 		"fake-indexeddb": "6.2.6",
 		"fflate": "0.8.2",
 		"gray-matter": "^4.0.3",
-		"happy-dom": "^17.1.6",
-		"marked": "^18.1.1",
+		"happy-dom": "^17.6.3",
+		"marked": "^18.3.0",
 		"oxc-parser": "0.159.0",
 		"playwright": "1.65.0",
 		"prettier": "3.8.3",
@@ -77,8 +77,8 @@
 		"idb": "^8.0.4",
 		"lit": "^3.3.3",
 		"nanostores": "^0.11.4",
-		"papaparse": "^5.7.0",
-		"web-ml": "./vendor/web-ml/web-ml-0.2.0.tgz"
+		"papaparse": "^5.7.1",
+		"web-ml": "./vendor/web-ml/web-ml-0.3.0.tgz"
 	},
 	"customElements": "custom-elements.json"
 }

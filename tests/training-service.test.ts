@@ -885,6 +885,16 @@ test.each([
 			['solver', 'adam'],
 			['tol', 0.000001]
 		]
+	],
+	[
+		'decision-tree-classifier',
+		[
+			['criterion', 'gini'],
+			['maxDepth', null],
+			['minImpurityDecrease', 0],
+			['minSamplesLeaf', 1],
+			['minSamplesSplit', 2]
+		]
 	]
 ] as const)(
 	'keeps the saved configuration key for %s after upgrading web-ml',
